@@ -7,7 +7,7 @@
 # to 3.4 kHz for signature vocal midrange "burp" and growl.
 id = "02c_jazz_bridge_growl_bias"
 name = "02c. Jazz Bass Bridge Growl (Jaco Bias)"
-tone_name = "Jaco Bridge Growl"
+tone_name = "Jazz Bridge Growl"
 topology = "Dual Single-Coil Parallel (Bridge Biased)"
 description = "Bridge-biased Jazz pair (Bridge 100%, Neck 75%) with 55k pot decoupling for signature Jaco vocal growl"
 blend_mode = "parallel"

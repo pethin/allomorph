@@ -5,7 +5,7 @@
 # capacitor and factory 330k pots, creating a sharp low-end cut below 150 Hz.
 id = "10_rickenbacker_bridge_hpf"
 name = "10. Rickenbacker 4003 Bridge (4.7nF HPF)"
-tone_name = "Rickenbacker 4003"
+tone_name = "Rickenbacker Clank"
 topology = "Single-Coil w/ 4.7nF Series HPF"
 description = "High-output bridge coil loaded with vintage 4.7nF series high-pass capacitor and 330k pots"
 magnet_type = "ceramic"

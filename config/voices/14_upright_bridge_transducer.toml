@@ -8,7 +8,7 @@
 # Recommended downstream cabinet IR: 3 Sigma Audio Upright Bass AST IRs (specifically the 'Acoustic Upright Standard' folder with the AST file tag).
 id = "14_upright_bridge_transducer"
 name = "14. Upright Acoustic Bridge Transducer"
-tone_name = "Upright Piezo"
+tone_name = "Upright Acoustic"
 topology = "Acoustic Bridge Transducer"
 sensor_type = "bridge_force"
 description = "Direct bridge force transducer with 100M-Ohm buffer, 15nF rumble cap, and velocity-to-force leaky integration (recommended with 3 Sigma AST IRs)"

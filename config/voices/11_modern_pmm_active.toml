@@ -7,7 +7,7 @@
 # (Sandberg California VM / Lakland 44-02 / Delano archetype).
 id = "11_modern_pmm_active"
 name = "11. Modern Active P/MM Bass (Parallel)"
-tone_name = "Modern P/MM Active"
+tone_name = "P∕MM Parallel"
 topology = "P/MM Parallel Active Buffer"
 description = "Split P-neck and MM parallel humbucker with active high-Z buffer, zero cable drag, and punchy modern slap growl"
 blend_mode = "parallel"

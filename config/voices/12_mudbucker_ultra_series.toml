@@ -5,7 +5,7 @@
 # neck heel (266.8mm from bridge / 165.0mm from 12th fret datum), with extreme 14.4H inductance and Gibson 500k V/T 22nF.
 id = "12_mudbucker_ultra_series"
 name = "12. Mudbucker Ultra Series"
-tone_name = "EB-0 Mudbucker"
+tone_name = "Mudbucker Deep"
 topology = "Sidewinder Series Humbucker"
 description = "Overwound sidewinder humbucker with central pole line (14.4H, Gibson 500k V/T 22nF)"
 magnet_type = "alnico_ii"

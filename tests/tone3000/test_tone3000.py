@@ -135,10 +135,17 @@ def test_tone3000_multi_pickup_tags():
         )
 
         for line in voicing_lines:
-            # Character tones (Active / Passive / Neutral Character) preserve aperture and omit selector tags
+            # Character tones (Studio Active / Passive / Direct) preserve aperture and omit selector tags
             if any(
                 char_tone in line
-                for char_tone in ["Active Character", "Passive Character", "Neutral Character"]
+                for char_tone in [
+                    "Studio Active",
+                    "Studio Passive",
+                    "Studio Direct",
+                    "Active Character",
+                    "Passive Character",
+                    "Neutral Character",
+                ]
             ):
                 assert not any(
                     tag in line for tag in tags
@@ -160,8 +167,8 @@ def test_tone3000_active_instrument_guidance():
 
 
 def test_tone3000_character_voicing_ranking_order():
-    """Verify that active bass packs rank Passive Character before Active Character,
-    while passive bass packs rank Active Character before Passive Character.
+    """Verify that active bass packs rank Studio Passive before Studio Active,
+    while passive bass packs rank Studio Active before Studio Passive.
 
     Under the Inverse-Availability Principle, active instruments already possess onboard active
     buffering, so an authentic high-impedance passive RLC network provides the primary transformative
@@ -170,15 +177,23 @@ def test_tone3000_character_voicing_ranking_order():
     for pack in PACK_EDITIONS:
         txt_path = DOCS_DIR / f"{pack}.txt"
         content = txt_path.read_text(encoding="utf-8")
-        pos_p = content.find("Passive Character")
-        pos_a = content.find("Active Character")
-        assert pos_p != -1, f"Passive Character missing in {pack}.txt"
-        assert pos_a != -1, f"Active Character missing in {pack}.txt"
+        pos_p = (
+            content.find("Studio Passive")
+            if "Studio Passive" in content
+            else content.find("Passive Character")
+        )
+        pos_a = (
+            content.find("Studio Active")
+            if "Studio Active" in content
+            else content.find("Active Character")
+        )
+        assert pos_p != -1, f"Studio Passive missing in {pack}.txt"
+        assert pos_a != -1, f"Studio Active missing in {pack}.txt"
 
         if pack in ACTIVE_PACKS:
-            assert pos_p < pos_a, f"Active pack {pack}.txt must rank Passive Character before Active Character"
+            assert pos_p < pos_a, f"Active pack {pack}.txt must rank Studio Passive before Studio Active"
         else:
-            assert pos_a < pos_p, f"Passive pack {pack}.txt must rank Active Character before Passive Character"
+            assert pos_a < pos_p, f"Passive pack {pack}.txt must rank Studio Active before Studio Passive"
 
 
 def test_tone3000_artwork_files_exist():

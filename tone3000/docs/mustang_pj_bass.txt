@@ -46,19 +46,19 @@ THE 22 DIGITAL TWIN VOICINGS
 
 Jazz Bass Family
 
-01. Modern Jazz Active [Parallel]
+01. Jazz Pair Active [Parallel]
 The quintessential NYC active slap tone: tight, massive sub-bass and crisp, glassy highs with a scooped midrange that pops right out of a dense mix.
 
-02. 60s Jazz Pair [Parallel]
+02. Jazz Pair Open [Parallel]
 The golden-era '60s Jazz Bass sound. Reconstructs full 34" wide-aperture dual single-coils with that iconic hollow midrange scoop and smooth, singing top-end.
 
-03. 60s Jazz 22nF [Parallel]
+03. Jazz Pair Mids [Parallel]
 Jazz Bass pair with a vocal midrange punch. Thickens up your fingerstyle attack and smooths out harsh fret clank while keeping every note articulate.
 
-04. Jaco Bridge Growl [Parallel]
+04. Jazz Bridge Growl [Parallel]
 The unmistakable Jaco Pastorius tone: run toggle in middle while the model injects authentic neck-pot decoupling under the hood for that signature singing, vocal bridge growl and burp.
 
-05. 60s Jazz Bridge [Bridge]
+05. Jazz Bridge Open [Bridge]
 Solo '60s bridge single-coil scaled to full 34" scale geometry. Tight, laser-focused midrange bite and percussive attack, perfect for 16th-note funk and fast staccato fingerstyle.
 
 
@@ -73,64 +73,64 @@ StingRay wired in series for a hotter, thicker signal with punchy low-mids and a
 
 P/MM Modern Hybrids
 
-08. Modern P∕MM Active [Parallel]
+08. P∕MM Parallel [Parallel]
 Modern boutique session hybrid (Sandberg California / Lakland style). Blends the warm body of a P-bass neck with the punchy slap bite of a Music Man bridge humbucker.
 
-09. P∕MM Hybrid Series [Parallel]
+09. P∕MM Series [Parallel]
 P-bass neck and Music Man bridge wired in series for a massive wall of sound with immense low-mid thrust and heavy overdrive sustain.
 
 
 Progressive & Classic Rock Legends
 
-10. Rickenbacker 4003 [Bridge]
+10. Rickenbacker Clank [Bridge]
 The quintessential prog-rock clank (Chris Squire / Geddy Lee). Tight, lean low end with biting, aggressive pick attack and cutting upper-mid grit.
 
-11. Dingwall FD3 [Bridge]
+11. Dingwall Bridge [Bridge]
 Modern progressive metal tone: razor-sharp pick clank, extreme note clarity, and piano-like low-B definition tailored for drop tunings and heavy distortion.
 
-12. EB-0 Mudbucker [Neck]
+12. Mudbucker Deep [Neck]
 The legendary Gibson "Mudbucker": a dark, colossal wall of pure vintage bass rumble with zero top-end harshness—pure '60s and '70s British blues-rock.
 
 
 Acoustic Transducers
 
-13. Upright Piezo [Neck]
+13. Upright Acoustic [Neck]
 Acoustic upright double bass: transforms your electric bass into a woody, resonant acoustic upright with natural body thump and organic finger feel. Pair with 3 Sigma Audio "Acoustic Upright Standard" AST IRs in your cabinet loader for authentic soundboard acoustic bloom.
 
 
 Precision Bass & Tone Shaper Family
 
-14. Vintage 62 P [Neck]
+14. Precision Vintage [Neck]
 The gold standard: a vintage 1962 Precision Bass with full 34" scale tension and bloom. Warm, woody low-mids and organic touch sensitivity that sits perfectly in any mix.
 
-15. Modern P Ceramic [Neck]
+15. Precision Modern [Neck]
 Modern boutique P-bass tone. Aggressive, punchy, and clear with tight low-mids and bright transient snap—built for aggressive rock, pop, and modern worship.
 
-16. Vintage 62 P 22nF [Neck]
+16. Precision Mids [Neck]
 Vintage P-bass with a modern vocal low-mid punch. Cuts finger clatter and high-end sizzle while keeping a muscular, forward presence in a busy mix.
 
-17. Vintage 62 P 47nF [Neck]
+17. Precision Warm [Neck]
 The legendary Motown flatwound sound (James Jamerson / Pino Palladino). Fat, pillowy sub-bass thump with rolled-off highs that glues the groove together.
 
-18. Vintage 50s P 100nF [Neck]
+18. Precision Dub [Neck]
 Ultra-deep vintage '50s dub spec. Pure, earth-shaking sub-bass thump with zero top-end click—perfect for reggae, dub, hip-hop, and classic R&B.
 
 
 P/J Bass Family
 
-19. Modern PJ Active [Parallel]
+19. PJ Active [Parallel]
 Modern active P/J punch (Sadowsky/Spector style). Combines thick split-coil body with bridge single-coil cut, boosted by a powerful active 2-band EQ.
 
-20. Vintage PJ Passive [Parallel]
+20. PJ Passive [Parallel]
 Classic '80s rock P/J tone (Duff McKagan / Yamaha BB3000). Thick hard-rock punch with aggressive midrange bite and authoritative low-end grunt.
 
 
 Studio Buffers & Dynamics
 
-21. Active Character
+21. Studio Active
 Studio Active Buffer: removes cable drag and pot loading, opening up pristine hi-fi clarity, ultra-fast transient attack, and airy top-end sparkle.
 
-22. Passive Character
+22. Studio Passive
 Vintage Passive Character: stacks organic vintage tube-amp warmth, tactile touch sensitivity, and woody harmonic bloom onto your signal chain.
 
 

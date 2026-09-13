@@ -268,6 +268,7 @@ class InstrumentConfig(AllomorphBaseModel):
     scale_max_in: float | None = None
     is_multiscale: bool = False
     electronics: str = "passive"
+    version: int = Field(1, ge=1, description="Instrument physical datum configuration version")
     string_wave_speeds: list[float] = Field(default_factory=list)
     default_pickup: str | None = None
     strings: InstrumentStringsConfig = Field(default_factory=InstrumentStringsConfig)
@@ -335,6 +336,7 @@ class VoiceConfig(AllomorphBaseModel):
 
     id: str
     name: str
+    version: int = Field(1, ge=1, description="Target voice RLC netlist configuration version")
     tone_name: str | None = None
     topology: str
     description: str

@@ -146,7 +146,7 @@ def test_sweep_audio_auto_detection():
     sweep = find_default_input_audio()
     assert sweep is not None
     assert sweep.exists()
-    assert sweep.name == "optimal_bass_dry.wav"
+    assert sweep.name.startswith("optimal_bass_dry") and sweep.suffix == ".wav"
 
     with tempfile.TemporaryDirectory() as tmpdir:
         out_wav = Path(tmpdir) / "auto_sweep_out.wav"

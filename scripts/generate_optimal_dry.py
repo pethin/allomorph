@@ -12,9 +12,7 @@ import numpy as np
 
 from allomorph.dsp import (
     FS,
-    OPTIMAL_DRY_PATH,
-    generate_optimal_bass_dry,
-    write_wav_24bit,
+    ensure_optimal_dry_wav,
 )
 
 
@@ -26,8 +24,19 @@ def main() -> None:
         "--out",
         "-o",
         type=Path,
-        default=OPTIMAL_DRY_PATH,
-        help=f"Target output WAV filepath (default: {OPTIMAL_DRY_PATH})",
+        default=None,
+        help="Target output WAV filepath (default: versioned audio/canonical/optimal_bass_dry_<version>.wav)",
+    )
+    parser.add_argument(
+        "--version-tag",
+        type=str,
+        default=None,
+        help="Semantic version token (e.g. 'v2.1.1' or 'v2'). Defaults to resolved tri-part version.",
+    )
+    parser.add_argument(
+        "--no-manifest",
+        action="store_true",
+        help="Disable automatic manifest.json sidecar emission in output directory.",
     )
     parser.add_argument(
         "--duration",
@@ -56,7 +65,9 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    out_path = Path(args.out)
+    from allomorph.naming import get_optimal_dry_path
+
+    out_path = Path(args.out) if args.out is not None else get_optimal_dry_path(version_tag=args.version_tag)
     if out_path.exists() and not args.overwrite:
         print(f"[Optimal Dry] Output file already exists: {out_path}")
         print("Use --overwrite to regenerate.")
@@ -79,15 +90,19 @@ def main() -> None:
     print("  [6/7] Continuous register glissandi across pickup comb nulls...")
     print("  [7/7] Shaped wideband pink noise bursts & clean silence boundary termination...")
 
-    audio = generate_optimal_bass_dry(
+    out_path = ensure_optimal_dry_wav(
+        output_path=args.out,
         duration_sec=args.duration,
         sample_rate=args.sample_rate,
         peak_dbfs=args.peak_dbfs,
+        overwrite=args.overwrite,
+        version_tag=args.version_tag,
+        no_manifest=args.no_manifest,
     )
 
-    out_path.parent.mkdir(parents=True, exist_ok=True)
-    write_wav_24bit(out_path, audio, sample_rate=args.sample_rate)
+    from allomorph.dsp import read_wav
 
+    audio, _ = read_wav(out_path)
     peak_db = 20.0 * math.log10(max(float(np.max(np.abs(audio))), 1e-9))
     rms_db = 20.0 * math.log10(max(float(np.sqrt(np.mean(audio**2))), 1e-9))
     file_size_mb = out_path.stat().st_size / (1024 * 1024)

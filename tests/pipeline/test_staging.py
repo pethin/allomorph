@@ -170,14 +170,14 @@ def test_t3k_pack_naming_invariants():
     with pytest.raises(ValueError, match="exceeds 34 characters"):
         get_t3k_basename("This Is An Extremely Long Tone Name", "Parallel")
 
-    assert get_t3k_basename("Vintage 62 P", "Split") == "Vintage 62 P [Split]"
-    assert get_t3k_basename("Modern P/MM Active", "P/MM") == "Modern P\u2215MM Active [P\u2215MM]"
-    assert "/" not in get_t3k_basename("Modern P/MM Active", "P/MM")
+    assert get_t3k_basename("Precision Vintage", "Split") == "Precision Vintage [Split]"
+    assert get_t3k_basename("P∕MM Parallel", "P/MM") == "P\u2215MM Parallel [P\u2215MM]"
+    assert "/" not in get_t3k_basename("P∕MM Parallel", "P/MM")
 
     # 6. Single-pickup instruments omit pickup name suffix
-    assert get_t3k_basename("Vintage 62 P", None) == "Vintage 62 P"
-    assert get_t3k_basename("Vintage 62 P", "") == "Vintage 62 P"
-    assert get_t3k_basename("Vintage 62 P", "   ") == "Vintage 62 P"
+    assert get_t3k_basename("Precision Vintage", None) == "Precision Vintage"
+    assert get_t3k_basename("Precision Vintage", "") == "Precision Vintage"
+    assert get_t3k_basename("Precision Vintage", "   ") == "Precision Vintage"
 
     single_p_inst = instruments["34in_standard_p"]
     assert len(single_p_inst.pickups) == 1
@@ -186,7 +186,7 @@ def test_t3k_pack_naming_invariants():
         if len(single_p_inst.pickups) <= 1
         else single_p_inst.pickups["split_p"].position_name
     )
-    assert get_t3k_basename("Vintage 62 P", pos_p) == "Vintage 62 P"
+    assert get_t3k_basename("Precision Vintage", pos_p) == "Precision Vintage"
 
     single_ray_inst = instruments["34in_active_stingray"]
     assert len(single_ray_inst.pickups) == 1
@@ -420,7 +420,7 @@ def test_target_wet_files_normalization_and_true_peak_clamping_modes(tmp_path: P
     strictly enforcing the calibration sweep peak ceiling (<= 0.9900) so no sample ever clips at full scale (0 dBFS)
     for Tone3000 compliance.
     """
-    from allomorph.circuit.staging import CANONICAL_SWEEP_PATH
+    from allomorph.circuit.simulation import CANONICAL_SWEEP_PATH
 
     out_dir = tmp_path / "targets"
     # 1. Default mode: normalize='auto' (matching input sweep RMS for default unity)
@@ -624,7 +624,7 @@ def test_clean_tier_saturation_bypass_and_performance(tmp_path: Path):
     """
     import time
 
-    from allomorph.circuit.staging import CANONICAL_SWEEP_PATH
+    from allomorph.circuit.simulation import CANONICAL_SWEEP_PATH
 
     if CANONICAL_SWEEP_PATH.exists():
         sweep_in = CANONICAL_SWEEP_PATH

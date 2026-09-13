@@ -75,6 +75,8 @@ def run_training(
     basename: str | None = None,
     batch_size: int = 32,
     a2_lite_only: bool = False,
+    version_tag: str | None = "auto",
+    no_manifest: bool = False,
 ):
     """Trains a Neural Amp Modeler (NAM) Architecture 2 slimmable model locally under the studio reference standard."""
     arch_lbl = "A2-Lite" if a2_lite_only else "Architecture 2 Slimmable"
@@ -112,6 +114,10 @@ def run_training(
         cmd.extend(["--input", str(input_wav)])
     if fast_dev_run:
         cmd.append("--fast-dev-run")
+    if version_tag:
+        cmd.extend(["--version-tag", str(version_tag)])
+    if no_manifest:
+        cmd.append("--no-manifest")
     res = subprocess.run(cmd, cwd=str(REPO_ROOT), check=False)
     if res.returncode != 0:
         print(f"Notice: Model training exited with code {res.returncode}")
@@ -131,6 +137,8 @@ def run_frontend_training(
     gain_db: float = 0.0,
     batch_size: int = 32,
     a2_lite_only: bool = False,
+    version_tag: str | None = "auto",
+    no_manifest: bool = False,
 ):
     """Trains a Neural Amp Modeler (NAM) Architecture 2 slimmable model locally for Block 1 frontend under studio reference standard."""
     arch_lbl = "A2-Lite" if a2_lite_only else "Architecture 2 Slimmable"
@@ -171,6 +179,10 @@ def run_frontend_training(
         cmd.append("--normalize-frontend")
     if gain_db != 0.0:
         cmd.extend(["--gain-db", str(gain_db)])
+    if version_tag:
+        cmd.extend(["--version-tag", str(version_tag)])
+    if no_manifest:
+        cmd.append("--no-manifest")
     res = subprocess.run(cmd, cwd=str(REPO_ROOT), check=False)
     if res.returncode != 0:
         print(f"Notice: Frontend model training exited with code {res.returncode}")

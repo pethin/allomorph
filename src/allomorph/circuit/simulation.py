@@ -55,7 +55,9 @@ from allomorph.physics import (
 AUDIO_DIR = REPO_ROOT / "audio"
 MODELS_DIR = REPO_ROOT / "models"
 MODELS_FRONTENDS_DIR = MODELS_DIR / "frontends"
-CANONICAL_SWEEP_PATH = AUDIO_DIR / "canonical" / "canonical_sweep.wav"
+from allomorph.version import DSP_GENERATION
+
+CANONICAL_SWEEP_PATH = AUDIO_DIR / "canonical" / f"canonical_sweep_v{DSP_GENERATION}.wav"
 FRONTENDS_DIR = AUDIO_DIR / "frontends"
 TARGETS_DIR = AUDIO_DIR / "targets"
 INTERMEDIATE_TARGET_PEAK_DBFS = -1.5

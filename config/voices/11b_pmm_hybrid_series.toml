@@ -7,7 +7,7 @@
 # (Sandberg California VM / Lakland 44-02 / Delano archetype in series mode).
 id = "11b_pmm_hybrid_series"
 name = "11b. Modern Active P/MM Bass (Series)"
-tone_name = "P/MM Hybrid Series"
+tone_name = "P∕MM Series"
 topology = "P/MM Series Active Buffer"
 description = "Split P-neck and MM parallel humbucker wired in series before active buffer, zero cable drag, and commanding series punch"
 blend_mode = "series"

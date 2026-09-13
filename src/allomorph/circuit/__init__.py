@@ -5,6 +5,7 @@ Analytical closed-form nodal RLC solver and state-space non-linear saturation.
 
 from allomorph.circuit.audio import (
     apply_prefilter_to_audio,
+    find_default_canonical_sweep,
     find_default_input_audio,
     prefilter_audio,
 )
@@ -111,6 +112,7 @@ __all__ = [
     "export_all_frontend_wet_wavs",
     "export_frontend_ir",
     "export_frontend_wet_wav",
+    "find_default_canonical_sweep",
     "find_default_input_audio",
     "generate_canonical_sweep",
     "load_circuit",

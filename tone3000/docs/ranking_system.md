@@ -11,9 +11,9 @@ The Allomorph ranking architecture is built on four fundamental tenets designed 
 ### 1.1 Inverse-Availability Principle (Native Identity Exclusion)
 When a player browses or loads a tone pack for their physical bass, the primary value proposition is **transformational capacity**—giving the player sounds they **cannot** physically achieve with their stock instrument.
 - **Rule:** 1:1 base-instrument identity duplicates ($H_{\text{diff}} \equiv 1.0$) where the target pickup geometry and circuit match the player's stock instrument (producing a straight-wire bypass with zero difference between dry and wet) are **excluded** from the pack. Players do not need a neural network to emulate the exact physical pickup and circuit already installed in their guitar.
-- **Example (Precision Bass):** Excludes `Vintage 62 P` (since the player's bass already possesses this exact Alnico V split-coil CTS 250k circuit). Retains modified ToneStyler capacitive shunts (22nF, 47nF flatwound, 100nF Fullerton) and modern ceramic 500k configurations which deliver distinct electrical curves.
-- **Example (Jazz Bass):** Excludes `60s Jazz Pair` and `60s Jazz Bridge` (matches stock dual single-coils and bridge single-coil).
-- **Example (P/J Bass):** Excludes `Vintage PJ Passive`, `Vintage 62 P`, and `60s Jazz Bridge` (matches the player's native 3-way switch positions).
+- **Example (Precision Bass):** Excludes `Precision Vintage` (since the player's bass already possesses this exact Alnico V split-coil CTS 250k circuit). Retains modified ToneStyler capacitive shunts (Precision Mids, Precision Warm, Precision Dub) and modern ceramic 500k configurations which deliver distinct electrical curves.
+- **Example (Jazz Bass):** Excludes `Jazz Pair Open` and `Jazz Bridge Open` (matches stock dual single-coils and bridge single-coil).
+- **Example (P/J Bass):** Excludes `PJ Passive`, `Precision Vintage`, and `Jazz Bridge Open` (matches the player's native 3-way switch positions).
 - **Example (Active StingRay):** Excludes `StingRay Parallel` (matches the stock active bridge humbucker in parallel).
 
 ### 1.2 Popularity & Transformative Demand Weighting
@@ -32,9 +32,9 @@ Storefront categories must accurately reflect analog electrical topologies and p
 
 ### 1.4 Terminal Studio Character & Buffer Anchor
 The final positions in every pack are reserved for studio impedance and loading transformations:
-- **Active Character (Modern Studio Active Buffer):** Deconvolves $750\text{ pF}$ cable capacitance and pot damping from the user's physical pickups, shifting resonance into the hi-fi air band ($7.5\text{--}9.0\text{ kHz}$) with $1\text{M}\Omega$ input impedance.
-- **Passive Character (High-Impedance Passive Pickup & Cable Loading):** Simulates an authentic high-impedance passive RLC network ($L = 4.2\text{ H}, f_r = 2.8\text{ kHz}, Q = 1.4$) loaded by a standard $250\text{k}\Omega$ CTS volume/tone harness and $750\text{ pF}$ cable capacitance. On active instruments (StingRay, Active Soapbar), it replaces sterile onboard active buffering with organic vintage passive dynamics, woody low-mid body, and rolled-off highs.
-- **Ordering Rule (Inverse-Availability):** For passive instrument editions (`standard_precision_bass`, `standard_jazz_bass`, `standard_pj_bass`, `mustang_pj_bass`), Active Character is ranked before Passive Character because passive players seeking an active buffer prioritize the active transformation. Conversely, for active instrument editions (`active_emg_bass`, `active_stingray_bass`, `preamp_soapbar_bass`), Passive Character is ranked before Active Character, as transforming an active instrument into an organic high-impedance passive RLC network provides the primary transformative value of the product ("Passivizer").
+- **Studio Active (Modern Studio Active Buffer):** Deconvolves $750\text{ pF}$ cable capacitance and pot damping from the user's physical pickups, shifting resonance into the hi-fi air band ($7.5\text{--}9.0\text{ kHz}$) with $1\text{M}\Omega$ input impedance.
+- **Studio Passive (High-Impedance Passive Pickup & Cable Loading):** Simulates an authentic high-impedance passive RLC network ($L = 4.2\text{ H}, f_r = 2.8\text{ kHz}, Q = 1.4$) loaded by a standard $250\text{k}\Omega$ CTS volume/tone harness and $750\text{ pF}$ cable capacitance. On active instruments (StingRay, Active Soapbar), it replaces sterile onboard active buffering with organic vintage passive dynamics, woody low-mid body, and rolled-off highs.
+- **Ordering Rule (Inverse-Availability):** For passive instrument editions (`standard_precision_bass`, `standard_jazz_bass`, `standard_pj_bass`, `mustang_pj_bass`), Studio Active is ranked before Studio Passive because passive players seeking an active buffer prioritize the active transformation. Conversely, for active instrument editions (`active_emg_bass`, `active_stingray_bass`, `preamp_soapbar_bass`), Studio Passive is ranked before Studio Active, as transforming an active instrument into an organic high-impedance passive RLC network provides the primary transformative value of the product ("Passivizer").
 
 ---
 
@@ -42,7 +42,7 @@ The final positions in every pack are reserved for studio impedance and loading 
 
 ### 2.1 Standard P/J Bass Edition (19 Voicings)
 *Source Instrument:* Physical Split-P neck + Single-coil J bridge ($34''$ scale).  
-*Native Exclusions:* `Vintage PJ Passive`, `Vintage 62 P`, and `60s Jazz Bridge` ($H_{\text{diff}} \equiv 1.0$).
+*Native Exclusions:* `PJ Passive`, `Precision Vintage`, and `Jazz Bridge Open` ($H_{\text{diff}} \equiv 1.0$).
 
 | Rank Range | Sonic Family | Rationale / Musical Character |
 | :--- | :--- | :--- |
@@ -76,7 +76,7 @@ The final positions in every pack are reserved for studio impedance and loading 
 
 ### 2.3 Standard Jazz Bass Edition (20 Voicings)
 *Source Instrument:* Dual single-coils in 60s spacing ($155.6\text{ mm}$ neck, $63.5\text{ mm}$ bridge, $34''$ scale).  
-*Native Exclusions:* `60s Jazz Pair` and `60s Jazz Bridge` ($H_{\text{diff}} \equiv 1.0$).
+*Native Exclusions:* `Jazz Pair Open` and `Jazz Bridge Open` ($H_{\text{diff}} \equiv 1.0$).
 
 | Rank Range | Sonic Family | Rationale / Musical Character |
 | :--- | :--- | :--- |
@@ -93,7 +93,7 @@ The final positions in every pack are reserved for studio impedance and loading 
 
 ### 2.4 Standard Precision Bass Edition (21 Voicings)
 *Source Instrument:* Single split-coil P-Bass centered at $125.0\text{ mm}$ ($34''$ scale).  
-*Native Exclusions:* `Vintage 62 P` ($H_{\text{diff}} \equiv 1.0$).
+*Native Exclusions:* `Precision Vintage` ($H_{\text{diff}} \equiv 1.0$).
 
 | Rank Range | Sonic Family | Rationale / Musical Character |
 | :--- | :--- | :--- |

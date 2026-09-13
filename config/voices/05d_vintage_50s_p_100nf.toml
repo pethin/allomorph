@@ -6,7 +6,7 @@
 # for massive sub-bass shelf rolloff (240 Hz cutoff, deep Motown / reggae dub thump).
 id = "05d_vintage_50s_p_100nf"
 name = "05d. Vintage '50s Split-P (100nF ToneStyler)"
-tone_name = "Vintage 50s P 100nF"
+tone_name = "Precision Dub"
 topology = "Split-Coil Alnico V (100nF ToneStyler)"
 description = "Vintage Alnico V split-coil with 100nF ToneStyler pure capacitive shunt (1950s deep sub-bass dub thump)"
 magnet_type = "alnico_v"

@@ -45,6 +45,11 @@ from allomorph.pipeline.stages import (
     run_training,
     run_visualization,
 )
+from allomorph.version import (
+    DSP_GENERATION,
+    resolve_tri_part_version,
+    write_manifest,
+)
 
 
 def list_instruments():
@@ -237,6 +242,16 @@ def main(argv: Sequence[str] | None = None):
         help="Export baked model and audio files formatted as 'Tone Name [Pickup Position]' (max 34 chars)",
     )
     parser.add_argument(
+        "--version-tag",
+        default="auto",
+        help="Semantic version tag (default: 'auto' -> v[dsp].[inst].[voice], or explicit string, or 'none' to disable)",
+    )
+    parser.add_argument(
+        "--no-manifest",
+        action="store_true",
+        help="Disable generating sidecar manifest.json",
+    )
+    parser.add_argument(
         "--list-instruments",
         action="store_true",
         help="List all configured source instruments and their pickups",
@@ -266,6 +281,8 @@ def main(argv: Sequence[str] | None = None):
             "gain_db": args.gain_db,
             "input_wav": args.input_wav,
             "t3k_pack": args.t3k_pack,
+            "version_tag": args.version_tag,
+            "no_manifest": args.no_manifest,
         }
     )
 
@@ -303,11 +320,12 @@ def main(argv: Sequence[str] | None = None):
 
     input_wav = args.input_wav
     if not input_wav or not (Path(input_wav).exists() or (REPO_ROOT / input_wav).exists()):
-        from allomorph.dsp import OPTIMAL_DRY_PATH, ensure_optimal_dry_wav
+        from allomorph.circuit.audio import find_default_input_audio
 
-        ensure_optimal_dry_wav()
-        input_wav = str(OPTIMAL_DRY_PATH)
-        print(f"  Dry Source:  Optimal Bass Synthetic ({OPTIMAL_DRY_PATH.name})")
+        dry_p = find_default_input_audio(version_tag=args.version_tag)
+        input_wav = str(dry_p) if dry_p else None
+        dry_name = dry_p.name if dry_p else "None"
+        print(f"  Dry Source:  Optimal Bass Synthetic ({dry_name})")
     else:
         actual_path = Path(input_wav) if Path(input_wav).exists() else (REPO_ROOT / input_wav)
         input_wav = str(actual_path)
@@ -350,8 +368,17 @@ def main(argv: Sequence[str] | None = None):
                             f"Pickup '{eff_pickup}' not found on instrument '{inst_cfg.id}'."
                         )
 
+                inst_ver = getattr(inst_cfg, "version", 1)
+                vcfg = VOICES[voice]
+                voice_ver = getattr(vcfg, "version", 1)
+                tri_part = resolve_tri_part_version(DSP_GENERATION, inst_ver, voice_ver)
+                ver_tag = (
+                    tri_part
+                    if (args.version_tag == "auto" or args.version_tag is True)
+                    else (args.version_tag if args.version_tag not in (None, "none", False) else None)
+                )
+
                 if args.t3k_pack:
-                    vcfg = VOICES[voice]
                     tone_name = vcfg.tone_name or vcfg.name
                     pos_name = (
                         None
@@ -359,15 +386,18 @@ def main(argv: Sequence[str] | None = None):
                         else (src_pickup.position_name or src_pickup.name)
                     )
                     basename = get_t3k_basename(
-                        tone_name, pos_name, preserve_aperture=vcfg.preserve_aperture
+                        tone_name,
+                        pos_name,
+                        preserve_aperture=vcfg.preserve_aperture,
+                        version_tag=ver_tag,
                     )
                 else:
-                    vcfg = VOICES[voice]
                     basename = get_baked_basename(
                         voice,
                         tier=effective_tier,
                         pickup=pickup_setting,
                         preserve_aperture=vcfg.preserve_aperture,
+                        version_tag=ver_tag,
                     )
                 baked_wav = inst_baked_audio_dir / f"{basename}.wav"
 
@@ -419,6 +449,23 @@ def main(argv: Sequence[str] | None = None):
                         f"Skipped bit-for-bit identity voice: {inst} -> {voice} ({baked_wav.name} not output)"
                     )
 
+        if not args.no_manifest:
+            for inst in instruments_to_run:
+                inst_cfg_m = load_instrument(inst)
+                inst_audio_dir = AUDIO_DIR / "baked" / inst_cfg_m.id
+                inst_baked = [
+                    t[5] for t in tasks if t[2] == inst and t[5].exists()
+                ]
+                if inst_baked:
+                    write_manifest(
+                        output_dir=inst_audio_dir,
+                        stage="bake",
+                        files=inst_baked,
+                        version_tag=resolve_tri_part_version(
+                            DSP_GENERATION, getattr(inst_cfg_m, "version", 1), 1
+                        ),
+                    )
+
         if args.train or args.stage == "train":
             for idx, (voice, _cfg, inst, basename, inst_models_dir, baked_wav) in enumerate(
                 tasks, 1
@@ -441,11 +488,17 @@ def main(argv: Sequence[str] | None = None):
                     basename=basename,
                     batch_size=args.batch_size,
                     a2_lite_only=args.a2_lite_only,
+                    version_tag=args.version_tag,
+                    no_manifest=args.no_manifest,
                 )
         return
 
     if args.stage == "canonical":
-        generate_canonical_sweep(input_wav=input_wav)
+        generate_canonical_sweep(
+            input_wav=input_wav,
+            version_tag=args.version_tag,
+            no_manifest=args.no_manifest,
+        )
         return
 
     if args.stage == "frontends" or args.frontend_format == "nam":
@@ -463,6 +516,8 @@ def main(argv: Sequence[str] | None = None):
                     gain_db=args.gain_db,
                     batch_size=args.batch_size,
                     a2_lite_only=args.a2_lite_only,
+                    version_tag=args.version_tag,
+                    no_manifest=args.no_manifest,
                 )
             return
 
@@ -481,6 +536,8 @@ def main(argv: Sequence[str] | None = None):
                             pkey,
                             normalize=args.normalize_frontend,
                             gain_db=args.gain_db,
+                            version_tag=args.version_tag,
+                            no_manifest=args.no_manifest,
                         )
                         rel_ir = ir_p.relative_to(REPO_ROOT) if ir_p.is_relative_to(REPO_ROOT) else ir_p
                         print(f" [Frontend IR] Exported {rel_ir}")
@@ -491,6 +548,8 @@ def main(argv: Sequence[str] | None = None):
                             input_wav=input_wav,
                             normalize=args.normalize_frontend,
                             gain_db=args.gain_db,
+                            version_tag=args.version_tag,
+                            no_manifest=args.no_manifest,
                         )
                         rel_wet = wet_p.relative_to(REPO_ROOT) if wet_p.is_relative_to(REPO_ROOT) else wet_p
                         print(f" [Frontend Wet WAV] Exported {rel_wet}")
@@ -501,6 +560,8 @@ def main(argv: Sequence[str] | None = None):
                 jobs=args.jobs,
                 normalize=args.normalize_frontend,
                 gain_db=args.gain_db,
+                version_tag=args.version_tag,
+                no_manifest=args.no_manifest,
             )
         if fmt in ["wet", "both"]:
             export_all_frontend_wet_wavs(
@@ -508,6 +569,8 @@ def main(argv: Sequence[str] | None = None):
                 jobs=args.jobs,
                 normalize=args.normalize_frontend,
                 gain_db=args.gain_db,
+                version_tag=args.version_tag,
+                no_manifest=args.no_manifest,
             )
         return
 
@@ -519,6 +582,8 @@ def main(argv: Sequence[str] | None = None):
             jobs=args.jobs,
             normalize=args.normalize,
             target_dbfs=args.target_dbfs,
+            version_tag=args.version_tag,
+            no_manifest=args.no_manifest,
         )
         return
 
@@ -549,12 +614,18 @@ def main(argv: Sequence[str] | None = None):
                         fast_dev_run=args.fast_dev_run,
                         batch_size=args.batch_size,
                         a2_lite_only=args.a2_lite_only,
+                        version_tag=args.version_tag,
+                        no_manifest=args.no_manifest,
                     )
         return
 
     if args.stage == "all":
         print("\n--- Step 1: Canonical Intermediate Baseline Sweep ---")
-        generate_canonical_sweep(input_wav=input_wav)
+        generate_canonical_sweep(
+            input_wav=input_wav,
+            version_tag=args.version_tag,
+            no_manifest=args.no_manifest,
+        )
         fmt = args.frontend_format
         if fmt in ["wet", "both"]:
             print("\n--- Step 2a: Export All 32 Frontend Deconvolution Wet Sweeps ---")
@@ -563,6 +634,8 @@ def main(argv: Sequence[str] | None = None):
                 jobs=args.jobs,
                 normalize=args.normalize_frontend,
                 gain_db=args.gain_db,
+                version_tag=args.version_tag,
+                no_manifest=args.no_manifest,
             )
         if fmt in ["ir", "both"]:
             print("\n--- Step 2b: Export All 32 Frontend Deconvolution IRs ---")
@@ -570,6 +643,8 @@ def main(argv: Sequence[str] | None = None):
                 jobs=args.jobs,
                 normalize=args.normalize_frontend,
                 gain_db=args.gain_db,
+                version_tag=args.version_tag,
+                no_manifest=args.no_manifest,
             )
         print("\n--- Step 3: Simulate Backend Targets ---")
         simulate_backend_targets(
@@ -579,6 +654,8 @@ def main(argv: Sequence[str] | None = None):
             jobs=args.jobs,
             normalize=args.normalize,
             target_dbfs=args.target_dbfs,
+            version_tag=args.version_tag,
+            no_manifest=args.no_manifest,
         )
         print("\n--- Step 4: Interactive Altair Frequency Visualization ---")
         if len(instruments_to_run) == 1 and args.instrument != "all":

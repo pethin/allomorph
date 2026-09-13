@@ -2,7 +2,7 @@
 Allomorph - Universal Pickup & Transducer Analog Modeling Engine
 """
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 
 from allomorph.circuit import (
     CALIBRATION_PEAK_CEILING,
@@ -11,6 +11,8 @@ from allomorph.circuit import (
     export_all_frontend_wet_wavs,
     export_frontend_ir,
     export_frontend_wet_wav,
+    find_default_canonical_sweep,
+    find_default_input_audio,
     generate_canonical_sweep,
     simulate_backend_targets,
     simulate_voice,
@@ -57,6 +59,10 @@ from allomorph.dsp import (
 from allomorph.naming import (
     VOICE_CONCISE_SLUGS,
     get_baked_basename,
+    get_canonical_sweep_basename,
+    get_canonical_sweep_path,
+    get_optimal_dry_basename,
+    get_optimal_dry_path,
     get_t3k_basename,
     resolve_instruments,
     resolve_voices,
@@ -69,9 +75,18 @@ from allomorph.physics import (
     numpy_pickup_acoustic_response,
     numpy_pickup_macro_aperture,
 )
+from allomorph.version import (
+    ALLOMORPH_VERSION,
+    DSP_GENERATION,
+    get_version_info,
+    resolve_tri_part_version,
+    write_manifest,
+)
 
 __all__ = [
+    "ALLOMORPH_VERSION",
     "CALIBRATION_PEAK_CEILING",
+    "DSP_GENERATION",
     "FREQS",
     "FS",
     "INSTRUMENTS",
@@ -94,12 +109,19 @@ __all__ = [
     "export_frontend_ir",
     "export_frontend_wet_wav",
     "fft_convolve",
+    "find_default_canonical_sweep",
+    "find_default_input_audio",
     "generate_canonical_sweep",
     "generate_optimal_bass_dry",
     "generate_wave_speed_continuum",
     "get_baked_basename",
+    "get_canonical_sweep_basename",
+    "get_canonical_sweep_path",
+    "get_optimal_dry_basename",
+    "get_optimal_dry_path",
     "get_source_pickup",
     "get_t3k_basename",
+    "get_version_info",
     "load_all_instruments",
     "load_instrument",
     "load_scales",
@@ -111,11 +133,13 @@ __all__ = [
     "read_wav_24bit",
     "resolve_instruments",
     "resolve_pickup_coils",
+    "resolve_tri_part_version",
     "resolve_voice_coils",
     "resolve_voice_pickups",
     "resolve_voices",
     "simulate_backend_targets",
     "simulate_voice",
     "synthesize_minimum_phase_fir",
+    "write_manifest",
     "write_wav_24bit",
 ]

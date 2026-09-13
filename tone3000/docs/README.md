@@ -28,6 +28,7 @@ All pack descriptions in this directory strictly adhere to Tone3000 platform gui
 3. **Concise Voicing Summaries:** Each target voicing is distilled into 1–2 punchy, informative sentences highlighting real-world musical feel, mix behavior, and sonic character.
 4. **Independent Legal Disclaimers:** Trademark disclaimers and non-commercial/commercial user rights are explicitly codified per listing.
 5. **Native Identity Exclusion:** Base-instrument 1:1 identical duplicates ($H_{\text{diff}} \equiv 1.0$) are omitted, ensuring every model in the pack provides transformational capacity (see [`ranking_system.md`](ranking_system.md)).
+6. **Tone Naming & Display Character Budgets:** Every model filename strictly adheres to the 64-character Tone3000 upload limit and 34-character Darkglass Anagram pedalboard screen target (see master guide [`../../docs/tone_naming_guidelines.md`](../../docs/tone_naming_guidelines.md)).
 
 ---
 

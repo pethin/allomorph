@@ -66,6 +66,7 @@ allomorph/
 │   └── voices/               # Target voice TOMLs with embedded declarative [circuit] tables
 ├── docs/                     # Technical documentation & interactive charts
 │   ├── architectural_guardrails.md # Master mathematical reference handbook & derivations
+│   ├── tone_naming_guidelines.md # Normative tone naming rules, character limits & bassist lexicon
 │   ├── voice_catalog.md      # Passive pickup models, RLC parameters, character
 │   ├── circuit_theory.md     # Differential equations, 500k volume pot, treble bleed
 │   ├── aperture_math.md      # Aperture sinc, wave speeds, multi-scale filters
@@ -129,6 +130,20 @@ All code contributions must strictly satisfy the following normative invariants 
 ### 5.5 Complex Electrical Impedance & Harnesses
 1. **Fractional Dielectric, Permeability & Skin Dispersion:** Model tone cap and cable admittance via continuous Cole-Davidson fractional frequency scaling down to DC ($f=0\text{ Hz}$, $\alpha_{\text{tone}} \approx 0.988, \alpha_{\text{cable}} \approx 0.994$), causal Jordan core relaxation ($\mu^*(\omega)$), and solid Alnico pole eddy skin-effect fractional series dispersion ($Z_{\text{skin}}(s) \propto \sqrt{s}$).
 2. **Coupled System & Harness Controls:** Solve coupled $2\times 2$ nodal transfer matrix for parallel coils, hyperbolic transmission line admittance ($\tanh(\gamma)/\gamma$), and interactive volume/tone wiper splitting with cable capacitance loading ($P_{\text{vol}}, P_{\text{tone}}$).
+
+### 5.6 Tone Naming, Bassist Lexicon & Display Character Budgets
+All target voice naming, Tone3000 model exports (`.nam`), baked stems, and storefront listings must satisfy the normative guidelines in [`docs/tone_naming_guidelines.md`](file:///Users/peter/Projects/pethin/passivizer/docs/tone_naming_guidelines.md):
+1. **First-Principles Grammar:** Every tone name must follow the strict 2-to-3 token grammar: `[Family] [Configuration] [Voicing Modifier]`. Combined with physical switch positions and version tags, the full model name is: `[Tone Name] [Pickup Position] v[dsp].[inst].[voice]`.
+2. **Pedalboard Zero-Scroll Target ($\le 34$ chars):** The Darkglass Anagram screen displays 34 characters without scrolling. All 24 target voices must achieve 100% zero-scroll ($\le 34$ characters) on stage including pickup position and version tag.
+3. **Character Length Hard Limit ($\le 64$ chars):** The Tone3000 uploader enforces a strict 64-character ceiling on model filenames (excluding `.nam`). Filenames exceeding 64 characters raise diagnostic `ValueError` exceptions in `get_t3k_basename()`.
+4. **Permitted Taxonomy Vocabulary:** Draw tokens strictly from the approved taxonomy dictionary:
+   - Families: `Jazz`, `Precision`, `StingRay`, `PJ`, `P∕MM`, `Rickenbacker`, `Mudbucker`, `Dingwall`, `Upright`, `Studio`, `Canonical`.
+   - Configurations: `Pair`, `Bridge`, `Neck`, `Parallel`, `Series` (omitted when inherent, as in `Precision`, `Upright`, `Studio`).
+   - Modifiers: `Open`, `Mids`, `Warm`, `Dub`, `Vintage`, `Modern`, `Active`, `Passive`, `Growl`, `Clank`, `Deep`, `Acoustic`, `Direct`.
+5. **Musician-Facing Sonic Descriptors (No Component Values):** Strictly omit electrical component values (`22nF`, `47nF`, `100nF`) and ad-hoc artist nicknames. Replace them with functional musical descriptors (`Mids`, `Warm`, `Dub`, `Growl`).
+6. **No Redundant Source Instrument Names:** Omit the source bass name from the tone name (e.g. `Precision Vintage [Split] v2.1.1` instead of `34in Standard P Precision Vintage [Split] v2.1.1`). Tone packs are dedicated to a specific source edition; repeating the instrument name wastes 15-25 characters and triggers scrolling.
+7. **Standard Bracketed Physical Switch Selectors:** Multi-pickup source basses must use standardized physical selector tags: `[Parallel]`, `[Series]`, `[Neck]`, `[Bridge]`, `[Split]`. Single-pickup basses and character presets omit bracketed tags automatically.
+8. **Filesystem Safety:** Replace `/` and `\` with the Unicode Division Slash (`∕`, `\u2215`) to maintain flat directories.
 
 ---
 

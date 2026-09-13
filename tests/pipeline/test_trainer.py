@@ -21,7 +21,7 @@ def test_find_sweep_input():
     sweep = find_sweep_input()
     assert sweep is not None
     assert sweep.exists()
-    assert sweep.name == "optimal_bass_dry.wav"
+    assert sweep.name.startswith("optimal_bass_dry") and sweep.suffix == ".wav"
 
 
 def test_model_metadata_contains_input_bass():

@@ -5,7 +5,7 @@
 # for woody, dynamic vintage growl (2.1 kHz loaded peak, 4.0 kHz cutoff).
 id = "05_vintage_62_p_alnico"
 name = "05. Vintage '62 Split-Coil P (Alnico V)"
-tone_name = "Vintage 62 P"
+tone_name = "Precision Vintage"
 topology = "Split-Coil Alnico V"
 description = "Classic Alnico V split-coil pickup with CTS 250k V/T harness wide open (47nF cap)"
 magnet_type = "alnico_v"

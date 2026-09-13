@@ -132,8 +132,10 @@ def test_optimal_bass_dry_drop_a_sub_bass_and_determinism():
 
 
 def test_optimal_dry_canonical_path():
-    """Verify canonical optimal dry path points to audio/canonical/optimal_bass_dry.wav."""
-    assert OPTIMAL_DRY_PATH.name == "optimal_bass_dry.wav"
+    """Verify canonical optimal dry path points to audio/canonical/optimal_bass_dry_v2.wav."""
+    from allomorph.version import DSP_GENERATION
+
+    assert OPTIMAL_DRY_PATH.name == f"optimal_bass_dry_v{DSP_GENERATION}.wav"
     assert OPTIMAL_DRY_PATH.parent.name == "canonical"
 
 

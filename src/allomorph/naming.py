@@ -6,6 +6,7 @@ and tolerant CLI argument parsing for instruments and voices.
 
 import difflib
 from collections.abc import Sequence
+from pathlib import Path
 
 from allomorph.base import AllomorphBaseModel
 from allomorph.config.instruments import INSTRUMENT_ALIASES, INSTRUMENTS, load_instrument
@@ -91,13 +92,15 @@ def get_baked_basename(
     voice_id: str,
     tier: str = "dynamic",
     pickup: str = "auto",
+    version_tag: str | None = None,
     preserve_aperture: bool = False,
 ) -> str:
     """Generates a concise, distinct model/wav basename for baked voice transformations.
 
     Format:
       - Default auto-routed pickup or preserve_aperture tones: '{tier_prefix}{voice_slug}' (e.g. 'dyn_04_modern_p', 'dyn_15b_active')
-      - Explicit non-auto pickup override: '{tier_prefix}{voice_slug}_{pickup}' (e.g. 'dyn_04_modern_p_bridge')
+      - With version tag: '{tier_prefix}{voice_slug}_{version_tag}' (e.g. 'dyn_04_modern_p_v2.1.1')
+      - Explicit non-auto pickup override: '{tier_prefix}{voice_slug}_{pickup}_{version_tag}'
     """
     tier_spec = get_tier_spec(tier)
     prefix = tier_spec.prefix
@@ -110,30 +113,36 @@ def get_baked_basename(
         or voice_id in ("15_neutral_character", "15b_active_character", "15c_passive_character")
     )
 
+    ver_suffix = f"_{version_tag}" if version_tag else ""
     if pickup and pickup != "auto" and not is_character_tone:
-        return f"{prefix}{slug}_{pickup}"
-    return f"{prefix}{slug}"
+        return f"{prefix}{slug}_{pickup}{ver_suffix}"
+    return f"{prefix}{slug}{ver_suffix}"
 
 
 def get_t3k_basename(
     tone_name: str,
     position_name: str | None = None,
-    max_length: int = 34,
+    version_tag: str | None = None,
+    max_length: int | None = None,
     preserve_aperture: bool = False,
 ) -> str:
     """Generates a Tone3000 pack model basename.
 
     Format:
-      - Multi-pickup instruments: `Tone Name [Pickup Position]`
-      - Single-pickup instruments or preserve_aperture tones: `Tone Name` (no suffix)
+      - Multi-pickup instruments: `Tone Name [Pickup Position]` or `Tone Name [Pickup Position] v2.1.1`
+      - Single-pickup instruments or preserve_aperture tones: `Tone Name` or `Tone Name v2.1.1`
 
     Enforces that the filename (excluding the `.nam` extension) does not exceed
-    `max_length` (34 characters max). Raises diagnostic ValueError if exceeded.
+    `max_length` (strict Tone3000 upload ceiling is 64 chars; unversioned legacy default is 34).
+    Raises diagnostic ValueError if exceeded.
     Sanitizes filesystem path separators ('/' and '\\') with Unicode Division Slash ('\u2215')
     to maintain a flat directory structure.
     """
     clean_tone = tone_name.strip()
     is_character_tone = preserve_aperture or clean_tone in (
+        "Studio Active",
+        "Studio Direct",
+        "Studio Passive",
         "Active Character",
         "Neutral Character",
         "Passive Character",
@@ -144,11 +153,18 @@ def get_t3k_basename(
     else:
         name = clean_tone
 
+    if version_tag:
+        clean_ver = version_tag.strip()
+        if clean_ver:
+            name = f"{name} {clean_ver}"
+
     name = name.replace("/", "\u2215").replace("\\", "\u2215")
 
-    if len(name) > max_length:
+    effective_max = max_length if max_length is not None else (64 if version_tag else 34)
+
+    if len(name) > effective_max:
         raise ValueError(
-            f"T3K pack filename '{name}' exceeds {max_length} characters ({len(name)} chars). "
+            f"T3K pack filename '{name}' exceeds {effective_max} characters ({len(name)} chars). "
             f"Tone name '{clean_tone}' or pickup position '{position_name}' must be shortened."
         )
     return name
@@ -236,3 +252,56 @@ def resolve_instruments(instrument_arg: str | Sequence[str] | None) -> list[str]
                     f"Available instruments ({len(all_playable)}): {', '.join(all_playable)}"
                 )
     return resolved
+
+
+def get_canonical_sweep_basename(version_tag: str | None = None) -> str:
+    """Generates the filename basename for the Canonical Intermediate calibration sweep.
+
+    Default version tag is single-part DSP generation 'v{dsp}' (e.g. 'v2'),
+    as the universal canonical datum depends strictly on the core DSP physics generation.
+    Example: 'canonical_sweep_v2'
+    """
+    from allomorph.version import DSP_GENERATION
+
+    v_tag = version_tag or f"v{DSP_GENERATION}"
+    return f"canonical_sweep_{v_tag}"
+
+
+def get_canonical_sweep_path(
+    version_tag: str | None = None, audio_dir: Path | str | None = None
+) -> Path:
+    """Returns the absolute or relative Path to the versioned canonical sweep WAV.
+
+    Example: audio/canonical/canonical_sweep_v2.wav
+    """
+    from allomorph.config.scales import REPO_ROOT
+
+    base_dir = Path(audio_dir) if audio_dir is not None else REPO_ROOT / "audio"
+    return base_dir / "canonical" / f"{get_canonical_sweep_basename(version_tag)}.wav"
+
+
+def get_optimal_dry_basename(version_tag: str | None = None) -> str:
+    """Generates the filename basename for the synthetic optimal bass dry calibration file.
+
+    Default version tag is single-part DSP generation 'v{dsp}' (e.g. 'v2'),
+    as the unvoiced synthetic excitation signal depends strictly on the core DSP physics generation.
+    Example: 'optimal_bass_dry_v2'
+    """
+    from allomorph.version import DSP_GENERATION
+
+    v_tag = version_tag or f"v{DSP_GENERATION}"
+    return f"optimal_bass_dry_{v_tag}"
+
+
+def get_optimal_dry_path(
+    version_tag: str | None = None, audio_dir: Path | str | None = None
+) -> Path:
+    """Returns the absolute or relative Path to the versioned optimal bass dry WAV.
+
+    Example: audio/canonical/optimal_bass_dry_v2.wav
+    """
+    from allomorph.config.scales import REPO_ROOT
+
+    base_dir = Path(audio_dir) if audio_dir is not None else REPO_ROOT / "audio"
+    return base_dir / "canonical" / f"{get_optimal_dry_basename(version_tag)}.wav"
+

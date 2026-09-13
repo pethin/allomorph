@@ -9,7 +9,7 @@
 
 id = "15c_passive_character"
 name = "15c. Passive Character"
-tone_name = "Passive Character"
+tone_name = "Studio Passive"
 topology = "Character (Passive Pickup & Cable Loading)"
 description = "Adds high-impedance passive character, resonant peak (~2.8 kHz), 750pF cable loading, and 250k pot damping to active basses or stacks passive tone; preserves natural pickup aperture while stacking with tier dynamics"
 blend_mode = "direct"

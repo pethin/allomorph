@@ -6,7 +6,7 @@
 # loaded with authentic dual 250k volume pots (125k net load) and 250k tone pot.
 id = "08_vintage_pj_passive"
 name = "08. Vintage '80s Passive P/J Bass"
-tone_name = "Vintage PJ Passive"
+tone_name = "PJ Passive"
 topology = "P/J Parallel Sum"
 description = "Vintage Alnico V Split-P neck and single-coil J-bridge summed in parallel with 125k net vol load"
 blend_mode = "parallel"

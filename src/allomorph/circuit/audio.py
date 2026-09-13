@@ -89,15 +89,32 @@ def prefilter_audio(
         wf.writeframes(frames)
 
 
-def find_default_input_audio() -> Path | None:
-    """Finds or ensures the default input dry audio (optimal_bass_dry.wav)."""
+def find_default_input_audio(version_tag: str | None = None) -> Path | None:
+    """Finds or ensures the default input dry audio (optimal_bass_dry_v{dsp}.wav)."""
     from allomorph.dsp import OPTIMAL_DRY_PATH, ensure_optimal_dry_wav
+    from allomorph.naming import get_optimal_dry_path
 
-    ensure_optimal_dry_wav()
+    p_versioned = get_optimal_dry_path(version_tag=version_tag)
+    if p_versioned.exists():
+        return p_versioned
     if OPTIMAL_DRY_PATH.exists():
         return OPTIMAL_DRY_PATH
     for candidate in ["input.wav"]:
         p = REPO_ROOT / candidate
         if p.exists():
             return p
+    return ensure_optimal_dry_wav(version_tag=version_tag)
+
+
+def find_default_canonical_sweep(version_tag: str | None = None) -> Path | None:
+    """Finds or ensures the default canonical intermediate sweep audio."""
+    from allomorph.circuit.simulation import CANONICAL_SWEEP_PATH
+    from allomorph.naming import get_canonical_sweep_path
+
+    p_versioned = get_canonical_sweep_path(version_tag=version_tag)
+    if p_versioned.exists():
+        return p_versioned
+    if CANONICAL_SWEEP_PATH.exists():
+        return CANONICAL_SWEEP_PATH
     return None
+

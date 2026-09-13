@@ -6,7 +6,7 @@
 # (+4.0 dB @ 40 Hz, +4.0 dB @ 4 kHz) and cable isolation (Sadowsky / Spector style).
 id = "07_modern_pj_active"
 name = "07. Modern Active P/J Bass"
-tone_name = "Modern PJ Active"
+tone_name = "PJ Active"
 topology = "P/J Active Buffer"
 description = "Split P-neck and single-coil J-bridge with active 2-band boost (+4.0 dB @ 40 Hz, +4.0 dB @ 4 kHz) and cable isolation"
 blend_mode = "parallel"

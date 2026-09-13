@@ -8,7 +8,7 @@
 
 id = "00_canonical_intermediate"
 name = "00. Canonical Intermediate Baseline"
-tone_name = "Canonical Reference"
+tone_name = "Canonical Datum"
 topology = "Universal Passive Reference Baseline"
 description = "Canonical 34-inch 93.5mm acoustic aperture with wideband passive reference circuit (4.8 kHz, Q=0.75)"
 scale = "34in"

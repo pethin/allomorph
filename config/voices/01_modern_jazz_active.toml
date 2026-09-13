@@ -6,7 +6,7 @@
 # +3.5 dB @ 4 kHz). Coils are isolated from cable capacitance for wideband clarity and sparkle.
 id = "01_modern_jazz_active"
 name = "01. Modern Active Jazz Bass Pair"
-tone_name = "Modern Jazz Active"
+tone_name = "Jazz Pair Active"
 topology = "Dual Single-Coil Active Buffer"
 description = "Dual single-coils in 60s spacing with active 2-band boost (+3.5 dB @ 40 Hz, +3.5 dB @ 4 kHz) and cable isolation"
 blend_mode = "parallel"

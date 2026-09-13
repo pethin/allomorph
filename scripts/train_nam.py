@@ -9,6 +9,7 @@ import math
 import os
 import shutil
 import sys
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, override
 
@@ -66,28 +67,33 @@ from allomorph.pipeline.schema import (
     NamTrainingMetadata,
     get_tier_spec,
 )
+from allomorph.version import (
+    ALLOMORPH_VERSION,
+    DSP_GENERATION,
+    get_git_commit,
+    resolve_tri_part_version,
+    write_manifest,
+)
 
 
-def find_sweep_input(candidate_path: str | Path | None = None) -> Path | None:
+def find_sweep_input(
+    candidate_path: str | Path | None = None,
+    version_tag: str | None = None,
+) -> Path | None:
     if candidate_path and Path(candidate_path).exists():
         return Path(candidate_path)
-    from allomorph.dsp import OPTIMAL_DRY_PATH, ensure_optimal_dry_wav
+    from allomorph.circuit.audio import find_default_input_audio
 
-    ensure_optimal_dry_wav()
-    if OPTIMAL_DRY_PATH.exists():
-        return OPTIMAL_DRY_PATH
-    for name in ["input.wav"]:
-        p = REPO_ROOT / name
-        if p.exists():
-            return p
-    return None
+    return find_default_input_audio(version_tag=version_tag)
 
 
 DEFAULT_GOAL_ESR = 0.0080  # Architecture 2 studio reference stretch target (~ -21 dB ESR on optimal_bass_dry.wav)
 DEFAULT_MAX_EPOCHS = 400  # Architecture 2 studio reference epoch safety ceiling
 DEFAULT_BATCH_SIZE = 32  # Standard batch size for high GPU core utilization
-CANONICAL_SWEEP_PATH = AUDIO_DIR / "canonical" / "canonical_sweep.wav"
-OPTIMAL_DRY_PATH = AUDIO_DIR / "canonical" / "optimal_bass_dry.wav"
+from allomorph.naming import get_canonical_sweep_path, get_optimal_dry_path
+
+CANONICAL_SWEEP_PATH = get_canonical_sweep_path()
+OPTIMAL_DRY_PATH = get_optimal_dry_path()
 
 
 def configure_a2_architecture(nam_core: Any, a2_lite_only: bool = False) -> None:
@@ -268,6 +274,8 @@ def train_voice(
     basename: str | None = None,
     a2_lite_only: bool = False,
     t3k_pack: bool = False,
+    version_tag: str | None = "auto",
+    no_manifest: bool = False,
 ) -> bool:
     try:
         import nam.train.core as nam_core
@@ -292,49 +300,73 @@ def train_voice(
     vcfg = VOICES[voice]
     voice_name = vcfg.name
 
-    if not basename and t3k_pack:
-        try:
-            inst_cfg_tmp = (
-                instrument
-                if isinstance(instrument, InstrumentConfig)
-                else load_instrument(instrument)
-            )
-            if len(inst_cfg_tmp.pickups) <= 1 or vcfg.preserve_aperture:
-                pos_name = None
-            else:
-                pcfg = get_source_pickup(inst_cfg_tmp, voice)
-                pos_name = pcfg.position_name or pcfg.name
-        except (FileNotFoundError, KeyError, ValueError, OSError):
-            pos_name = None
-        tone_name = vcfg.tone_name or vcfg.name
-        from allomorph.naming import get_t3k_basename
-
-        basename = get_t3k_basename(
-            tone_name, pos_name, preserve_aperture=vcfg.preserve_aperture
+    try:
+        inst_cfg = (
+            instrument
+            if isinstance(instrument, InstrumentConfig)
+            else load_instrument(instrument)
         )
-
-    if basename:
-        model_basename = basename
-        try:
-            inst_cfg = load_instrument(instrument)
-            inst_id = inst_cfg.id
-            inst_name = inst_cfg.name
-            scale_length_in = inst_cfg.scale_length_in or 34.0
-            src_pickup = get_source_pickup(inst_cfg, voice)
-            src_pickup_name = src_pickup.name
-            src_pos_mm = (src_pickup.position_from_bridge_m or 0.0) * 1000.0
-        except FileNotFoundError, KeyError, ValueError, OSError:
-            inst_id = str(instrument)
-            inst_name = str(instrument)
-            scale_length_in = 34.0
+    except (FileNotFoundError, KeyError, ValueError, OSError):
+        if tier:
+            try:
+                inst_cfg = load_instrument("canonical_intermediate")
+            except (FileNotFoundError, KeyError, ValueError, OSError):
+                inst_cfg = InstrumentConfig(
+                    id="canonical_intermediate",
+                    name="Canonical Intermediate",
+                    scale_length_in=34.0,
+                    scale_length_m=0.8636,
+                    string_wave_speeds=[58.02, 75.88, 99.19, 129.6],
+                    pickups={},
+                )
+        else:
             inst_cfg = InstrumentConfig(
-                id=inst_id,
-                name=inst_name,
-                scale_length_in=scale_length_in,
+                id=str(instrument),
+                name=str(instrument),
+                scale_length_in=34.0,
                 scale_length_m=0.8636,
                 string_wave_speeds=[58.02, 75.88, 99.19, 129.6],
                 pickups={},
             )
+
+    inst_ver = getattr(inst_cfg, "version", 1)
+    voice_ver = getattr(vcfg, "version", 1)
+    tri_part = resolve_tri_part_version(DSP_GENERATION, inst_ver, voice_ver)
+    actual_version_tag = (
+        tri_part
+        if (version_tag == "auto" or version_tag is True)
+        else (version_tag if version_tag not in (None, "none", False) else None)
+    )
+
+    if not basename and t3k_pack:
+        if len(inst_cfg.pickups) <= 1 or vcfg.preserve_aperture:
+            pos_name = None
+        else:
+            try:
+                pcfg = get_source_pickup(inst_cfg, voice)
+                pos_name = pcfg.position_name or pcfg.name
+            except (KeyError, ValueError):
+                pos_name = None
+        tone_name = vcfg.tone_name or vcfg.name
+        from allomorph.naming import get_t3k_basename
+
+        basename = get_t3k_basename(
+            tone_name,
+            pos_name,
+            preserve_aperture=vcfg.preserve_aperture,
+            version_tag=actual_version_tag,
+        )
+
+    if basename:
+        model_basename = basename
+        inst_id = inst_cfg.id
+        inst_name = inst_cfg.name
+        scale_length_in = inst_cfg.scale_length_in or 34.0
+        try:
+            src_pickup = get_source_pickup(inst_cfg, voice)
+            src_pickup_name = src_pickup.name
+            src_pos_mm = (src_pickup.position_from_bridge_m or 0.0) * 1000.0
+        except (KeyError, ValueError):
             src_pickup = PickupConfig(name="Baked Pickup", position_from_bridge_m=0.0)
             src_pickup_name = "Baked Pickup"
             src_pos_mm = 0.0
@@ -357,33 +389,30 @@ def train_voice(
         tier_spec = get_tier_spec(tier)
         folder_name, prefix = tier_spec.folder_name, tier_spec.prefix
         slug = VOICE_CONCISE_SLUGS.get(voice, voice)
-        model_basename = f"{prefix}{slug}"
+        model_basename = f"{prefix}{slug}_{actual_version_tag}" if actual_version_tag else f"{prefix}{slug}"
         inst_models_dir = Path(models_dir) / folder_name
         inst_models_dir.mkdir(parents=True, exist_ok=True)
         target_nam = inst_models_dir / f"{model_basename}.nam"
         if input_wav:
             input_path = Path(input_wav)
         else:
-            if not CANONICAL_SWEEP_PATH.exists():
-                from allomorph.circuit.staging import generate_canonical_sweep
+            from allomorph.circuit.audio import find_default_canonical_sweep
+            from allomorph.circuit.staging import generate_canonical_sweep
 
-                generate_canonical_sweep()
-            input_path = CANONICAL_SWEEP_PATH
-        output_path = (
-            Path(output_wav)
-            if output_wav
-            else (AUDIO_DIR / "targets" / folder_name / f"out_{voice}.wav")
-        )
-        try:
-            inst_cfg = load_instrument("canonical_intermediate")
-        except FileNotFoundError, KeyError, ValueError, OSError:
-            inst_cfg = InstrumentConfig(
-                id="canonical_intermediate",
-                name="Canonical Intermediate",
-                scale_length_in=34.0,
-                scale_length_m=0.8636,
-                string_wave_speeds=[58.02, 75.88, 99.19, 129.6],
-                pickups={},
+            can_sweep = find_default_canonical_sweep(version_tag=actual_version_tag)
+            if not can_sweep or not can_sweep.exists():
+                can_sweep = generate_canonical_sweep(version_tag=actual_version_tag)
+            input_path = can_sweep
+        if output_wav:
+            output_path = Path(output_wav)
+        else:
+            candidates = [
+                AUDIO_DIR / "targets" / folder_name / f"out_{voice}_{actual_version_tag}.wav",
+                AUDIO_DIR / "targets" / folder_name / f"out_{voice}.wav",
+            ]
+            output_path = next(
+                (c for c in candidates if c.exists()),
+                candidates[0] if actual_version_tag else candidates[1],
             )
         inst_id = "canonical_intermediate"
         inst_name = "Canonical Intermediate"
@@ -394,7 +423,6 @@ def train_voice(
         src_pickup_name = "93.5mm Canonical Median"
         src_pos_mm = 93.5
     else:
-        inst_cfg = load_instrument(instrument)
         inst_id = inst_cfg.id
         inst_name = inst_cfg.name
         scale_length_in = inst_cfg.scale_length_in or 34.0
@@ -404,15 +432,23 @@ def train_voice(
         src_pos_mm = (src_pickup.position_from_bridge_m or 0.0) * 1000.0
 
         input_path = find_sweep_input(input_wav)
+        model_basename = f"{voice}_{actual_version_tag}" if actual_version_tag else voice
         if not output_wav:
-            candidate = AUDIO_DIR / inst_id / f"out_{voice}.wav"
-            output_path = candidate if candidate.exists() else (CIRCUITS_DIR / f"out_{voice}.wav")
+            candidates = [
+                AUDIO_DIR / "baked" / inst_id / f"{model_basename}.wav",
+                AUDIO_DIR / inst_id / f"out_{voice}_{actual_version_tag}.wav",
+                AUDIO_DIR / inst_id / f"out_{voice}.wav",
+                CIRCUITS_DIR / f"out_{voice}.wav",
+            ]
+            output_path = next(
+                (c for c in candidates if c.exists()),
+                candidates[1] if actual_version_tag else candidates[2],
+            )
         else:
             output_path = Path(output_wav)
         inst_models_dir = Path(models_dir) / inst_id
         inst_models_dir.mkdir(parents=True, exist_ok=True)
-        model_basename = voice
-        target_nam = inst_models_dir / f"{voice}.nam"
+        target_nam = inst_models_dir / f"{model_basename}.nam"
 
     if not input_path or not input_path.exists():
         print(f"Error: Could not find training sweep file '{input_path}'.")
@@ -502,6 +538,13 @@ def train_voice(
         license="PolyForm Noncommercial License 1.0.0 (https://polyformproject.org/licenses/noncommercial/1.0.0)",
         copyright="Copyright 2026 Peter Nguyen <peter@phn.dev>. All commercial rights reserved.",
         author="Peter Nguyen <peter@phn.dev>",
+        version=tri_part,
+        dsp_version=DSP_GENERATION,
+        instrument_version=inst_ver,
+        voice_version=voice_ver,
+        allomorph_version=ALLOMORPH_VERSION,
+        git_commit=get_git_commit(),
+        generated_at=datetime.now(UTC).isoformat(),
         source_instrument=NamSourceInstrumentMeta(
             id=inst_id,
             name=inst_name,
@@ -537,6 +580,13 @@ def train_voice(
         "license": meta_dump["license"],
         "copyright": meta_dump["copyright"],
         "author": meta_dump["author"],
+        "version": meta_dump["version"],
+        "dsp_version": meta_dump["dsp_version"],
+        "instrument_version": meta_dump["instrument_version"],
+        "voice_version": meta_dump["voice_version"],
+        "allomorph_version": meta_dump["allomorph_version"],
+        "git_commit": meta_dump["git_commit"],
+        "generated_at": meta_dump["generated_at"],
         "source_instrument": meta_dump["source_instrument"],
         "target_voice": meta_dump["target_voice"],
     }
@@ -554,6 +604,13 @@ def train_voice(
         shutil.rmtree(train_work_dir, ignore_errors=True)
 
     if target_nam.exists():
+        if not no_manifest:
+            write_manifest(
+                output_dir=inst_models_dir,
+                stage="train",
+                files=[target_nam],
+                version_tag=tri_part,
+            )
         size_kb = target_nam.stat().st_size / 1024
         print("\n[Success] Architecture 2 Model exported successfully!")
         print(f"  Model Path:    {target_nam} ({size_kb:.1f} KB)")
@@ -603,6 +660,8 @@ def train_frontend(
     normalize: bool = False,
     gain_db: float = 0.0,
     a2_lite_only: bool = False,
+    version_tag: str | None = "auto",
+    no_manifest: bool = False,
 ) -> bool:
     try:
         import nam.train.core as nam_core
@@ -618,6 +677,13 @@ def train_frontend(
     inst_id = inst_cfg.id
     inst_name = inst_cfg.name
     scale_length_in = inst_cfg.scale_length_in or 34.0
+    inst_ver = getattr(inst_cfg, "version", 1)
+    tri_part = resolve_tri_part_version(DSP_GENERATION, inst_ver, 1)
+    actual_version_tag = (
+        tri_part
+        if (version_tag == "auto" or version_tag is True)
+        else (version_tag if version_tag not in (None, "none", False) else None)
+    )
 
     pickups_dict = inst_cfg.pickups
     if pickup and pickup not in ["all", "auto"]:
@@ -632,7 +698,7 @@ def train_frontend(
     else:
         pickups_to_train = list(pickups_dict.keys())
 
-    input_path = find_sweep_input(input_wav)
+    input_path = find_sweep_input(input_wav, version_tag=actual_version_tag)
     if not input_path or not input_path.exists():
         print(f"Error: Could not find training sweep file '{input_path}'.")
         return False
@@ -654,14 +720,23 @@ def train_frontend(
             else pkey
         )
         model_basename = (
-            basename if (basename and len(pickups_to_train) == 1) else f"{inst_id}_{p_name}"
+            basename
+            if (basename and len(pickups_to_train) == 1)
+            else (f"{inst_id}_{p_name}_{actual_version_tag}" if actual_version_tag else f"{inst_id}_{p_name}")
         )
         target_nam = inst_models_dir / f"{model_basename}.nam"
 
         if output_wav and len(pickups_to_train) == 1:
             out_wav_path = Path(output_wav)
         else:
-            out_wav_path = AUDIO_DIR / "frontends" / inst_id / f"{inst_id}_{p_name}_wet.wav"
+            candidates = [
+                AUDIO_DIR / "frontends" / inst_id / f"{inst_id}_{p_name}_{actual_version_tag}_wet.wav",
+                AUDIO_DIR / "frontends" / inst_id / f"{inst_id}_{p_name}_wet.wav",
+            ]
+            out_wav_path = next(
+                (c for c in candidates if c.exists()),
+                candidates[0] if actual_version_tag else candidates[1],
+            )
 
         if not out_wav_path.exists():
             from allomorph.circuit.staging import export_frontend_wet_wav
@@ -746,6 +821,13 @@ def train_frontend(
             license="PolyForm Noncommercial License 1.0.0 (https://polyformproject.org/licenses/noncommercial/1.0.0)",
             copyright="Copyright 2026 Peter Nguyen <peter@phn.dev>. All commercial rights reserved.",
             author="Peter Nguyen <peter@phn.dev>",
+            version=tri_part,
+            dsp_version=DSP_GENERATION,
+            instrument_version=inst_ver,
+            voice_version=1,
+            allomorph_version=ALLOMORPH_VERSION,
+            git_commit=get_git_commit(),
+            generated_at=datetime.now(UTC).isoformat(),
             source_instrument=NamSourceInstrumentMeta(
                 id=inst_id,
                 name=inst_name,
@@ -781,6 +863,13 @@ def train_frontend(
             "license": meta_dump["license"],
             "copyright": meta_dump["copyright"],
             "author": meta_dump["author"],
+            "version": meta_dump["version"],
+            "dsp_version": meta_dump["dsp_version"],
+            "instrument_version": meta_dump["instrument_version"],
+            "voice_version": meta_dump["voice_version"],
+            "allomorph_version": meta_dump["allomorph_version"],
+            "git_commit": meta_dump["git_commit"],
+            "generated_at": meta_dump["generated_at"],
             "source_instrument": meta_dump["source_instrument"],
             "target_voice": meta_dump["target_voice"],
         }
@@ -797,6 +886,13 @@ def train_frontend(
             shutil.rmtree(train_work_dir, ignore_errors=True)
 
         if target_nam.exists():
+            if not no_manifest:
+                write_manifest(
+                    output_dir=inst_models_dir,
+                    stage="train_frontend",
+                    files=[target_nam],
+                    version_tag=tri_part,
+                )
             size_kb = target_nam.stat().st_size / 1024
             print("\n[Success] Architecture 2 Model exported successfully!")
             print(f"  Model Path:    {target_nam} ({size_kb:.1f} KB)")
@@ -927,6 +1023,16 @@ def main():
         action="store_true",
         help="Run 1-batch dry run for smoke testing NAM training",
     )
+    parser.add_argument(
+        "--version-tag",
+        default="auto",
+        help="Semantic version tag (default: 'auto' -> v[dsp].[inst].[voice], or explicit string, or 'none' to disable)",
+    )
+    parser.add_argument(
+        "--no-manifest",
+        action="store_true",
+        help="Disable generating sidecar manifest.json",
+    )
     parser.add_argument("--gui", action="store_true", help="Launch NAM training GUI")
     args = parser.parse_args()
 
@@ -949,6 +1055,8 @@ def main():
             "gui": args.gui,
             "a2_lite_only": args.a2_lite_only,
             "t3k_pack": args.t3k_pack,
+            "version_tag": args.version_tag,
+            "no_manifest": args.no_manifest,
         }
     )
 
@@ -990,6 +1098,8 @@ def main():
                 normalize=args.normalize_frontend,
                 gain_db=args.gain_db,
                 a2_lite_only=cli_cfg.a2_lite_only,
+                version_tag=cli_cfg.version_tag,
+                no_manifest=cli_cfg.no_manifest,
             )
             if not ok:
                 all_ok = False
@@ -1035,6 +1145,8 @@ def main():
                 else None,
                 a2_lite_only=cli_cfg.a2_lite_only,
                 t3k_pack=cli_cfg.t3k_pack,
+                version_tag=cli_cfg.version_tag,
+                no_manifest=cli_cfg.no_manifest,
             )
             if not ok:
                 all_ok = False

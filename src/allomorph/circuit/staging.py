@@ -20,7 +20,6 @@ from allomorph.circuit.saturation import _slew_limit_core
 from allomorph.circuit.schema import SimulationConfig
 from allomorph.circuit.simulation import (
     CALIBRATION_PEAK_CEILING,
-    CANONICAL_SWEEP_PATH,
     FRONTENDS_DIR,
     TARGETS_DIR,
     _get_white_noise_vector,
@@ -60,23 +59,37 @@ from allomorph.physics import (
     numpy_pickup_acoustic_response,
     resolve_pickup_electrical_deconvolution_np,
 )
+from allomorph.version import (
+    DSP_GENERATION,
+    resolve_tri_part_version,
+    write_manifest,
+)
 
 
 def generate_canonical_sweep(
-    input_wav: Path | str | None = None, output_wav: Path | str | None = None
+    input_wav: Path | str | None = None,
+    output_wav: Path | str | None = None,
+    version_tag: str | None = None,
+    no_manifest: bool = False,
 ) -> Path:
     """
     Generates the calibrated Canonical Intermediate baseline audio sweep.
-    Takes raw dry input audio (optimal_bass_dry.wav), applies Canonical Intermediate aperture (single coil at 93.5mm datum)
+    Takes raw dry input audio (optimal_bass_dry.wav or versioned), applies Canonical Intermediate aperture (single coil at 93.5mm datum)
     and flat active buffer, and normalizes output to -1.5 dBFS True Peak / -16.5 dBFS RMS nominal.
     """
     if not input_wav:
-        input_wav = find_default_input_audio()
+        input_wav = find_default_input_audio(version_tag=version_tag)
     if not input_wav or not Path(input_wav).exists():
-        raise FileNotFoundError("Raw calibration audio (optimal_bass_dry.wav) not found.")
+        raise FileNotFoundError(f"Raw calibration audio not found: {input_wav}")
 
-    output_wav = Path(output_wav) if output_wav else CANONICAL_SWEEP_PATH
-    output_wav.parent.mkdir(parents=True, exist_ok=True)
+    if output_wav is not None:
+        target_path = Path(output_wav)
+    else:
+        from allomorph.naming import get_canonical_sweep_path
+
+        target_path = get_canonical_sweep_path(version_tag=version_tag)
+
+    target_path.parent.mkdir(parents=True, exist_ok=True)
 
     audio, sr = read_wav(input_wav, dtype=np.float64)
 
@@ -108,14 +121,24 @@ def generate_canonical_sweep(
 
     calibrated = filtered.astype(np.float32)
 
-    write_wav_24bit(str(output_wav), calibrated, sr)
+    write_wav_24bit(str(target_path), calibrated, sr)
     _get_reference_rms_sweeps.cache_clear()
     final_peak_db = 20.0 * math.log10(max(float(np.max(np.abs(calibrated))), 1e-9))
     final_rms_db = 20.0 * math.log10(max(float(np.sqrt(np.mean(calibrated**2))), 1e-9))
     print(
-        f"[Canonical Sweep] Generated {output_wav.name} (unnormalized): Peak = {final_peak_db:.2f} dBFS, RMS = {final_rms_db:.2f} dBFS"
+        f"[Canonical Sweep] Generated {target_path.name} (unnormalized): Peak = {final_peak_db:.2f} dBFS, RMS = {final_rms_db:.2f} dBFS"
     )
-    return output_wav
+
+    if output_wav is None and not no_manifest:
+        v_tag = version_tag or f"v{DSP_GENERATION}"
+        write_manifest(
+            output_dir=target_path.parent,
+            stage="canonical",
+            files=[target_path],
+            version_tag=v_tag,
+        )
+
+    return target_path
 
 
 @functools.lru_cache(maxsize=8)
@@ -139,10 +162,13 @@ def _get_reference_rms_sweeps() -> tuple[np.ndarray, float, np.ndarray, int] | N
     dry_path = find_default_input_audio()
     if not dry_path or not Path(dry_path).exists():
         return None
-    if not CANONICAL_SWEEP_PATH.exists():
-        generate_canonical_sweep()
+    from allomorph.circuit.audio import find_default_canonical_sweep
+
+    can_path = find_default_canonical_sweep()
+    if not can_path or not can_path.exists():
+        can_path = generate_canonical_sweep()
     dry_audio, _ = _get_cached_sweep(dry_path)
-    can_audio, _ = _get_cached_sweep(CANONICAL_SWEEP_PATH)
+    can_audio, _ = _get_cached_sweep(can_path)
     can_rms = float(np.sqrt(np.mean(can_audio**2)))
     n = len(dry_audio)
     n_fft = 1 << (n + 2048 - 1).bit_length()
@@ -348,6 +374,8 @@ def export_frontend_ir(
     num_taps: int = 2048,
     normalize: bool = False,
     gain_db: float = 0.0,
+    version_tag: str | None = None,
+    no_manifest: bool = False,
 ) -> Path:
     """
     Synthesizes a 2048-tap minimum-phase deconvolution IR transforming a source pickup into the Canonical Intermediate.
@@ -363,6 +391,13 @@ def export_frontend_ir(
     inst = load_instrument(inst_id)
     pickups = inst.pickups
 
+    if version_tag == "auto":
+        tag = resolve_tri_part_version(DSP_GENERATION, getattr(inst, "version", 1), 1)
+    elif version_tag:
+        tag = str(version_tag)
+    else:
+        tag = None
+
     if out_path is None:
         base_dir = Path(output_dir) if output_dir is not None else FRONTENDS_DIR
         inst_dir = base_dir / inst_id
@@ -370,9 +405,9 @@ def export_frontend_ir(
         # Avoid repetitive token if inst_id already ends with pickup prefix (e.g. 30in_emg_mmtw + mmtw_dual)
         if inst_id.endswith("mmtw") and pickup_key.startswith("mmtw_"):
             p_name = pickup_key[len("mmtw_") :]
-            out_name = f"{inst_id}_{p_name}.wav"
+            out_name = f"{inst_id}_{p_name}_{tag}.wav" if tag else f"{inst_id}_{p_name}.wav"
         else:
-            out_name = f"{inst_id}_{pickup_key}.wav"
+            out_name = f"{inst_id}_{pickup_key}_{tag}.wav" if tag else f"{inst_id}_{pickup_key}.wav"
         out_path = inst_dir / out_name
 
     out_path = Path(out_path)
@@ -381,9 +416,18 @@ def export_frontend_ir(
 
     # If single pickup, also generate convenience alias <inst_id>.wav
     if len(pickups) == 1:
-        alias_path = out_path.parent / f"{inst_id}.wav"
+        alias_name = f"{inst_id}_{tag}.wav" if tag else f"{inst_id}.wav"
+        alias_path = out_path.parent / alias_name
         if alias_path != out_path:
             write_wav_24bit(str(alias_path), fir, 48000)
+
+    if not no_manifest:
+        write_manifest(
+            output_dir=out_path.parent,
+            stage="frontends_ir",
+            files=[out_path],
+            version_tag=tag or resolve_tri_part_version(DSP_GENERATION, getattr(inst, "version", 1), 1),
+        )
 
     return out_path
 
@@ -397,6 +441,8 @@ def export_frontend_wet_wav(
     num_taps: int = 2048,
     normalize: bool = False,
     gain_db: float = 0.0,
+    version_tag: str | None = None,
+    no_manifest: bool = False,
 ) -> Path:
     """
     Convolves the dry calibration sweep through the source pickup frontend deconvolution FIR,
@@ -451,15 +497,22 @@ def export_frontend_wet_wav(
     inst = load_instrument(inst_id)
     pickups = inst.pickups
 
+    if version_tag == "auto":
+        tag = resolve_tri_part_version(DSP_GENERATION, getattr(inst, "version", 1), 1)
+    elif version_tag:
+        tag = str(version_tag)
+    else:
+        tag = None
+
     if out_path is None:
         base_dir = Path(output_dir) if output_dir is not None else FRONTENDS_DIR
         inst_dir = base_dir / inst_id
         inst_dir.mkdir(parents=True, exist_ok=True)
         if inst_id.endswith("mmtw") and pickup_key.startswith("mmtw_"):
             p_name = pickup_key[len("mmtw_") :]
-            out_name = f"{inst_id}_{p_name}_wet.wav"
+            out_name = f"{inst_id}_{p_name}_{tag}_wet.wav" if tag else f"{inst_id}_{p_name}_wet.wav"
         else:
-            out_name = f"{inst_id}_{pickup_key}_wet.wav"
+            out_name = f"{inst_id}_{pickup_key}_{tag}_wet.wav" if tag else f"{inst_id}_{pickup_key}_wet.wav"
         out_path = inst_dir / out_name
 
     out_path = Path(out_path)
@@ -467,15 +520,26 @@ def export_frontend_wet_wav(
     write_wav_24bit(str(out_path), calibrated, sr)
 
     if len(pickups) == 1:
-        alias_path = out_path.parent / f"{inst_id}_wet.wav"
+        alias_name = f"{inst_id}_{tag}_wet.wav" if tag else f"{inst_id}_wet.wav"
+        alias_path = out_path.parent / alias_name
         if alias_path != out_path:
             write_wav_24bit(str(alias_path), calibrated, sr)
+
+    if not no_manifest:
+        write_manifest(
+            output_dir=out_path.parent,
+            stage="frontends_wet",
+            files=[out_path],
+            version_tag=tag or resolve_tri_part_version(DSP_GENERATION, getattr(inst, "version", 1), 1),
+        )
 
     return out_path
 
 
-def _export_frontend_ir_task(task_args: tuple[str, str, Path, int, bool, float]) -> Path:
-    inst_id, p_key, out_dir, num_taps, normalize, gain_db = task_args
+def _export_frontend_ir_task(
+    task_args: tuple[str, str, Path, int, bool, float, str | None, bool]
+) -> Path:
+    inst_id, p_key, out_dir, num_taps, normalize, gain_db, version_tag, no_manifest = task_args
     return export_frontend_ir(
         inst_id=inst_id,
         pickup_key=p_key,
@@ -483,6 +547,8 @@ def _export_frontend_ir_task(task_args: tuple[str, str, Path, int, bool, float])
         num_taps=num_taps,
         normalize=normalize,
         gain_db=gain_db,
+        version_tag=version_tag,
+        no_manifest=no_manifest,
     )
 
 
@@ -491,6 +557,8 @@ def export_all_frontend_irs(
     jobs: int | None = None,
     normalize: bool = False,
     gain_db: float = 0.0,
+    version_tag: str | None = None,
+    no_manifest: bool = False,
 ) -> list[Path]:
     """
     Exports all 32 native frontend deconvolution IRs grouped by instrument subdirectories.
@@ -498,13 +566,13 @@ def export_all_frontend_irs(
     """
     out_dir = Path(output_dir) if output_dir else FRONTENDS_DIR
     all_insts = load_all_instruments()
-    tasks: list[tuple[str, str, Path, int, bool, float]] = []
+    tasks: list[tuple[str, str, Path, int, bool, float, str | None, bool]] = []
     for inst_id, inst in sorted(all_insts.items()):
         if inst_id == "canonical_intermediate":
             continue
         pickups = inst.pickups
         for p_key in sorted(pickups.keys()):
-            tasks.append((inst_id, p_key, out_dir, 2048, normalize, gain_db))
+            tasks.append((inst_id, p_key, out_dir, 2048, normalize, gain_db, version_tag, no_manifest))
 
     # Pre-cache canonical sweep in main process
     _get_reference_power_spectrum()
@@ -528,9 +596,9 @@ def export_all_frontend_irs(
 
 
 def _export_frontend_wet_wav_task(
-    task_args: tuple[str, str, Path | None, Path, int, bool, float]
+    task_args: tuple[str, str, Path | None, Path, int, bool, float, str | None, bool]
 ) -> Path:
-    inst_id, p_key, in_path, out_dir, num_taps, normalize, gain_db = task_args
+    inst_id, p_key, in_path, out_dir, num_taps, normalize, gain_db, version_tag, no_manifest = task_args
     return export_frontend_wet_wav(
         inst_id=inst_id,
         pickup_key=p_key,
@@ -539,6 +607,8 @@ def _export_frontend_wet_wav_task(
         num_taps=num_taps,
         normalize=normalize,
         gain_db=gain_db,
+        version_tag=version_tag,
+        no_manifest=no_manifest,
     )
 
 
@@ -549,6 +619,8 @@ def export_all_frontend_wet_wavs(
     num_taps: int = 2048,
     normalize: bool = False,
     gain_db: float = 0.0,
+    version_tag: str | None = None,
+    no_manifest: bool = False,
 ) -> list[Path]:
     """
     Exports all native frontend pickup deconvolution wet sweeps convolved through their FIRs.
@@ -557,13 +629,13 @@ def export_all_frontend_wet_wavs(
     out_dir = Path(output_dir) if output_dir else FRONTENDS_DIR
     all_insts = load_all_instruments()
     in_path = Path(input_wav) if input_wav else None
-    tasks: list[tuple[str, str, Path | None, Path, int, bool, float]] = []
+    tasks: list[tuple[str, str, Path | None, Path, int, bool, float, str | None, bool]] = []
     for inst_id, inst in sorted(all_insts.items()):
         if inst_id == "canonical_intermediate":
             continue
         pickups = inst.pickups
         for p_key in sorted(pickups.keys()):
-            tasks.append((inst_id, p_key, in_path, out_dir, num_taps, normalize, gain_db))
+            tasks.append((inst_id, p_key, in_path, out_dir, num_taps, normalize, gain_db, version_tag, no_manifest))
 
     # Pre-cache calibration sweep in main process
     target_in = in_path or find_default_input_audio()
@@ -596,6 +668,8 @@ def simulate_backend_targets(
     jobs: int | None = None,
     normalize: Literal["auto", "peak", "rms", "none"] = "auto",
     target_dbfs: float | None = None,
+    version_tag: str | None = None,
+    no_manifest: bool = False,
 ):
     """
     Simulates target voice audio sweeps using the Canonical Intermediate baseline as input.
@@ -615,8 +689,12 @@ def simulate_backend_targets(
                 f"Unknown tier '{tier}'. Choose from clean, standard, std, hotrod, all."
             ) from err
 
-    if not CANONICAL_SWEEP_PATH.exists():
-        generate_canonical_sweep()
+    from allomorph.circuit.audio import find_default_canonical_sweep
+
+    can_vtag = None if version_tag in (None, "auto") else version_tag
+    can_sweep = find_default_canonical_sweep(version_tag=can_vtag)
+    if not can_sweep or not can_sweep.exists():
+        can_sweep = generate_canonical_sweep(version_tag=can_vtag, no_manifest=no_manifest)
 
     voices_to_run = (
         [voice_id]
@@ -633,8 +711,15 @@ def simulate_backend_targets(
 
         tasks = []
         for vid in voices_to_run:
-            out_file = target_out_dir / f"out_{vid}.wav"
             vcfg = VOICES.get(vid)
+            if version_tag == "auto":
+                voice_ver = getattr(vcfg, "version", 1) if vcfg else 1
+                vid_tag = resolve_tri_part_version(DSP_GENERATION, 1, voice_ver)
+                out_file = target_out_dir / f"out_{vid}_{vid_tag}.wav"
+            elif version_tag:
+                out_file = target_out_dir / f"out_{vid}_{version_tag}.wav"
+            else:
+                out_file = target_out_dir / f"out_{vid}.wav"
             v_alpha = vcfg.alpha if vcfg is not None else 0.25
 
             if t == "clean":
@@ -648,7 +733,7 @@ def simulate_backend_targets(
                 (
                     vid,
                     SimulationConfig(
-                        input_wav=CANONICAL_SWEEP_PATH,
+                        input_wav=can_sweep,
                         output_wav=out_file,
                         instrument="canonical_intermediate",
                         tier=t,
@@ -673,6 +758,19 @@ def simulate_backend_targets(
                 out_name = Path(sim_cfg.output_wav).name if sim_cfg.output_wav else f"out_{vid}.wav"
                 print(f"[{t.upper()}] Simulating {vid} -> {out_name}...")
                 simulate_voice(vid, config=sim_cfg)
+
+        if not no_manifest:
+            simulated_files = [
+                t[1].output_wav
+                for t in tasks
+                if t[1].output_wav and Path(t[1].output_wav).exists()
+            ]
+            write_manifest(
+                output_dir=target_out_dir,
+                stage="targets",
+                files=simulated_files,
+                version_tag=version_tag if (version_tag and version_tag != "auto") else resolve_tri_part_version(),
+            )
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -924,6 +1022,16 @@ def main(argv: list[str] | None = None) -> None:
         default=None,
         help="Physical pickup setting for source instrument ('auto' to resolve from pickup_mapping, or explicit pickup ID)",
     )
+    parser.add_argument(
+        "--version-tag",
+        default=None,
+        help="Semantic version tag to embed in exported filenames (e.g. 'auto', 'v2.1.1')",
+    )
+    parser.add_argument(
+        "--no-manifest",
+        action="store_true",
+        help="Disable generating sidecar manifest.json",
+    )
     args = parser.parse_args(argv)
 
     if args.sweep:
@@ -956,12 +1064,20 @@ def main(argv: list[str] | None = None) -> None:
                 print(row)
             print("\n--- Analytical Circuit Metrics ---")
             res.print_metrics()
+            print(
+                "=========================================================================================\n"
+            )
         return
 
-    input_wav = args.input
+    input_wav = args.input or find_default_input_audio(version_tag=args.version_tag)
 
     if args.stage == "canonical":
-        generate_canonical_sweep(input_wav=input_wav, output_wav=args.out)
+        generate_canonical_sweep(
+            input_wav=input_wav,
+            output_wav=args.out,
+            version_tag=args.version_tag,
+            no_manifest=args.no_manifest,
+        )
         return
     if args.stage == "frontends":
         fmt = args.frontend_format
@@ -982,6 +1098,8 @@ def main(argv: list[str] | None = None) -> None:
                             output_dir=args.out,
                             normalize=args.normalize_frontend,
                             gain_db=args.gain_db,
+                            version_tag=args.version_tag,
+                            no_manifest=args.no_manifest,
                         )
                     if fmt in ["wet", "both"]:
                         export_frontend_wet_wav(
@@ -991,6 +1109,8 @@ def main(argv: list[str] | None = None) -> None:
                             output_dir=args.out,
                             normalize=args.normalize_frontend,
                             gain_db=args.gain_db,
+                            version_tag=args.version_tag,
+                            no_manifest=args.no_manifest,
                         )
             return
         if fmt in ["ir", "both"]:
@@ -999,6 +1119,8 @@ def main(argv: list[str] | None = None) -> None:
                 jobs=args.jobs,
                 normalize=args.normalize_frontend,
                 gain_db=args.gain_db,
+                version_tag=args.version_tag,
+                no_manifest=args.no_manifest,
             )
         if fmt in ["wet", "both"]:
             export_all_frontend_wet_wavs(
@@ -1007,6 +1129,8 @@ def main(argv: list[str] | None = None) -> None:
                 jobs=args.jobs,
                 normalize=args.normalize_frontend,
                 gain_db=args.gain_db,
+                version_tag=args.version_tag,
+                no_manifest=args.no_manifest,
             )
         return
     if args.stage == "targets":
@@ -1018,6 +1142,8 @@ def main(argv: list[str] | None = None) -> None:
             jobs=args.jobs,
             normalize=args.normalize,
             target_dbfs=args.target_dbfs,
+            version_tag=args.version_tag,
+            no_manifest=args.no_manifest,
         )
         return
     if args.stage == "all":
@@ -1030,6 +1156,8 @@ def main(argv: list[str] | None = None) -> None:
                 jobs=args.jobs,
                 normalize=args.normalize_frontend,
                 gain_db=args.gain_db,
+                version_tag=args.version_tag,
+                no_manifest=args.no_manifest,
             )
         if fmt in ["ir", "both"]:
             export_all_frontend_irs(
@@ -1037,6 +1165,8 @@ def main(argv: list[str] | None = None) -> None:
                 jobs=args.jobs,
                 normalize=args.normalize_frontend,
                 gain_db=args.gain_db,
+                version_tag=args.version_tag,
+                no_manifest=args.no_manifest,
             )
         simulate_backend_targets(
             tier=args.tier,
@@ -1046,6 +1176,8 @@ def main(argv: list[str] | None = None) -> None:
             jobs=args.jobs,
             normalize=args.normalize,
             target_dbfs=args.target_dbfs,
+            version_tag=args.version_tag,
+            no_manifest=args.no_manifest,
         )
         return
 

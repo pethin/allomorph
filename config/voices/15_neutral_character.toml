@@ -10,7 +10,7 @@
 
 id = "15_neutral_character"
 name = "15. Neutral Character"
-tone_name = "Neutral Character"
+tone_name = "Studio Direct"
 topology = "Character (Neutral / Studio DI)"
 description = "Preserves physical pickup aperture and adds only tier character (transparent bypass in Clean, organic Alnico V feel in Dynamic, overwound punch in Hot Rod)"
 blend_mode = "direct"

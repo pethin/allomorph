@@ -5,7 +5,7 @@
 # loaded with authentic dual 250k volume pots (125k net load) and 250k tone pot.
 id = "02_jazz_bass_pair"
 name = "02. Jazz Bass Pair (Parallel)"
-tone_name = "60s Jazz Pair"
+tone_name = "Jazz Pair Open"
 topology = "Dual Single-Coil Parallel"
 description = "Dual narrow single-coils in parallel with wide-aperture phase cancellation"
 blend_mode = "parallel"

@@ -263,7 +263,9 @@ def calibrate_nam_v3_latency(y: np.ndarray) -> tuple[int, bool, bool]:
 
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 AUDIO_DIR = REPO_ROOT / "audio"
-OPTIMAL_DRY_PATH = AUDIO_DIR / "canonical" / "optimal_bass_dry.wav"
+from allomorph.version import DSP_GENERATION
+
+OPTIMAL_DRY_PATH = AUDIO_DIR / "canonical" / f"optimal_bass_dry_v{DSP_GENERATION}.wav"
 
 
 def _apply_hann_fades(sig: np.ndarray, fade_len: int) -> np.ndarray:
@@ -697,15 +699,24 @@ def ensure_optimal_dry_wav(
     sample_rate: int = FS,
     peak_dbfs: float = -1.0,
     overwrite: bool = False,
+    version_tag: str | None = None,
+    no_manifest: bool = False,
 ) -> Path:
     """Ensures that the synthesized optimal bass dry signal exists on disk.
 
-    If the target file does not exist (or overwrite is True), it generates the
-    optimal dry audio and writes it as a 24-bit 48 kHz mono PCM WAV file.
+    If output_path is None, writes the versioned optimal bass dry file to audio/canonical/
+    (e.g., optimal_bass_dry_v2.wav) and records entries in manifest.json.
     """
-    p = Path(output_path) if output_path is not None else OPTIMAL_DRY_PATH
+    if output_path is not None:
+        p = Path(output_path)
+    else:
+        from allomorph.naming import get_optimal_dry_path
+
+        p = get_optimal_dry_path(version_tag=version_tag)
+
     if p.exists() and not overwrite:
         return p
+
     p.parent.mkdir(parents=True, exist_ok=True)
     audio = generate_optimal_bass_dry(
         duration_sec=duration_sec,
@@ -713,6 +724,18 @@ def ensure_optimal_dry_wav(
         peak_dbfs=peak_dbfs,
     )
     write_wav_24bit(p, audio, sample_rate)
+
+    if output_path is None and not no_manifest:
+        from allomorph.version import DSP_GENERATION, write_manifest
+
+        v_tag = version_tag or f"v{DSP_GENERATION}"
+        write_manifest(
+            output_dir=p.parent,
+            stage="canonical",
+            files=[p],
+            version_tag=v_tag,
+        )
+
     return p
 
 

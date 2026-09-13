@@ -6,7 +6,7 @@
 # pillowy sub-bass bump at 450 Hz (James Jamerson / Pino Palladino).
 id = "05c_vintage_62_p_47nf"
 name = "05c. Vintage '62 Split-P (47nF ToneStyler)"
-tone_name = "Vintage 62 P 47nF"
+tone_name = "Precision Warm"
 topology = "Split-Coil Alnico V (47nF ToneStyler)"
 description = "Vintage '62 Alnico V split-coil with 47nF ToneStyler pure capacitive shunt and vintage heavy flatwounds (Motown bump)"
 magnet_type = "alnico_v"

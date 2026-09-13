@@ -5,7 +5,7 @@
 # on a 34"-37" multi-scale bass, combined with stainless steel string mechanics and 500k pots.
 id = "13_dingwall_multiscale_bridge"
 name = "13. Dingwall Fanned-Fret Bridge (Multi-Scale)"
-tone_name = "Dingwall FD3"
+tone_name = "Dingwall Bridge"
 topology = "Multi-Scale Angled Dual-Coil Active Buffer"
 description = "34\"-37\" fanned fret bridge sweet spot with high wave-speed stainless string physics and active buffer"
 magnet_type = "neodymium"

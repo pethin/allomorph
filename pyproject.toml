@@ -1,6 +1,6 @@
 [project]
 name = "allomorph"
-version = "0.1.0"
+version = "0.2.0"
 description = "Analog digital twin & universal pickup/transducer modeling engine"
 readme = "README.md"
 license = { text = "PolyForm-Noncommercial-1.0.0" }

@@ -46,16 +46,16 @@ THE 19 DIGITAL TWIN VOICINGS
 
 Jazz Bass Family
 
-01. Modern Jazz Active [Parallel]
+01. Jazz Pair Active [Parallel]
 The quintessential NYC active slap tone: tight, massive sub-bass and crisp, glassy highs with a scooped midrange that pops right out of a dense mix.
 
-02. 60s Jazz Pair [Parallel]
+02. Jazz Pair Open [Parallel]
 The golden-era '60s Jazz Bass sound. Transforms your P/J into dual single-coils wide open with that iconic hollow midrange scoop and singing top-end.
 
-03. 60s Jazz 22nF [Parallel]
+03. Jazz Pair Mids [Parallel]
 Jazz Bass pair with a vocal midrange punch. Thickens up your fingerstyle attack and smooths out harsh fret clank while keeping every note articulate.
 
-04. Jaco Bridge Growl [Parallel]
+04. Jazz Bridge Growl [Parallel]
 The unmistakable Jaco Pastorius tone: run both pickups wide open while the model injects authentic neck-pot decoupling under the hood for that signature singing, vocal bridge growl and burp.
 
 Music Man StingRay Family
@@ -69,58 +69,58 @@ StingRay wired in series for a hotter, thicker signal with punchy low-mids and a
 
 P/MM Modern Hybrids
 
-07. Modern P∕MM Active [Parallel]
+07. P∕MM Parallel [Parallel]
 Modern boutique session hybrid (Sandberg California / Lakland style). Blends the warm body of a P-bass neck with the punchy slap bite of a Music Man bridge humbucker.
 
-08. P∕MM Hybrid Series [Parallel]
+08. P∕MM Series [Parallel]
 P-bass neck and Music Man bridge wired in series for a massive wall of sound with immense low-mid thrust and heavy overdrive sustain.
 
 
 Progressive & Classic Rock Legends
 
-09. Rickenbacker 4003 [Bridge]
+09. Rickenbacker Clank [Bridge]
 The quintessential prog-rock clank (Chris Squire / Geddy Lee). Tight, lean low end with biting, aggressive pick attack and cutting upper-mid grit.
 
-10. Dingwall FD3 [Bridge]
+10. Dingwall Bridge [Bridge]
 Modern progressive metal tone: razor-sharp pick clank, extreme note clarity, and piano-like low-B definition tailored for drop tunings and heavy distortion.
 
-11. EB-0 Mudbucker [Neck]
+11. Mudbucker Deep [Neck]
 The legendary Gibson "Mudbucker": a dark, colossal wall of pure vintage bass rumble with zero top-end harshness—pure '60s and '70s British blues-rock.
 
 
 Acoustic Transducers
 
-12. Upright Piezo [Neck]
+12. Upright Acoustic [Neck]
 Acoustic upright double bass: transforms your electric bass into a woody, resonant acoustic upright with natural body thump and organic finger feel. Pair with 3 Sigma Audio "Acoustic Upright Standard" AST IRs in your cabinet loader for authentic soundboard acoustic bloom.
 
 
 Precision Bass & Tone Shaper Family
 
-13. Modern P Ceramic [Neck]
+13. Precision Modern [Neck]
 Modern boutique P-bass tone. Aggressive, punchy, and clear with tight low-mids and bright transient snap—built for aggressive rock, pop, and modern worship.
 
-14. Vintage 62 P 22nF [Neck]
+14. Precision Mids [Neck]
 Vintage P-bass with a modern vocal low-mid punch. Cuts finger clatter and high-end sizzle while keeping a muscular, forward presence in a busy mix.
 
-15. Vintage 62 P 47nF [Neck]
+15. Precision Warm [Neck]
 The legendary Motown flatwound sound (James Jamerson / Pino Palladino). Fat, pillowy sub-bass thump with rolled-off highs that glues the groove together.
 
-16. Vintage 50s P 100nF [Neck]
+16. Precision Dub [Neck]
 Ultra-deep vintage '50s dub spec. Pure, earth-shaking sub-bass thump with zero top-end click—perfect for reggae, dub, hip-hop, and classic R&B.
 
 
 P/J Bass Family
 
-17. Modern PJ Active [Parallel]
+17. PJ Active [Parallel]
 Modern active P/J punch (Sadowsky/Spector style). Combines thick split-coil body with bridge single-coil cut, boosted by a powerful active 2-band EQ.
 
 
 Studio Buffers & Dynamics
 
-18. Active Character
+18. Studio Active
 Studio Active Buffer: removes cable drag and pot loading, opening up pristine hi-fi clarity, ultra-fast transient attack, and airy top-end sparkle.
 
-19. Passive Character
+19. Studio Passive
 Vintage Passive Character: stacks organic vintage tube-amp warmth, tactile touch sensitivity, and woody harmonic bloom onto your signal chain.
 
 

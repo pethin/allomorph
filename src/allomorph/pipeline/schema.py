@@ -59,6 +59,8 @@ class PipelineCliConfig(AllomorphBaseModel):
     html: str | None = None
     backend: str = "native"
     t3k_pack: bool = False
+    version_tag: str | None = "auto"
+    no_manifest: bool = False
 
 
 class Tone3000PackListing(AllomorphBaseModel):
@@ -130,6 +132,13 @@ class NamExportMetadata(AllomorphBaseModel):
     license: str
     copyright: str
     author: str
+    version: str = Field(default="v2.1.1")
+    dsp_version: int = Field(default=2)
+    instrument_version: int = Field(default=1)
+    voice_version: int = Field(default=1)
+    allomorph_version: str = Field(default="0.2.0")
+    git_commit: str | None = None
+    generated_at: str | None = None
     source_instrument: NamSourceInstrumentMeta
     target_voice: NamTargetVoiceMeta
 
@@ -165,6 +174,8 @@ class NamTrainingConfig(AllomorphBaseModel):
         description="Train A2-Lite channels_8 only instead of the full slimmable container (default: False)",
     )
     t3k_pack: bool = False
+    version_tag: str | None = "auto"
+    no_manifest: bool = False
 
 
 class ArtworkPackConfig(AllomorphBaseModel):

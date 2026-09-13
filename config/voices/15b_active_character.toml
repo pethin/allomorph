@@ -9,7 +9,7 @@
 
 id = "15b_active_character"
 name = "15b. Active Character"
-tone_name = "Active Character"
+tone_name = "Studio Active"
 topology = "Character (Modern Active Buffer)"
 description = "Removes passive cable loading (750pF) and pot damping to restore wideband hi-fi sparkle and headroom; preserves natural pickup aperture while stacking with tier dynamics"
 blend_mode = "direct"
