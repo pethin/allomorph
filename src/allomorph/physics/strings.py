@@ -10,6 +10,7 @@ from typing import overload
 
 import numpy as np
 
+from allomorph.circuit.solver import smooth_soft_knee_db
 from allomorph.config.scales import SCALES, resolve_scale_range
 from allomorph.config.schema import InstrumentConfig, ScaleConfig, StringPresetConfig
 from allomorph.config.strings import get_voice_string
@@ -86,8 +87,8 @@ def compute_differential_string_transfer(
     g_max_db = 8.0
     g_min_db = -36.0
     sigma = 0.5 * (1.0 + np.tanh(0.5 * r_db))
-    f_pos = g_max_db * np.tanh(r_db / g_max_db)
-    f_neg = g_min_db * np.tanh(r_db / g_min_db)
+    f_pos = smooth_soft_knee_db(r_db, thresh=5.0, ceiling=g_max_db, alpha=2.0)
+    f_neg = -smooth_soft_knee_db(-r_db, thresh=24.0, ceiling=abs(g_min_db), alpha=2.0)
     r_soft_db = sigma * f_pos + (1.0 - sigma) * f_neg
     h_damp_ratio = 10.0 ** (r_soft_db / 20.0)
 

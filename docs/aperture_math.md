@@ -183,13 +183,12 @@ $$H_{\text{pos}}(f) = \sqrt{\frac{g_0^2 + (f / 220\text{ Hz})^2}{1 + (f / 220\te
 * **Proportional Sweet Spot Invariance:** Identical proportional locations across scales (e.g. 32" MM @ $62.2\text{ mm} \implies \eta = 7.65\%$ vs 34" MM @ $66.0\text{ mm} \implies \eta = 7.64\%$) have $\eta_{\text{tgt}} / \eta_{\text{src}} \approx 1.0$ and receive **exact zero spurious scaling** ($0.00\text{ dB}$ flat).
 
 #### Proportional Scale Tension Snap ($H_{\text{tension}}$):
-When converting from shorter scales to longer scales ($L_{\text{src}} < L_{\text{tgt}}$), Allomorph applies a $C^\infty$ infinitely differentiable softplus tension snap:
+When converting from shorter scales to longer scales ($L_{\text{src}} < L_{\text{tgt}}$), Allomorph applies a high-frequency tension snap shelf ($f_0 = 2,800\text{ Hz}$). When $L_{\text{src}} \ge L_{\text{tgt}}$ ($\Delta L \le 0$), tension snap evaluates to bit-exact $1.0000$ ($0.00\text{ dB}$ identity across all bins). When $L_{\text{src}} < L_{\text{tgt}}$:
 $$\Delta L = L_{\text{tgt}} - L_{\text{src}}$$
-$$\Delta L_{\text{soft}} = \frac{1}{2} \ln(1 + e^{2 \Delta L})$$
-$$\text{snap}_{\text{dB}} = 3.5 \cdot \tanh\left(\frac{1.8 \Delta L_{\text{soft}}}{4.0 \times 3.5}\right)$$
+$$\text{snap}_{\text{dB}} = 3.5 \cdot \tanh\left(\frac{1.8 \Delta L}{4.0 \times 3.5}\right)$$
 $$H_{\text{tension}}(f) = \sqrt{\frac{1 + 10^{\text{snap}_{\text{dB}} / 10.0} \cdot (f / 2800\text{ Hz})^2}{1 + (f / 2800\text{ Hz})^2}}$$
 
-Yields $+1.8\text{ dB}$ for 30" short scale, $+0.9\text{ dB}$ for 32" medium scale, and $0.0\text{ dB}$ for standard 34" scale, restoring the tight piano-like high-frequency snap of higher string tension.
+Yields $+1.8\text{ dB}$ for 30" short scale into 34", $+0.9\text{ dB}$ for 32" medium scale into 34", and exact $0.00\text{ dB}$ for standard 34"-to-34" scale transformations, restoring the tight piano-like high-frequency snap of higher string tension without introducing unphysical zero-offset shelves.
 
 ---
 

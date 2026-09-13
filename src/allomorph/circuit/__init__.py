@@ -48,6 +48,7 @@ from allomorph.circuit.solver import (
     compute_circuit_transfer_functions,
     compute_core_impedance,
     compute_differential_circuit_transfer_functions,
+    smooth_soft_knee_db,
 )
 from allomorph.circuit.staging import (
     _export_frontend_ir_task,
@@ -123,4 +124,5 @@ __all__ = [
     "simulate_backend_targets",
     "simulate_circuit_audio",
     "simulate_voice",
+    "smooth_soft_knee_db",
 ]

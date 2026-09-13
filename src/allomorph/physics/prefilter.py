@@ -8,6 +8,7 @@ from pathlib import Path
 
 import numpy as np
 
+from allomorph.circuit.solver import smooth_soft_knee_db
 from allomorph.config.geometry import (
     compute_effective_position,
     resolve_pickup_coils,
@@ -119,12 +120,14 @@ def compute_voice_prefilter_firs(
         h_tension = h_bloom
     else:
         delta_scale = tgt_scale_in - src_scale_in
-        delta_soft = 0.5 * np.logaddexp(0.0, 2.0 * delta_scale)
-        snap_db = 3.5 * np.tanh((1.8 * delta_soft) / (4.0 * 3.5))
-        g_snap = 10.0 ** (snap_db / 20.0)
-        h_tension = np.sqrt(
-            (1.0 + g_snap**2 * (freqs / 2800.0) ** 2) / (1.0 + (freqs / 2800.0) ** 2)
-        )
+        if delta_scale <= 0.0:
+            h_tension = np.ones_like(freqs)
+        else:
+            snap_db = 3.5 * np.tanh((1.8 * delta_scale) / (4.0 * 3.5))
+            g_snap = 10.0 ** (snap_db / 20.0)
+            h_tension = np.sqrt(
+                (1.0 + g_snap**2 * (freqs / 2800.0) ** 2) / (1.0 + (freqs / 2800.0) ** 2)
+            )
 
     has_multichannel_circuit = bool(len(pickups) > 1)
 
@@ -246,8 +249,8 @@ def compute_voice_prefilter_firs(
             g_max_db = 12.0 if sensor_type == "direct" else 8.0
             g_min_db = -14.0
             sigma = 0.5 * (1.0 + np.tanh(0.5 * q_db))
-            f_pos = g_max_db * np.tanh(q_db / g_max_db)
-            f_neg = g_min_db * np.tanh(q_db / g_min_db)
+            f_pos = smooth_soft_knee_db(q_db, thresh=6.0, ceiling=g_max_db, alpha=2.0)
+            f_neg = -smooth_soft_knee_db(-q_db, thresh=10.0, ceiling=abs(g_min_db), alpha=2.0)
             q_soft_db = sigma * f_pos + (1.0 - sigma) * f_neg
             h_acoustic_transfer = 10.0 ** (q_soft_db / 20.0)
 
@@ -293,9 +296,7 @@ def compute_voice_prefilter_firs(
             h_saddle_tgt = compute_saddle_boundary_coupling(freqs, tgt_pos_eff, tgt_scale_m)
             h_saddle_src = compute_saddle_boundary_coupling(freqs, b_src_pos_eff, src_scale_m)
             r_saddle_db = 20.0 * np.log10(np.maximum(h_saddle_tgt / np.maximum(h_saddle_src, 1e-6), 1e-6))
-            g_saddle = 4.0
-            r_saddle_soft_db = g_saddle * np.tanh(r_saddle_db / g_saddle)
-            h_saddle_diff = 10.0 ** (r_saddle_soft_db / 20.0)
+            h_saddle_diff = 10.0 ** (r_saddle_db / 20.0)
 
         prefilter_curve = (
             scale_fac
@@ -424,8 +425,8 @@ def compute_aperture_prefilter_fir(
         g_max_db = 8.0
         g_min_db = -14.0
         sigma = 0.5 * (1.0 + np.tanh(0.5 * q_db))
-        f_pos = g_max_db * np.tanh(q_db / g_max_db)
-        f_neg = g_min_db * np.tanh(q_db / g_min_db)
+        f_pos = smooth_soft_knee_db(q_db, thresh=6.0, ceiling=g_max_db, alpha=2.0)
+        f_neg = -smooth_soft_knee_db(-q_db, thresh=10.0, ceiling=abs(g_min_db), alpha=2.0)
         q_soft_db = sigma * f_pos + (1.0 - sigma) * f_neg
         h_acoustic_transfer = 10.0 ** (q_soft_db / 20.0)
         eta_tgt = tgt_pos_eff / tgt_scale_m
@@ -444,12 +445,14 @@ def compute_aperture_prefilter_fir(
         h_tension = h_bloom
     else:
         delta_scale = tgt_scale_in - src_scale_in
-        delta_soft = 0.5 * np.logaddexp(0.0, 2.0 * delta_scale)
-        snap_db = 3.5 * np.tanh((1.8 * delta_soft) / (4.0 * 3.5))
-        g_snap = 10.0 ** (snap_db / 20.0)
-        h_tension = np.sqrt(
-            (1.0 + g_snap**2 * (freqs / 2800.0) ** 2) / (1.0 + (freqs / 2800.0) ** 2)
-        )
+        if delta_scale <= 0.0:
+            h_tension = np.ones_like(freqs)
+        else:
+            snap_db = 3.5 * np.tanh((1.8 * delta_scale) / (4.0 * 3.5))
+            g_snap = 10.0 ** (snap_db / 20.0)
+            h_tension = np.sqrt(
+                (1.0 + g_snap**2 * (freqs / 2800.0) ** 2) / (1.0 + (freqs / 2800.0) ** 2)
+            )
 
     if (
         sensor_type != "bridge_force"
@@ -484,9 +487,7 @@ def compute_aperture_prefilter_fir(
         h_saddle_tgt = compute_saddle_boundary_coupling(freqs, tgt_pos_eff, tgt_scale_m)
         h_saddle_src = compute_saddle_boundary_coupling(freqs, src_pos_eff, src_scale_m)
         r_saddle_db = 20.0 * np.log10(np.maximum(h_saddle_tgt / np.maximum(h_saddle_src, 1e-6), 1e-6))
-        g_saddle = 4.0
-        r_saddle_soft_db = g_saddle * np.tanh(r_saddle_db / g_saddle)
-        h_saddle_diff = 10.0 ** (r_saddle_soft_db / 20.0)
+        h_saddle_diff = 10.0 ** (r_saddle_db / 20.0)
 
     prefilter_curve = (
         h_acoustic_transfer

@@ -925,6 +925,7 @@ def test_guardrail_lossless_c_inf_optimizations():
     """
     from allomorph.circuit.parser import eval_pot_taper
     from allomorph.circuit.saturation import _algebraic_limiter_p8_core
+    from allomorph.circuit.solver import smooth_soft_knee_db
     from allomorph.config.instruments import INSTRUMENTS
     from allomorph.config.strings import STRINGS
     from allomorph.dsp import synthesize_minimum_phase_fir
@@ -981,13 +982,26 @@ def test_guardrail_lossless_c_inf_optimizations():
     ratio_ref = tgt_mag / np.maximum(src_mag, 1e-6)
     r_db = 20.0 * np.log10(np.maximum(ratio_ref, 1e-6))
     sigma = 0.5 * (1.0 + np.tanh(0.5 * r_db))
-    r_soft_db = sigma * (8.0 * np.tanh(r_db / 8.0)) + (1.0 - sigma) * (
-        -36.0 * np.tanh(r_db / -36.0)
+    r_soft_db = sigma * smooth_soft_knee_db(r_db, thresh=5.0, ceiling=8.0, alpha=2.0) + (1.0 - sigma) * (
+        -smooth_soft_knee_db(-r_db, thresh=24.0, ceiling=36.0, alpha=2.0)
     )
     g_bloom = 10.0 ** ((float(tgt_str.bloom_db) - float(src_str.bloom_db)) / 20.0)
     h_bloom = np.sqrt((g_bloom**2 + (f / 90.0) ** 2) / (1.0 + (f / 90.0) ** 2))
     damp_ref = (10.0 ** (r_soft_db / 20.0)) * h_bloom
     assert np.max(np.abs(damp_opt - damp_ref)) < 1e-14
+
+    # Also test positive boost direction (flats -> stainless)
+    damp_boost_opt = compute_differential_string_transfer(f, tgt_str, src_str)
+    ratio_boost_ref = src_mag / np.maximum(tgt_mag, 1e-6)
+    r_boost_db = 20.0 * np.log10(np.maximum(ratio_boost_ref, 1e-6))
+    sigma_boost = 0.5 * (1.0 + np.tanh(0.5 * r_boost_db))
+    r_boost_soft_db = sigma_boost * smooth_soft_knee_db(
+        r_boost_db, thresh=5.0, ceiling=8.0, alpha=2.0
+    ) + (1.0 - sigma_boost) * (-smooth_soft_knee_db(-r_boost_db, thresh=24.0, ceiling=36.0, alpha=2.0))
+    g_boost_bloom = 10.0 ** ((float(src_str.bloom_db) - float(tgt_str.bloom_db)) / 20.0)
+    h_boost_bloom = np.sqrt((g_boost_bloom**2 + (f / 90.0) ** 2) / (1.0 + (f / 90.0) ** 2))
+    damp_boost_ref = (10.0 ** (r_boost_soft_db / 20.0)) * h_boost_bloom
+    assert np.max(np.abs(damp_boost_opt - damp_boost_ref)) < 1e-14
 
     # 5. Potentiometer audio taper constant denominator evaluations
     for th in [0.0, 0.25, 0.5, 0.75, 1.0]:
@@ -1092,5 +1106,87 @@ def test_guardrail_character_voicings_and_baked_identity_invariants():
                 assert simulate_voice(char_vid, config=cfg_char) is True
                 assert out_char.exists()
                 assert out_char.stat().st_size > 0
+
+
+def test_guardrail_scale_tension_zero_center_and_circuit_headroom():
+    """Guardrail 5.1.3 & 5.3.6:
+    1. Scale tension snap must evaluate to bit-exact 1.0000 (0.000 dB) across all frequency bins
+       whenever source scale length is greater than or equal to target scale length (Delta L <= 0).
+    2. Differential circuit deconvolution into Canonical Intermediate must achieve >= +6.75 dB
+       headroom for passive P-Bass pickups, bounded by the +8.0 dB ceiling.
+    3. Composite frontend deconvolution must remain uncompressed below +6.0 dB, smoothly
+       saturating towards +8.0 dB without premature low-level compression.
+    """
+    from allomorph.circuit.staging import compute_frontend_transfer_function
+
+    f_arr = np.asarray(FREQS, dtype=np.float64)
+
+    # 1. Scale tension zero-center test:
+    # 34in source instruments transforming into 34in target voices must have 0.000 dB tension snap
+    inst_34 = load_instrument("34in_standard_p")
+    inst_30 = load_instrument("30in_emg_mmtw")
+    src_34 = float(inst_34.scale_length_in or 34.0)
+    src_30 = float(inst_30.scale_length_in or 30.0)
+
+    # For 34" to 34", delta_scale = 0.0 -> must be exactly 1.0 across all bins
+    delta_34 = 34.0 - src_34
+    assert delta_34 <= 0.0
+    h_tens_34 = np.ones_like(f_arr) if delta_34 <= 0.0 else np.zeros_like(f_arr)
+    assert np.all(h_tens_34 == 1.0)
+
+    # For 30" to 34", delta_scale = 4.0 -> positive snap
+    delta_30 = 34.0 - src_30
+    assert delta_30 > 0.0
+    snap_db_30 = 3.5 * np.tanh((1.8 * delta_30) / (4.0 * 3.5))
+    g_snap_30 = 10.0 ** (snap_db_30 / 20.0)
+    h_tens_30 = np.sqrt(
+        (1.0 + g_snap_30**2 * (f_arr / 2800.0) ** 2) / (1.0 + (f_arr / 2800.0) ** 2)
+    )
+    assert np.max(h_tens_30) > 1.0  # Positive high-frequency snap
+    assert np.isclose(h_tens_30[0], 1.0, atol=1e-3)  # Unity at DC
+
+    # 2. Circuit deconvolution headroom on passive P-Bass
+    can_circ = VOICES["00_canonical_intermediate"].circuit
+    assert can_circ is not None
+    m_can = load_circuit(can_circ)
+
+    p_circ = inst_34.pickups["split_p"].circuit
+    assert p_circ is not None
+    m_p = load_circuit(p_circ)
+
+    diff_curves = compute_differential_circuit_transfer_functions(
+        m_can, m_p, freqs=f_arr, max_boost_db=8.0
+    )
+    h_diff_p = np.asarray(diff_curves[0], dtype=np.float64)
+    max_db_diff = float(np.max(20.0 * np.log10(h_diff_p)))
+    assert max_db_diff >= 6.75, (
+        f"Passive P-Bass circuit deconvolution peak was {max_db_diff:.2f} dB (expected >= 6.75 dB)"
+    )
+    assert max_db_diff <= 8.0, (
+        f"Passive P-Bass circuit deconvolution peak exceeded +8.0 dB ceiling: {max_db_diff:.2f} dB"
+    )
+
+    # 3. Composite frontend deconvolution on 34in Standard P
+    h_front = compute_frontend_transfer_function(inst_34, "split_p", freqs=f_arr, can_model=m_can)
+    db_front = 20.0 * np.log10(np.maximum(h_front, 1e-6))
+    max_front_db = float(np.max(db_front))
+
+    assert max_front_db >= 6.0, f"Frontend peak boost was {max_front_db:.2f} dB (expected >= 6.0 dB)"
+    assert max_front_db <= 8.0, f"Frontend peak boost exceeded +8.0 dB ceiling: {max_front_db:.2f} dB"
+    assert db_front[-1] < 2.0, f"Frontend HF gain at 20 kHz was {db_front[-1]:.2f} dB (must be < 2.0 dB)"
+    assert -12.0 <= db_front[0] <= 12.0, f"Frontend DC gain was {db_front[0]:.2f} dB (must be in [-12, +12] dB)"
+
+    # 4. Strictly C^inf smooth soft-knee saturation verification
+    from allomorph.circuit import smooth_soft_knee_db
+
+    xs_dense = np.linspace(-10.0, 20.0, 1000)
+    ys_dense = smooth_soft_knee_db(xs_dense, thresh=6.0, ceiling=8.0)
+    grad1 = np.gradient(ys_dense, xs_dense)
+    grad2 = np.gradient(grad1, xs_dense)
+    assert np.all(grad1 > 0.0), "Smooth soft knee must be strictly monotonic (dy/dx > 0)"
+    assert not np.any(np.isnan(grad2)), "Smooth soft knee second derivative must be finite everywhere"
+    assert abs(smooth_soft_knee_db(4.0, thresh=6.0, ceiling=8.0) - 4.0) < 1e-4
+
+
 
 

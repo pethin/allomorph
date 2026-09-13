@@ -30,6 +30,7 @@ from allomorph.circuit.simulation import (
 from allomorph.circuit.solver import (
     compute_circuit_transfer_functions,
     compute_differential_circuit_transfer_functions,
+    smooth_soft_knee_db,
 )
 from allomorph.config.geometry import (
     compute_effective_position,
@@ -230,7 +231,16 @@ def compute_frontend_transfer_function(
     h_can_ac = numpy_pickup_acoustic_response(f, can_coils, scale_length_m=(0.8636, 0.8636))
     h_can_ac_norm = h_can_ac / max(h_can_ac[0], 1e-9)
 
-    h_aperture_deconv = (h_can_ac_norm * h_src_norm) / (h_src_norm**2 + 0.01)
+    eps = 0.01
+    h_quotient = (h_can_ac_norm * h_src_norm) / (h_src_norm**2 + eps**2)
+    q_db = 20.0 * np.log10(np.maximum(h_quotient, 1e-6))
+    g_max_db = 8.0
+    g_min_db = -14.0
+    sigma = 0.5 * (1.0 + np.tanh(0.5 * q_db))
+    f_pos = smooth_soft_knee_db(q_db, thresh=6.0, ceiling=g_max_db, alpha=2.0)
+    f_neg = -smooth_soft_knee_db(-q_db, thresh=10.0, ceiling=abs(g_min_db), alpha=2.0)
+    q_soft_db = sigma * f_pos + (1.0 - sigma) * f_neg
+    h_aperture_deconv = 10.0 ** (q_soft_db / 20.0)
 
     # 3. Spatial bridge proximity scaling (Source -> Canonical Intermediate datum @ 93.5mm)
     src_pos_eff = compute_effective_position(coils)
@@ -248,20 +258,20 @@ def compute_frontend_transfer_function(
     src_scale_in = float(inst_cfg.scale_length_in or 34.0)
     can_scale_in = 34.0
     delta_scale = can_scale_in - src_scale_in
-    delta_soft = 0.5 * np.logaddexp(0.0, 2.0 * delta_scale)
-    snap_db = 3.5 * np.tanh((1.8 * delta_soft) / (4.0 * 3.5))
-    g_snap = 10.0 ** (snap_db / 20.0)
-    h_tension = np.sqrt(
-        (1.0 + g_snap**2 * (f / 2800.0) ** 2) / (1.0 + (f / 2800.0) ** 2)
-    )
+    if delta_scale <= 0.0:
+        h_tension = np.ones_like(f)
+    else:
+        snap_db = 3.5 * np.tanh((1.8 * delta_scale) / (4.0 * 3.5))
+        g_snap = 10.0 ** (snap_db / 20.0)
+        h_tension = np.sqrt(
+            (1.0 + g_snap**2 * (f / 2800.0) ** 2) / (1.0 + (f / 2800.0) ** 2)
+        )
 
     # 5. Saddle boundary stiffness deconvolution (Source -> Canonical Intermediate)
     h_saddle_can = compute_saddle_boundary_coupling(f, can_pos_eff, can_scale_m)
     h_saddle_src = compute_saddle_boundary_coupling(f, src_pos_eff, src_scale_m)
     r_saddle_db = 20.0 * np.log10(np.maximum(h_saddle_can / np.maximum(h_saddle_src, 1e-6), 1e-6))
-    g_saddle = 4.0
-    r_saddle_soft_db = g_saddle * np.tanh(r_saddle_db / g_saddle)
-    h_saddle_diff = 10.0 ** (r_saddle_soft_db / 20.0)
+    h_saddle_diff = 10.0 ** (r_saddle_db / 20.0)
 
     # 6. String deconvolution (if source bass string is not standard roundwound nickel)
     src_string = get_instrument_string(inst_cfg)
@@ -285,7 +295,7 @@ def compute_frontend_transfer_function(
     if p_circ and can_model:
         src_model = load_circuit(p_circ)
         diff_curves = compute_differential_circuit_transfer_functions(
-            can_model, src_model, freqs=f, max_boost_db=6.0
+            can_model, src_model, freqs=f, max_boost_db=8.0
         )
         h_circuit_deconv = np.asarray(diff_curves[0], dtype=np.float64)
     elif inst_cfg.electronics == "passive":
@@ -313,8 +323,7 @@ def compute_frontend_transfer_function(
         * h_long_diff
     )
     raw_db = 20.0 * np.log10(np.maximum(h_raw, 1e-6))
-    g_max_db = 8.0
-    clamped_db = np.where(raw_db > 0.0, g_max_db * np.tanh(raw_db / g_max_db), raw_db)
+    clamped_db = smooth_soft_knee_db(raw_db, thresh=6.0, ceiling=8.0, alpha=2.0)
 
     # Frequency-dependent ultrasonic roll-off above 8 kHz if exceeding 1.5 dB (keeps 20 kHz strictly < 2.0 dB)
     f_roll = 8000.0

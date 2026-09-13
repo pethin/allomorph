@@ -218,12 +218,14 @@ def build_voice_dataframe(
                 else (35.0 if tgt_scale == "multiscale_super" else 34.0)
             )
             delta_scale = tgt_scale_in - 34.0
-            delta_soft = 0.5 * np.logaddexp(0.0, 2.0 * delta_scale)
-            snap_db = 3.5 * np.tanh((1.8 * delta_soft) / (4.0 * 3.5))
-            g_snap = 10.0 ** (snap_db / 20.0)
-            h_tension = np.sqrt(
-                (1.0 + g_snap**2 * (freqs / 2800.0) ** 2) / (1.0 + (freqs / 2800.0) ** 2)
-            )
+            if delta_scale <= 0.0:
+                h_tension = np.ones_like(freqs)
+            else:
+                snap_db = 3.5 * np.tanh((1.8 * delta_scale) / (4.0 * 3.5))
+                g_snap = 10.0 ** (snap_db / 20.0)
+                h_tension = np.sqrt(
+                    (1.0 + g_snap**2 * (freqs / 2800.0) ** 2) / (1.0 + (freqs / 2800.0) ** 2)
+                )
 
         # String voicing for target instrument (relative to standard nickel roundwound)
         if (

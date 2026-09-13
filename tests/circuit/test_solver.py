@@ -491,3 +491,52 @@ def test_generic_analog_preamp_bands():
     h_comp = compute_active_preamp_transfer([band_low, band_high], np.array([s_dc, s_inf]))
     assert abs(h_comp[0]) == pytest.approx(expected_boost, rel=1e-3)
     assert abs(h_comp[1]) == pytest.approx(expected_treble, rel=1e-3)
+
+
+def test_smooth_soft_knee_db_cinf_properties():
+    """Verify that smooth_soft_knee_db is strictly C^inf smooth, monotonic, and linearly transparent."""
+    from allomorph.circuit.solver import smooth_soft_knee_db
+
+    # 1. Scalar and vector type safety
+    s_val = smooth_soft_knee_db(5.0, thresh=6.0, ceiling=8.0)
+    assert isinstance(s_val, float)
+    assert s_val == pytest.approx(5.0, abs=1e-4)
+
+    arr = np.array([0.0, 3.0, 5.0, 6.0, 6.91, 8.0, 20.0])
+    v_val = smooth_soft_knee_db(arr, thresh=6.0, ceiling=8.0)
+    assert isinstance(v_val, np.ndarray)
+
+    # 2. Linear passband transparency below threshold (<= 5.0 dB)
+    for x in [-20.0, -6.0, 0.0, 2.0, 4.0]:
+        y = smooth_soft_knee_db(x, thresh=6.0, ceiling=8.0)
+        assert abs(y - x) < 1e-4, f"Passband linearity violated at {x} dB: diff was {abs(y-x):.6f} dB"
+
+    # 3. Threshold and deconvolution headroom
+    y_thresh = smooth_soft_knee_db(6.0, thresh=6.0, ceiling=8.0)
+    assert abs(y_thresh - 6.0) < 0.01
+
+    y_p_peak = smooth_soft_knee_db(6.91, thresh=6.0, ceiling=8.0)
+    assert 6.75 <= y_p_peak <= 6.91, f"Expected P-Bass peak to pass unclipped: got {y_p_peak:.3f} dB"
+
+    y_ceil = smooth_soft_knee_db(50.0, thresh=6.0, ceiling=8.0)
+    assert y_ceil == pytest.approx(8.0, abs=1e-4)
+
+    # 4. Strict monotonicity across wide dynamic range: dy/dx > 0
+    xs = np.linspace(-10.0, 20.0, 3001)
+    ys = smooth_soft_knee_db(xs, thresh=6.0, ceiling=8.0)
+    diffs = np.diff(ys)
+    assert np.all(diffs > 0.0), "Monotonicity violated: dy/dx must be strictly positive"
+
+    # 5. C^inf smoothness across knee: continuous 1st, 2nd, and 3rd derivatives without kinks
+    dy_dx = np.gradient(ys, xs)
+    d2y_dx2 = np.gradient(dy_dx, xs)
+    d3y_dx3 = np.gradient(d2y_dx2, xs)
+
+    assert not np.any(np.isnan(dy_dx))
+    assert not np.any(np.isnan(d2y_dx2))
+    assert not np.any(np.isnan(d3y_dx3))
+    assert np.all(dy_dx <= 1.00001)
+    assert np.all(dy_dx > 0.0)
+    # Second derivative must be continuous and bounded everywhere
+    assert np.max(np.abs(d2y_dx2)) < 1.0
+

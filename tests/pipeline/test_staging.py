@@ -483,9 +483,9 @@ def test_frontend_ir_unnormalized_unity_gain_and_normalization_modes(tmp_path: P
         assert sr == 48000
         assert len(fir) == 2048
 
-        # Unnormalized filter reflects true physical aperture displacement (0.5 to 1.6, [-6 dB, +4 dB])
+        # Unnormalized filter reflects true physical aperture displacement (0.45 to 1.6, [-7 dB, +4 dB])
         dc_gain = float(np.sum(fir))
-        assert 0.50 <= dc_gain <= 1.60, (
+        assert 0.45 <= dc_gain <= 1.60, (
             f"{inst_id} ({pkey}) unnormalized DC gain ({dc_gain:.4f}) deviated from expected physical bounds"
         )
         peak = float(np.max(np.abs(fir)))

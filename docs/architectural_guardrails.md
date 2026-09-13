@@ -11,6 +11,12 @@ To preserve fast agent reasoning and prevent LLM context exhaustion, Allomorph m
 2. **`docs/architectural_guardrails.md` (Unabridged Handbook):** Contains all extensive LaTeX equations, matrix derivations, parameter mappings, and physics proofs.
 3. **`tests/test_guardrails.py` (Executable Invariants):** Programmatically enforces all rules on every test run.
 4. **Primacy of Physical Modeling over Hardcoded Test Values:** The physical equations and analytical derivations model real physical behavior and serve as the ground truth. When refining or correcting physical modeling (e.g. implementing $C^\infty$ smoothness, removing piecewise steps, regularizing singularities, or fixing multi-pickup delays), hardcoded test values (dB thresholds, frequency bins, gain bounds) are viable and expected to change. Never warp, tune, or artificially clamp genuine physical formulas to fit obsolete or heuristic legacy test assertions; instead, update the tests to reflect the verified physical behavior.
+5. **Catalog-Driven Empirical Analysis for Clamps, Limiters & Thresholds:** Never pick arbitrary constants, clipping bounds, or soft-knee thresholds by intuition, guesswork, or isolated single-voice tests. Every clamp, gain bound, soft-knee threshold, and regularization floor introduced into the modeling pipeline must be empirically evaluated across the entire Cartesian product of the catalog (all $N$ playable source pickups $\times$ all $M$ target voices, encompassing all 735+ catalog transformations). The analysis must strictly enforce:
+   - **100% Linear Passband Transparency:** Authentic physical and electrical transformations must remain uncompressed (linear identity) within normal musical operating bounds.
+   - **Thresholds Above Genuine Maxima:** Soft-knee thresholds and headroom ceilings must be calibrated above the highest legitimate electroacoustic peaks observed across the catalog (such as differential passive circuit resonance peaks up to $+6.9\text{ dB}$ or aperture displacement ratios from neck-to-bridge routing).
+   - **Physical Asymmetry Preservation:** If the underlying physics is directional or asymmetric (such as bridge displacement scaling, where strings have tighter boundary limits near the bridge than toward the neck), limiters must model that physical asymmetry (e.g. an asymmetric algebraic limiter like `alg4`) rather than imposing an artificial symmetric clamp (`tanh(x/g)`) that prematurely compresses the valid physical direction.
+   - **Strictly Targeted Regularization:** Clamping and saturation must strictly target genuine out-of-band divergence, non-invertible comb nulls, high-frequency Johnson noise/coil hiss amplification, or 24-bit fixed-point PCM integer overflow—never suppressing valid in-band acoustic or circuit response.
+   - **Living Inventory Registry:** All pipeline clamps, limits, ceilings, and floors must be registered, classified, and tracked in [`docs/clamp_and_limit_registry.md`](file:///Users/peter/Projects/pethin/passivizer/docs/clamp_and_limit_registry.md).
 
 When adding new modeling features, write the mathematical derivations into this document, declare the rule in `AGENTS.md`, and add an invariant check to `tests/test_guardrails.py`.
 
@@ -94,8 +100,16 @@ Never clamp transfer ratio denominators with premature floors (e.g. `np.maximum(
   vanishing continuously at $x=0$.
 - **Quadratic Steinmetz Core:** The infinite gradient singularity of $|x|^{1.6}$ at origin is eliminated via quadratic regularization:
   $$S(u) = \left(\frac{u^2}{1 + u^2}\right)^{0.8}$$
-- **Bidirectional Soft-Knee Saturation:** Bound maximum boosts and damping using smooth asymptotic saturation:
-  $$r_{\text{db}} = 20 \log_{10}(\text{ratio}), \quad r_{\text{soft\_db}} = g \cdot \tanh\left(\frac{r_{\text{db}}}{g}\right)$$
+- **Strictly $C^\infty$ Thresholded Soft-Knee Saturation (`smooth_soft_knee_db`):** When soft-limiting positive gain boost, unthresholded $g \cdot \tanh(r_{\text{db}} / g)$ begins compressing immediately at $0\text{ dB}$, artificially blunting legitimate low-to-mid boost (e.g. compressing $+4\text{ dB}$ to $+3.7\text{ dB}$). Furthermore, piecewise thresholded conditionals (`np.where(r > thresh, ...)`) introduce higher-derivative kinks at the boundary. Instead, Allomorph evaluates a strictly $C^\infty$ infinitely differentiable thresholded soft knee with smooth softplus excess:
+  $$\text{excess} = \frac{1}{\alpha} \ln\left(1 + e^{\alpha(r_{\text{db}} - \text{thresh})}\right) = \frac{1}{\alpha} \text{logaddexp}\left(0, \alpha(r_{\text{db}} - \text{thresh})\right), \quad \alpha = 2.0$$
+  $$\text{sat\_excess} = w \cdot \tanh\left(\frac{\text{excess}}{w}\right), \quad w = \text{ceiling} - \text{thresh}$$
+  $$r_{\text{soft\_db}} = r_{\text{db}} - \text{excess} + \text{sat\_excess}$$
+  where $\text{thresh}$ is chosen above the highest legitimate catalog peak (e.g. $\text{thresh} = 6.0\text{ dB}$, $\text{ceiling} = 8.0\text{ dB}$, $w = 2.0\text{ dB}$).
+  Properties:
+  - **Strictly $C^\infty$ Everywhere:** Continuous derivatives of all orders ($\frac{d^n y}{dx^n} \in C(\mathbb{R})$) with zero piecewise conditionals, zero `np.where`, and zero boundary kinks.
+  - **100% Linear Passband Transparency:** For $r_{\text{db}} \le \text{thresh} - 1.0\text{ dB}$, $|r_{\text{soft\_db}} - r_{\text{db}}| < 10^{-4}\text{ dB}$ (virtually bit-exact linear passband).
+  - **Strict Monotonicity:** $\frac{dy}{dx} = 1 - \sigma(\alpha(x - \text{thresh})) \cdot \tanh^2\left(\frac{\text{excess}}{w}\right) \in (0, 1]$ everywhere.
+  - **Asymptotic Boundedness:** As $r_{\text{db}} \to +\infty$, $r_{\text{soft\_db}} \to \text{ceiling}$ without overshoot.
 
 ### 2.2 Smooth $C^\infty$ Transition Across $0\text{ dB}$ Threshold
 Never use piecewise conditionals (`np.where(h > 0, h * s, h)`) which create first-derivative slope kinks at $0\text{ dB}$. Use smooth softplus blending:
