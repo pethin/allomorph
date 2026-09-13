@@ -567,9 +567,7 @@ def build_instrument_frontend_dataframe(inst: InstrumentConfig) -> pl.DataFrame:
         pos_m = p_cfg.position_from_bridge_m or 0.0
         pos_mm = float(pos_m * 1000.0) if pos_m else 0.0
 
-        h_front = compute_frontend_transfer_function(
-            inst, p_key, freqs=freqs, can_model=can_model
-        )
+        h_front = compute_frontend_transfer_function(inst, p_key, freqs=freqs, can_model=can_model)
         db_front = 20.0 * np.log10(np.maximum(h_front, 1e-6))
 
         mag_arrays.append(db_front)
@@ -635,9 +633,7 @@ def build_composite_instrument_dataframe(
     # Stages 1, 2, 3: Per-pickup curves (deduplicated across target voices)
     for _p_key, p_cfg in sorted(pickups.items()):
         p_name = p_cfg.name
-        h_front = compute_frontend_transfer_function(
-            inst, _p_key, freqs=freqs, can_model=can_model
-        )
+        h_front = compute_frontend_transfer_function(inst, _p_key, freqs=freqs, can_model=can_model)
         db_front = np.round(20.0 * np.log10(np.maximum(h_front, 1e-6)), 2)
         # Source Bass Input entering Block 1 (relative to Canonical Intermediate baseline)
         db_src = -db_front
@@ -937,3 +933,135 @@ def build_baked_responses_dataframe(
         }
     )
 
+
+def compute_fir_csd(
+    fir: Sequence[float] | np.ndarray,
+    freqs: Sequence[float] | np.ndarray,
+    num_slices: int = 24,
+    max_time_ms: float = 10.0,
+    sr: int = 48000,
+    n_fft: int = 2048,
+    n_rise: int = 16,
+) -> tuple[list[float], list[list[float]]]:
+    """
+    Computes Cumulative Spectral Decay (CSD) waterfall slices for an impulse response.
+    Slices the FIR across time from t=0 to max_time_ms with a smooth half-Hann onset taper
+    to prevent truncation spectral splatter.
+    Returns:
+      (time_ms, csd_matrix) where csd_matrix has shape [num_slices, len(freqs)] with dB values.
+    """
+    fir_arr = np.asarray(fir, dtype=np.float64)
+    total_samples = len(fir_arr)
+    max_sample = round((max_time_ms / 1000.0) * sr)
+    max_sample = min(max_sample, total_samples - 1)
+
+    time_indices = np.linspace(0, max_sample, num_slices, dtype=int)
+    time_ms = [round(float(idx / sr * 1000.0), 2) for idx in time_indices]
+
+    rise = 0.5 * (1.0 - np.cos(np.pi * np.arange(n_rise) / n_rise))
+    rfft_freqs = np.fft.rfftfreq(n_fft, d=1.0 / sr)
+    f_eval = np.asarray(freqs, dtype=np.float64)
+
+    csd_matrix: list[list[float]] = []
+    for t_start in time_indices:
+        gated = fir_arr.copy()
+        if t_start > 0:
+            gated[:t_start] = 0.0
+            r_end = min(t_start + n_rise, total_samples)
+            gated[t_start:r_end] *= rise[: (r_end - t_start)]
+
+        spec = np.abs(np.fft.rfft(gated, n_fft))
+        interp_spec = np.interp(f_eval, rfft_freqs, spec)
+        db = 20.0 * np.log10(np.maximum(interp_spec, 1e-3))
+        csd_matrix.append([round(float(v), 1) for v in db])
+
+    return time_ms, csd_matrix
+
+
+_BAKED_WATERFALL_CACHE: dict[tuple[int, int, float], dict[str, Any]] = {}
+
+
+def build_baked_waterfall_3d_data(
+    num_freqs: int = 50,
+    num_slices: int = 24,
+    max_time_ms: float = 10.0,
+) -> dict[str, Any]:
+    """
+    Builds the compact 3D Cumulative Spectral Decay (CSD) and waveform data structure for
+    all playable instruments and target voicings in the 1-block monolithic baked configuration.
+    Results are cached for fast subsequent renders.
+    """
+    cache_key = (num_freqs, num_slices, float(max_time_ms))
+    if cache_key in _BAKED_WATERFALL_CACHE:
+        return _BAKED_WATERFALL_CACHE[cache_key]
+
+    baked = build_baked_responses_data(step=3)
+    f_orig = np.asarray(baked["frequencies"], dtype=np.float64)
+    f_lin = np.asarray(FREQS, dtype=np.float64)
+
+    f_eval = [round(float(f), 1) for f in np.geomspace(20.0, 20000.0, num_freqs)]
+
+    # Compute time_ms using dummy impulse
+    dummy_impulse = np.zeros(2048, dtype=np.float64)
+    dummy_impulse[0] = 1.0
+    time_ms, _ = compute_fir_csd(
+        dummy_impulse, f_eval, num_slices=num_slices, max_time_ms=max_time_ms
+    )
+
+    responses_3d: dict[str, dict[str, dict[str, Any]]] = {}
+
+    for iid, inst_resp in baked["responses"].items():
+        responses_3d[iid] = {}
+        for vid, resp in inst_resp.items():
+            db_baked = np.asarray(resp["magnitude_db"], dtype=np.float64)
+            pkey = resp["pickup_key"]
+            pname = resp["pickup_name"]
+
+            # Interpolate magnitude response onto f_eval
+            mag_eval = np.interp(f_eval, f_orig, db_baked)
+            mag_eval_list = [round(float(v), 1) for v in mag_eval]
+
+            if np.allclose(db_baked, 0.0, atol=1e-2):
+                # Identity voice: unit impulse at t=0, -60 dB floor elsewhere
+                csd_matrix = [
+                    [0.0 if m == 0 else -60.0 for _ in range(num_freqs)] for m in range(num_slices)
+                ]
+                fir_head = [1.0] + [0.0] * 127
+            else:
+                mag_lin = np.interp(
+                    f_lin,
+                    f_orig,
+                    10.0 ** (db_baked / 20.0),
+                    left=10.0 ** (db_baked[0] / 20.0),
+                    right=10.0 ** (db_baked[-1] / 20.0),
+                )
+                fir = np.array(
+                    synthesize_minimum_phase_fir(mag_lin, num_taps=2048, normalize=False),
+                    dtype=np.float64,
+                )
+                _, csd_matrix = compute_fir_csd(
+                    fir,
+                    f_eval,
+                    num_slices=num_slices,
+                    max_time_ms=max_time_ms,
+                )
+                fir_head = [round(float(x), 4) for x in fir[:128]]
+
+            responses_3d[iid][vid] = {
+                "pickup_key": pkey,
+                "pickup_name": pname,
+                "magnitude_db": mag_eval_list,
+                "csd_matrix": csd_matrix,
+                "fir_waveform": fir_head,
+            }
+
+    data: dict[str, Any] = {
+        "frequencies": f_eval,
+        "time_ms": time_ms,
+        "instruments": baked["instruments"],
+        "voices": baked["voices"],
+        "responses": responses_3d,
+    }
+
+    _BAKED_WATERFALL_CACHE[cache_key] = data
+    return data

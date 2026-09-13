@@ -410,13 +410,17 @@ def build_portal_html(
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
         <span>Frontend Deconvolutions (Block 1)</span>
       </button>
+      <button class="primary-nav-btn" id="pnav-inspector" onclick="selectPrimaryView('inspector')">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" y1="21" x2="4" y2="14"></line><line x1="4" y1="10" x2="4" y2="3"></line><line x1="12" y1="21" x2="12" y2="12"></line><line x1="12" y1="8" x2="12" y2="3"></line><line x1="20" y1="21" x2="20" y2="16"></line><line x1="20" y1="12" x2="20" y2="3"></line><line x1="1" y1="14" x2="7" y2="14"></line><line x1="9" y1="8" x2="15" y2="8"></line><line x1="17" y1="16" x2="23" y2="16"></line></svg>
+        <span>Signal Flow Inspector (End-to-End)</span>
+      </button>
       <button class="primary-nav-btn" id="pnav-baked" onclick="selectPrimaryView('baked')">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
         <span>Baked Responses (1-Block)</span>
       </button>
-      <button class="primary-nav-btn" id="pnav-inspector" onclick="selectPrimaryView('inspector')">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" y1="21" x2="4" y2="14"></line><line x1="4" y1="10" x2="4" y2="3"></line><line x1="12" y1="21" x2="12" y2="12"></line><line x1="12" y1="8" x2="12" y2="3"></line><line x1="20" y1="21" x2="20" y2="16"></line><line x1="20" y1="12" x2="20" y2="3"></line><line x1="1" y1="14" x2="7" y2="14"></line><line x1="9" y1="8" x2="15" y2="8"></line><line x1="17" y1="16" x2="23" y2="16"></line></svg>
-        <span>Signal Flow Inspector (End-to-End)</span>
+      <button class="primary-nav-btn" id="pnav-waterfall3d" onclick="selectPrimaryView('waterfall3d')">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline></svg>
+        <span>Baked IR 3D Waterfall</span>
       </button>
     </div>
 
@@ -465,6 +469,7 @@ def build_portal_html(
       const pnavTargets = document.getElementById('pnav-targets');
       const pnavFrontends = document.getElementById('pnav-frontends');
       const pnavBaked = document.getElementById('pnav-baked');
+      const pnavWaterfall3d = document.getElementById('pnav-waterfall3d');
       const pnavInspector = document.getElementById('pnav-inspector');
       const subcontrols = document.getElementById('inspector-subcontrols');
       const frame = document.getElementById('chart-frame');
@@ -477,6 +482,7 @@ def build_portal_html(
       pnavTargets.classList.toggle('active', currentPrimaryView === 'targets');
       pnavFrontends.classList.toggle('active', currentPrimaryView === 'frontends');
       if (pnavBaked) pnavBaked.classList.toggle('active', currentPrimaryView === 'baked');
+      if (pnavWaterfall3d) pnavWaterfall3d.classList.toggle('active', currentPrimaryView === 'waterfall3d');
       pnavInspector.classList.toggle('active', currentPrimaryView === 'inspector');
 
       if (currentPrimaryView === 'targets') {{
@@ -515,6 +521,19 @@ def build_portal_html(
         metaPickups.textContent = '276 Monolithic Transfer Curves (H_diff = H_tgt / H_src) with dynamic multi-selection';
         metaViewMode.textContent = 'Baked End-to-End Single-Block';
         if (window.history.replaceState) window.history.replaceState(null, null, '#baked');
+        return;
+      }}
+
+      if (currentPrimaryView === 'waterfall3d') {{
+        subcontrols.style.display = 'none';
+        const url = `${{baseUrlPrefix}}baked_waterfall_3d.html`;
+        frame.src = url;
+        standaloneLink.href = url;
+        metaName.textContent = 'Baked Voicing IR 3D Waterfall & Topography';
+        metaScale.textContent = 'Cumulative Spectral Decay (CSD) & Multi-Voice 3D Landscape';
+        metaPickups.textContent = 'Interactive 3D WebGL Surface: Time Decay (0-10ms) x Frequency x dB with Waveform Inspector';
+        metaViewMode.textContent = '3D Impulse Response Analysis';
+        if (window.history.replaceState) window.history.replaceState(null, null, '#waterfall3d');
         return;
       }}
 
@@ -585,6 +604,8 @@ def build_portal_html(
         currentPrimaryView = 'frontends';
       }} else if (hash === 'baked') {{
         currentPrimaryView = 'baked';
+      }} else if (hash === 'waterfall3d') {{
+        currentPrimaryView = 'waterfall3d';
       }} else if (hash) {{
         const hashId = hash.split(':')[0];
         if (instruments[hashId]) {{

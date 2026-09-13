@@ -11,6 +11,7 @@ from allomorph.config.instruments import load_instrument
 from allomorph.visualizer.charts import (
     generate_all_charts,
     generate_baked_responses_page,
+    generate_baked_waterfall_3d_page,
     generate_composite_instrument_chart,
     generate_frontend_deconvolutions_chart,
     generate_instrument_frontend_chart,
@@ -24,6 +25,7 @@ from allomorph.visualizer.dataframe import (
     NUM_POINTS,
     build_baked_responses_data,
     build_baked_responses_dataframe,
+    build_baked_waterfall_3d_data,
     build_composite_instrument_dataframe,
     build_frontend_deconvolutions_dataframe,
     build_instrument_frontend_dataframe,
@@ -31,6 +33,7 @@ from allomorph.visualizer.dataframe import (
     build_voice_dataframe,
     compute_canonical_acoustic_response,
     compute_canonical_intermediate_response,
+    compute_fir_csd,
     log_freqs,
 )
 from allomorph.visualizer.portal import (
@@ -52,6 +55,7 @@ __all__ = [
     "append_spec_panel",
     "build_baked_responses_data",
     "build_baked_responses_dataframe",
+    "build_baked_waterfall_3d_data",
     "build_composite_instrument_dataframe",
     "build_frontend_deconvolutions_dataframe",
     "build_instrument_frontend_dataframe",
@@ -60,9 +64,11 @@ __all__ = [
     "build_voice_dataframe",
     "compute_canonical_acoustic_response",
     "compute_canonical_intermediate_response",
+    "compute_fir_csd",
     "format_instrument_meta",
     "generate_all_charts",
     "generate_baked_responses_page",
+    "generate_baked_waterfall_3d_page",
     "generate_composite_instrument_chart",
     "generate_frontend_deconvolutions_chart",
     "generate_instrument_frontend_chart",

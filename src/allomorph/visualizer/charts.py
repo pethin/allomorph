@@ -19,6 +19,7 @@ from allomorph.dsp import FREQS
 from allomorph.physics import is_voice_matching_source
 from allomorph.visualizer.dataframe import (
     build_baked_responses_data,
+    build_baked_waterfall_3d_data,
     build_composite_instrument_dataframe,
     build_instrument_frontend_dataframe,
     build_universal_targets_dataframe,
@@ -816,7 +817,13 @@ def generate_baked_responses_page(target_html: Path | None = None) -> Path:
       <div class="header-title">
         <span>Baked Transformations (1-Block Single Model) — Multi-Instrument & Multi-Voicing Matrix</span>
       </div>
-      <div id="curve-counter" class="badge-counter">6 active curves</div>
+      <div style="display: flex; gap: 8px; align-items: center;">
+        <a href="baked_waterfall_3d.html" class="quick-btn" style="text-decoration: none; display: inline-flex; align-items: center; gap: 6px; color: #38bdf8; border-color: #38bdf8; padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: 700;">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline></svg>
+          <span>View 3D IR Waterfall &rarr;</span>
+        </a>
+        <div id="curve-counter" class="badge-counter">6 active curves</div>
+      </div>
     </div>
 
     <div class="section-title-row">
@@ -1105,6 +1112,760 @@ def generate_baked_responses_page(target_html: Path | None = None) -> Path:
 """
     target_html.write_text(html_content, encoding="utf-8")
     print(f"Saved Baked Transformations master page: {target_html}")
+    return target_html
+
+
+def generate_baked_waterfall_3d_page(target_html: Path | None = None) -> Path:
+    """
+    Renders the Mode 3 Baked Voicing IR 3D Waterfall & Topography master page.
+    Visualizes the linear impulse response (IR) of monolithic baked transformations via
+    Cumulative Spectral Decay (CSD) 3D surfaces and multi-voicing catalog 3D landscapes.
+    Embeds the compact CSD matrix directly for zero-latency local viewing using WebGL (Plotly.js).
+    """
+    if target_html is None:
+        target_html = RESPONSES_DIR / "baked_waterfall_3d.html"
+    target_html = Path(target_html)
+    target_html.parent.mkdir(parents=True, exist_ok=True)
+
+    data = build_baked_waterfall_3d_data(num_freqs=50, num_slices=24, max_time_ms=10.0)
+    data_json = json.dumps(data)
+
+    default_inst = (
+        "30in_emg_mmtw"
+        if "30in_emg_mmtw" in data["instruments"]
+        else next(iter(data["instruments"].keys()))
+    )
+    inst_buttons: list[str] = []
+    for iid, info in sorted(data["instruments"].items()):
+        is_act = " active" if iid == default_inst else ""
+        name = info["name"]
+        scale = info["scale_in"]
+        inst_buttons.append(
+            f'        <button class="chip-btn{is_act}" data-id="{iid}" onclick="selectInstrument(\'{iid}\')">'
+            f'<span class="chip-check">✓</span><span>{name} ({scale:.0f}")</span></button>'
+        )
+    inst_chips_html = "\n".join(inst_buttons)
+
+    default_voice = (
+        "05_vintage_62_p_alnico"
+        if "05_vintage_62_p_alnico" in data["voices"]
+        else next(iter(data["voices"].keys()))
+    )
+    voice_buttons: list[str] = []
+    for vid, vinfo in sorted(data["voices"].items()):
+        is_act = " active" if vid == default_voice else ""
+        vname = vinfo["name"]
+        fam = vinfo["family"]
+        voice_buttons.append(
+            f'        <button class="chip-btn{is_act}" data-id="{vid}" data-family="{fam}" onclick="selectVoicing(\'{vid}\')">'
+            f'<span class="chip-check">✓</span><span>{vname}</span></button>'
+        )
+    voice_chips_html = "\n".join(voice_buttons)
+
+    html_content = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Allomorph Master Voices: Baked Voicing IR 3D Waterfall & Topography</title>
+  <style>
+    :root {{
+      --bg: #0d1117;
+      --card-bg: #161b22;
+      --card-hover: #1c2128;
+      --border: #30363d;
+      --accent: #38bdf8;
+      --accent-hover: #0ea5e9;
+      --text: #f0f6fc;
+      --text-muted: #8b949e;
+      --tag-bg: #21262d;
+      --btn-active: #1f6feb;
+    }}
+    * {{ box-sizing: border-box; margin: 0; padding: 0; }}
+    body {{
+      background-color: var(--bg) !important;
+      color: #c9d1d9 !important;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      padding: 12px 16px;
+      margin: 0;
+      overflow-x: hidden;
+    }}
+    .header-card {{
+      max-width: 1100px;
+      margin: 0 auto 12px auto;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 14px 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }}
+    .header-title-row {{
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 10px;
+    }}
+    .header-title {{
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }}
+    .badge-counter {{
+      font-size: 11px;
+      font-weight: 700;
+      background: rgba(56, 189, 248, 0.16);
+      color: #38bdf8;
+      border: 1px solid #38bdf8;
+      padding: 3px 10px;
+      border-radius: 12px;
+    }}
+    .section-title-row {{
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 8px;
+      border-top: 1px solid var(--border);
+      padding-top: 10px;
+    }}
+    .section-label {{
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      color: var(--text-muted);
+    }}
+    .quick-actions {{
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      align-items: center;
+    }}
+    .quick-btn {{
+      background: var(--tag-bg);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      padding: 3px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.12s ease;
+    }}
+    .quick-btn:hover {{
+      color: var(--text);
+      border-color: #8b949e;
+    }}
+    .mode-pill-container {{
+      display: inline-flex;
+      background: #21262d;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 2px;
+      gap: 2px;
+    }}
+    .mode-btn {{
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      padding: 4px 12px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.12s ease;
+    }}
+    .mode-btn.active {{
+      background: var(--btn-active);
+      color: #ffffff;
+      box-shadow: 0 0 8px rgba(31, 111, 235, 0.4);
+    }}
+    .chips-container {{
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }}
+    .chip-btn {{
+      background: var(--tag-bg);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.12s ease;
+      user-select: none;
+    }}
+    .chip-btn:hover {{
+      background: var(--card-hover);
+      color: var(--text);
+      border-color: #8b949e;
+    }}
+    .chip-btn.active {{
+      background: rgba(56, 189, 248, 0.12);
+      border-color: #38bdf8;
+      color: #38bdf8;
+      font-weight: 700;
+    }}
+    .chip-check {{
+      font-size: 10px;
+      display: inline-block;
+      opacity: 0.25;
+    }}
+    .chip-btn.active .chip-check {{
+      opacity: 1;
+      color: #38bdf8;
+    }}
+    .controls-bar {{
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+      background: #11151c;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 8px 12px;
+    }}
+    .control-group {{
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-muted);
+    }}
+    .control-select {{
+      background: var(--tag-bg);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 3px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 600;
+      outline: none;
+      cursor: pointer;
+    }}
+    .chart-card {{
+      max-width: 1100px;
+      margin: 0 auto 12px auto;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px;
+      overflow: hidden;
+    }}
+    #plotly-vis {{
+      width: 100%;
+      height: 620px;
+    }}
+    .waveform-card {{
+      max-width: 1100px;
+      margin: 0 auto 12px auto;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }}
+    .waveform-header {{
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--text);
+    }}
+    .waveform-metrics {{
+      display: flex;
+      gap: 16px;
+      font-size: 11px;
+      color: var(--text-muted);
+    }}
+    .waveform-metrics span {{
+      color: #38bdf8;
+      font-weight: 600;
+    }}
+    #fir-canvas {{
+      width: 100%;
+      height: 100px;
+      background: #0d1117;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+    }}
+    .directives-card {{
+      max-width: 1100px;
+      margin: 0 auto 16px auto;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 14px 18px;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 16px;
+    }}
+    .directive-item {{
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      font-size: 12px;
+      line-height: 1.45;
+      color: var(--text-muted);
+    }}
+    .directive-title {{
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--text);
+    }}
+    .highlight {{
+      color: #58a6ff;
+      font-weight: 600;
+    }}
+  </style>
+  <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+</head>
+<body>
+  <div class="header-card">
+    <div class="header-title-row">
+      <div class="header-title">
+        <span>Baked Voicing IR 3D Waterfall & Topography (Mode 3 Single-Block)</span>
+      </div>
+      <div style="display: flex; gap: 8px; align-items: center;">
+        <a href="baked_responses.html" class="quick-btn" style="text-decoration: none; display: inline-flex; align-items: center; gap: 6px; color: #38bdf8; border-color: #38bdf8; padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: 700;">
+          <span>&larr; View 2D Curves</span>
+        </a>
+        <div id="status-badge" class="badge-counter">CSD Waterfall Active</div>
+      </div>
+    </div>
+
+    <div class="controls-bar">
+      <div class="control-group">
+        <span>3D DISPLAY MODE:</span>
+        <div class="mode-pill-container">
+          <button id="btn-mode-csd" class="mode-btn active" onclick="setViewMode('csd')">3D CSD Waterfall (Decay)</button>
+          <button id="btn-mode-catalog" class="mode-btn" onclick="setViewMode('catalog')">3D Voicing Landscape (All Voices)</button>
+        </div>
+      </div>
+
+      <div class="quick-actions">
+        <div class="control-group">
+          <span>COLORSCALE:</span>
+          <select id="select-colorscale" class="control-select" onchange="changeColorScale(this.value)">
+            <option value="Viridis" selected>Viridis (Acoustic)</option>
+            <option value="Electric">Electric (Cyan / Neon)</option>
+            <option value="Turbo">Turbo (High-Contrast)</option>
+            <option value="Sunset">Sunset (Warmth)</option>
+            <option value="Plasma">Plasma (Dark Neon)</option>
+          </select>
+        </div>
+
+        <button id="btn-wireframe" class="quick-btn" onclick="toggleWireframe()">Wireframe: OFF</button>
+        <button id="btn-contours" class="quick-btn" onclick="toggleContours()">Contours: ON</button>
+        <button class="quick-btn" onclick="resetCamera()">Reset Camera</button>
+      </div>
+    </div>
+
+    <div class="section-title-row">
+      <span class="section-label">Source Instrument:</span>
+      <div class="quick-actions">
+        <button class="quick-btn" onclick="selectInstrument('30in_emg_mmtw')">30" EMG MMTW</button>
+        <button class="quick-btn" onclick="selectInstrument('32in_reverse_pmm')">32" Reverse P/MM</button>
+        <button class="quick-btn" onclick="selectInstrument('34in_standard_p')">34" Standard P</button>
+        <button class="quick-btn" onclick="selectInstrument('34in_standard_jazz')">34" Standard Jazz</button>
+        <button class="quick-btn" onclick="selectInstrument('dingwall_ng3_37in')">Dingwall 34-37"</button>
+      </div>
+    </div>
+    <div id="inst-chips" class="chips-container">
+{inst_chips_html}
+    </div>
+
+    <div class="section-title-row">
+      <span id="voice-section-label" class="section-label">Target Voicing (Select to inspect):</span>
+      <div class="quick-actions">
+        <button class="quick-btn" onclick="filterVoicingsByFamily('Precision')">Precision</button>
+        <button class="quick-btn" onclick="filterVoicingsByFamily('Jazz')">Jazz</button>
+        <button class="quick-btn" onclick="filterVoicingsByFamily('StingRay')">StingRay</button>
+        <button class="quick-btn" onclick="filterVoicingsByFamily('PJ')">PJ & P/MM</button>
+        <button class="quick-btn" onclick="filterVoicingsByFamily('Character')">Character</button>
+        <button class="quick-btn" onclick="filterVoicingsByFamily('All')">Show All</button>
+      </div>
+    </div>
+    <div id="voice-chips" class="chips-container">
+{voice_chips_html}
+    </div>
+  </div>
+
+  <div class="chart-card">
+    <div id="plotly-vis"></div>
+  </div>
+
+  <div class="waveform-card" id="waveform-panel">
+    <div class="waveform-header">
+      <span id="waveform-title">2048-Tap Minimum-Phase Impulse Response (h[n] Transient Window: 0 - 2.67 ms)</span>
+      <div class="waveform-metrics">
+        <div>Initial Polarity: <span id="metric-polarity">+ Positive</span></div>
+        <div>Peak Magnitude: <span id="metric-peak">0.00 dBFS</span></div>
+        <div>Sample Rate: <span>48 kHz</span></div>
+        <div>Taps: <span>2048 (42.7 ms)</span></div>
+      </div>
+    </div>
+    <canvas id="fir-canvas" width="1060" height="100"></canvas>
+  </div>
+
+  <div class="directives-card">
+    <div class="directive-item">
+      <div class="directive-title">1. Cumulative Spectral Decay (CSD) Mechanics</div>
+      <div>Slicing the minimum-phase impulse response <span class="highlight">h[n]</span> with a moving onset taper reveals how energy dissipates across time. High-Q passive resonances (e.g., Alnico P-bass or StingRay MM) ring out for <span class="highlight">4&ndash;8 ms</span>, whereas broad active voicings settle in <span class="highlight">&lt; 1 ms</span>.</div>
+    </div>
+    <div class="directive-item">
+      <div class="directive-title">2. Causal Minimum-Phase Settling & Positive Polarity</div>
+      <div>Synthesized via Allomorph's vectorized homomorphic Hilbert real-cepstrum engine. Impulse responses feature zero pre-echo, causal onset, and strictly positive initial polarity (+) to prevent comb cancellations when blended in parallel.</div>
+    </div>
+    <div class="directive-item">
+      <div class="directive-title">3. 3D Topographic Catalog Relief</div>
+      <div>Switching to <span class="highlight">3D Voicing Landscape</span> stacks target voicings across the depth axis, exposing harmonic notch geometry and spatial comb-filter shifts directly as a continuous physical acoustic terrain.</div>
+    </div>
+  </div>
+
+  <script id="waterfall-data" type="application/json">
+{data_json}
+  </script>
+
+  <script>
+    const waterfallData = JSON.parse(document.getElementById('waterfall-data').textContent);
+    let currentInst = '{default_inst}';
+    let currentVoice = '{default_voice}';
+    let viewMode = 'csd'; // 'csd' or 'catalog'
+    let currentColorScale = 'Viridis';
+    let showWireframe = false;
+    let showContours = true;
+    let lastCamera = null;
+
+    const logTickVals = [1.301, 1.699, 2.0, 2.301, 2.699, 3.0, 3.301, 3.699, 4.0, 4.301];
+    const logTickText = ['20', '50', '100', '200', '500', '1k', '2k', '5k', '10k', '20k'];
+    const logFreqs = waterfallData.frequencies.map(f => Math.log10(f));
+
+    function setViewMode(mode) {{
+      viewMode = mode;
+      document.getElementById('btn-mode-csd').classList.toggle('active', mode === 'csd');
+      document.getElementById('btn-mode-catalog').classList.toggle('active', mode === 'catalog');
+      document.getElementById('status-badge').textContent = mode === 'csd' ? 'CSD Waterfall Active' : 'Catalog Landscape Active';
+      document.getElementById('waveform-panel').style.display = mode === 'csd' ? 'flex' : 'none';
+      render3DPlot();
+    }}
+
+    function selectInstrument(id) {{
+      currentInst = id;
+      document.querySelectorAll('#inst-chips .chip-btn').forEach(btn => {{
+        btn.classList.toggle('active', btn.dataset.id === id);
+      }});
+      render3DPlot();
+    }}
+
+    function selectVoicing(id) {{
+      currentVoice = id;
+      document.querySelectorAll('#voice-chips .chip-btn').forEach(btn => {{
+        btn.classList.toggle('active', btn.dataset.id === id);
+      }});
+      if (viewMode === 'catalog') {{
+        // Switch to CSD mode when clicking a specific voice to inspect its decay
+        setViewMode('csd');
+      }} else {{
+        render3DPlot();
+      }}
+    }}
+
+    function filterVoicingsByFamily(family) {{
+      const chips = document.querySelectorAll('#voice-chips .chip-btn');
+      chips.forEach(btn => {{
+        if (family === 'All' || btn.dataset.family === family) {{
+          btn.style.display = 'inline-flex';
+        }} else {{
+          btn.style.display = 'none';
+        }}
+      }});
+      if (viewMode === 'catalog') {{
+        render3DPlot();
+      }}
+    }}
+
+    function changeColorScale(scale) {{
+      currentColorScale = scale;
+      render3DPlot();
+    }}
+
+    function toggleWireframe() {{
+      showWireframe = !showWireframe;
+      document.getElementById('btn-wireframe').textContent = 'Wireframe: ' + (showWireframe ? 'ON' : 'OFF');
+      render3DPlot();
+    }}
+
+    function toggleContours() {{
+      showContours = !showContours;
+      document.getElementById('btn-contours').textContent = 'Contours: ' + (showContours ? 'ON' : 'OFF');
+      render3DPlot();
+    }}
+
+    function resetCamera() {{
+      lastCamera = null;
+      render3DPlot();
+    }}
+
+    function render3DPlot() {{
+      const plotDiv = document.getElementById('plotly-vis');
+      const instInfo = waterfallData.instruments[currentInst] || {{ name: currentInst }};
+
+      if (plotDiv && plotDiv._fullLayout && plotDiv._fullLayout.scene) {{
+        lastCamera = plotDiv._fullLayout.scene._scene.getCamera();
+      }}
+
+      if (viewMode === 'csd') {{
+        renderCsdView(plotDiv, instInfo);
+      }} else {{
+        renderCatalogView(plotDiv, instInfo);
+      }}
+    }}
+
+    function renderCsdView(plotDiv, instInfo) {{
+      const resp = waterfallData.responses[currentInst][currentVoice];
+      const vInfo = waterfallData.voices[currentVoice] || {{ name: currentVoice }};
+      const csd = resp.csd_matrix;
+
+      const hoverText = [];
+      for (let i = 0; i < waterfallData.time_ms.length; i++) {{
+        const row = [];
+        const t = waterfallData.time_ms[i];
+        for (let j = 0; j < waterfallData.frequencies.length; j++) {{
+          const f = waterfallData.frequencies[j];
+          const db = csd[i][j];
+          row.push(`Freq: ${{f.toFixed(1)}} Hz<br>Decay: ${{t.toFixed(2)}} ms<br>Mag: ${{db.toFixed(1)}} dB`);
+        }}
+        hoverText.push(row);
+      }}
+
+      const trace = {{
+        type: 'surface',
+        x: logFreqs,
+        y: waterfallData.time_ms,
+        z: csd,
+        colorscale: currentColorScale,
+        showscale: true,
+        colorbar: {{
+          title: {{ text: 'dB', font: {{ color: '#8b949e', size: 11 }} }},
+          tickfont: {{ color: '#8b949e', size: 10 }},
+          len: 0.8,
+          thickness: 14
+        }},
+        contours: {{
+          z: {{
+            show: showContours,
+            usecolormap: true,
+            highlightcolor: '#38bdf8',
+            project: {{ z: true }}
+          }}
+        }},
+        hidesurface: showWireframe,
+        text: hoverText,
+        hoverinfo: 'text'
+      }};
+
+      const layout = {{
+        title: {{
+          text: `<b>Cumulative Spectral Decay (CSD):</b> ${{instInfo.name}} ➔ ${{vInfo.name}}`,
+          font: {{ color: '#f0f6fc', size: 14 }},
+          x: 0.05
+        }},
+        paper_bgcolor: '#161b22',
+        plot_bgcolor: '#161b22',
+        margin: {{ l: 20, r: 20, b: 20, t: 40 }},
+        scene: {{
+          xaxis: {{
+            title: {{ text: 'Frequency (Hz)', font: {{ color: '#8b949e', size: 11 }} }},
+            tickvals: logTickVals,
+            ticktext: logTickText,
+            tickfont: {{ color: '#8b949e', size: 9 }},
+            gridcolor: '#30363d',
+            backgroundcolor: '#0d1117'
+          }},
+          yaxis: {{
+            title: {{ text: 'Decay Time (ms)', font: {{ color: '#8b949e', size: 11 }} }},
+            tickfont: {{ color: '#8b949e', size: 9 }},
+            gridcolor: '#30363d',
+            backgroundcolor: '#0d1117'
+          }},
+          zaxis: {{
+            title: {{ text: 'Magnitude (dB)', font: {{ color: '#8b949e', size: 11 }} }},
+            range: [-60, 15],
+            tickfont: {{ color: '#8b949e', size: 9 }},
+            gridcolor: '#30363d',
+            backgroundcolor: '#0d1117'
+          }},
+          camera: lastCamera || {{ eye: {{ x: -1.75, y: -1.65, z: 1.15 }} }}
+        }}
+      }};
+
+      Plotly.react(plotDiv, [trace], layout, {{ responsive: true, displayModeBar: false }});
+      renderWaveform(resp.fir_waveform, vInfo.name);
+    }}
+
+    function renderCatalogView(plotDiv, instInfo) {{
+      const instResp = waterfallData.responses[currentInst];
+      const visibleChips = Array.from(document.querySelectorAll('#voice-chips .chip-btn'))
+        .filter(btn => btn.style.display !== 'none');
+      const voiceIds = visibleChips.map(btn => btn.dataset.id);
+
+      const zMatrix = [];
+      const yLabels = [];
+      const yIndices = [];
+      const hoverText = [];
+
+      voiceIds.forEach((vid, idx) => {{
+        const r = instResp[vid];
+        const vinfo = waterfallData.voices[vid] || {{ name: vid }};
+        zMatrix.push(r.magnitude_db);
+        yLabels.push(vinfo.name.replace(/ Bass| Passive| Active/g, ''));
+        yIndices.push(idx);
+
+        const row = [];
+        for (let j = 0; j < waterfallData.frequencies.length; j++) {{
+          const f = waterfallData.frequencies[j];
+          const db = r.magnitude_db[j];
+          row.push(`Voice: ${{vinfo.name}}<br>Freq: ${{f.toFixed(1)}} Hz<br>Mag: ${{db.toFixed(1)}} dB`);
+        }}
+        hoverText.push(row);
+      }});
+
+      const trace = {{
+        type: 'surface',
+        x: logFreqs,
+        y: yIndices,
+        z: zMatrix,
+        colorscale: currentColorScale,
+        showscale: true,
+        colorbar: {{
+          title: {{ text: 'dB', font: {{ color: '#8b949e', size: 11 }} }},
+          tickfont: {{ color: '#8b949e', size: 10 }},
+          len: 0.8,
+          thickness: 14
+        }},
+        contours: {{
+          z: {{
+            show: showContours,
+            usecolormap: true,
+            highlightcolor: '#38bdf8',
+            project: {{ z: true }}
+          }}
+        }},
+        hidesurface: showWireframe,
+        text: hoverText,
+        hoverinfo: 'text'
+      }};
+
+      const layout = {{
+        title: {{
+          text: `<b>Baked Voicing 3D Topographic Catalog:</b> ${{instInfo.name}} (${{voiceIds.length}} Voicings)`,
+          font: {{ color: '#f0f6fc', size: 14 }},
+          x: 0.05
+        }},
+        paper_bgcolor: '#161b22',
+        plot_bgcolor: '#161b22',
+        margin: {{ l: 20, r: 20, b: 20, t: 40 }},
+        scene: {{
+          xaxis: {{
+            title: {{ text: 'Frequency (Hz)', font: {{ color: '#8b949e', size: 11 }} }},
+            tickvals: logTickVals,
+            ticktext: logTickText,
+            tickfont: {{ color: '#8b949e', size: 9 }},
+            gridcolor: '#30363d',
+            backgroundcolor: '#0d1117'
+          }},
+          yaxis: {{
+            title: {{ text: 'Target Voicing', font: {{ color: '#8b949e', size: 11 }} }},
+            tickvals: yIndices,
+            ticktext: yLabels,
+            tickfont: {{ color: '#8b949e', size: 8 }},
+            gridcolor: '#30363d',
+            backgroundcolor: '#0d1117'
+          }},
+          zaxis: {{
+            title: {{ text: 'Magnitude (dB)', font: {{ color: '#8b949e', size: 11 }} }},
+            range: [-30, 18],
+            tickfont: {{ color: '#8b949e', size: 9 }},
+            gridcolor: '#30363d',
+            backgroundcolor: '#0d1117'
+          }},
+          camera: lastCamera || {{ eye: {{ x: -1.75, y: -1.65, z: 1.15 }} }}
+        }}
+      }};
+
+      Plotly.react(plotDiv, [trace], layout, {{ responsive: true, displayModeBar: false }});
+    }}
+
+    function renderWaveform(samples, voiceName) {{
+      const canvas = document.getElementById('fir-canvas');
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      const w = canvas.width;
+      const h = canvas.height;
+
+      ctx.clearRect(0, 0, w, h);
+
+      // Grid line at y = 0
+      const midY = h / 2;
+      ctx.strokeStyle = '#21262d';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(0, midY);
+      ctx.lineTo(w, midY);
+      ctx.stroke();
+
+      if (!samples || samples.length === 0) return;
+
+      const maxVal = Math.max(...samples.map(Math.abs), 0.001);
+      const scaleY = (midY - 10) / maxVal;
+
+      document.getElementById('metric-peak').textContent = (20 * Math.log10(maxVal)).toFixed(2) + ' dBFS';
+      document.getElementById('metric-polarity').textContent = samples[0] >= 0 ? '+ Positive' : '- Inverted';
+
+      // Draw glowing waveform
+      ctx.shadowColor = '#38bdf8';
+      ctx.shadowBlur = 6;
+      ctx.strokeStyle = '#38bdf8';
+      ctx.lineWidth = 2;
+
+      ctx.beginPath();
+      const stepX = w / (samples.length - 1);
+      for (let i = 0; i < samples.length; i++) {{
+        const x = i * stepX;
+        const y = midY - (samples[i] * scaleY);
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }}
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+    }}
+
+    window.addEventListener('DOMContentLoaded', () => {{
+      render3DPlot();
+    }});
+  </script>
+</body>
+</html>
+"""
+    target_html.write_text(html_content, encoding="utf-8")
+    print(f"Saved Baked Voicing IR 3D Waterfall page: {target_html}")
     return target_html
 
 
@@ -1475,7 +2236,14 @@ def generate_all_charts(output_dir: str | Path | None = None) -> dict[str, Path]
     print("Generating Baked Transformations (1-Block Single Model)...")
     baked_html = generate_baked_responses_page(out_dir / "baked_responses.html")
 
-    generated: dict[str, Path] = {"baked": baked_html}
+    # 4. Mode 3 3D: Baked Voicing IR 3D Waterfall & Topography
+    print("Generating Baked Voicing IR 3D Waterfall & Topography...")
+    waterfall_3d_html = generate_baked_waterfall_3d_page(out_dir / "baked_waterfall_3d.html")
+
+    generated: dict[str, Path] = {
+        "baked": baked_html,
+        "baked_waterfall_3d": waterfall_3d_html,
+    }
     for inst_id, inst_cfg in all_insts.items():
         if inst_id == "canonical_intermediate":
             continue
