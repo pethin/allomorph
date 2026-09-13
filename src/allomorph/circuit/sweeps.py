@@ -112,11 +112,25 @@ class ParametricSweepResult(BaseModel):
             curve = np.asarray(c, dtype=np.float64)
             loss_db = float(curve[idx_100])
 
-            # Resonant peak search
+            # Resonant peak search with continuous sub-bin quadratic interpolation
             if len(pb_indices) > 0:
                 max_pb_idx = pb_indices[int(np.argmax(curve[pb_indices]))]
-                f_res = float(f[max_pb_idx])
-                peak_db = float(curve[max_pb_idx])
+                if 0 < max_pb_idx < len(f) - 1:
+                    y_m1 = float(curve[max_pb_idx - 1])
+                    y_0 = float(curve[max_pb_idx])
+                    y_p1 = float(curve[max_pb_idx + 1])
+                    curv = y_m1 - 2.0 * y_0 + y_p1
+                    if curv < -1e-9:
+                        delta = float(np.clip(0.5 * (y_m1 - y_p1) / curv, -0.5, 0.5))
+                        df = float(f[max_pb_idx + 1] - f[max_pb_idx])
+                        f_res = float(f[max_pb_idx] + delta * df)
+                        peak_db = float(y_0 - 0.25 * (y_m1 - y_p1) * delta)
+                    else:
+                        f_res = float(f[max_pb_idx])
+                        peak_db = y_0
+                else:
+                    f_res = float(f[max_pb_idx])
+                    peak_db = float(curve[max_pb_idx])
                 peak_boost = peak_db - loss_db
             else:
                 max_pb_idx = idx_100

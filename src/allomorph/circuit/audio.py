@@ -11,7 +11,7 @@ from typing import Any
 
 import numpy as np
 
-from allomorph.dsp import fft_convolve
+from allomorph.dsp import fft_convolve_multi
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 
@@ -24,7 +24,11 @@ def apply_prefilter_to_audio(
     Returns an array of shape (n_channels, n_samples) scaled with 8 dB headroom (0.40 max).
     """
     is_multichannel = len(fir_samples) > 0 and isinstance(fir_samples[0], (list, tuple, np.ndarray))
-    channels_firs = fir_samples if is_multichannel else [fir_samples]
+    channels_firs: list[np.ndarray] = (
+        [np.asarray(f, dtype=np.float32) for f in fir_samples]
+        if is_multichannel
+        else [np.asarray(fir_samples, dtype=np.float32)]
+    )
 
     input_mono = (
         audio[0]
@@ -33,11 +37,8 @@ def apply_prefilter_to_audio(
     )
     n_sig = len(input_mono)
 
-    effected_channels: list[np.ndarray] = []
-    for ch_fir in channels_firs:
-        fir = np.asarray(ch_fir, dtype=np.float32)
-        eff = fft_convolve(input_mono, fir, mode="causal")[:n_sig].astype(np.float32)
-        effected_channels.append(eff)
+    effected_raw = fft_convolve_multi(input_mono, channels_firs, mode="causal")
+    effected_channels = [eff[:n_sig].astype(np.float32) for eff in effected_raw]
 
     effected = np.array(effected_channels, dtype=np.float32)
     max_val = np.max(np.abs(effected))

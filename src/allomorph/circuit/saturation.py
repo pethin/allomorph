@@ -4,6 +4,7 @@ Models magnetic soft-knee compliance, dynamic Lenz-law core flux sag,
 elliptical 2f0 string orbit bloom, Dahl hysteresis, and Numba fastmath kernels.
 """
 
+import functools
 import math
 from collections.abc import Callable
 from typing import Any
@@ -84,6 +85,7 @@ if _HAS_NUMBA:
             val = x_arr[i]
             x_low_prev += alpha_c * (val - x_low_prev)
             x_high = val - x_low_prev
+            diff_high = x_high - x_high_prev
             e = env[i]
             if e > vsat > 0.0:
                 excess = math.tanh((e - vsat) / vsat)
@@ -99,7 +101,6 @@ if _HAS_NUMBA:
                     else val / vsat
                 )
                 pull_damping = k_pull * w_reg * excess * math.tanh(val_pos)
-                diff_high = x_high - x_high_prev
                 flux_rate = math.sqrt(diff_high * diff_high + 1e-8) * 7.639437
                 stein_damping = 0.0
                 if k_stein > 0.0:
@@ -114,26 +115,26 @@ if _HAS_NUMBA:
                 )
                 drag_low = 1.0 / (1.0 + (0.25 * k_sag + 0.50 * pull_damping) * excess)
             else:
-                drag_high = 1.0
-                drag_low = 1.0
-
-            if beta_curv > 0.0 and vsat > 0.0:
-                wobble = beta_curv * math.tanh((val / vsat) ** 2) * (x_high - x_high_prev)
-            else:
-                wobble = 0.0
-
-            if k_pull > 0.0 and vsat > 0.0 and e > vsat:
                 w_reg = 0.70 + 0.60 * (
                     (x_low_prev * x_low_prev)
                     / (x_low_prev * x_low_prev + x_high * x_high + 1e-8)
                 )
-                pitch_sag = -k_pull * w_reg * excess * (x_high - x_high_prev)
+                drag_high = 1.0
+                drag_low = 1.0
+
+            if beta_curv > 0.0 and vsat > 0.0:
+                wobble = beta_curv * math.tanh((val / vsat) ** 2) * diff_high
+            else:
+                wobble = 0.0
+
+            if k_pull > 0.0 and vsat > 0.0 and e > vsat:
+                pitch_sag = -k_pull * w_reg * excess * diff_high
             else:
                 pitch_sag = 0.0
 
             if lambda_L > 0.0 and vsat > 0.0 and e > vsat:
                 val_norm = math.sqrt(val * val + 1e-8) - 1e-4
-                ind_mod = -lambda_L * excess * math.tanh(val_norm / vsat) * (x_high - x_high_prev)
+                ind_mod = -lambda_L * excess * math.tanh(val_norm / vsat) * diff_high
             else:
                 ind_mod = 0.0
 
@@ -155,6 +156,21 @@ if _HAS_NUMBA:
             step = max_delta * math.tanh(diff / max_delta)
             prev += step
             out[i] = prev
+        return out
+
+    @njit(fastmath=True)
+    def _algebraic_limiter_p8_core(x_arr: np.ndarray, vsat: float) -> np.ndarray:
+        n = len(x_arr)
+        out = np.empty(n, dtype=np.float64)
+        inv_vsat = 1.0 / vsat
+        for i in range(n):
+            val = x_arr[i]
+            u = val * inv_vsat
+            u2 = u * u
+            u4 = u2 * u2
+            u8 = u4 * u4
+            denom = math.sqrt(math.sqrt(math.sqrt(1.0 + u8)))
+            out[i] = val / denom
         return out
 else:
 
@@ -207,6 +223,7 @@ else:
             val = x_arr[i]
             x_low_prev += alpha_c * (val - x_low_prev)
             x_high = val - x_low_prev
+            diff_high = x_high - x_high_prev
             e = env[i]
             if e > vsat > 0.0:
                 excess = math.tanh((e - vsat) / vsat)
@@ -222,7 +239,6 @@ else:
                     else val / vsat
                 )
                 pull_damping = k_pull * w_reg * excess * math.tanh(val_pos)
-                diff_high = x_high - x_high_prev
                 flux_rate = math.sqrt(diff_high * diff_high + 1e-8) * 7.639437
                 stein_damping = 0.0
                 if k_stein > 0.0:
@@ -237,26 +253,26 @@ else:
                 )
                 drag_low = 1.0 / (1.0 + (0.25 * k_sag + 0.50 * pull_damping) * excess)
             else:
-                drag_high = 1.0
-                drag_low = 1.0
-
-            if beta_curv > 0.0 and vsat > 0.0:
-                wobble = beta_curv * math.tanh((val / vsat) ** 2) * (x_high - x_high_prev)
-            else:
-                wobble = 0.0
-
-            if k_pull > 0.0 and vsat > 0.0 and e > vsat:
                 w_reg = 0.70 + 0.60 * (
                     (x_low_prev * x_low_prev)
                     / (x_low_prev * x_low_prev + x_high * x_high + 1e-8)
                 )
-                pitch_sag = -k_pull * w_reg * excess * (x_high - x_high_prev)
+                drag_high = 1.0
+                drag_low = 1.0
+
+            if beta_curv > 0.0 and vsat > 0.0:
+                wobble = beta_curv * math.tanh((val / vsat) ** 2) * diff_high
+            else:
+                wobble = 0.0
+
+            if k_pull > 0.0 and vsat > 0.0 and e > vsat:
+                pitch_sag = -k_pull * w_reg * excess * diff_high
             else:
                 pitch_sag = 0.0
 
             if lambda_L > 0.0 and vsat > 0.0 and e > vsat:
                 val_norm = math.sqrt(val * val + 1e-8) - 1e-4
-                ind_mod = -lambda_L * excess * math.tanh(val_norm / vsat) * (x_high - x_high_prev)
+                ind_mod = -lambda_L * excess * math.tanh(val_norm / vsat) * diff_high
             else:
                 ind_mod = 0.0
 
@@ -277,6 +293,20 @@ else:
             step = max_delta * math.tanh(diff / max_delta)
             prev += step
             out[i] = prev
+        return out
+
+    def _algebraic_limiter_p8_core(x_arr: np.ndarray, vsat: float) -> np.ndarray:
+        n = len(x_arr)
+        out = np.empty(n, dtype=np.float64)
+        inv_vsat = 1.0 / vsat
+        for i in range(n):
+            val = x_arr[i]
+            u = val * inv_vsat
+            u2 = u * u
+            u4 = u2 * u2
+            u8 = u4 * u4
+            denom = math.sqrt(math.sqrt(math.sqrt(1.0 + u8)))
+            out[i] = val / denom
         return out
 
 
@@ -348,6 +378,29 @@ def apply_elliptical_orbit_projection(
     x_hilbert *= np.tanh(x_disp_norm / vsat)
     x_hilbert *= kappa_orbit
     return x + x_hilbert
+
+
+@functools.lru_cache(maxsize=16)
+def _get_saturation_filter_pack(
+    n_sig: int, oversample: int
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    """Precomputes passband-constrained H_pre, H_de, aa_mask, and H_hp using fast polar representation."""
+    freqs_pass = np.fft.rfftfreq(n_sig, 1.0 / 48000.0)
+    wc = 2.0 * np.pi * 40.0
+    omega = 2.0 * np.pi * freqs_pass
+    ratio = omega / wc
+    mag = ((1.0 + ratio * ratio) ** -0.275) / _H_PRE_100HZ_NORM
+    theta = -0.55 * np.arctan(ratio)
+    H_pre = mag * (np.cos(theta) + 1j * np.sin(theta))
+    H_de = 1.0 / H_pre
+    f_pass = 22000.0
+    f_stop = 24000.0
+    t = np.clip((freqs_pass - f_pass) / (f_stop - f_pass), 0.0, 1.0)
+    aa_mask = np.where(freqs_pass <= f_pass, 1.0, 0.5 * (1.0 + np.cos(np.pi * t)))
+    aa_mask[freqs_pass >= f_stop] = 0.0
+    s_pass = 1j * omega
+    H_hp = s_pass / (s_pass + 2.0 * np.pi * 400.0)
+    return H_pre, H_de, aa_mask, H_hp
 
 
 def apply_oversampled_saturation(
@@ -424,7 +477,7 @@ def apply_oversampled_saturation(
 
     # For unipolar test vectors (e.g. DC step tests), bypass differentiation and apply direct saturation
     if float(np.min(audio)) >= 0.0:
-        v_asym = x + (x * x) * (alpha + alpha3 * x)
+        v_asym = x * (1.0 + x * (alpha + alpha3 * x))
         return (vsat * np.tanh(v_asym / vsat)).astype(np.float32)
 
     # 1. Dynamic Lenz-Law Core Flux Sag on forte peak excursions (velocity-proportional high-frequency damping),
@@ -456,17 +509,11 @@ def apply_oversampled_saturation(
 
     if oversample <= 1:
         if displacement_weighting:
-            freqs = np.fft.rfftfreq(n_sig, 1.0 / 48000.0)
-            wc = 2.0 * np.pi * 40.0
-            s = 1j * 2.0 * np.pi * freqs
-            H_pre = (wc / (s + wc)) ** 0.55
-            H_pre = H_pre / _H_PRE_100HZ_NORM
-            H_de = 1.0 / H_pre
+            H_pre, H_de, _, H_hp = _get_saturation_filter_pack(n_sig, 1)
             x_disp = np.fft.irfft(np.fft.rfft(x) * H_pre, n_sig)
             scale = max_in / max(np.max(np.abs(x_disp)), 1e-9)
             x_disp = x_disp * scale
             if tau_touch > 0.0:
-                H_hp = s / (s + 2.0 * np.pi * 400.0)
                 x_hp = np.fft.irfft(np.fft.rfft(x_disp) * H_hp, n_sig)
                 disp_norm = np.sqrt(x_disp**2 + 1e-8) - 1e-4
                 touch_mod = tau_touch * np.tanh(disp_norm / vsat) * x_hp
@@ -479,7 +526,7 @@ def apply_oversampled_saturation(
                 )
             if kappa_geom > 0.0 and vsat > 0.0:
                 x_disp = x_disp / (1.0 - kappa_geom * np.tanh(x_disp / vsat))
-            v_asym = x_disp + (x_disp * x_disp) * (alpha + alpha3 * x_disp)
+            v_asym = x_disp * (1.0 + x_disp * (alpha + alpha3 * x_disp))
             v_sat = vsat * np.tanh(v_asym / vsat)
             if slew_limit and vsat > 0.0 and f_slew > 0.0:
                 max_delta = 2.0 * math.pi * f_slew * vsat / 48000.0
@@ -492,42 +539,33 @@ def apply_oversampled_saturation(
                 x = apply_elliptical_orbit_projection(x, vsat=vsat, kappa_orbit=kappa_orbit)
             if kappa_geom > 0.0 and vsat > 0.0:
                 x = x / (1.0 - kappa_geom * np.tanh(x / vsat))
-            v_asym = x + (x * x) * (alpha + alpha3 * x)
+            v_asym = x * (1.0 + x * (alpha + alpha3 * x))
             out = vsat * np.tanh(v_asym / vsat)
             if slew_limit and vsat > 0.0 and f_slew > 0.0:
                 max_delta = 2.0 * math.pi * f_slew * vsat / 48000.0
                 out = _slew_limit_core(out, max_delta)
         return out.astype(np.float32)
 
-    # Oversampling (2x or 4x)
+    # Oversampling (2x or 4x) with passband-constrained frequency weighting
     m = int(oversample)
     n_up = n_sig * m
     sr_up = 48000 * m
 
     X = np.fft.rfft(x)
-    X_up = np.zeros(n_up // 2 + 1, dtype=complex)
-    X_up[: len(X)] = X
-
-    freqs_up = np.fft.rfftfreq(n_up, 1.0 / sr_up)
-    f_pass = 22000.0
-    f_stop = 24000.0
-    t = np.clip((freqs_up - f_pass) / (f_stop - f_pass), 0.0, 1.0)
-    aa_mask = np.where(freqs_up <= f_pass, 1.0, 0.5 * (1.0 + np.cos(np.pi * t)))
-    aa_mask[freqs_up >= f_stop] = 0.0
+    n_half_pass = len(X)
+    H_pre_pass, H_de_pass, aa_mask_pass, H_hp_pass = _get_saturation_filter_pack(n_sig, m)
 
     if displacement_weighting:
-        wc = 2.0 * np.pi * 40.0
-        s_up = 1j * 2.0 * np.pi * freqs_up
-        H_pre = (wc / (s_up + wc)) ** 0.55
-        H_pre = H_pre / _H_PRE_100HZ_NORM
-        H_de = 1.0 / H_pre
-        # Direct single-pass forward IRFFT with H_pre applied in frequency domain (saves 2 full 9M-point FFTs)
-        x_up_disp = np.fft.irfft(X_up * H_pre, n_up) * float(m)
+        # Forward passband pre-emphasis with zero-extension into ultrasonic bins
+        X_up = np.zeros(n_up // 2 + 1, dtype=complex)
+        X_up[:n_half_pass] = X * H_pre_pass
+        x_up_disp = np.fft.irfft(X_up, n_up) * float(m)
         scale = max_in / max(np.max(np.abs(x_up_disp)), 1e-9)
         x_up_disp = x_up_disp * scale
         if tau_touch > 0.0:
-            H_hp = s_up / (s_up + 2.0 * np.pi * 400.0)
-            x_up_hp = np.fft.irfft(X_up * H_pre * H_hp, n_up) * float(m)
+            X_up_hp = np.zeros(n_up // 2 + 1, dtype=complex)
+            X_up_hp[:n_half_pass] = (X * H_pre_pass) * H_hp_pass
+            x_up_hp = np.fft.irfft(X_up_hp, n_up) * float(m)
             up_disp_norm = np.sqrt(x_up_disp**2 + 1e-8) - 1e-4
             touch_mod = tau_touch * np.tanh(up_disp_norm / vsat) * (x_up_hp * scale)
             x_up_disp = x_up_disp + touch_mod
@@ -539,14 +577,16 @@ def apply_oversampled_saturation(
             )
         if kappa_geom > 0.0 and vsat > 0.0:
             x_up_disp = x_up_disp / (1.0 - kappa_geom * np.tanh(x_up_disp / vsat))
-        v_asym = x_up_disp + (x_up_disp * x_up_disp) * (alpha + alpha3 * x_up_disp)
+        v_asym = x_up_disp * (1.0 + x_up_disp * (alpha + alpha3 * x_up_disp))
         v_sat = vsat * np.tanh(v_asym / vsat)
         if slew_limit and vsat > 0.0 and f_slew > 0.0:
             max_delta = 2.0 * math.pi * f_slew * vsat / float(sr_up)
             v_sat = _slew_limit_core(v_sat, max_delta)
-        # Direct single-pass frequency-domain de-emphasis and anti-aliasing filter (saves 2 full 9M-point FFTs)
-        Y_up = np.fft.rfft(v_sat) * (H_de / scale) * aa_mask
+        # Direct passband de-emphasis and anti-aliasing decimation (discards ultrasonic bins first)
+        Y_down = np.fft.rfft(v_sat)[:n_half_pass] * (H_de_pass / scale) * aa_mask_pass
     else:
+        X_up = np.zeros(n_up // 2 + 1, dtype=complex)
+        X_up[:n_half_pass] = X
         x_up = np.fft.irfft(X_up, n_up) * float(m)
         if eta_hyst > 0.0:
             x_up = apply_dahl_hysteresis(x_up, eta=eta_hyst)
@@ -554,14 +594,12 @@ def apply_oversampled_saturation(
             x_up = apply_elliptical_orbit_projection(x_up, vsat=vsat, kappa_orbit=kappa_orbit)
         if kappa_geom > 0.0 and vsat > 0.0:
             x_up = x_up / (1.0 - kappa_geom * np.tanh(x_up / vsat))
-        v_asym = x_up + (x_up * x_up) * (alpha + alpha3 * x_up)
+        v_asym = x_up * (1.0 + x_up * (alpha + alpha3 * x_up))
         v_sat = vsat * np.tanh(v_asym / vsat)
         if slew_limit and vsat > 0.0 and f_slew > 0.0:
             max_delta = 2.0 * math.pi * f_slew * vsat / float(sr_up)
             v_sat = _slew_limit_core(v_sat, max_delta)
-        Y_up = np.fft.rfft(v_sat) * aa_mask
+        Y_down = np.fft.rfft(v_sat)[:n_half_pass] * aa_mask_pass
 
-    # Decimate back to 48 kHz
-    Y_down = Y_up[: n_sig // 2 + 1]
     out = np.fft.irfft(Y_down, n_sig)
     return out.astype(np.float32)

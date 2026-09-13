@@ -7,7 +7,7 @@ fast Fourier transform wrappers, and 24-bit PCM audio export.
 import wave
 from collections.abc import Sequence
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 import numpy as np
 
@@ -31,20 +31,22 @@ def synthesize_minimum_phase_fir(
     n_fft = max(8192, 2 * num_taps)
     half = n_fft // 2
 
-    # Linear interpolation of input magnitude curve to half + 1 points
+    # Linear interpolation of input magnitude curve to half + 1 points (bypass if already on grid)
     m_in = len(mag)
-    orig_indices = np.linspace(0, half, m_in)
-    target_indices = np.arange(half + 1)
-    mag_grid = np.interp(target_indices, orig_indices, mag)
+    if m_in == half + 1:
+        mag_grid = mag.copy()
+    else:
+        orig_indices = np.linspace(0, half, m_in)
+        target_indices = np.arange(half + 1)
+        mag_grid = np.interp(target_indices, orig_indices, mag)
     # Extrapolate DC bin if dropping into deep transmission zero to avoid cepstral delta spike
     if mag_grid[0] < mag_grid[1] * 0.5:
         mag_grid[0] = mag_grid[1]
-    # Build full symmetric log-magnitude spectrum with C^inf quadratic regularization
+    # Build half-spectrum log-magnitude with C^inf quadratic regularization
     log_mag = 0.5 * np.log(mag_grid**2 + 1e-8)
-    full_log_mag = np.concatenate([log_mag, log_mag[half - 1 : 0 : -1]])
 
-    # Real cepstrum via IFFT
-    c = np.fft.ifft(full_log_mag).real
+    # Real cepstrum via IRFFT directly on conjugate-symmetric half-spectrum
+    c = np.fft.irfft(log_mag, n_fft)
 
     # Minimum-phase causal folding (Hilbert transform operator in cepstral domain)
     c_hat = np.zeros(n_fft, dtype=np.float64)
@@ -52,12 +54,12 @@ def synthesize_minimum_phase_fir(
     c_hat[half] = c[half]
     c_hat[1:half] = 2.0 * c[1:half]
 
-    # Complex minimum-phase frequency spectrum H_min = exp(FFT(c_hat))
-    spec = np.fft.fft(c_hat)
+    # Complex minimum-phase frequency spectrum H_min = exp(RFFT(c_hat))
+    spec = np.fft.rfft(c_hat)
     h_min_spec = np.exp(spec)
 
-    # Causal impulse response h[n] = Re(IFFT(H_min))
-    h = np.fft.ifft(h_min_spec).real
+    # Causal impulse response h[n] = IRFFT(H_min)
+    h = np.fft.irfft(h_min_spec, n_fft)
     fir = h[:num_taps].copy()
 
     # Smooth tail (final 15%) with a cosine taper to eliminate truncation artifacts
@@ -217,6 +219,62 @@ def fft_convolve(
         return out[start : start + n]
     else:
         raise ValueError(f"Unsupported mode '{mode}'. Choose 'full', 'causal', or 'same'.")
+
+
+def fft_convolve_multi(
+    x: Sequence[float] | np.ndarray,
+    filters: Sequence[Sequence[float] | np.ndarray],
+    mode: Literal["full", "causal", "same"] = "full",
+) -> list[np.ndarray]:
+    """
+    Convolves a single 1D signal x against multiple 1D filters using vectorized FFT convolution,
+    broadcasting the forward FFT of x across all filter channels to eliminate redundant FFTs.
+    """
+    if not filters:
+        return []
+    if len(filters) == 1:
+        return [fft_convolve(x, filters[0], mode=mode)]
+
+    x_arr = np.asarray(x)
+    n = len(x_arr)
+    filter_arrs = [np.asarray(f) for f in filters]
+    m_max = max(len(f) for f in filter_arrs)
+    out_dtype = (
+        np.float64
+        if (x_arr.dtype == np.float64 or any(f.dtype == np.float64 for f in filter_arrs))
+        else np.float32
+    )
+
+    # Overlap-save path when all filters fit in block_size
+    if n > 32768 and m_max <= 32768:
+        block_size = 65536
+        l = block_size - m_max + 1
+        num_blocks = (n + l - 1) // l
+        pad_end = num_blocks * l - n
+        x_padded = np.pad(x_arr, (m_max - 1, pad_end), mode="constant")
+        shape = (num_blocks, block_size)
+        strides = (l * x_padded.strides[0], x_padded.strides[0])
+        blocks = np.lib.stride_tricks.as_strided(x_padded, shape=shape, strides=strides)
+        # Compute forward FFT of input blocks once and broadcast:
+        X_blocks = np.fft.rfft(blocks, block_size, axis=-1)
+
+        results: list[np.ndarray] = []
+        for f in filter_arrs:
+            out_len = n + len(f) - 1
+            H = np.fft.rfft(f, block_size)
+            Y_blocks = np.fft.irfft(X_blocks * H, block_size, axis=-1)
+            valid = Y_blocks[:, m_max - 1 :]
+            out = valid.reshape(-1)[:out_len].astype(out_dtype)
+            if mode == "full":
+                results.append(out)
+            elif mode == "causal":
+                results.append(out[:n])
+            elif mode == "same":
+                start = (len(f) - 1) // 2
+                results.append(out[start : start + n])
+        return results
+    else:
+        return [fft_convolve(x_arr, f, mode=mode) for f in filter_arrs]
 
 
 def calibrate_nam_v3_latency(y: np.ndarray) -> tuple[int, bool, bool]:

@@ -478,8 +478,7 @@ def build_frontend_deconvolutions_dataframe() -> pl.DataFrame:
 
     all_insts = load_all_instruments()
 
-    freq_col: list[float] = []
-    mag_col: list[float] = []
+    mag_arrays: list[np.ndarray] = []
     iid_col: list[str] = []
     iname_col: list[str] = []
     pkey_col: list[str] = []
@@ -506,8 +505,7 @@ def build_frontend_deconvolutions_dataframe() -> pl.DataFrame:
             db_front = 20.0 * np.log10(np.maximum(h_front, 1e-6))
             label = f"{inst_name} - {p_name}"
 
-            freq_col.extend(log_freqs)
-            mag_col.extend(db_front.tolist())
+            mag_arrays.append(db_front)
             iid_col.extend([inst_id] * NUM_POINTS)
             iname_col.extend([inst_name] * NUM_POINTS)
             pkey_col.extend([p_key] * NUM_POINTS)
@@ -516,10 +514,14 @@ def build_frontend_deconvolutions_dataframe() -> pl.DataFrame:
             scale_col.extend([scale_in] * NUM_POINTS)
             pos_col.extend([pos_mm] * NUM_POINTS)
 
+    n_pickups = len(mag_arrays)
+    all_freqs = np.tile(log_freqs, n_pickups)
+    all_mags = np.concatenate(mag_arrays) if mag_arrays else np.array([], dtype=np.float64)
+
     return pl.DataFrame(
         {
-            "frequency": freq_col,
-            "magnitude_db": mag_col,
+            "frequency": all_freqs,
+            "magnitude_db": all_mags,
             "instrument_id": iid_col,
             "instrument_name": iname_col,
             "pickup_key": pkey_col,
@@ -547,8 +549,7 @@ def build_instrument_frontend_dataframe(inst: InstrumentConfig) -> pl.DataFrame:
     can_circuit = can_voice.circuit if can_voice is not None else None
     can_model = load_circuit(can_circuit) if can_circuit else None
 
-    freq_col: list[float] = []
-    mag_col: list[float] = []
+    mag_arrays: list[np.ndarray] = []
     iid_col: list[str] = []
     iname_col: list[str] = []
     pkey_col: list[str] = []
@@ -566,8 +567,7 @@ def build_instrument_frontend_dataframe(inst: InstrumentConfig) -> pl.DataFrame:
         )
         db_front = 20.0 * np.log10(np.maximum(h_front, 1e-6))
 
-        freq_col.extend(log_freqs)
-        mag_col.extend(db_front.tolist())
+        mag_arrays.append(db_front)
         iid_col.extend([inst_id] * NUM_POINTS)
         iname_col.extend([inst_name] * NUM_POINTS)
         pkey_col.extend([p_key] * NUM_POINTS)
@@ -575,10 +575,14 @@ def build_instrument_frontend_dataframe(inst: InstrumentConfig) -> pl.DataFrame:
         scale_col.extend([scale_in] * NUM_POINTS)
         pos_col.extend([pos_mm] * NUM_POINTS)
 
+    n_pickups = len(mag_arrays)
+    all_freqs = np.tile(log_freqs, n_pickups)
+    all_mags = np.concatenate(mag_arrays) if mag_arrays else np.array([], dtype=np.float64)
+
     return pl.DataFrame(
         {
-            "frequency": freq_col,
-            "magnitude_db": mag_col,
+            "frequency": all_freqs,
+            "magnitude_db": all_mags,
             "instrument_id": iid_col,
             "instrument_name": iname_col,
             "pickup_key": pkey_col,

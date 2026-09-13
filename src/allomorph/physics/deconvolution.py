@@ -23,7 +23,7 @@ def numpy_pickup_electrical_response(
         return np.ones_like(f, dtype=np.float64)
     x = f / float(fr)
     denom = np.sqrt((1.0 - x**2) ** 2 + (x / float(q)) ** 2)
-    return 1.0 / np.maximum(denom, 1e-9)
+    return 1.0 / denom
 
 
 def numpy_pickup_anti_resonance(

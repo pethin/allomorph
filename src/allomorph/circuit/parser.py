@@ -238,6 +238,12 @@ MAGNET_PROPERTIES["canonical_ideal"] = MAGNET_PROPERTIES["ideal"]
 MAGNET_PROPERTIES["linear"] = MAGNET_PROPERTIES["ideal"]
 
 
+_AUDIO10_GAMMA: float = 4.394449154672439  # ln(81) = 2 * ln(9) -> 10% at 50% rotation
+_AUDIO10_DENOM: float = 80.0
+_AUDIO15_GAMMA: float = 3.4689389547514337  # 2 * ln(1/0.15 - 1) -> 15% at 50% rotation
+_AUDIO15_DENOM: float = math.expm1(_AUDIO15_GAMMA)
+
+
 def eval_pot_taper(pos: float, taper: str = "audio") -> float:
     """
     Evaluates potentiometer electrical resistance fraction (0.0 to 1.0) given mechanical wiper rotation pos (0.0 to 1.0).
@@ -251,7 +257,7 @@ def eval_pot_taper(pos: float, taper: str = "audio") -> float:
     Formula: f(theta; gamma) = (exp(gamma * theta) - 1.0) / (exp(gamma) - 1.0)
     where gamma = 2 * ln(1/k - 1).
     """
-    theta = float(np.clip(pos, 0.0, 1.0))
+    theta = min(max(float(pos), 0.0), 1.0)
     t = (
         taper.lower().strip()
         if isinstance(taper, str) and taper.lower().strip() not in ("", "none")
@@ -260,20 +266,17 @@ def eval_pot_taper(pos: float, taper: str = "audio") -> float:
     if t == "linear":
         return theta
     elif t in ("audio", "audio10"):
-        gamma = 4.394449154672439  # ln(81) = 2 * ln(9) -> 10% at 50% rotation
+        return math.expm1(_AUDIO10_GAMMA * theta) / _AUDIO10_DENOM
     elif t == "audio15":
-        gamma = 3.4689389547514337  # 2 * ln(1/0.15 - 1) -> 15% at 50% rotation
+        return math.expm1(_AUDIO15_GAMMA * theta) / _AUDIO15_DENOM
     elif t == "reverse_audio":
-        gamma = 4.394449154672439
-        return float(1.0 - np.expm1(gamma * (1.0 - theta)) / np.expm1(gamma))
+        return 1.0 - math.expm1(_AUDIO10_GAMMA * (1.0 - theta)) / _AUDIO10_DENOM
     elif t == "mn_blend":
         return theta
     else:
         raise ValueError(
             f"Unknown pot taper '{taper}'. Supported tapers: 'audio', 'audio10', 'audio15', 'linear', 'reverse_audio', 'mn_blend'."
         )
-
-    return float(np.expm1(gamma * theta) / np.expm1(gamma))
 
 
 class CircuitModel(AllomorphBaseModel):

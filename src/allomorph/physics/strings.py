@@ -6,6 +6,7 @@ inharmonicity B_s interpolation, scale-length conversions, and dispersive wave s
 
 import math
 from collections.abc import Sequence
+from typing import overload
 
 import numpy as np
 
@@ -77,11 +78,10 @@ def compute_differential_string_transfer(
     f_damp_tgt = float(tgt_string.damping_cutoff_hz)
     n_tgt = float(tgt_string.damping_order)
 
-    # Calculate magnitude damping curves
-    src_mag = 1.0 / np.sqrt(1.0 + (f / f_damp_src) ** (2.0 * n_src))
-    tgt_mag = 1.0 / np.sqrt(1.0 + (f / f_damp_tgt) ** (2.0 * n_tgt))
-
-    ratio = tgt_mag / np.maximum(src_mag, 1e-6)
+    # Calculate fused magnitude damping curve ratio
+    u_src = (f / f_damp_src) ** (2.0 * n_src)
+    u_tgt = (f / f_damp_tgt) ** (2.0 * n_tgt)
+    ratio = np.sqrt((1.0 + u_src) / (1.0 + u_tgt))
     r_db = 20.0 * np.log10(np.maximum(ratio, 1e-6))
     g_max_db = 8.0
     g_min_db = -36.0
@@ -139,9 +139,22 @@ def pitch_to_note_name(f0: float) -> str:
     return names[semitones % 12]
 
 
-def get_inharmonicity_for_f0(f0: float) -> float:
+@overload
+def get_inharmonicity_for_f0(f0: float) -> float: ...
+
+
+@overload
+def get_inharmonicity_for_f0(f0: np.ndarray) -> np.ndarray: ...
+
+
+def get_inharmonicity_for_f0(f0: float | np.ndarray) -> float | np.ndarray:
     """Interpolates empirical string stiffness / inharmonicity constant B_s for a given f0
     using an infinitely differentiable (C^inf) Gaussian Radial Basis Function (RBF)."""
+    if isinstance(f0, np.ndarray):
+        log_f0 = np.log2(np.maximum(f0, 15.0))
+        d = np.abs(log_f0[:, None] - _LOG_F0_ANCHORS[None, :])
+        basis = np.exp(-(_RBF_EPSILON * d) ** 2)
+        return 2.0 ** (basis @ _RBF_WEIGHTS)
     log_f0 = math.log2(max(f0, 15.0))
     d = np.abs(log_f0 - _LOG_F0_ANCHORS)
     basis = np.exp(-(_RBF_EPSILON * d) ** 2)

@@ -25,8 +25,8 @@ from allomorph.config.schema import (
 from allomorph.config.voices import VOICES
 from allomorph.physics.schema import WaveSpeedContinuumPoint
 from allomorph.physics.strings import (
-    compute_dispersive_wave_speed,
     generate_wave_speed_continuum,
+    get_inharmonicity_for_f0,
     resolve_scale_range,
 )
 
@@ -86,13 +86,9 @@ def compute_coil_aperture(
     Evaluates with C^inf smoothness, exact 1.000 at f=0, and 0.00 dB identity.
     """
     f = np.asarray(freqs, dtype=np.float64)
-    if pole_type == "blade":
-        arg = (math.pi * w_m * f) / v_disp
-        return 1.0 / np.sqrt(1.0 + (1.0 / 3.0) * (arg**2))
-    else:
-        r_p = w_m / 2.0
-        k = 2.0 * math.pi * f / v_disp
-        return 1.0 / np.sqrt(1.0 + 0.25 * ((k * r_p) ** 2))
+    beta = 1.0 / 3.0 if pole_type == "blade" else 0.25
+    arg = (math.pi * w_m * f) / v_disp
+    return 1.0 / np.sqrt(1.0 + beta * (arg**2))
 
 
 def compute_saddle_boundary_coupling(
@@ -257,46 +253,55 @@ def numpy_pickup_acoustic_response(
     else:
         continuum = generate_wave_speed_continuum(scale_range, num_points=24)
 
+    # Partition continuum points by register half to enable 2D tensor broadcasting
+    partitions: dict[str, list[WaveSpeedContinuumPoint]] = {}
+    for pt in continuum:
+        partitions.setdefault(str(pt.register), []).append(pt)
+
     acc = np.zeros_like(f, dtype=np.float64)
     total_pt_weight = 0.0
 
-    for pt in continuum:
-        f0 = float(pt.f0)
-        v = float(pt.v0)
-        pt_reg = str(pt.register)
-        pt_weight = float(pt.weight)
-        pt_scale_m = float(getattr(pt, "scale_m", l_eff))
-
-        v_disp = compute_dispersive_wave_speed(f, v, f0=f0, scale_length_m=pt_scale_m)
-
+    for reg, pts in partitions.items():
         active: list[CoilConfig | VoiceCoilConfig] = []
         for c in coils:
             coil_reg = get_coil_register(c)
-            if coil_reg == "all" or coil_reg == pt_reg:
+            if coil_reg == "all" or coil_reg == reg:
                 active.append(c)
 
         if not active:
             active = list(coils)
 
+        K = len(pts)
+        f0_arr = np.array([pt.f0 for pt in pts], dtype=np.float64)
+        v0_arr = np.array([pt.v0 for pt in pts], dtype=np.float64)
+        w_arr = np.array([pt.weight for pt in pts], dtype=np.float64)
+
+        b_s = get_inharmonicity_for_f0(f0_arr)
+        f_disp_max = 3500.0
+        disp_factor = 1.0 + b_s[:, None] * ((f[None, :] / f0_arr[:, None]) ** 2) / (
+            1.0 + (f[None, :] / f_disp_max) ** 2
+        )
+        v_disp = v0_arr[:, None] * np.sqrt(disp_factor)
+
         total_w = sum(abs(c.weight) for c in active) or 1.0
         center_pos = sum(c.position_from_bridge_m * abs(c.weight) for c in active) / total_w
 
-        coil_sum = np.zeros_like(f, dtype=np.complex128)
-        p_incoh = np.zeros_like(f, dtype=np.float64)
+        coil_sum = np.zeros((K, len(f)), dtype=np.complex128)
+        p_incoh = np.zeros((K, len(f)), dtype=np.float64)
 
         for c in active:
             pos_m = c.position_from_bridge_m
             w_m = c.aperture_width_in * 0.0254
             weight = c.weight
             polarity = c.polarity
-
             delta_x = pos_m - center_pos
-            phase = 2.0 * math.pi * f * delta_x / v_disp
+            phase = 2.0 * math.pi * f[None, :] * delta_x / v_disp
             c_pole = c.pole_type or "rod"
-            ap_w = compute_coil_aperture(f, v_disp, w_m, pole_type=c_pole)
+            beta = 1.0 / 3.0 if c_pole == "blade" else 0.25
+            arg = (math.pi * w_m * f[None, :]) / v_disp
+            ap_w = 1.0 / np.sqrt(1.0 + beta * (arg**2))
             w_eff = weight * ap_w
-
-            coil_sum += w_eff * polarity * np.exp(-1j * phase)
+            coil_sum += (w_eff * polarity) * np.exp(-1j * phase)
             p_incoh += w_eff**2
 
         p_coh = np.abs(coil_sum) ** 2
@@ -310,18 +315,17 @@ def numpy_pickup_acoustic_response(
                 p_coh_reg = p_coh + (eps_quad**2) * p_incoh
                 dc_incoh = sum(abs(c.weight) ** 2 for c in active)
                 dc_norm = math.sqrt(total_w**2 + (eps_quad**2) * dc_incoh) / total_w
-
-                f_mid = 1.4 * v / delta_x_span
-                f_sigma = max(0.4 * v / delta_x_span, 1.0)
-                gamma = 0.5 * (1.0 - np.tanh((f - f_mid) / f_sigma))
+                f_mid = 1.4 * v0_arr[:, None] / delta_x_span
+                f_sigma = np.maximum(0.4 * v0_arr[:, None] / delta_x_span, 1.0)
+                gamma = 0.5 * (1.0 - np.tanh((f[None, :] - f_mid) / f_sigma))
                 m_blend = np.sqrt(gamma * p_coh_reg + (1.0 - gamma) * p_incoh) / dc_norm
             else:
                 m_blend = np.abs(coil_sum)
         else:
             m_blend = np.abs(coil_sum)
 
-        acc += pt_weight * m_blend
-        total_pt_weight += pt_weight
+        acc += np.sum(w_arr[:, None] * m_blend, axis=0)
+        total_pt_weight += float(np.sum(w_arr))
 
     return acc / total_pt_weight if total_pt_weight > 0 else acc
 
@@ -374,18 +378,21 @@ def numpy_pickup_macro_aperture(
     else:
         continuum = generate_wave_speed_continuum(scale_range, num_points=24)
 
-    acc = np.zeros_like(f, dtype=np.float64)
-    total_w = 0.0
     c_pole = (coils[0].pole_type or "rod") if coils else "rod"
-    for pt in continuum:
-        f0 = float(pt.f0)
-        v = float(pt.v0)
-        weight = float(pt.weight)
-        pt_scale_m = float(getattr(pt, "scale_m", l_eff))
-        v_disp = compute_dispersive_wave_speed(f, v, f0=f0, scale_length_m=pt_scale_m)
-        acc += weight * compute_coil_aperture(f, v_disp, w_m, pole_type=c_pole)
-        total_w += weight
-    return acc / total_w if total_w > 0 else acc
+    beta = 1.0 / 3.0 if c_pole == "blade" else 0.25
+    f0_arr = np.array([pt.f0 for pt in continuum], dtype=np.float64)
+    v0_arr = np.array([pt.v0 for pt in continuum], dtype=np.float64)
+    w_arr = np.array([pt.weight for pt in continuum], dtype=np.float64)
+    b_s = get_inharmonicity_for_f0(f0_arr)
+    f_disp_max = 3500.0
+    disp_factor = 1.0 + b_s[:, None] * ((f[None, :] / f0_arr[:, None]) ** 2) / (
+        1.0 + (f[None, :] / f_disp_max) ** 2
+    )
+    v_disp = v0_arr[:, None] * np.sqrt(disp_factor)
+    arg = (math.pi * w_m * f[None, :]) / v_disp
+    ap_w = 1.0 / np.sqrt(1.0 + beta * (arg**2))
+    total_w = float(np.sum(w_arr))
+    return np.sum(w_arr[:, None] * ap_w, axis=0) / total_w if total_w > 0 else np.zeros_like(f)
 
 
 def numpy_aperture(
@@ -402,12 +409,12 @@ def numpy_aperture(
     if speeds is None:
         continuum = generate_wave_speed_continuum(scale_length_m)
         speeds = [pt.v0 for pt in continuum]
-    acc = np.zeros_like(f, dtype=np.float64)
-    for v in speeds:
-        sinc_v = np.abs(np.sinc(w_m * f / v))
-        comb_v = np.abs(np.cos(np.pi * d_m * f / v)) if d_in > 0 else 1.0
-        acc += sinc_v * comb_v
-    return acc / len(speeds)
+    v_arr = np.asarray(speeds, dtype=np.float64)[:, None]
+    sinc_v = np.abs(np.sinc((w_m * f[None, :]) / v_arr))
+    if d_in > 0:
+        comb_v = np.abs(np.cos((np.pi * d_m * f[None, :]) / v_arr))
+        sinc_v *= comb_v
+    return np.mean(sinc_v, axis=0)
 
 
 def numpy_position(
@@ -421,11 +428,9 @@ def numpy_position(
     if speeds is None:
         continuum = generate_wave_speed_continuum(scale_length_m)
         speeds = [pt.v0 for pt in continuum]
-    acc = np.zeros_like(f, dtype=np.float64)
-    for v in speeds:
-        arg_p = f * (2.0 * math.pi * pos_m / v)
-        acc += np.abs(np.sin(arg_p))
-    return acc / len(speeds)
+    v_arr = np.asarray(speeds, dtype=np.float64)[:, None]
+    arg_p = f[None, :] * (2.0 * math.pi * pos_m / v_arr)
+    return np.mean(np.abs(np.sin(arg_p)), axis=0)
 
 
 pickup_acoustic_response = numpy_pickup_acoustic_response

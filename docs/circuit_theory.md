@@ -310,6 +310,14 @@ Where:
 * $\chi_{\mu}$ is the Jordan core relaxation susceptibility ($0.035$ for Alnico V, $0.050$ for Alnico II, $0.010$ for Ceramic, $0.005$ for Neodymium).
 * This provides a subtle, natural softening of high-$Q$ electrical resonance peaks by introducing causal phase delay and loss directly inside the inductor core.
 
+### Analytical Core Impedance Jacobians ($\nabla_\theta Z_L(s)$)
+For gradient-based parameter calibration and sensitivity sweeps, the exact closed-form Jacobians with respect to all primary physical core parameters are evaluated in closed form without numerical perturbation:
+$$\frac{\partial Z_L}{\partial L_0} = s \cdot \mu_{\text{rel}}(s) \cdot \left[ (1 - k_{\text{core}}) + \frac{k_{\text{core}} R_{\text{core}}^2}{(s L_{\text{core}} + R_{\text{core}})^2} \right]$$
+$$\frac{\partial Z_L}{\partial k_{\text{core}}} = s L_0 \cdot \mu_{\text{rel}}(s) \cdot \left[ -1 + \frac{R_{\text{core}} (2 s L_{\text{core}} + R_{\text{core}})}{(s L_{\text{core}} + R_{\text{core}})^2} \right]$$
+$$\frac{\partial Z_L}{\partial f_{\text{core}}} = \mu_{\text{rel}}(s) \cdot \frac{2\pi s^2 L_{\text{core}}^3}{(s L_{\text{core}} + R_{\text{core}})^2}$$
+$$\frac{\partial Z_L}{\partial k_{\text{skin}}} = R_{\text{dc}} \cdot \left( \sqrt{1 + \frac{s}{\omega_{\text{skin}}}} - 1 \right)$$
+$$\frac{\partial Z_L}{\partial f_{\text{skin}}} = -R_{\text{dc}} \cdot k_{\text{skin}} \cdot \frac{\pi s}{\omega_{\text{skin}}^2 \sqrt{1 + \frac{s}{\omega_{\text{skin}}}}}$$
+
 ---
 
 ## 11. Fractional-Order Dielectric Absorption (Cole-Davidson Relaxation)
@@ -322,6 +330,7 @@ Where:
 * $\omega_0 = 2\pi \cdot 1000.0\text{ rad/s}$ is the $1\text{ kHz}$ calibration anchor.
 * $\alpha_{\text{cable}} = 0.994$ models dielectric loss in $15\text{--}20\text{ ft}$ PVC/rubber shielded instrument cables.
 * $\alpha_{\text{tone}} = 0.988$ models dielectric dissipation in vintage paper-in-oil and polyester tone capacitors.
+* **Vectorized Pre-Factored Formulation:** Rather than raising complex frequency arrays to fractional powers, the solver isolates the complex phase into a scalar pre-factor $\kappa = C \cdot e^{j (\alpha - 1) \pi / 2}$, evaluating $Y_C(s) = \kappa \cdot s \cdot s_{\text{norm}}^{\alpha - 1}$ with cached real power vectors ($s_{\text{norm}}^{\alpha - 1}$).
 * **Acoustic Consequence:** As tone knobs are rolled down, the dielectric loss prevents the circuit from forming an artificial, piercing high-$Q$ peak, delivering the warm, musical low-pass contour characteristic of vintage passive instruments.
 
 ---
@@ -384,6 +393,11 @@ Unlike simplified digital models that apply a static volume multiplier, Allomorp
    $$R_{\text{tone}} = R_{\text{tone\_total}} \cdot P_{\text{tone}}$$
    * At $P_{\text{tone}} = 1.0$: maximum series resistance ($250\text{ k}\Omega\text{ to }500\text{ k}\Omega$) isolates the tone capacitor.
    * As $P_{\text{tone}} \to 0.0$: series resistance vanishes, connecting $C_{\text{tone}}$ directly to ground and rolling off high frequencies into the heavy low-pass shelf.
+4. **Logarithmic Audio Taper Denominator Pre-computation:**
+   When evaluating logarithmic audio potentiometer rotation $R(\theta) = R_{\text{total}} \cdot \frac{e^{\alpha \theta} - 1}{e^\alpha - 1}$:
+   * **Audio 10% Taper ($\alpha = \ln(81)$):** The denominator simplifies to $e^{\ln(81)} - 1 = 81.0 - 1.0 = 80.0$ bit-exact.
+   * **Audio 15% Taper ($\alpha = 3.4689$):** The denominator evaluates to $\text{expm1}(3.4689)$ precomputed once.
+   This replaces runtime transcendental power functions with fast scalar multiplications in inner parameter evaluation loops.
 
 ---
 

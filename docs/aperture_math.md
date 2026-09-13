@@ -74,6 +74,10 @@ where each continuum point incorporates:
    Split-coil pickups (like the Precision Bass) dynamically evaluate lower-register continuum points ($i < N/2$) on the forward bass coil half and upper-register points ($i \ge N/2$) on the rearward treble coil half, completely independent of note names, tunings, or string gauges.
 4. **Tuning and Gauge Invariance:**
    Seamlessly accounts for Standard, Drop D, Drop C, C Standard, D Standard, Drop A, 5-string (Low B), and 6-string setups without manual reconfiguration or retuning.
+5. **2D SIMD Tensor Broadcasting:**
+   To eliminate scalar iteration over 24 register points and thousands of frequency bins, Allomorph broadcasts the continuum into a 2D tensor matrix ($\mathbf{V}_{\text{disp}} \in \mathbb{R}^{K \times M}$ where $K=24$ and $M$ is the number of frequency bins):
+   $$\mathbf{V}_{\text{disp}} = \mathbf{v}_0 \odot \sqrt{1 + \mathbf{B}_s \odot \frac{(\mathbf{F} \oslash \mathbf{f}_0)^2}{1 + (\mathbf{F} / 3500\text{ Hz})^2}}$$
+   where $\mathbf{F} \in \mathbb{R}^{1 \times M}$ and $\mathbf{f}_0, \mathbf{v}_0, \mathbf{B}_s \in \mathbb{R}^{K \times 1}$. Aperture sinc factors, Bessel disc integrals, and standing-wave comb envelopes are evaluated across all registers simultaneously via vectorized NumPy array operations.
 
 This eliminates discrete localized comb teeth and guarantees smooth, physically authentic spatial filtering across any instrument configuration.
 
@@ -256,16 +260,16 @@ $$H_{\text{string\_transfer}}(f) = \frac{H_{\text{string, target}}(f)}{H_{\text{
 
 ### A. Anti-Double-Damping Spectral Deconvolution
 When an electric bass is strung with flatwounds (such as **La Bella Low Tension Flats** on a 32" fretless), the physical strings already roll off high-frequency harmonics above $2.8\text{ kHz}$. If a static acoustic upright low-pass filter ($f_d \approx 3.8\text{--}4.2\text{ kHz}$) is applied directly, the tone suffers from double-damping:
-1. **Target String Damping:**
-   $$H_{\text{damp, tgt}}(f) = \frac{1}{\sqrt{1 + \left(\frac{f}{f_{d,\text{tgt}}}\right)^{2 n_{\text{tgt}}}}}$$
-2. **Source String Viscoelastic Damping:**
-   $$H_{\text{damp, src}}(f) = \frac{1}{\sqrt{1 + \left(\frac{f}{f_{d,\text{src}}}\right)^{2 n_{\text{src}}}}}$$
-3. **Differential Anti-Double-Damping Ratio with Bidirectional Soft-Knee Saturation:**
-   $$r_{\text{db}} = 20 \log_{10}\left(\frac{H_{\text{damp, tgt}}(f)}{\max(H_{\text{damp, src}}(f), 10^{-6})}\right)$$
+1. **Fused Differential String Damping Ratio:**
+   Rather than evaluating separate reciprocal square roots and performing numerical division, Allomorph computes the exact analytical ratio in a single pass:
+   $$\frac{H_{\text{damp, tgt}}(f)}{H_{\text{damp, src}}(f)} = \sqrt{\frac{1 + \left(\frac{f}{f_{d,\text{src}}}\right)^{2 n_{\text{src}}}}{1 + \left(\frac{f}{f_{d,\text{tgt}}}\right)^{2 n_{\text{tgt}}}}}$$
+   This guarantees strictly non-zero positivity for subsequent decibel conversions and eliminates redundant floating-point divisions.
+2. **Differential Anti-Double-Damping Ratio with Bidirectional Soft-Knee Saturation:**
+   $$r_{\text{db}} = 20 \log_{10}\left(\frac{H_{\text{damp, tgt}}(f)}{H_{\text{damp, src}}(f)}\right)$$
    $$r_{\text{soft\_db}} = \begin{cases} g_{\text{max}} \cdot \tanh\left(\frac{r_{\text{db}}}{g_{\text{max}}}\right), & r_{\text{db}} > 0.0 \\ g_{\text{min}} \cdot \tanh\left(\frac{r_{\text{db}}}{g_{\text{min}}}\right), & r_{\text{db}} \le 0.0 \end{cases}$$
    where $g_{\text{max}} = +8.0\text{ dB}$ and $g_{\text{min}} = -36.0\text{ dB}$.
    $$H_{\text{damp\_ratio}}(f) = 10^{r_{\text{soft\_db}} / 20.0}$$
-4. **Differential String Cavity Bloom ($H_{\text{bloom}}$):**
+3. **Differential String Cavity Bloom ($H_{\text{bloom}}$):**
    $$\Delta\text{bloom}_{\text{dB}} = \text{bloom}_{\text{tgt}} - \text{bloom}_{\text{src}}$$
    $$g_{\text{bloom}} = 10^{\Delta\text{bloom}_{\text{dB}} / 20.0}$$
    $$H_{\text{bloom}}(f) = \sqrt{\frac{g_{\text{bloom}}^2 + \left(\frac{f}{90.0\text{ Hz}}\right)^2}{1 + \left(\frac{f}{90.0\text{ Hz}}\right)^2}}$$
@@ -293,17 +297,18 @@ Pickup magnetic pole pieces feature two fundamentally distinct spatial sensing g
           Airy / Bessel J1                                    Rectangular Sinc
 ```
 
-### A. 2D Cylindrical Rod Poles (`pole_type = "rod"`)
-Cylindrical Alnico or steel rod magnets (radius $r_p = w_m / 2$) integrate string vibration over a circular 2D disc. The exact spatial window is governed by the first-order Bessel function of the first kind $J_1(k r_p) / (k r_p)$. Allomorph computes this using the algebraic $C^\infty$ approximation:
+### The Unified Geometric Sensing Aperture Kernel
+Allomorph unifies both circular disc and rectangular slit geometries into a single parameterized $C^\infty$ SIMD kernel:
+$$H_{\text{aperture}}(f, v; \beta, w) = \frac{1}{\sqrt{1 + \beta \cdot \left(\frac{2\pi (w/2) f}{v}\right)^2}}$$
 
-$$k = \frac{2\pi f}{v_{\text{disp}}(f)}$$
-$$H_{\text{rod}}(f) = \frac{1}{\sqrt{1 + 0.25 \cdot (k \cdot r_p)^2}}$$
+### A. 2D Cylindrical Rod Poles (`pole_type = "rod"`)
+Cylindrical Alnico or steel rod magnets (radius $r_p = w_m / 2$) integrate string vibration over a circular 2D disc. Setting geometric parameter $\beta = 0.25$ evaluates the circular 2D Airy disc sensitivity ($J_1(k r_p) / (k r_p)$):
+$$k = \frac{2\pi f}{v_{\text{disp}}(f)}, \quad H_{\text{rod}}(f) = \frac{1}{\sqrt{1 + 0.25 \cdot (k \cdot r_p)^2}}$$
 
 * **Acoustic Character:** Gentler high-frequency rolloff ($6\text{ dB/octave}$ asymptote) without sharp cancellation nulls in the audible passband, preserving pick snap, vowel-like articulation, and touch-sensitive harmonic bite.
 
 ### B. 1D Continuous Bar Blade Sensors (`pole_type = "blade"`)
-Bar magnets or steel blades span continuously under the strings with rectangular spatial aperture width $w_m$:
-
+Bar magnets or steel blades span continuously under the strings with rectangular spatial aperture width $w_m$. Setting $\beta = 1/3$ evaluates 1D rectangular slit integration ($r_p = w_m / 2 \implies 2\pi r_p = \pi w_m$):
 $$H_{\text{blade}}(f) = \frac{1}{\sqrt{1 + \frac{1}{3} \cdot \left(\frac{\pi w_m f}{v_{\text{disp}}(f)}\right)^2}}$$
 
 * **Acoustic Character:** Sharper high-frequency suppression than rod poles, smoothing out high-register harshness and delivering the ultra-consistent, modern active pickup character.

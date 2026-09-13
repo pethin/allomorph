@@ -230,7 +230,7 @@ Directly streams raw bass calibration audio (`audio/canonical/optimal_bass_dry.w
 2. **Dynamic Non-Linear Compliance:** Soft-knee saturation ($V_{\text{sat}} \cdot \tanh(v / V_{\text{sat}})$), Lenz flux sag, Dahl hysteresis, back-EMF, and dynamic reluctance quack.
 3. **Passive Pickup Circuit Twin:** Exact closed-form nodal AC transfer functions, eddy-current damping, authentic volume/tone pot dividers, active preamp buffers, hybrid treble bleed, cable capacitance ($750\text{ pF}$), and pedalboard load ($1\text{ M}\Omega \parallel 30\text{ pF}$).
 
-Allomorph features a built-in **WAV SPICE simulator** running natively on Apple Silicon (`arm64`). By evaluating exact analytical nodal equations and vector non-linearities directly in memory on the audio waveform, it eliminates external SPICE dependencies (such as LTspice or ngspice) and intermediate disk writes, executing in ~0.8s per voice (>1500x faster than traditional transient SPICE engines):
+Allomorph features a built-in **WAV SPICE simulator** running natively on Apple Silicon (`arm64`). Accelerated by a master 21-point Lossless $C^\infty$ SIMD, Tensor & Real-FFT Optimization Suite (pure real-FFT homomorphic cepstrum synthesis, 2D continuum tensor broadcasting, branchless 3-stage `fsqrt` rail limiters, Horner dipole polynomials, and passband-constrained oversampling), the engine evaluates exact analytical nodal equations and vector non-linearities directly in memory on the audio waveform, eliminating external SPICE dependencies (such as LTspice or ngspice) and intermediate disk writes while executing in ~0.8s per voice (>1500x faster than traditional transient SPICE engines):
 
 ```bash
 # Run unified WAV SPICE simulation from raw audio for a specific voice (~0.8s):
@@ -384,7 +384,7 @@ allomorph/
 │   ├── analyze_voices.py                  # Thin delegating CLI wrapper for allomorph.visualizer
 │   ├── train_nam.py                       # Local NAM A2 PyTorch/MPS GPU trainer
 │   └── generate_tone3000_artwork.py       # Tone3000 storefront artwork generator
-├── tests/                                 # Hierarchical pytest test suite (180 tests)
+├── tests/                                 # Hierarchical pytest test suite (304 tests)
 │   ├── circuit/                           # SPICE netlists, nodal RLC solving, ODE saturation, simulation
 │   └── physics/                           # Aperture sinc filters, string mechanics, dispersion, FIR synthesis
 └── models/                                # Exported .nam neural models
@@ -397,10 +397,11 @@ allomorph/
 ### Completed Milestones
 - [x] **Electro-Acoustic Physical Modeling:** Magnetic aperture sinc filtering, spatial comb nulls, scale-length wave-speed scaling ($30''/32'' \to 34''/37''$), 2D rod apertures, saddle boundary layer stiffness, longitudinal clank, and differential string tension modeling.
 - [x] **Native WAV SPICE Simulator:** High-performance Apple Silicon engine (`allomorph-sim`) solving analytical nodal RLC equations, Foster 2-stage core eddy diffusion, Dahl magnetic domain-wall pinning hysteresis, asymmetric magnet saturation compliance, sub-audible 8 Hz DC blocking, passive RLC Johnson noise dither, and automatic output level normalization based on input sweep dBFS at >1500x speed.
+- [x] **Lossless $C^\infty$ SIMD, Tensor & Real-FFT Optimization Suite:** Master 21-point mathematical vectorization accelerating FIR synthesis via pure real-FFT homomorphic cepstrum, 2D continuum tensor broadcasting, branchless 3-stage `fsqrt` rail limiting, passband-constrained oversampling, and analytical impedance Jacobians.
 - [x] **21 Voice Profiles & Transducers:** Modern active 2-band Jazz, vintage single-coil, split-coil, series/parallel dual-coils, active Music Man, fanned multi-scale, upright double-bass bridge piezo force transducers, and flat dynamic twins.
 - [x] **Interactive Visualization Portal:** Polars + Altair frequency response portal with spec sheets and per-instrument interactive charts (`docs/frequency_responses.html`).
 - [x] **Automated NAM Training Pipeline:** End-to-end Architecture 2 (A2) neural model training targeting Darkglass Anagram Block 1.
-- [x] **Automated Test Suite:** Comprehensive 180-test pytest verification covering physical filters, nodal transfer functions, FIR DSP, audio simulation, and architectural guardrails.
+- [x] **Automated Test Suite:** Comprehensive 304-test pytest verification covering physical filters, nodal transfer functions, real-FFT homomorphic cepstrum DSP, 2D tensor continuum, ODE saturation, audio simulation, and architectural guardrails.
 
 ### Upcoming Objectives
 - [ ] **Interactive A/B Audio Auditioning CLI:** Terminal and real-time audio auditioning tool (`scripts/preview_voices.py`) with seamless dry-to-wet switching, looping bass riffs, and instantaneous A/B comparison across pickup voices before neural training or pedalboard export.

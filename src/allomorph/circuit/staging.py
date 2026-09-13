@@ -16,7 +16,7 @@ from typing import Literal
 import numpy as np
 
 from allomorph.circuit.parser import CircuitModel, load_circuit
-from allomorph.circuit.saturation import _slew_limit_core
+from allomorph.circuit.saturation import _algebraic_limiter_p8_core, _slew_limit_core
 from allomorph.circuit.schema import SimulationConfig
 from allomorph.circuit.simulation import (
     CALIBRATION_PEAK_CEILING,
@@ -477,8 +477,7 @@ def export_frontend_wet_wav(
         # 2. High-Headroom C^inf Algebraic Limiter (p = 8) Rail Protection
         # Smoothly saturates forte excursions into vsat = 0.985 ceiling with infinite differentiability
         # Leaves 99.9% of normal playing completely linear (zero double-saturation with Block 2)
-        p_order = 8.0
-        audio_wet = audio_wet / np.power(1.0 + np.power(np.abs(audio_wet) / vsat, p_order), 1.0 / p_order)
+        audio_wet = _algebraic_limiter_p8_core(audio_wet, vsat)
 
         # 3. Johnson-Nyquist -108 dBFS Thermal Noise Dither
         # Eliminates neural network dead-zone gating on quiet decay tails
