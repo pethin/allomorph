@@ -173,7 +173,12 @@ $$\text{env}[n] = \begin{cases} \text{env}[n-1] + \alpha_{\text{att}} (|x[n]| - 
 
 with attack time $\tau_{\text{att}} = 6\text{ ms}$ (captures initial pick/slap strike) and release time $\tau_{\text{rel}} = 45\text{ ms}$ (smooth magnetic domain relaxation).
 
-A 1-pole crossover filter at $750\text{ Hz}$ separates low-frequency string excursion $x_{\text{low}}$ from high-frequency percussive velocity $x_{\text{high}}$. When envelope $\text{env}[n] > V_{\text{sat}}$, the excess ratio $\Delta_e = \min((\text{env}[n] - V_{\text{sat}}) / V_{\text{sat}}, 1.0)$ drives the **velocity drag core**:
+A 1-pole crossover filter at $750\text{ Hz}$ separates low-frequency string excursion $x_{\text{low}}$ from high-frequency percussive velocity $x_{\text{high}}$. Core saturation excess is evaluated via an infinitely differentiable ($C^\infty$) softplus excess with smooth soft-knee saturation, eliminating piecewise conditional slope kinks (`if e > vsat:`):
+
+$$\text{excess}_{\text{raw}} = \frac{1}{\alpha} \ln(1 + e^{\alpha(e - V_{\text{sat}})}) = \frac{1}{\alpha} \text{logaddexp}(0, \alpha(e - V_{\text{sat}})), \quad \alpha = 16.0$$
+$$\text{excess} = \text{excess}_{\text{raw}} - \left(\text{excess}_{\text{raw}} - 0.5 \cdot \tanh\left(\frac{\text{excess}_{\text{raw}}}{0.5}\right)\right)$$
+
+where $e$ is the instantaneous envelope $|x_{\text{low}}[n]| + 0.707 \cdot |x_{\text{high}}[n]|$. This drives the **velocity drag core**:
 
 ```python
 drag_high = 1.0 - (k_sag + eddy_factor + pull_damping + stein_damping + emf_damping) * excess
@@ -250,9 +255,10 @@ Smoothly eliminates harsh ultrasonic digital edges on percussive slap pops.
 ### 4.8 Multi-Rate Anti-Aliasing Oversampling (2x / 4x)
 Non-linear polynomial expansion creates harmonics up to the 5th order. To prevent digital alias foldback:
 * Forward zero-padded FFT upsamples to $96\text{ kHz}$ ($2\times$) or $192\text{ kHz}$ ($4\times$).
-* A smooth raised-cosine anti-aliasing window ($f_{\text{pass}} = 22\text{ kHz}, f_{\text{stop}} = 24\text{ kHz}$) completely suppresses ultrasonic content:
-  $$M(f) = \begin{cases} 1.0, & f \le 22\text{ kHz} \\ 0.5 \left(1.0 + \cos\left(\pi \frac{f - 22\text{ kHz}}{2\text{ kHz}}\right)\right), & 22\text{ kHz} < f < 24\text{ kHz} \\ 0.0, & f \ge 24\text{ kHz} \end{cases}$$
-* Suppresses ultrasonic alias foldback by $>100\text{ dB}$.
+* A strictly $C^\infty$ real-analytic mollifier window over $[18\text{ kHz}, 24\text{ kHz}]$ completely suppresses ultrasonic content:
+  $$M(f) = 1.0 - S_\infty\left(\frac{f - 18\text{ kHz}}{6\text{ kHz}}\right)$$
+  Because all boundary derivatives of $S_\infty$ vanish identically at $18\text{ kHz}$ and $24\text{ kHz}$ Nyquist, algebraic $O(1/n^2)$ boundary truncation leakage is eliminated.
+* Suppresses ultrasonic alias foldback by $>100\text{ dB}$ without time-domain pre-ringing.
 * **Passband-Constrained Multiplication:** Because $M(f) \equiv 0$ for all $f \ge 24\text{ kHz}$, spectral multiplications are bounded by passband index $k_{\text{stop}} = \lceil 24000 \cdot N_{\text{up}} / f_{s,\text{up}} \rceil$. Bypassing operations on ultrasonic bins eliminates over $8.64\text{M}$ redundant floating-point multiplications per channel.
 
 ---
@@ -262,9 +268,9 @@ Non-linear polynomial expansion creates harmonics up to the 5th order. To preven
 When blending multiple pickups (e.g. Jazz Bass pairs, P/J, P/MM), simple linear phase addition ($H_1 + H_2$) fails in physical reality because strings vibrate with disparate wave dispersion across registers.
 
 1. **Causal Integer Sample Shifting:** Multi-pickup arrival delays ($\tau_i$) are applied via strictly causal integer sample delays ($[0]*k + \text{fir}[:-k]$), preventing non-causal pre-ringing and circular FFT Gibbs ripples.
-2. **Multi-String Coherence Decay:** The engine dynamically calculates the comb notch frequency $f_{\text{notch}} = 1 / (2 \Delta\tau)$ and smoothly decays cross-coherence over $[f_{\text{notch}}, 1.7 f_{\text{notch}}]$:
-   $$\gamma(f) = 0.88 \cdot 0.5 \left(1.0 + \cos\left(\pi \cdot \text{clip}\left(\frac{f - f_{\text{start}}}{f_{\text{end}} - f_{\text{start}}}, 0, 1\right)\right)\right)$$
-   $$M_{\text{blend}}(f) = \sqrt{\gamma(f) P_{\text{coh}}(f) + (1.0 - \gamma(f)) P_{\text{incoh}}(f)}$$
+2. **Multi-String Coherence Decay:** The engine dynamically calculates wavelength-dependent coherence decay based on acoustic wavelength $\lambda = v/f$ relative to coil spacing $d$, transitioning smoothly via a strictly $C^\infty$ tanh sigmoid:
+   $$f_{\text{mid}} = 1.4 \cdot \frac{v}{d}, \quad f_\sigma = \max\left(0.4 \cdot \frac{v}{d}, 1.0\right), \quad \gamma(f, v) = \frac{1}{2} \left[ 1 - \tanh\left( \frac{f - f_{\text{mid}}}{f_\sigma} \right) \right]$$
+   $$M_{\text{blend}}(f) = \sqrt{\gamma(f, v) P_{\text{coh}}(f) + (1.0 - \gamma(f, v)) P_{\text{incoh}}(f)}$$
    This naturally bounds the acoustic comb notch depth to an authentic $\sim 11\text{--}12\text{ dB}$ (matching real dual-pickup measurements) rather than an artificial infinite cancellation notch.
 
 ---

@@ -30,7 +30,7 @@ from allomorph.config.schema import (
     VoiceConfig,
     VoicePickupConfig,
 )
-from allomorph.dsp import FREQS
+from allomorph.dsp import FREQS, cinf_smoothstep
 
 
 def compute_core_impedance(
@@ -876,12 +876,12 @@ def compute_differential_circuit_transfer_functions(
         thresh = max_boost_db - knee_width
         h_db_soft = smooth_soft_knee_db(h_db, thresh=thresh, ceiling=max_boost_db, alpha=2.0)
 
-        # Smooth high-frequency cosine taper above 8.0 kHz to 20.0 kHz
+        # Smooth C^inf high-frequency mollifier taper above 8.0 kHz to 20.0 kHz
         # Eliminates unnatural flat horizontal ceilings and suppresses extreme ultrasonic noise
         f_start = 8000.0
         f_end = 20000.0
-        t = np.clip((f_arr - f_start) / (f_end - f_start), 0.0, 1.0)
-        w = 0.5 * (1.0 + np.cos(np.pi * t))
+        t = (f_arr - f_start) / (f_end - f_start)
+        w = 1.0 - cinf_smoothstep(t)
         s = 0.25 + 0.75 * w
         # Smooth C^inf transition: softplus ensures strictly monotonic, C^1 smooth blending across 0 dB
         excess_boost = (1.0 / 1.2) * np.logaddexp(0.0, 1.2 * h_db_soft)

@@ -20,7 +20,7 @@ from allomorph.config.scales import SCALES
 from allomorph.config.schema import InstrumentConfig, PickupComponentConfig
 from allomorph.config.strings import get_instrument_string
 from allomorph.config.voices import VOICES
-from allomorph.dsp import FREQS, NUM_TAPS, synthesize_minimum_phase_fir
+from allomorph.dsp import FREQS, NUM_TAPS, cinf_smoothstep, synthesize_minimum_phase_fir
 from allomorph.physics.aperture import (
     compute_body_microphonic_coupling,
     compute_saddle_boundary_coupling,
@@ -215,8 +215,8 @@ def compute_voice_prefilter_firs(
             f_peak_src = c_mean_src / pos_eff
             f_taper_start = min(f_peak_src, 2500.0)
             f_taper_end = min(1.8 * f_taper_start, 4500.0)
-            t = np.clip((freqs - f_taper_start) / (f_taper_end - f_taper_start), 0.0, 1.0)
-            w = 0.5 * (1.0 + np.cos(np.pi * t))
+            t = (freqs - f_taper_start) / (f_taper_end - f_taper_start)
+            w = 1.0 - cinf_smoothstep(t)
             h_decomb = w * h_decomb_raw + (1.0 - w) * 1.0
 
             is_flatwound = "flat" in (src_string.type or "")
@@ -396,8 +396,8 @@ def compute_aperture_prefilter_fir(
         f_peak_src = c_mean_src / pos_eff
         f_taper_start = min(f_peak_src, 2500.0)
         f_taper_end = min(1.8 * f_taper_start, 4500.0)
-        t = np.clip((freqs - f_taper_start) / (f_taper_end - f_taper_start), 0.0, 1.0)
-        w = 0.5 * (1.0 + np.cos(np.pi * t))
+        t = (freqs - f_taper_start) / (f_taper_end - f_taper_start)
+        w = 1.0 - cinf_smoothstep(t)
         h_decomb = w * h_decomb_raw + (1.0 - w) * 1.0
 
         is_flatwound = "flat" in src_string.type

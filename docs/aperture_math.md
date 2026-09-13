@@ -110,9 +110,9 @@ This spatial notch around $2.5\text{ kHz}$ is the acoustic fingerprint of a Musi
 #### Physical Spatial Cross-Coherence Decay ($f > \frac{v}{d}$)
 In an idealized 1D string model, the cosine comb pattern repeats indefinitely at odd harmonics ($f = 3 f_{\text{notch}}, 5 f_{\text{notch}}, \dots$). However, on physical wound bass strings, transverse vibration across dual pole pieces becomes diffuse and incoherent once the acoustic wavelength becomes comparable to or shorter than the coil spacing ($\lambda \le d$):
 * **Coherent Regime ($\lambda > 2d$, $f < \frac{v}{2d}$):** Phasic wave interference dominates. The fundamental acoustic comb notch ($f_{\text{notch}}$) and the constructive rise ($f_{\text{peak}} = \frac{v}{d}$) are 100% preserved ($\gamma = 1.0$).
-* **Wavelength-Dependent Transition ($\frac{v}{d} \le f \le 1.8 \frac{v}{d}$):** As frequency passes the fundamental constructive peak ($f_{\text{start}} = v/d$), the coherence decay transitions smoothly from coherent phase sum ($P_{\text{coh}} = |\sum w_i H_i|^2$) to incoherent power summation ($P_{\text{incoh}} = \sum w_i^2 |H_i|^2$):
-  $$\gamma(f, v) = \frac{1}{2} \left[ 1 + \cos\left( \pi \cdot \text{clip}\left( \frac{f - f_{\text{start}}}{0.8 f_{\text{start}}}, 0, 1 \right) \right) \right]$$
-  $$|H_{\text{blend}}(f)| = \sqrt{\gamma P_{\text{coh}} + (1 - \gamma) P_{\text{incoh}}}$$
+* **Wavelength-Dependent Transition ($\frac{v}{d} \le f \le 1.8 \frac{v}{d}$):** As frequency passes the fundamental constructive peak ($f_{\text{start}} = v/d$), the coherence decay transitions smoothly from coherent phase sum ($P_{\text{coh}} = |\sum w_i H_i|^2$) to incoherent power summation ($P_{\text{incoh}} = \sum w_i^2 |H_i|^2$) via an infinitely differentiable ($C^\infty$) sigmoid transition:
+  $$f_{\text{mid}} = 1.4 \cdot \frac{v}{d}, \quad f_\sigma = \max\left(0.4 \cdot \frac{v}{d}, 1.0\right), \quad \gamma(f, v) = \frac{1}{2} \left[ 1 - \tanh\left( \frac{f - f_{\text{mid}}}{f_\sigma} \right) \right]$$
+  $$|H_{\text{blend}}(f)| = \sqrt{\gamma(f, v) P_{\text{coh}} + (1 - \gamma(f, v)) P_{\text{incoh}}}$$
 * **Result:** Secondary harmonic nulls (such as the unphysical E-string notch at $5.6\text{ kHz}$) are naturally eliminated, producing a smooth, organic high-frequency response while strictly preserving the authentic low-mid humbucker scoop.
 
 ---
@@ -162,13 +162,13 @@ To model physical excursion scaling accurately without injecting artificial high
 $$\eta_{\text{tgt}} = \frac{x_{\text{tgt}}}{L_{\text{tgt}}}, \quad \eta_{\text{src}} = \frac{x_{\text{src}}}{L_{\text{src}}}$$
 
 $$\Delta G = 20 \log_{10}\left(\frac{\eta_{\text{tgt}}}{\eta_{\text{src}}}\right)$$
-
-$$\sigma = \frac{1}{2}\left(1 + \tanh\left(\frac{\Delta G}{4.0}\right)\right)$$
-
-$$f_{\text{pos}}(\Delta G) = \frac{\Delta G}{\left(1 + \left(\frac{\max(\Delta G, 0)}{12.0}\right)^4\right)^{1/4}}, \quad f_{\text{neg}}(\Delta G) = \frac{\Delta G}{\left(1 + \left(\frac{\min(\Delta G, 0)}{-16.0}\right)^4\right)^{1/4}}$$
-
-$$\Delta G_{\text{soft}} = \sigma \cdot f_{\text{pos}}(\Delta G) + (1 - \sigma) \cdot f_{\text{neg}}(\Delta G)$$
-
+ 
+$$\sigma(dg) = \frac{1}{1 + e^{-\beta \cdot dg}}, \quad \beta = 1.0$$
+ 
+$$g_{\text{eff}}(dg) = \sigma(dg) \cdot g_{\text{pos}} + (1 - \sigma(dg)) \cdot g_{\text{neg}}, \quad g_{\text{pos}} = 12.0\text{ dB}, \quad g_{\text{neg}} = 16.0\text{ dB}$$
+ 
+$$\Delta G_{\text{soft}} = \frac{\Delta G}{\left(1 + \left(\frac{\Delta G}{g_{\text{eff}}(\Delta G)}\right)^4\right)^{1/4}}$$
+ 
 $$g_0 = 10^{\Delta G_{\text{soft}} / 20.0}$$
 
 $$H_{\text{pos}}(f) = \sqrt{\frac{g_0^2 + (f / 220\text{ Hz})^2}{1 + (f / 220\text{ Hz})^2}}$$
@@ -233,7 +233,7 @@ Magnetic pickups impart spatial comb-filtering nulls $H_{\text{comb}}(f) = \left
 
 To deconvolve the magnetic comb filter of the source instrument without introducing infinite gain at the null points or upper-frequency noise flare, Allomorph applies regularized spatial inversion:
 $$H_{\text{decomb}}(f) = \frac{H_{\text{src, acoustic}}(f)}{H_{\text{src, acoustic}}^2(f) + \epsilon_{\text{reg}}}, \quad \epsilon_{\text{reg}} = 0.08$$
-The decombed response is normalized relative to its median value across the $100\text{--}1,000\text{ Hz}$ core passband, restoring smooth low-register string dynamics.
+The decombed response is normalized relative to its median value across the $100\text{--}1,000\text{ Hz}$ core passband, restoring smooth low-register string dynamics. Above the de-combing bandwidth, the response transitions smoothly into unity ($1.000$) using the canonical real-analytic mollifier $w(f) = 1.0 - S_\infty\left(\frac{f - f_{\text{start}}}{f_{\text{end}} - f_{\text{start}}}\right)$, ensuring continuous differentiability of all orders with zero boundary slope kinks.
 
 ### B. Soundboard & Bridge Wood Damping ($H_{\text{damp}}$)
 Carved spruce and maple double bass tops absorb string vibration rapidly above the mid-treble register. Allomorph models acoustic wood dissipation with a 2nd-order critically damped low-pass filter ($Q = 0.707$):
@@ -269,10 +269,10 @@ When an electric bass is strung with flatwounds (such as **La Bella Low Tension 
    Rather than evaluating separate reciprocal square roots and performing numerical division, Allomorph computes the exact analytical ratio in a single pass:
    $$\frac{H_{\text{damp, tgt}}(f)}{H_{\text{damp, src}}(f)} = \sqrt{\frac{1 + \left(\frac{f}{f_{d,\text{src}}}\right)^{2 n_{\text{src}}}}{1 + \left(\frac{f}{f_{d,\text{tgt}}}\right)^{2 n_{\text{tgt}}}}}$$
    This guarantees strictly non-zero positivity for subsequent decibel conversions and eliminates redundant floating-point divisions.
-2. **Differential Anti-Double-Damping Ratio with Bidirectional Soft-Knee Saturation:**
+2. **Differential Anti-Double-Damping Ratio with Strictly $C^\infty$ Thresholded Soft-Knee Saturation:**
    $$r_{\text{db}} = 20 \log_{10}\left(\frac{H_{\text{damp, tgt}}(f)}{H_{\text{damp, src}}(f)}\right)$$
-   $$r_{\text{soft\_db}} = \begin{cases} g_{\text{max}} \cdot \tanh\left(\frac{r_{\text{db}}}{g_{\text{max}}}\right), & r_{\text{db}} > 0.0 \\ g_{\text{min}} \cdot \tanh\left(\frac{r_{\text{db}}}{g_{\text{min}}}\right), & r_{\text{db}} \le 0.0 \end{cases}$$
-   where $g_{\text{max}} = +8.0\text{ dB}$ and $g_{\text{min}} = -36.0\text{ dB}$.
+   $$r_{\text{soft\_db}} = \begin{cases} \text{smooth\_soft\_knee\_db}(r_{\text{db}}, \text{thresh}=5.0, \text{ceiling}=8.0, \alpha=2.0), & r_{\text{db}} > 0.0 \\ -\text{smooth\_soft\_knee\_db}(-r_{\text{db}}, \text{thresh}=24.0, \text{ceiling}=36.0, \alpha=2.0), & r_{\text{db}} \le 0.0 \end{cases}$$
+   All 735 catalog transformations enjoy 100% linear passband transparency down to $-24.0\text{ dB}$ (and up to $+5.0\text{ dB}$ for stainless clank), eliminating the $4.64\text{ dB}$ unphysical loss of legacy unthresholded $\tanh$ saturation while guaranteeing smooth asymptotic saturation to the $-36.0\text{ dB}$ floor.
    $$H_{\text{damp\_ratio}}(f) = 10^{r_{\text{soft\_db}} / 20.0}$$
 3. **Differential String Cavity Bloom ($H_{\text{bloom}}$):**
    $$\Delta\text{bloom}_{\text{dB}} = \text{bloom}_{\text{tgt}} - \text{bloom}_{\text{src}}$$

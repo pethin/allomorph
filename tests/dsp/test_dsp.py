@@ -192,3 +192,35 @@ def test_calibrate_nam_v3_latency_detection_and_lookahead():
     _rec_sh, _lookahead_sh, not_det_sh = calibrate_nam_v3_latency(y_short)
     assert not_det_sh is True
 
+
+def test_cinf_smoothstep():
+    """Validates that cinf_smoothstep satisfies C^inf boundary and monotonicity properties."""
+    from allomorph.dsp import cinf_smoothstep
+
+    # 1. Scalar edge cases
+    assert cinf_smoothstep(-1.0) == 0.0
+    assert cinf_smoothstep(0.0) == 0.0
+    assert cinf_smoothstep(1.0) == 1.0
+    assert cinf_smoothstep(2.0) == 1.0
+    assert math.isclose(cinf_smoothstep(0.5), 0.5, abs_tol=1e-12)
+
+    # 2. Vectorized evaluation
+    t_arr = np.linspace(-0.5, 1.5, 1000)
+    out = cinf_smoothstep(t_arr)
+    assert len(out) == 1000
+    assert np.all(out[t_arr <= 0.0] == 0.0)
+    assert np.all(out[t_arr >= 1.0] == 1.0)
+    assert np.all(np.diff(out) >= -1e-12), "cinf_smoothstep must be strictly monotonic"
+
+    # 3. Vanishing derivatives at boundaries (t -> 0+ and t -> 1-)
+    dt = 1e-4
+    d1_0 = (cinf_smoothstep(dt) - cinf_smoothstep(0.0)) / dt
+    d1_1 = (cinf_smoothstep(1.0) - cinf_smoothstep(1.0 - dt)) / dt
+    assert abs(d1_0) < 1e-4, f"First derivative at t=0 must vanish: {d1_0}"
+    assert abs(d1_1) < 1e-4, f"First derivative at t=1 must vanish: {d1_1}"
+
+    # 4. Symmetry: S(1 - t) == 1 - S(t)
+    t_mid = np.linspace(0.01, 0.99, 100)
+    assert np.allclose(cinf_smoothstep(1.0 - t_mid), 1.0 - cinf_smoothstep(t_mid), atol=1e-12)
+
+

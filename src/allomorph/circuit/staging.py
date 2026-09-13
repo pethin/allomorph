@@ -43,6 +43,7 @@ from allomorph.config.strings import STRINGS, get_instrument_string
 from allomorph.config.voices import VOICES
 from allomorph.dsp import (
     FREQS,
+    cinf_smoothstep,
     fft_convolve,
     read_wav,
     synthesize_minimum_phase_fir,
@@ -327,10 +328,10 @@ def compute_frontend_transfer_function(
 
     # Frequency-dependent ultrasonic roll-off above 8 kHz if exceeding 1.5 dB (keeps 20 kHz strictly < 2.0 dB)
     f_roll = 8000.0
-    roll_factor = np.clip((f - f_roll) / (24000.0 - f_roll), 0.0, 1.0)
+    roll_factor = (f - f_roll) / (24000.0 - f_roll)
     beta = 1.2
     hf_excess = (1.0 / beta) * np.logaddexp(0.0, beta * (clamped_db - 1.5))
-    final_db = clamped_db - hf_excess * (0.5 * (1.0 - np.cos(np.pi * roll_factor)))
+    final_db = clamped_db - hf_excess * cinf_smoothstep(roll_factor)
     return 10.0 ** (final_db / 20.0)
 
 

@@ -12,6 +12,7 @@ from typing import Any
 import numpy as np
 
 from allomorph.circuit.schema import SaturationConfig
+from allomorph.dsp import cinf_smoothstep
 
 # Analytical scalar normalizer for H_pre at 100 Hz: |(wc / (j*2*pi*100 + wc))**0.55| with wc = 2*pi*40
 _H_PRE_100HZ_NORM: float = 0.5807963098547466
@@ -81,20 +82,33 @@ if _HAS_NUMBA:
         x_low_prev = 0.0
         x_high_prev = 0.0
         for i in range(n):
-            excess = 0.0
             val = x_arr[i]
             x_low_prev += alpha_c * (val - x_low_prev)
             x_high = val - x_low_prev
             diff_high = x_high - x_high_prev
             e = env[i]
-            if e > vsat > 0.0:
-                excess = math.tanh((e - vsat) / vsat)
+
+            # C^inf softplus excess: continuous derivatives across threshold without slope kinks
+            if vsat > 0.0:
+                u = e - vsat
+                if u * 16.0 > 20.0:
+                    sp = u
+                elif u * 16.0 < -40.0:
+                    sp = 0.0
+                else:
+                    sp = (1.0 / 16.0) * math.log1p(math.exp(16.0 * u))
+                excess = math.tanh(sp / vsat)
+            else:
+                excess = 0.0
+
+            w_reg = 0.70 + 0.60 * (
+                (x_low_prev * x_low_prev)
+                / (x_low_prev * x_low_prev + x_high * x_high + 1e-8)
+            )
+
+            if excess > 1e-6:
                 x_norm = math.sqrt(x_high * x_high + 1e-8) - 1e-4
                 eddy_factor = k_eddy * excess * math.tanh(x_norm / vsat)
-                w_reg = 0.70 + 0.60 * (
-                    (x_low_prev * x_low_prev)
-                    / (x_low_prev * x_low_prev + x_high * x_high + 1e-8)
-                )
                 val_pos = (
                     math.log1p(math.exp(val / vsat))
                     if val / vsat < 20.0
@@ -115,10 +129,6 @@ if _HAS_NUMBA:
                 )
                 drag_low = 1.0 / (1.0 + (0.25 * k_sag + 0.50 * pull_damping) * excess)
             else:
-                w_reg = 0.70 + 0.60 * (
-                    (x_low_prev * x_low_prev)
-                    / (x_low_prev * x_low_prev + x_high * x_high + 1e-8)
-                )
                 drag_high = 1.0
                 drag_low = 1.0
 
@@ -127,12 +137,12 @@ if _HAS_NUMBA:
             else:
                 wobble = 0.0
 
-            if k_pull > 0.0 and vsat > 0.0 and e > vsat:
+            if k_pull > 0.0 and excess > 1e-6:
                 pitch_sag = -k_pull * w_reg * excess * diff_high
             else:
                 pitch_sag = 0.0
 
-            if lambda_L > 0.0 and vsat > 0.0 and e > vsat:
+            if lambda_L > 0.0 and excess > 1e-6:
                 val_norm = math.sqrt(val * val + 1e-8) - 1e-4
                 ind_mod = -lambda_L * excess * math.tanh(val_norm / vsat) * diff_high
             else:
@@ -219,20 +229,33 @@ else:
         x_low_prev = 0.0
         x_high_prev = 0.0
         for i in range(n):
-            excess = 0.0
             val = x_arr[i]
             x_low_prev += alpha_c * (val - x_low_prev)
             x_high = val - x_low_prev
             diff_high = x_high - x_high_prev
             e = env[i]
-            if e > vsat > 0.0:
-                excess = math.tanh((e - vsat) / vsat)
+
+            # C^inf softplus excess: continuous derivatives across threshold without slope kinks
+            if vsat > 0.0:
+                u = e - vsat
+                if u * 16.0 > 20.0:
+                    sp = u
+                elif u * 16.0 < -40.0:
+                    sp = 0.0
+                else:
+                    sp = (1.0 / 16.0) * math.log1p(math.exp(16.0 * u))
+                excess = math.tanh(sp / vsat)
+            else:
+                excess = 0.0
+
+            w_reg = 0.70 + 0.60 * (
+                (x_low_prev * x_low_prev)
+                / (x_low_prev * x_low_prev + x_high * x_high + 1e-8)
+            )
+
+            if excess > 1e-6:
                 x_norm = math.sqrt(x_high * x_high + 1e-8) - 1e-4
                 eddy_factor = k_eddy * excess * math.tanh(x_norm / vsat)
-                w_reg = 0.70 + 0.60 * (
-                    (x_low_prev * x_low_prev)
-                    / (x_low_prev * x_low_prev + x_high * x_high + 1e-8)
-                )
                 val_pos = (
                     math.log1p(math.exp(val / vsat))
                     if val / vsat < 20.0
@@ -253,10 +276,6 @@ else:
                 )
                 drag_low = 1.0 / (1.0 + (0.25 * k_sag + 0.50 * pull_damping) * excess)
             else:
-                w_reg = 0.70 + 0.60 * (
-                    (x_low_prev * x_low_prev)
-                    / (x_low_prev * x_low_prev + x_high * x_high + 1e-8)
-                )
                 drag_high = 1.0
                 drag_low = 1.0
 
@@ -265,12 +284,12 @@ else:
             else:
                 wobble = 0.0
 
-            if k_pull > 0.0 and vsat > 0.0 and e > vsat:
+            if k_pull > 0.0 and excess > 1e-6:
                 pitch_sag = -k_pull * w_reg * excess * diff_high
             else:
                 pitch_sag = 0.0
 
-            if lambda_L > 0.0 and vsat > 0.0 and e > vsat:
+            if lambda_L > 0.0 and excess > 1e-6:
                 val_norm = math.sqrt(val * val + 1e-8) - 1e-4
                 ind_mod = -lambda_L * excess * math.tanh(val_norm / vsat) * diff_high
             else:
@@ -395,9 +414,8 @@ def _get_saturation_filter_pack(
     H_de = 1.0 / H_pre
     f_pass = 22000.0
     f_stop = 24000.0
-    t = np.clip((freqs_pass - f_pass) / (f_stop - f_pass), 0.0, 1.0)
-    aa_mask = np.where(freqs_pass <= f_pass, 1.0, 0.5 * (1.0 + np.cos(np.pi * t)))
-    aa_mask[freqs_pass >= f_stop] = 0.0
+    t = (freqs_pass - f_pass) / (f_stop - f_pass)
+    aa_mask = 1.0 - cinf_smoothstep(t)
     s_pass = 1j * omega
     H_hp = s_pass / (s_pass + 2.0 * np.pi * 400.0)
     return H_pre, H_de, aa_mask, H_hp

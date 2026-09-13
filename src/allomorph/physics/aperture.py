@@ -130,13 +130,8 @@ def soft_clamp_displacement_ratio(
     """
     dg = np.asarray(delta_g, dtype=np.float64)
     sigma = 0.5 * (1.0 + np.tanh(dg / k))
-
-    pos_x = np.maximum(dg, 0.0)
-    neg_x = np.minimum(dg, 0.0)
-    f_pos = dg / (1.0 + (pos_x / g_pos) ** 4) ** 0.25
-    f_neg = dg / (1.0 + (neg_x / -g_neg) ** 4) ** 0.25
-
-    soft = sigma * f_pos + (1.0 - sigma) * f_neg
+    g_eff = sigma * g_pos + (1.0 - sigma) * g_neg
+    soft = dg / (1.0 + (dg / g_eff) ** 4) ** 0.25
     if np.isscalar(delta_g):
         return float(soft)
     return soft

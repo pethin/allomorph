@@ -4,10 +4,11 @@ Provides NumPy-accelerated real-cepstrum Hilbert transform minimum-phase FIR syn
 fast Fourier transform wrappers, and 24-bit PCM audio export.
 """
 
+import math
 import wave
 from collections.abc import Callable, Sequence
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING, Any, Literal, overload
 
 import numpy as np
 
@@ -43,6 +44,57 @@ FS = 48000
 NUM_TAPS = 4096
 NYQ = FS / 2.0
 FREQS = [i * (NYQ / (NUM_TAPS - 1)) for i in range(NUM_TAPS)]
+
+
+@njit(fastmath=True)
+def _cinf_smoothstep_kernel(t: np.ndarray, out: np.ndarray) -> None:
+    n = len(t)
+    for i in range(n):
+        ti = t[i]
+        if ti <= 0.0:
+            out[i] = 0.0
+        elif ti >= 1.0:
+            out[i] = 1.0
+        else:
+            arg = (1.0 - 2.0 * ti) / (ti * (1.0 - ti))
+            if arg > 80.0:
+                arg = 80.0
+            elif arg < -80.0:
+                arg = -80.0
+            out[i] = 1.0 / (1.0 + np.exp(arg))
+
+
+@overload
+def cinf_smoothstep(t: float) -> float: ...
+
+
+@overload
+def cinf_smoothstep(t: np.ndarray) -> np.ndarray: ...
+
+
+def cinf_smoothstep(t: float | np.ndarray) -> float | np.ndarray:
+    """Computes the real-analytic C^infinity smoothstep mollifier transition function S(t).
+
+    All derivatives of all orders are identically zero at t <= 0 and t >= 1, eliminating
+    high-order spectral boundary leakage into digital silence.
+    """
+    if isinstance(t, (int, float, np.floating, np.integer)):
+        tf = float(t)
+        if tf <= 0.0:
+            return 0.0
+        elif tf >= 1.0:
+            return 1.0
+        arg = (1.0 - 2.0 * tf) / (tf * (1.0 - tf))
+        arg = min(max(arg, -80.0), 80.0)
+        return 1.0 / (1.0 + math.exp(arg))
+
+    t_arr = np.asarray(t, dtype=np.float64)
+    out = np.zeros_like(t_arr, dtype=np.float64)
+    _cinf_smoothstep_kernel(t_arr, out)
+    return out
+
+
+_cinf_smoothstep = cinf_smoothstep
 
 
 def synthesize_minimum_phase_fir(
@@ -90,10 +142,11 @@ def synthesize_minimum_phase_fir(
     h = np.fft.irfft(h_min_spec, n_fft)
     fir = h[:num_taps].copy()
 
-    # Smooth tail (final 15%) with a cosine taper to eliminate truncation artifacts
+    # Smooth tail (final 15%) with a C^inf mollifier smoothstep to eliminate truncation artifacts
     taper_len = int(num_taps * 0.15)
     start_taper = num_taps - taper_len
-    w = 0.5 * (1.0 + np.cos(np.pi * np.arange(taper_len) / taper_len))
+    t = np.arange(taper_len, dtype=np.float64) / max(taper_len, 1)
+    w = 1.0 - cinf_smoothstep(t)
     fir[start_taper:] *= w
 
     if not normalize:
@@ -353,34 +406,6 @@ from allomorph.version import DSP_GENERATION
 
 OPTIMAL_DRY_PATH = AUDIO_DIR / "canonical" / f"optimal_bass_dry_v{DSP_GENERATION}.wav"
 
-
-@njit(fastmath=True)
-def _cinf_smoothstep_kernel(t: np.ndarray, out: np.ndarray) -> None:
-    n = len(t)
-    for i in range(n):
-        ti = t[i]
-        if ti <= 0.0:
-            out[i] = 0.0
-        elif ti >= 1.0:
-            out[i] = 1.0
-        else:
-            arg = (1.0 - 2.0 * ti) / (ti * (1.0 - ti))
-            if arg > 80.0:
-                arg = 80.0
-            elif arg < -80.0:
-                arg = -80.0
-            out[i] = 1.0 / (1.0 + np.exp(arg))
-
-
-def _cinf_smoothstep(t: np.ndarray) -> np.ndarray:
-    """Computes the real-analytic C^infinity smoothstep mollifier transition function S(t).
-
-    All derivatives of all orders are identically zero at t <= 0 and t >= 1, eliminating
-    high-order spectral boundary leakage into digital silence.
-    """
-    out = np.zeros_like(t, dtype=np.float64)
-    _cinf_smoothstep_kernel(t, out)
-    return out
 
 
 @njit(fastmath=True, parallel=True)

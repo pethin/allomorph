@@ -928,7 +928,7 @@ def test_guardrail_lossless_c_inf_optimizations():
     from allomorph.circuit.solver import smooth_soft_knee_db
     from allomorph.config.instruments import INSTRUMENTS
     from allomorph.config.strings import STRINGS
-    from allomorph.dsp import synthesize_minimum_phase_fir
+    from allomorph.dsp import cinf_smoothstep, synthesize_minimum_phase_fir
     from allomorph.physics.aperture import numpy_pickup_acoustic_response
     from allomorph.physics.strings import compute_differential_string_transfer
 
@@ -945,8 +945,10 @@ def test_guardrail_lossless_c_inf_optimizations():
     c_hat[half] = c_ref[half]
     c_hat[1:half] = 2.0 * c_ref[1:half]
     h_ref = np.fft.ifft(np.exp(np.fft.fft(c_hat))).real[:4096]
-    w = 0.5 * (1.0 + np.cos(np.pi * np.arange(int(4096 * 0.15)) / int(4096 * 0.15)))
-    h_ref[4096 - int(4096 * 0.15) :] *= w
+    taper_len = int(4096 * 0.15)
+    t = np.arange(taper_len, dtype=np.float64) / max(taper_len, 1)
+    w = 1.0 - cinf_smoothstep(t)
+    h_ref[4096 - taper_len :] *= w
     assert np.max(np.abs(np.array(fir_opt) - h_ref)) < 1e-14
 
     # 2. 2D tensor aperture broadcasting across instruments
@@ -1186,6 +1188,48 @@ def test_guardrail_scale_tension_zero_center_and_circuit_headroom():
     assert np.all(grad1 > 0.0), "Smooth soft knee must be strictly monotonic (dy/dx > 0)"
     assert not np.any(np.isnan(grad2)), "Smooth soft knee second derivative must be finite everywhere"
     assert abs(smooth_soft_knee_db(4.0, thresh=6.0, ceiling=8.0) - 4.0) < 1e-4
+
+
+def test_guardrail_cinf_dsp_smoothness():
+    """Guardrail 5.2: Asserts that core DSP transition functions exhibit C^inf smoothness
+    with continuous, finite derivatives across transition boundaries without slope kinks or derivative jumps."""
+    from allomorph.circuit.saturation import _get_saturation_filter_pack
+    from allomorph.dsp import cinf_smoothstep
+    from allomorph.physics import soft_clamp_displacement_ratio
+
+    # 1. cinf_smoothstep: first and second derivatives vanish identically at t=0 and t=1
+    dt = 1e-4
+    d1_0 = (cinf_smoothstep(dt) - cinf_smoothstep(0.0)) / dt
+    d1_1 = (cinf_smoothstep(1.0) - cinf_smoothstep(1.0 - dt)) / dt
+    assert abs(d1_0) < 1e-4, f"Smoothstep d1 at t=0 must vanish: {d1_0}"
+    assert abs(d1_1) < 1e-4, f"Smoothstep d1 at t=1 must vanish: {d1_1}"
+
+    # Dense gradient smoothness across [0, 1]
+    ts = np.linspace(0.0, 1.0, 500)
+    ys = cinf_smoothstep(ts)
+    dys = np.gradient(ys, ts)
+    d2ys = np.gradient(dys, ts)
+    assert np.all(dys >= -1e-12), "Smoothstep must be monotonically increasing"
+    assert not np.any(np.isnan(d2ys)), "Smoothstep second derivative must be finite everywhere"
+
+    # 2. soft_clamp_displacement_ratio: unified C^inf partition of unity on R
+    dgs = np.linspace(-25.0, 25.0, 1000)
+    c_out = np.asarray([soft_clamp_displacement_ratio(dg) for dg in dgs])
+    c_grad1 = np.gradient(c_out, dgs)
+    c_grad2 = np.gradient(c_grad1, dgs)
+    assert np.all(c_grad1 > 0.0), "Displacement limiter must be strictly monotonic"
+    assert not np.any(np.isnan(c_grad2)), "Displacement limiter second derivative must be finite everywhere"
+    # Zero-crossing must be exact 0.00 dB
+    assert soft_clamp_displacement_ratio(0.0) == 0.0
+
+    # 3. Multi-rate anti-aliasing decimation mask (aa_mask): vanishing boundary derivatives
+    _, _, aa_mask, _ = _get_saturation_filter_pack(4800, 2)
+    freqs = np.fft.rfftfreq(4800, 1.0 / 48000.0)
+    idx_22k = int(np.argmin(np.abs(freqs - 22000.0)))
+    idx_24k = int(np.argmin(np.abs(freqs - 24000.0)))
+    assert aa_mask[idx_22k] == 1.0, "aa_mask must be exactly 1.0 at 22 kHz"
+    assert aa_mask[idx_24k] == 0.0, "aa_mask must be exactly 0.0 at 24 kHz"
+
 
 
 

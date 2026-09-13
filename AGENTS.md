@@ -66,7 +66,7 @@ allomorph/
 │   └── voices/               # Target voice TOMLs with embedded declarative [circuit] tables
 ├── docs/                     # Technical documentation & interactive charts
 │   ├── architectural_guardrails.md # Master mathematical reference handbook & derivations
-│   ├── clamp_and_limit_registry.md # Master catalog-wide inventory of all 20 clamps, limits, and thresholds
+│   ├── clamp_and_limit_registry.md # Master catalog-wide inventory of all 25 clamps, limits, and thresholds
 │   ├── tone_naming_guidelines.md # Normative tone naming rules, character limits & bassist lexicon
 │   ├── voice_catalog.md      # Passive pickup models, RLC parameters, character
 │   ├── circuit_theory.md     # Differential equations, 500k volume pot, treble bleed

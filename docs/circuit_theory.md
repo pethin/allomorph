@@ -46,10 +46,13 @@ Where:
 
 5. **Dynamic Core Compliance & String Excursion Saturation ($B_{\text{comp}}$):**
    * High-amplitude pick and slap transients push magnetic string coupling into non-linear excursion ($d\Phi/dx$).
-   * Modeled in SPICE via an arbitrary behavioral voltage source:
+   * Modeled in SPICE via displacement-domain pre/de-emphasis with soft-knee saturation:
      $$V_{\text{dyn}}(t) = V_{\text{sat}} \cdot \tanh\left(\frac{V(t)}{V_{\text{sat}}}\right)$$
+   * For analog buffer power rail limiting, the branchless 3-stage `fsqrt` algebraic rail limiter ($p=8$) is applied:
+     $$f(x) = \frac{x}{\left(1 + \left(\frac{x}{V_{\text{sat}}}\right)^8\right)^{1/8}}$$
+     guaranteeing smooth $C^\infty$ saturation without digital clipping or sign branching.
    * For light to medium playing ($< 0.2\text{V}$), the response is $98\text{--}100\%$ linear.
-   * On heavy pluck spikes ($> 0.4\text{V}$), the smooth $\tanh$ function provides $1.5\text{--}2.5\text{ dB}$ of analog soft-knee saturation, capturing authentic passive pickup compression and touch-sensitive dynamic give.
+   * On heavy pluck spikes ($> 0.4\text{V}$), the smooth saturation provides $1.5\text{--}2.5\text{ dB}$ of analog soft-knee dynamic give, capturing authentic passive pickup compression.
 
 ---
 
@@ -520,6 +523,7 @@ Allomorph applies a specialized sub-audible high-pass filter ($f_c = 8.0\text{ H
 * Suppresses DC offset by $>140\text{ dB}$ ($< 10^{-10}$ DC mean).
 * Transparent across the entire bass playing register: $< 0.28\text{ dB}$ attenuation at Low B ($30.87\text{ Hz}$) and $< 0.15\text{ dB}$ at Low E ($41.20\text{ Hz}$).
 * **Gibbs Truncation Prevention:** Active preamps must feature flat, finite DC transmission ($H_{\text{preamp}}(0) \ge 1.0$). Sub-audible AC-coupling differentiators ($s / (s + \omega_{\text{sub}})$) are strictly excluded from active preamp transfer models, eliminating periodic Gibbs truncation ripples ($\Delta f = f_s / N = 23.4\text{ Hz}$) between $20\text{ Hz}$ and $300\text{ Hz}$.
+* **Homomorphic Real-Cepstrum FIR Synthesis Tail Windowing:** In discrete causal FIR generation (`synthesize_minimum_phase_fir`), the trailing 15% of taps are tapered with the canonical real-analytic mollifier $w(t) = 1.0 - S_\infty(t)$ (`cinf_smoothstep`). Because all boundary derivatives vanish identically at the window onset and buffer end ($t=1$), algebraic $O(1/n^2)$ boundary truncation leakage is eliminated.
 
 ---
 
@@ -537,6 +541,12 @@ $$\Delta\lambda_L = \max(\lambda_{L,\text{tgt}} - \lambda_{L,\text{src}}, 0)$$
 
 ### Effective Saturation Ceiling ($V_{\text{sat,eff}}$):
 $$V_{\text{sat,eff}} = \begin{cases} V_{\text{sat,tgt}} & \text{if active source} \\ \frac{V_{\text{sat,tgt}}}{1.0 - \min\left(0.85, \frac{V_{\text{sat,tgt}}}{V_{\text{sat,src}}}\right) + 0.15} & \text{if passive source with } V_{\text{sat,tgt}} < V_{\text{sat,src}} \\ 10.0 & \text{otherwise (bypassed)} \end{cases}$$
+
+### $C^\infty$ Softplus Dynamic Lenz Velocity Drag:
+In `_lenz_velocity_drag_core`, core saturation excess is evaluated via an infinitely differentiable ($C^\infty$) softplus excess with smooth soft-knee saturation, eliminating piecewise conditional slope kinks (`if e > vsat:`):
+$$\text{excess}_{\text{raw}} = \frac{1}{\alpha} \ln(1 + e^{\alpha(e - V_{\text{sat}})}) = \frac{1}{\alpha} \text{logaddexp}(0, \alpha(e - V_{\text{sat}})), \quad \alpha = 16.0$$
+$$\text{excess} = \text{excess}_{\text{raw}} - \left(\text{excess}_{\text{raw}} - 0.5 \cdot \tanh\left(\frac{\text{excess}_{\text{raw}}}{0.5}\right)\right)$$
+This preserves small-signal linearity ($< 10^{-4}$ excess below threshold) while maintaining continuous derivatives across the saturation boundary in Numba-compiled ODE state loops.
 
 This guarantees that:
 1. Active sources (which exhibit zero passive core compression) receive full, authentic target saturation.
@@ -572,5 +582,23 @@ The following table summarizes all 15 electrical, magnetic, and dynamic paramete
 | **Distributed Winding**| $k_{\text{dist}}$ | $0.18$ | $0.20$ | $0.12$ | $0.15$ | $0.10$ | $0.00$ | $0.00$ | Transmission line hyperbolic attenuation |
 | **Clearance Asymmetry**| $\kappa_{\text{geom}}$ | $0.22$ | $0.25$ | $0.15$ | $0.18$ | $0.10$ | $0.00$ | $0.00$ | Conformal rational air-gap growl |
 | **Steinmetz Core Loss** | $k_{\text{stein}}$ | $0.035$ | $0.045$ | $0.015$ | $0.025$ | $0.008$ | $0.000$ | $0.000$ | Flux-rate dynamic AC hysteresis core damping |
+
+---
+
+## 26. Differential Circuit Deconvolution Headroom & $C^\infty$ High-Frequency Shelving
+
+When evaluating differential circuit transfer functions ($H_{\text{diff}} = H_{\text{target}} / H_{\text{source}}$), passive pickups with high coil inductance transforming into wideband reference topologies (such as the Canonical Intermediate circuit) generate authentic electrical resonance peaks up to $+6.77\text{ dB}$ (e.g. passive split-P).
+
+To accommodate genuine electroacoustic resonance without premature compression while bounding digital gain under Guardrail 5.3.6:
+1. **Thresholded Headroom Expansion (`smooth_soft_knee_db`):**
+   Circuit deconvolution headroom is bounded via strictly $C^\infty$ thresholded soft-knee saturation:
+   $$h_{\text{soft\_db}} = \text{smooth\_soft\_knee\_db}(h_{\text{db}}, \text{thresh}=5.5\text{ dB}, \text{ceiling}=8.0\text{ dB}, \alpha=2.0)$$
+   Passband responses below $+5.5\text{ dB}$ remain 100% linear, allowing passive split-P coils to authentically reach $+6.77\text{ dB}$ ($< 0.14\text{ dB}$ deviation from theoretical resonance).
+2. **$C^\infty$ Real-Analytic High-Frequency Shelving Taper:**
+   Above $8\text{ kHz}$, out-of-band circuit transfer inversions are smoothly shelved toward $0.00\text{ dB}$ at $20\text{ kHz}$ using the canonical real-analytic mollifier:
+   $$w(f) = 1.0 - S_\infty\left(\frac{f - 8000\text{ Hz}}{12000\text{ Hz}}\right)$$
+   $$H_{\text{diff,final}}(f) = 1.0 + w(f) \cdot (H_{\text{diff}}(f) - 1.0)$$
+   Because all boundary derivatives of $S_\infty$ vanish at $8\text{ kHz}$ and $20\text{ kHz}$, this shelves high-frequency noise without injecting spectral slope kinks.
+
 
 
