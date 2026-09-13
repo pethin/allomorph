@@ -75,7 +75,7 @@ def test_canonical_sweep_calibration(tmp_path: Path):
 
     peak = float(np.max(np.abs(audio)))
     peak_db = 20.0 * math.log10(peak)
-    assert peak_db == pytest.approx(-1.11, abs=0.20)
+    assert peak_db == pytest.approx(-1.12, abs=0.20)
     assert not np.isnan(audio).any()
     assert not np.isinf(audio).any()
 

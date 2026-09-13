@@ -42,8 +42,8 @@ def main() -> None:
         "--duration",
         "-d",
         type=float,
-        default=180.0,
-        help="Audio duration in seconds (default: 180.0)",
+        default=240.0,
+        help="Audio duration in seconds (default: 240.0)",
     )
     parser.add_argument(
         "--sample-rate",
@@ -82,13 +82,15 @@ def main() -> None:
     print("==================================================================")
 
     print("\nSynthesizing excitation stages (Zero Artificial Dither Policy):")
-    print("  [1/7] Latency calibration alignment double-blips (0.3s & 0.8s)...")
-    print("  [2/7] Multi-tier full-range log chirps (15 Hz -> 22 kHz at -24, -12, -6, -1 dBFS + reverse)...")
-    print("  [3/7] 5-step velocity ladder (pp -> ff) & modal plucks with pitch sag (Drop A0 27.5 Hz -> C3)...")
-    print("  [4/7] Bass articulations (pick down/upstrokes, slap & pop, staccato, ghost notes, harmonics)...")
-    print("  [5/7] Polyphonic dyads (power 5ths & octaves for IMD) & Schroeder multitone complex...")
-    print("  [6/7] Continuous register glissandi across pickup comb nulls...")
-    print("  [7/7] Shaped wideband pink noise bursts & clean silence boundary termination...")
+    print("  [1/9] Latency calibration alignment double-blips (0.3s & 0.8s, non-V3 prelude)...")
+    print("  [2/9] Slew-rate diverse log chirps (fast 1.8s & slow 8.0s sweeps, 15 Hz -> 22 kHz)...")
+    print("  [3/9] 7-step dynamic velocity ladder on E1 (pp -> fff: -28 dBFS to -0.4 dBFS)...")
+    print("  [4/9] Long-decay continuous ring-outs (5.0s - 5.5s, 75 dB gate-free tail linearity)...")
+    print("  [5/9] Modal plucks across registers with heavy-string pitch sag & unilateral fret buzz...")
+    print("  [6/9] Bass articulations (120/140 BPM groove bursts, slap-pop pairs, ghost rakes, Motown thuds, vibrato)...")
+    print("  [7/9] Polyphony, dyads, upper root-tenths, CCIF 2-tone probes & Schroeder multitone (800 Hz corner)...")
+    print("  [8/9] Continuous glissandi across 24 frets up to G4 (392 Hz) traversing comb nulls...")
+    print("  [9/9] Shaped wideband pink noise bursts & clean silence boundary termination...")
 
     out_path = ensure_optimal_dry_wav(
         output_path=args.out,
