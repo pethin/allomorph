@@ -349,12 +349,6 @@ def main(argv: Sequence[str] | None = None):
             inst_cfg = load_instrument(inst)
             inst_id = inst_cfg.id
 
-            inst_baked_audio_dir = AUDIO_DIR / "baked" / inst_id
-            inst_baked_audio_dir.mkdir(parents=True, exist_ok=True)
-            inst_models_dir = MODELS_DIR / "baked" / inst_id
-            if args.train or args.stage == "train":
-                inst_models_dir.mkdir(parents=True, exist_ok=True)
-
             for voice in voices_to_run:
                 if pickup_setting == "auto":
                     src_pickup = get_source_pickup(inst_cfg, voice)
@@ -367,6 +361,27 @@ def main(argv: Sequence[str] | None = None):
                         raise KeyError(
                             f"Pickup '{eff_pickup}' not found on instrument '{inst_cfg.id}'."
                         )
+
+                pickup_baked_audio_dir = AUDIO_DIR / "baked" / inst_id / eff_pickup
+                pickup_baked_audio_dir.mkdir(parents=True, exist_ok=True)
+                pickup_models_dir = MODELS_DIR / "baked" / inst_id / eff_pickup
+                if args.train or args.stage == "train":
+                    pickup_models_dir.mkdir(parents=True, exist_ok=True)
+
+                # Dedicated distinguished dry file per instrument pickup (dry_<inst_id>_<pickup>.wav)
+                if args.input_wav:
+                    inst_input_wav = input_wav
+                else:
+                    from allomorph.circuit.staging import find_instrument_dry_wav
+
+                    inst_input_wav = str(
+                        find_instrument_dry_wav(
+                            inst_id,
+                            pickup_key=eff_pickup,
+                            version_tag=args.version_tag,
+                            audio_dir=pickup_baked_audio_dir,
+                        )
+                    )
 
                 inst_ver = getattr(inst_cfg, "version", 1)
                 vcfg = VOICES[voice]
@@ -399,10 +414,10 @@ def main(argv: Sequence[str] | None = None):
                         preserve_aperture=vcfg.preserve_aperture,
                         version_tag=ver_tag,
                     )
-                baked_wav = inst_baked_audio_dir / f"{basename}.wav"
+                baked_wav = pickup_baked_audio_dir / f"{basename}.wav"
 
                 sim_cfg = SimulationConfig(
-                    input_wav=input_wav,
+                    input_wav=inst_input_wav,
                     output_wav=baked_wav,
                     instrument=inst,
                     pickup=eff_pickup,
@@ -415,7 +430,7 @@ def main(argv: Sequence[str] | None = None):
                     cable_pf=args.cable_pf,
                     skip_identity=True,
                 )
-                tasks.append((voice, sim_cfg, inst, basename, inst_models_dir, baked_wav))
+                tasks.append((voice, sim_cfg, inst, basename, pickup_models_dir, baked_wav))
 
         max_workers = args.jobs if args.jobs is not None else min(4, os.cpu_count() or 4)
         if len(tasks) > 1 and max_workers > 1:
@@ -452,18 +467,20 @@ def main(argv: Sequence[str] | None = None):
         if not args.no_manifest:
             for inst in instruments_to_run:
                 inst_cfg_m = load_instrument(inst)
-                inst_audio_dir = AUDIO_DIR / "baked" / inst_cfg_m.id
-                inst_baked = [
-                    t[5] for t in tasks if t[2] == inst and t[5].exists()
-                ]
-                if inst_baked:
+                inst_tasks = [t for t in tasks if t[2] == inst and t[5].exists()]
+                dirs_to_manifest: dict[Path, list[Path]] = {}
+                for t in inst_tasks:
+                    dirs_to_manifest.setdefault(t[5].parent, []).append(t[5])
+
+                v_tag = resolve_tri_part_version(
+                    DSP_GENERATION, getattr(inst_cfg_m, "version", 1), 1
+                )
+                for p_dir, files in dirs_to_manifest.items():
                     write_manifest(
-                        output_dir=inst_audio_dir,
+                        output_dir=p_dir,
                         stage="bake",
-                        files=inst_baked,
-                        version_tag=resolve_tri_part_version(
-                            DSP_GENERATION, getattr(inst_cfg_m, "version", 1), 1
-                        ),
+                        files=files,
+                        version_tag=v_tag,
                     )
 
         if args.train or args.stage == "train":
@@ -478,7 +495,7 @@ def main(argv: Sequence[str] | None = None):
                 run_training(
                     instrument=inst,
                     voice=voice,
-                    input_wav=input_wav,
+                    input_wav=str(_cfg.input_wav) if _cfg.input_wav else input_wav,
                     output_wav=baked_wav,
                     models_dir=inst_models_dir,
                     tier=effective_tier,

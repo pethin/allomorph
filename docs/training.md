@@ -10,7 +10,7 @@ This document details the audio excitation files, target wet sweeps, training pa
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | **Decoupled 2-Block** | **Block 1: Frontend NAM Preamp** | `audio/canonical/optimal_bass_dry.wav` | `audio/frontends/<inst_id>/<inst_id>_<pickup>_wet.wav` | `models/frontends/<inst_id>/<inst_id>_<pickup>.nam` | $H_{\text{front}} = \dfrac{H_{\text{can}}}{H_{\text{src}}}$ + 16 kHz op-amp slew limit & soft rail protection |
 | **Decoupled 2-Block** | **Block 2: Universal Target NAM** | `audio/canonical/canonical_sweep.wav` | `audio/targets/<tier>/out_<voice>.wav` | `models/<tier>/<prefix><slug>.nam` | $H_{\text{back}} = \dfrac{H_{\text{tgt}}}{H_{\text{can}}}$ + non-linear magnetic feel, core hysteresis, & saturation |
-| **1-Block Baked** | **Monolithic Direct NAM** | `audio/canonical/optimal_bass_dry.wav` | `audio/baked/<inst_id>/<model_basename>.wav` | `models/<inst_id>/<voice>.nam` | $H_{\text{direct}} = \dfrac{H_{\text{tgt}}}{H_{\text{src}}}$ + differential magnetic softening |
+| **1-Block Baked** | **Monolithic Direct NAM** | `audio/baked/<inst_id>/dry/dry_<inst_id>.wav` | `audio/baked/<inst_id>/<model_basename>.wav` | `models/baked/<inst_id>/<model_basename>.nam` | $H_{\text{direct}} = \dfrac{H_{\text{tgt}}}{H_{\text{src}}}$ + differential magnetic softening |
 
 ---
 
@@ -104,15 +104,18 @@ nam train audio/canonical/canonical_sweep.wav \
 ```
 
 ### C. Train Standalone 1-Block Direct Baked NAM
-Trains a monolithic model that captures the direct source-to-target transformation in a single neural model:
+Trains a monolithic model capturing the direct source-to-target transformation in a single neural model. Each pickup switch configuration has its own dedicated subdirectory containing its pickup-specific target stems, and an isolated `dry/` subdirectory containing its physically conditioned dry excitation file (`audio/baked/<inst_id>/<pickup>/dry/dry_<inst_id>_<pickup>.wav`):
 ```bash
-# Train direct baked model from 30" source to Modern P:
+# Train direct baked model from 30" source to Modern P (auto-resolves mmtw_dual/dry/dry_30in_emg_mmtw_mmtw_dual.wav):
 uv run python scripts/train_nam.py --baked --instrument 30in_emg_mmtw --voice 04_modern_p_ceramic
 
+# Or bake and train via the allomorph pipeline:
+allomorph --stage bake --instrument 30in_emg_mmtw --voice 04_modern_p_ceramic --train
+
 # Equivalent manual nam train command:
-nam train audio/canonical/optimal_bass_dry.wav \
-          audio/baked/30in_emg_mmtw/dyn_04_modern_p.wav \
-          models/30in_emg_mmtw/dyn_04_modern_p.nam \
+nam train audio/baked/30in_emg_mmtw/mmtw_dual/dry/dry_30in_emg_mmtw_mmtw_dual.wav \
+          audio/baked/30in_emg_mmtw/mmtw_dual/dyn_04_modern_p.wav \
+          models/baked/30in_emg_mmtw/mmtw_dual/dyn_04_modern_p.nam \
           --architecture "A2"
 ```
 

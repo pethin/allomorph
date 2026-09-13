@@ -305,3 +305,31 @@ def get_optimal_dry_path(
     base_dir = Path(audio_dir) if audio_dir is not None else REPO_ROOT / "audio"
     return base_dir / "canonical" / f"{get_optimal_dry_basename(version_tag)}.wav"
 
+
+def get_instrument_dry_basename(inst_id: str, pickup: str | None = None) -> str:
+    """Generates the filename basename for an instrument pickup's dedicated baked dry audio.
+
+    Located in the pickup's dedicated 'dry/' subdirectory to keep it isolated from wet stems.
+    Example: 'dry_34in_standard_p_split_p' or 'dry_34in_standard_jazz_bridge'
+    """
+    if pickup:
+        return f"dry_{inst_id}_{pickup}"
+    return f"dry_{inst_id}"
+
+
+def get_instrument_dry_path(
+    inst_id: str,
+    pickup: str | None = None,
+    audio_dir: Path | str | None = None,
+) -> Path:
+    """Returns the primary Path to the instrument pickup's dedicated baked dry WAV in its dry/ subdirectory.
+
+    Example: audio/baked/34in_standard_p/split_p/dry/dry_34in_standard_p_split_p.wav
+    """
+    from allomorph.config.scales import REPO_ROOT
+
+    base_dir = Path(audio_dir) if audio_dir is not None else REPO_ROOT / "audio"
+    if pickup:
+        return base_dir / "baked" / inst_id / pickup / "dry" / f"{get_instrument_dry_basename(inst_id, pickup)}.wav"
+    return base_dir / "baked" / inst_id / "dry" / f"{get_instrument_dry_basename(inst_id)}.wav"
+

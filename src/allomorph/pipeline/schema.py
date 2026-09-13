@@ -174,6 +174,7 @@ class NamTrainingConfig(AllomorphBaseModel):
         description="Train A2-Lite channels_8 only instead of the full slimmable container (default: False)",
     )
     t3k_pack: bool = False
+    baked: bool = False
     version_tag: str | None = "auto"
     no_manifest: bool = False
 

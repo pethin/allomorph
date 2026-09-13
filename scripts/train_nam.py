@@ -276,6 +276,7 @@ def train_voice(
     t3k_pack: bool = False,
     version_tag: str | None = "auto",
     no_manifest: bool = False,
+    baked: bool = False,
 ) -> bool:
     try:
         import nam.train.core as nam_core
@@ -366,24 +367,40 @@ def train_voice(
             src_pickup = get_source_pickup(inst_cfg, voice)
             src_pickup_name = src_pickup.name
             src_pos_mm = (src_pickup.position_from_bridge_m or 0.0) * 1000.0
+            eff_pickup = src_pickup.id or "default"
         except (KeyError, ValueError):
             src_pickup = PickupConfig(name="Baked Pickup", position_from_bridge_m=0.0)
             src_pickup_name = "Baked Pickup"
             src_pos_mm = 0.0
+            eff_pickup = "default"
 
         p_models = Path(models_dir)
         if p_models.name == "baked" or str(p_models).endswith("/baked"):
-            inst_models_dir = p_models / inst_id
+            inst_models_dir = p_models / inst_id / eff_pickup
+        elif p_models.name == inst_id:
+            inst_models_dir = p_models / eff_pickup
+        elif p_models.name == eff_pickup:
+            inst_models_dir = p_models
         else:
             inst_models_dir = p_models
 
         inst_models_dir.mkdir(parents=True, exist_ok=True)
         target_nam = inst_models_dir / f"{model_basename}.nam"
-        input_path = find_sweep_input(input_wav)
+        if input_wav:
+            input_path = find_sweep_input(input_wav)
+        else:
+            from allomorph.circuit.staging import find_instrument_dry_wav
+
+            try:
+                input_path = find_instrument_dry_wav(
+                    inst_id, pickup_key=eff_pickup, version_tag=actual_version_tag
+                )
+            except (FileNotFoundError, KeyError, ValueError, OSError):
+                input_path = find_sweep_input(input_wav)
         output_path = (
             Path(output_wav)
             if output_wav
-            else (AUDIO_DIR / "baked" / inst_id / f"{model_basename}.wav")
+            else (AUDIO_DIR / "baked" / inst_id / eff_pickup / f"{model_basename}.wav")
         )
     elif tier:
         tier_spec = get_tier_spec(tier)
@@ -430,23 +447,53 @@ def train_voice(
         src_pickup = get_source_pickup(inst_cfg, voice)
         src_pickup_name = src_pickup.name
         src_pos_mm = (src_pickup.position_from_bridge_m or 0.0) * 1000.0
+        eff_pickup = src_pickup.id or "default"
 
-        input_path = find_sweep_input(input_wav)
+        if input_wav:
+            input_path = find_sweep_input(input_wav)
+        elif baked or (output_wav and "baked" in str(output_wav)):
+            from allomorph.circuit.staging import find_instrument_dry_wav
+
+            try:
+                input_path = find_instrument_dry_wav(
+                    inst_id, pickup_key=eff_pickup, version_tag=actual_version_tag
+                )
+            except (FileNotFoundError, KeyError, ValueError, OSError):
+                input_path = find_sweep_input(input_wav)
+        else:
+            input_path = find_sweep_input(input_wav)
+
         model_basename = f"{voice}_{actual_version_tag}" if actual_version_tag else voice
         if not output_wav:
             candidates = [
+                AUDIO_DIR / "baked" / inst_id / eff_pickup / f"{model_basename}.wav",
                 AUDIO_DIR / "baked" / inst_id / f"{model_basename}.wav",
                 AUDIO_DIR / inst_id / f"out_{voice}_{actual_version_tag}.wav",
                 AUDIO_DIR / inst_id / f"out_{voice}.wav",
                 CIRCUITS_DIR / f"out_{voice}.wav",
             ]
-            output_path = next(
-                (c for c in candidates if c.exists()),
-                candidates[1] if actual_version_tag else candidates[2],
-            )
+            if baked:
+                output_path = candidates[0]
+            else:
+                output_path = next(
+                    (c for c in candidates if c.exists()),
+                    candidates[1] if actual_version_tag else candidates[2],
+                )
         else:
             output_path = Path(output_wav)
-        inst_models_dir = Path(models_dir) / inst_id
+
+        if baked:
+            p_models = Path(models_dir)
+            if p_models.name == "baked" or str(p_models).endswith("/baked"):
+                inst_models_dir = p_models / inst_id / eff_pickup
+            elif p_models.name == inst_id:
+                inst_models_dir = p_models / eff_pickup
+            elif p_models.name == eff_pickup:
+                inst_models_dir = p_models
+            else:
+                inst_models_dir = p_models / "baked" / inst_id / eff_pickup
+        else:
+            inst_models_dir = Path(models_dir) / inst_id
         inst_models_dir.mkdir(parents=True, exist_ok=True)
         target_nam = inst_models_dir / f"{model_basename}.nam"
 
@@ -1033,6 +1080,11 @@ def main():
         action="store_true",
         help="Disable generating sidecar manifest.json",
     )
+    parser.add_argument(
+        "--baked",
+        action="store_true",
+        help="Train 1-block monolithic baked NAM neural models using the instrument's dedicated dry file",
+    )
     parser.add_argument("--gui", action="store_true", help="Launch NAM training GUI")
     args = parser.parse_args()
 
@@ -1055,6 +1107,7 @@ def main():
             "gui": args.gui,
             "a2_lite_only": args.a2_lite_only,
             "t3k_pack": args.t3k_pack,
+            "baked": args.baked,
             "version_tag": args.version_tag,
             "no_manifest": args.no_manifest,
         }
@@ -1147,6 +1200,7 @@ def main():
                 t3k_pack=cli_cfg.t3k_pack,
                 version_tag=cli_cfg.version_tag,
                 no_manifest=cli_cfg.no_manifest,
+                baked=cli_cfg.baked,
             )
             if not ok:
                 all_ok = False

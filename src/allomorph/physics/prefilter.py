@@ -45,6 +45,7 @@ def compute_voice_prefilter_firs(
     src_scale: InstrumentConfig | str | float | tuple[float, float] | list[float] | None = None,
     num_taps: int = NUM_TAPS,
     src_pickup_key: str | None = None,
+    normalize: bool = False,
 ) -> list[list[float]]:
     """
     Computes acoustic pre-filter FIRs for each pickup in a target voice configuration using NumPy.
@@ -320,7 +321,7 @@ def compute_voice_prefilter_firs(
         raw_firs.append(fir_raw)
 
     global_peak = max(max(abs(x) for x in fir) for fir in raw_firs)
-    if global_peak > 0:
+    if (normalize and global_peak > 0) or global_peak > 0.99:
         return [[(x / global_peak) * 0.99 for x in fir] for fir in raw_firs]
     return raw_firs
 
@@ -340,7 +341,11 @@ def compute_aperture_prefilter_fir(
     pickups = resolve_voice_pickups(cfg)
     if len(pickups) == 1:
         firs = compute_voice_prefilter_firs(
-            voice_id, instrument=instrument, src_scale=src_scale, num_taps=num_taps
+            voice_id,
+            instrument=instrument,
+            src_scale=src_scale,
+            num_taps=num_taps,
+            normalize=True,
         )
         return firs[0]
 

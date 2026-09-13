@@ -50,6 +50,7 @@ from allomorph.dsp import (
     write_wav_24bit,
 )
 from allomorph.naming import (
+    get_instrument_dry_basename,
     get_tier_spec,
     resolve_instruments,
     resolve_voices,
@@ -142,6 +143,156 @@ def generate_canonical_sweep(
         )
 
     return target_path
+
+
+def export_instrument_dry_wav(
+    inst_id: str,
+    pickup_key: str | None = None,
+    output_dir: Path | str | None = None,
+    input_wav: Path | str | None = None,
+    version_tag: str | None = None,
+    no_manifest: bool = False,
+) -> Path:
+    """
+    Synthesizes the dedicated dry training audio for a source instrument pickup.
+    Convolves the raw dry string excitation (optimal_bass_dry.wav) with the source
+    pickup's acoustic and electrical response:
+        H_src(f) = H_src,ac(f) * H_src,elec(f)
+    Writes the dedicated distinguished dry file to:
+        audio/baked/<inst_id>/<pickup>/dry/dry_<inst_id>_<pickup>.wav
+    """
+    inst = load_instrument(inst_id)
+    eff_pickup = pickup_key or inst.default_pickup
+    if not eff_pickup or eff_pickup not in inst.pickups:
+        matched = [k for k in inst.pickups if eff_pickup and (k.endswith(eff_pickup) or eff_pickup in k)]
+        if matched:
+            eff_pickup = matched[0]
+        else:
+            raise ValueError(
+                f"Instrument '{inst.id}' does not define pickup '{eff_pickup}'. "
+                f"Available pickups: {list(inst.pickups.keys())}"
+            )
+    src_pickup = inst.pickups[eff_pickup]
+
+    if input_wav is None:
+        input_wav = find_default_input_audio(version_tag=version_tag)
+    if not input_wav or not Path(input_wav).exists():
+        raise FileNotFoundError(f"Raw dry calibration audio not found: {input_wav}")
+
+    raw_audio, sr = read_wav(input_wav, dtype=np.float64)
+
+    f = np.asarray(FREQS, dtype=np.float64)
+    coils = resolve_pickup_coils(src_pickup, inst)
+    scale_range = resolve_scale_range(inst)
+    h_ac = numpy_pickup_acoustic_response(f, coils, scale_length_m=scale_range)
+
+    if src_pickup.circuit:
+        circ_model = load_circuit(src_pickup.circuit)
+        c_curves = compute_circuit_transfer_functions(circ_model, freqs=f, return_numpy=True)
+        h_elec = c_curves[0]
+        h_elec_norm = h_elec / max(h_elec[0], 1e-9)
+        h_total = h_ac * h_elec_norm
+    else:
+        h_total = h_ac
+
+    h_fir = synthesize_minimum_phase_fir(h_total, num_taps=2048, normalize=False)
+    filtered = fft_convolve(raw_audio, np.asarray(h_fir, dtype=np.float64), mode="causal")
+
+    max_val = float(np.max(np.abs(filtered)))
+    if max_val > CALIBRATION_PEAK_CEILING:
+        filtered = filtered * (CALIBRATION_PEAK_CEILING / max_val)
+
+    dry_audio = filtered.astype(np.float32)
+
+    from allomorph.circuit.simulation import AUDIO_DIR
+
+    if output_dir is not None:
+        p_out = Path(output_dir)
+        pickup_dir = p_out if p_out.name == eff_pickup else (p_out / eff_pickup)
+    else:
+        pickup_dir = AUDIO_DIR / "baked" / inst.id / eff_pickup
+
+    dry_dir = pickup_dir / "dry"
+    dry_dir.mkdir(parents=True, exist_ok=True)
+    basename = get_instrument_dry_basename(inst.id, eff_pickup)
+    primary_path = dry_dir / f"{basename}.wav"
+    write_wav_24bit(str(primary_path), dry_audio, sr)
+
+    final_peak_db = 20.0 * math.log10(max(float(np.max(np.abs(dry_audio))), 1e-9))
+    final_rms_db = 20.0 * math.log10(max(float(np.sqrt(np.mean(dry_audio**2))), 1e-9))
+    print(
+        f"[Baked Dry Audio] Exported {primary_path.name} in {pickup_dir.name}/{dry_dir.name}/: Peak = {final_peak_db:.2f} dBFS, RMS = {final_rms_db:.2f} dBFS"
+    )
+
+    if not no_manifest:
+        v_tag = version_tag or resolve_tri_part_version(
+            DSP_GENERATION, getattr(inst, "version", 1), 1
+        )
+        write_manifest(
+            output_dir=dry_dir,
+            stage="baked_dry",
+            files=[primary_path],
+            version_tag=v_tag,
+        )
+
+    return primary_path
+
+
+def find_instrument_dry_wav(
+    inst_id: str,
+    pickup_key: str | None = None,
+    version_tag: str | None = None,
+    audio_dir: Path | str | None = None,
+    auto_generate: bool = True,
+) -> Path:
+    """
+    Locates or generates the dedicated dry audio for an instrument pickup in its subdirectory.
+    Searches:
+        1. audio/baked/<inst_id>/<pickup>/dry/dry_<inst_id>_<pickup>.wav
+        2. audio/baked/<inst_id>/<pickup>/dry/dry.wav
+        3. audio/baked/<inst_id>/dry/dry_<inst_id>.wav (legacy single-pickup fallback)
+    If not found and auto_generate is True, generates it via export_instrument_dry_wav.
+    """
+    inst = load_instrument(inst_id)
+    canonical_id = inst.id
+    eff_pickup = pickup_key or inst.default_pickup or next(iter(inst.pickups.keys()))
+    if eff_pickup not in inst.pickups:
+        matched = [k for k in inst.pickups if (k.endswith(eff_pickup) or eff_pickup in k)]
+        if matched:
+            eff_pickup = matched[0]
+
+    from allomorph.circuit.simulation import AUDIO_DIR
+
+    if audio_dir is not None:
+        p_base = Path(audio_dir)
+        pickup_dir = p_base if p_base.name == eff_pickup else (p_base / eff_pickup)
+    else:
+        pickup_dir = AUDIO_DIR / "baked" / canonical_id / eff_pickup
+
+    candidates = [
+        pickup_dir / "dry" / f"{get_instrument_dry_basename(canonical_id, eff_pickup)}.wav",
+        pickup_dir / "dry" / "dry.wav",
+        pickup_dir / f"{get_instrument_dry_basename(canonical_id, eff_pickup)}.wav",
+        pickup_dir.parent / "dry" / f"{get_instrument_dry_basename(canonical_id)}.wav",
+        pickup_dir.parent / "dry" / "dry.wav",
+    ]
+    for c in candidates:
+        if c.exists():
+            return c
+
+    if auto_generate:
+        return export_instrument_dry_wav(
+            inst_id=canonical_id,
+            pickup_key=eff_pickup,
+            output_dir=pickup_dir,
+            version_tag=version_tag,
+        )
+
+    raise FileNotFoundError(
+        f"Dedicated dry file not found for instrument '{canonical_id}' pickup '{eff_pickup}'. "
+        f"Expected at: {candidates[0]}"
+    )
+
 
 
 @functools.lru_cache(maxsize=8)
