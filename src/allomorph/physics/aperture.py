@@ -112,6 +112,36 @@ def compute_saddle_boundary_coupling(
     return np.sqrt((1.0 + (g**2) * (f / f0) ** 2) / (1.0 + (f / f0) ** 2))
 
 
+def soft_clamp_displacement_ratio(
+    delta_g: float | np.ndarray,
+    g_pos: float = 12.0,
+    g_neg: float = 16.0,
+    k: float = 4.0,
+) -> float | np.ndarray:
+    """
+    Applies an asymmetric C^inf order-4 algebraic limiter ('alg4') with a smooth
+    partition-of-unity sigmoid blend to scale-normalized displacement ratios.
+
+    Eliminates premature O(x^3) compression on standard pickup positions (|ΔG| <= 6 dB)
+    while strictly bounding positive excursion boost (<= +12.0 dB) and negative
+    proximity thinning (>= -16.0 dB) to ensure full fidelity on Mudbucker and Rickenbacker
+    bridge voicings while guaranteeing compliance with Guardrail 5.3.6 (20 Hz DC transmission
+    in [-12.0 dB, +12.0 dB]).
+    """
+    dg = np.asarray(delta_g, dtype=np.float64)
+    sigma = 0.5 * (1.0 + np.tanh(dg / k))
+
+    pos_x = np.maximum(dg, 0.0)
+    neg_x = np.minimum(dg, 0.0)
+    f_pos = dg / (1.0 + (pos_x / g_pos) ** 4) ** 0.25
+    f_neg = dg / (1.0 + (neg_x / -g_neg) ** 4) ** 0.25
+
+    soft = sigma * f_pos + (1.0 - sigma) * f_neg
+    if np.isscalar(delta_g):
+        return float(soft)
+    return soft
+
+
 def is_voice_matching_source(
     instrument: InstrumentConfig | str,
     voice_id: str,

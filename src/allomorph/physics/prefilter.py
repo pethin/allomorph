@@ -26,6 +26,7 @@ from allomorph.physics.aperture import (
     is_voice_matching_source,
     numpy_pickup_acoustic_response,
     numpy_pickup_macro_aperture,
+    soft_clamp_displacement_ratio,
 )
 from allomorph.physics.deconvolution import resolve_pickup_electrical_deconvolution_np
 from allomorph.physics.strings import (
@@ -256,7 +257,7 @@ def compute_voice_prefilter_firs(
                 eta_tgt = tgt_pos_eff / tgt_scale_m
                 eta_src = b_src_pos_eff / src_scale_m
                 delta_g = 20.0 * np.log10(max(eta_tgt / max(eta_src, 1e-4), 1e-6))
-                delta_g_soft = 8.0 * np.tanh(delta_g / 8.0)
+                delta_g_soft = soft_clamp_displacement_ratio(delta_g)
                 g_0 = 10.0 ** (delta_g_soft / 20.0)
                 h_pos = np.sqrt(
                     (g_0**2 + (freqs / 220.0) ** 2) / (1.0 + (freqs / 220.0) ** 2)
@@ -430,7 +431,7 @@ def compute_aperture_prefilter_fir(
         eta_tgt = tgt_pos_eff / tgt_scale_m
         eta_src = src_pos_eff / src_scale_m
         delta_g = 20.0 * np.log10(max(eta_tgt / max(eta_src, 1e-4), 1e-6))
-        delta_g_soft = 8.0 * np.tanh(delta_g / 8.0)
+        delta_g_soft = soft_clamp_displacement_ratio(delta_g)
         g_0 = 10.0 ** (delta_g_soft / 20.0)
         h_pos = np.sqrt((g_0**2 + (freqs / 220.0) ** 2) / (1.0 + (freqs / 220.0) ** 2))
 

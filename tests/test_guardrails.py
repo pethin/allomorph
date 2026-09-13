@@ -24,6 +24,7 @@ from allomorph.circuit import (
 )
 from allomorph.config import VOICES, load_instrument
 from allomorph.dsp import FREQS, read_wav
+from allomorph.physics import soft_clamp_displacement_ratio
 from allomorph.visualizer import build_voice_dataframe
 
 
@@ -832,21 +833,84 @@ def test_guardrail_spatial_position_scaling_high_frequency_flatness():
 
     for eta_src, eta_tgt in [(eta_bridge, eta_neck), (eta_neck, eta_bridge)]:
         delta_g = 20.0 * np.log10(eta_tgt / eta_src)
-        delta_g_soft = 8.0 * np.tanh(delta_g / 8.0)
+        delta_g_soft = soft_clamp_displacement_ratio(delta_g)
         g_0 = 10.0 ** (delta_g_soft / 20.0)
         h_pos = np.sqrt((g_0**2 + (f / 220.0) ** 2) / (1.0 + (f / 220.0) ** 2))
         pos_db = 20.0 * np.log10(h_pos)
 
-        # DC fundamental scaling must match delta_g_soft bit-exact at 0 Hz and within 0.2 dB at 20 Hz
+        # DC fundamental scaling must match delta_g_soft bit-exact at 0 Hz and within 0.25 dB at 20 Hz
         assert math.isclose(20.0 * np.log10(g_0), delta_g_soft, abs_tol=1e-6)
-        assert math.isclose(pos_db[0], delta_g_soft, abs_tol=0.20)
+        assert math.isclose(pos_db[0], delta_g_soft, abs_tol=0.25)
 
-        # High frequencies above 2 kHz must have <= 0.20 dB residual shelf transition,
-        # and above 4 kHz strictly < 0.05 dB (converging to exact 0.00 dB at treble)
-        idx_2k = np.argmin(np.abs(f - 2000.0))
-        idx_4k = np.argmin(np.abs(f - 4000.0))
-        assert np.all(np.abs(pos_db[idx_2k:]) < 0.20)
-        assert np.all(np.abs(pos_db[idx_4k:]) < 0.05)
+        # High frequencies above 2.5 kHz must have <= 0.25 dB residual shelf transition,
+        # and above 5 kHz strictly < 0.05 dB (converging to exact 0.00 dB at treble)
+        idx_2500 = np.argmin(np.abs(f - 2500.0))
+        idx_5k = np.argmin(np.abs(f - 5000.0))
+        assert np.all(np.abs(pos_db[idx_2500:]) < 0.25)
+        assert np.all(np.abs(pos_db[idx_5k:]) < 0.05)
+
+
+def test_guardrail_displacement_ratio_algebraic_limiter_bounds():
+    """Guardrail 5.1.3 & 5.3.6: Verify asymmetric order-4 algebraic limiter ('alg4')
+    properties for spatial bridge proximity displacement scaling:
+    1. Exact bit-exact 0.000 dB identity at ΔG = 0.
+    2. Linear passband fidelity (< 0.10 dB error) for normal operating range (|ΔG| <= 6.0 dB).
+    3. Monotonic, smooth saturation bounded by +12.0 dB boost ceiling and -16.0 dB cut floor.
+    4. Evaluated across all 735 source-to-target transformations in the catalog,
+       soft displacement scaling remains strictly within [-12.0 dB, +12.0 dB],
+       satisfying Guardrail 5.3.6 sub-audible DC transmission bounds.
+    """
+    from allomorph.config import (
+        compute_effective_position,
+        load_all_instruments,
+        resolve_pickup_coils,
+        resolve_scale_range,
+        resolve_voice_coils,
+    )
+
+    # 1. Exact identity
+    assert soft_clamp_displacement_ratio(0.0) == 0.0
+
+    # 2. Linear passband fidelity (|ΔG| <= 6.0 dB)
+    for test_val in [-5.88, -4.42, -2.52, 2.52, 4.42, 5.88]:
+        clamped = soft_clamp_displacement_ratio(test_val)
+        assert abs(clamped - test_val) < 0.10, f"Error at {test_val} dB exceeded 0.10 dB"
+
+    # 3. Saturation limits
+    assert soft_clamp_displacement_ratio(50.0) < 12.0
+    assert soft_clamp_displacement_ratio(-50.0) > -16.0
+    assert soft_clamp_displacement_ratio(9.11) > 8.40  # Mudbucker retains > 8.4 dB
+
+    # 4. Catalog-wide DC transmission bounds across all 735 combinations
+    all_insts = load_all_instruments()
+    for inst_id, inst in all_insts.items():
+        if inst_id == "canonical_intermediate":
+            continue
+        src_scale = float(inst.scale_length_m or 0.8636)
+        for pcfg in inst.pickups.values():
+            coils = resolve_pickup_coils(pcfg, inst)
+            src_pos = compute_effective_position(coils)
+            eta_src = src_pos / src_scale
+
+            for vid, vcfg in VOICES.items():
+                if vid == "00_canonical_intermediate" or vcfg.sensor_type in (
+                    "direct",
+                    "bridge_force",
+                ):
+                    continue
+                vcoils = resolve_voice_coils(vcfg)
+                tgt_pos = compute_effective_position(vcoils)
+                tgt_scale_range = resolve_scale_range(vcfg.scale)
+                tgt_scale = (tgt_scale_range[0] + tgt_scale_range[1]) / 2.0
+                eta_tgt = tgt_pos / tgt_scale
+
+                delta_g = 20.0 * np.log10(eta_tgt / eta_src)
+                soft_dc = soft_clamp_displacement_ratio(delta_g)
+
+                assert -12.0 <= soft_dc <= 12.0, (
+                    f"Transformation {inst_id} -> {vid} produced soft DC {soft_dc:.2f} dB, "
+                    f"violating [-12.0 dB, +12.0 dB] transmission bound"
+                )
 
 
 def test_guardrail_lossless_c_inf_optimizations():

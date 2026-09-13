@@ -58,6 +58,7 @@ from allomorph.physics import (
     compute_saddle_boundary_coupling,
     numpy_pickup_acoustic_response,
     resolve_pickup_electrical_deconvolution_np,
+    soft_clamp_displacement_ratio,
 )
 from allomorph.version import (
     DSP_GENERATION,
@@ -239,7 +240,7 @@ def compute_frontend_transfer_function(
     eta_src = src_pos_eff / src_scale_m
     eta_can = can_pos_eff / can_scale_m
     delta_g = 20.0 * np.log10(max(eta_can / max(eta_src, 1e-4), 1e-6))
-    delta_g_soft = 8.0 * np.tanh(delta_g / 8.0)
+    delta_g_soft = soft_clamp_displacement_ratio(delta_g)
     g_0 = 10.0 ** (delta_g_soft / 20.0)
     h_pos = np.sqrt((g_0**2 + (f / 220.0) ** 2) / (1.0 + (f / 220.0) ** 2))
 

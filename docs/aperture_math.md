@@ -157,18 +157,24 @@ $$y_1(\eta) \propto \eta$$
 At high frequencies ($f \ge 1\text{--}2\text{ kHz}$), the standing wave RMS envelope is constant ($1/\sqrt{2}$) everywhere along the string. Therefore, bridge proximity physically affects fundamental excursion, but does **not** alter high-frequency standing-wave amplitude.
 
 #### Standing-Wave Displacement Ratio Low-Shelf Model ($H_{\text{pos}}$):
-To model physical excursion scaling accurately without injecting artificial high-frequency boost or cut, Allomorph applies a **single low-shelf filter** governed by the physical logarithmic distance ratio:
+To model physical excursion scaling accurately without injecting artificial high-frequency boost or cut, Allomorph applies a **single low-shelf filter** governed by the physical logarithmic distance ratio bounded by an **asymmetric order-4 algebraic limiter (`alg4`)**:
 
 $$\eta_{\text{tgt}} = \frac{x_{\text{tgt}}}{L_{\text{tgt}}}, \quad \eta_{\text{src}} = \frac{x_{\text{src}}}{L_{\text{src}}}$$
 
 $$\Delta G = 20 \log_{10}\left(\frac{\eta_{\text{tgt}}}{\eta_{\text{src}}}\right)$$
 
-$$\Delta G_{\text{soft}} = 8.0 \cdot \tanh\left(\frac{\Delta G}{8.0}\right)$$
+$$\sigma = \frac{1}{2}\left(1 + \tanh\left(\frac{\Delta G}{4.0}\right)\right)$$
+
+$$f_{\text{pos}}(\Delta G) = \frac{\Delta G}{\left(1 + \left(\frac{\max(\Delta G, 0)}{12.0}\right)^4\right)^{1/4}}, \quad f_{\text{neg}}(\Delta G) = \frac{\Delta G}{\left(1 + \left(\frac{\min(\Delta G, 0)}{-16.0}\right)^4\right)^{1/4}}$$
+
+$$\Delta G_{\text{soft}} = \sigma \cdot f_{\text{pos}}(\Delta G) + (1 - \sigma) \cdot f_{\text{neg}}(\Delta G)$$
 
 $$g_0 = 10^{\Delta G_{\text{soft}} / 20.0}$$
 
 $$H_{\text{pos}}(f) = \sqrt{\frac{g_0^2 + (f / 220\text{ Hz})^2}{1 + (f / 220\text{ Hz})^2}}$$
 
+* **Maximally Flat Passband ($O(x^5)$ non-linearity):** The Taylor expansion of $f(x) = x / (1 + (x/G)^4)^{1/4}$ has zero third-derivative curvature at zero ($f'(0)=1, f''(0)=0, f'''(0)=0$). Within the standard Fender/MM bass operating range ($|\Delta G| \le 6.0\text{ dB}$), excursion error is $< 0.10\text{ dB}$ (virtually bit-exact linear identity).
+* **Asymmetric Bound ($+12.0\text{ dB}$ Boost / $-16.0\text{ dB}$ Cut):** Allows the Gibson EB-0 Mudbucker ($+9.11\text{ dB}$ from datum) to output $+8.49\text{ dB}$ of authentic fundamental rumble while bounding digital headroom under Guardrail 5.3.6 ($H(0) \in [-12\text{ dB}, +12\text{ dB}]$ across all catalog pairs), while allowing Rickenbacker ($-7.25\text{ dB}$) and Dingwall bridge pickups full physical attenuation without artificial low-end mud.
 * **DC Fundamental Excursion ($f \to 0$):** $H_{\text{pos}}(0) = g_0 = 10^{\Delta G_{\text{soft}} / 20.0}$, precisely matching the physical fundamental standing wave displacement ratio.
 * **High-Frequency Invariance ($f \gg 220\text{ Hz}$):** $H_{\text{pos}}(\infty) \equiv 1.0000$ ($0.00\text{ dB}$ identity). Zero artificial treble counter-tilt or harsh clank injection.
 * **2-Block Decoupled Architecture Identity:** Because logarithmic distance ratios are strictly additive:

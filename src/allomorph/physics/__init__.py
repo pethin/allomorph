@@ -16,6 +16,7 @@ from allomorph.physics.aperture import (
     numpy_position,
     pickup_acoustic_response,
     position_envelope,
+    soft_clamp_displacement_ratio,
 )
 from allomorph.physics.deconvolution import (
     numpy_pickup_anti_resonance,
@@ -87,4 +88,5 @@ __all__ = [
     "resolve_pickup_electrical_response_np",
     "resolve_scale_length",
     "resolve_scale_range",
+    "soft_clamp_displacement_ratio",
 ]
