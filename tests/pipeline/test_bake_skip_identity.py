@@ -89,4 +89,38 @@ def test_pipeline_cli_bake_skips_identity(tmp_path: Path, monkeypatch: pytest.Mo
     assert (test_audio_dir / "baked" / "34in_active_stingray").exists()
 
 
+def test_simulate_voice_skips_neutral_character_identity(tmp_path: Path):
+    """Verify simulate_voice skips 15_neutral_character when skip_identity=True."""
+    for inst in ["34in_standard_p", "30in_emg_mmtw", "34in_active_stingray"]:
+        out_wav = tmp_path / f"neutral_{inst}.wav"
+        cfg = SimulationConfig(
+            instrument=inst,
+            output_wav=out_wav,
+            skip_identity=True,
+            max_samples=2400,
+        )
+        success = simulate_voice("15_neutral_character", config=cfg)
+        assert success is False, f"15_neutral_character on {inst} must be skipped as identity"
+        assert not out_wav.exists()
+
+
+def test_simulate_voice_produces_active_and_passive_character(tmp_path: Path):
+    """Verify simulate_voice produces 15b_active_character and 15c_passive_character when skip_identity=True."""
+    for vid in ["15b_active_character", "15c_passive_character"]:
+        for inst in ["34in_standard_p", "30in_emg_mmtw"]:
+            out_wav = tmp_path / f"{vid}_{inst}.wav"
+            cfg = SimulationConfig(
+                instrument=inst,
+                output_wav=out_wav,
+                skip_identity=True,
+                max_samples=2400,
+            )
+            success = simulate_voice(vid, config=cfg)
+            assert success is True, f"{vid} on {inst} must NOT be skipped as identity"
+            assert out_wav.exists()
+            assert out_wav.stat().st_size > 0
+
+
+
+
 

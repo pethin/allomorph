@@ -127,6 +127,9 @@ def is_voice_matching_source(
     if vcfg is None:
         return False
 
+    if vcfg.preserve_aperture:
+        return bool(getattr(vcfg.circuit, "no_eq", False))
+
     src_range = resolve_scale_range(inst)
     tgt_scale = vcfg.scale
     tgt_scale_info = SCALES.get(tgt_scale)

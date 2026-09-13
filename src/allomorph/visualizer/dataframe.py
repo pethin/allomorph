@@ -4,6 +4,9 @@ Calculates magnitude frequency responses for target voicings, frontend deconvolu
 and composite signal flow stages using Polars and NumPy.
 """
 
+from collections.abc import Sequence
+from typing import Any
+
 import numpy as np
 import polars as pl
 
@@ -696,3 +699,239 @@ def build_composite_instrument_dataframe(
             "pickup_name": pname_col,
         }
     )
+
+
+VOICE_FAMILIES: dict[str, str] = {
+    "01_modern_jazz_active": "Jazz",
+    "02_jazz_bass_pair": "Jazz",
+    "02b_jazz_bass_pair_22nf": "Jazz",
+    "02c_jazz_bridge_growl_bias": "Jazz",
+    "03_jazz_bridge_60s": "Jazz",
+    "04_modern_p_ceramic": "Precision",
+    "05_vintage_62_p_alnico": "Precision",
+    "05b_vintage_62_p_22nf": "Precision",
+    "05c_vintage_62_p_47nf": "Precision",
+    "05d_vintage_50s_p_100nf": "Precision",
+    "07_modern_pj_active": "PJ",
+    "08_vintage_pj_passive": "PJ",
+    "09_stingray_mm_parallel": "StingRay",
+    "09b_stingray_mm_series": "StingRay",
+    "10_rickenbacker_bridge_hpf": "Rickenbacker",
+    "11_modern_pmm_active": "P∕MM",
+    "11b_pmm_hybrid_series": "P∕MM",
+    "12_mudbucker_ultra_series": "Mudbucker",
+    "13_dingwall_multiscale_bridge": "Dingwall",
+    "14_upright_bridge_transducer": "Upright",
+    "15_neutral_character": "Character",
+    "15b_active_character": "Character",
+    "15c_passive_character": "Character",
+}
+
+
+def build_baked_responses_data(step: int = 3) -> dict[str, Any]:
+    """
+    Builds the compact matrix data structure containing frequency response curves for all source
+    instruments and target voicings in the 1-block monolithic baked configuration (H_diff = H_tgt / H_src).
+    Uses the decoupled two-stage vectorization: dB_baked = dB_front + dB_back.
+    Identity pairs (where source instrument matches target voice) evaluate to exact 0.00 dB.
+    """
+    freqs = np.asarray(log_freqs[::step], dtype=np.float64)
+    n_pts = len(freqs)
+    f_pts = np.round(freqs, 1).tolist()
+
+    can_voice = VOICES.get("00_canonical_intermediate")
+    can_circuit = can_voice.circuit if can_voice is not None else None
+    can_model = load_circuit(can_circuit) if can_circuit else None
+
+    h_can_norm = compute_canonical_intermediate_response(freqs)
+    db_can = 20.0 * np.log10(np.clip(h_can_norm, 1e-5, 20.0))
+
+    target_dfs = get_cached_target_dfs(step=step)
+    all_insts = load_all_instruments()
+
+    insts = {
+        iid: icfg for iid, icfg in sorted(all_insts.items()) if iid != "canonical_intermediate"
+    }
+
+    # 1. Precompute frontend deconvolution per instrument & pickup
+    inst_pickup_front: dict[str, dict[str, np.ndarray]] = {}
+    instruments_meta: dict[str, dict[str, Any]] = {}
+
+    for iid, inst in insts.items():
+        inst_pickup_front[iid] = {}
+        for pkey in inst.pickups:
+            h_front = compute_frontend_transfer_function(
+                inst, pkey, freqs=freqs, can_model=can_model
+            )
+            db_front = np.round(20.0 * np.log10(np.maximum(h_front, 1e-6)), 2)
+            inst_pickup_front[iid][pkey] = db_front
+
+        scale_in = float(inst.scale_length_in or 34.0)
+        scale_m = float(inst.scale_length_m or (scale_in * 0.0254))
+        def_pkey = inst.default_pickup or next(iter(inst.pickups.keys()))
+        instruments_meta[iid] = {
+            "id": iid,
+            "name": inst.name,
+            "scale_in": scale_in,
+            "scale_m": round(scale_m, 4),
+            "default_pickup": def_pkey,
+            "pickups_count": len(inst.pickups),
+        }
+
+    # 2. Target voices metadata
+    voices_meta: dict[str, dict[str, Any]] = {}
+    for vid, (vname, _) in sorted(target_dfs.items()):
+        vcfg = VOICES[vid]
+        family = VOICE_FAMILIES.get(vid, "Specialty")
+        voices_meta[vid] = {
+            "id": vid,
+            "name": vname,
+            "tone_name": vcfg.tone_name or vname,
+            "family": family,
+            "topology": vcfg.topology,
+            "sensor_type": vcfg.sensor_type,
+            "description": vcfg.description,
+            "alpha": float(vcfg.alpha or 0.0),
+            "vsat": float(vcfg.vsat or 1.0),
+        }
+
+    # 3. Monolithic baked responses matrix
+    responses: dict[str, dict[str, dict[str, Any]]] = {}
+    for iid, inst in insts.items():
+        responses[iid] = {}
+        for vid, (vname, db_tgt) in sorted(target_dfs.items()):
+            vcfg = VOICES[vid]
+            p = get_source_pickup(inst, vid)
+            pkey = p.id or inst.default_pickup or next(iter(inst.pickups.keys()))
+            db_front = inst_pickup_front[iid][pkey]
+
+            if db_tgt is None:
+                db_back = np.zeros(n_pts)
+            else:
+                db_back = np.round(db_tgt - db_can, 2)
+
+            if vid == "15_neutral_character" or (
+                vcfg.preserve_aperture and getattr(vcfg.circuit, "no_eq", False)
+            ):
+                db_baked = [0.0] * n_pts
+            elif vcfg.preserve_aperture:
+                tgt_circuit = vcfg.circuit
+                model = load_circuit(tgt_circuit)
+                apply_magnet_properties_to_model(model, vcfg)
+                if p.circuit:
+                    src_model = load_circuit(p.circuit)
+                    apply_magnet_properties_to_model(src_model, p)
+                    curves = compute_differential_circuit_transfer_functions(
+                        model, src_model, freqs=freqs
+                    )
+                else:
+                    curves = compute_circuit_transfer_functions(model, freqs=freqs)
+                h_diff = np.asarray(curves[0], dtype=np.float64)
+                h_diff = h_diff / max(h_diff[0], 1e-6)
+                db_baked = np.round(20.0 * np.log10(np.maximum(h_diff, 1e-6)), 2).tolist()
+            elif is_voice_matching_source(inst, vid, vcfg):
+                if p.circuit and vcfg.circuit:
+                    src_m = load_circuit(p.circuit)
+                    apply_magnet_properties_to_model(src_m, p)
+                    tgt_m = load_circuit(vcfg.circuit)
+                    apply_magnet_properties_to_model(tgt_m, vcfg)
+                    diff_c = compute_differential_circuit_transfer_functions(
+                        tgt_m, src_m, freqs=freqs
+                    )
+                    diff_arr = np.asarray(diff_c[0], dtype=np.float64)
+                    if np.allclose(diff_arr, 1.0, rtol=1e-3):
+                        db_baked = [0.0] * n_pts
+                    else:
+                        db_baked = np.round(20.0 * np.log10(np.maximum(diff_arr, 1e-6)), 2).tolist()
+                elif not p.circuit and not vcfg.circuit:
+                    db_baked = [0.0] * n_pts
+                else:
+                    db_baked = np.round(db_front + db_back, 2).tolist()
+            else:
+                db_baked = np.round(db_front + db_back, 2).tolist()
+
+            responses[iid][vid] = {
+                "pickup_key": pkey,
+                "pickup_name": p.name or pkey,
+                "magnitude_db": db_baked,
+            }
+
+    return {
+        "frequencies": f_pts,
+        "instruments": instruments_meta,
+        "voices": voices_meta,
+        "responses": responses,
+    }
+
+
+def build_baked_responses_dataframe(
+    instrument_ids: Sequence[str] | None = None,
+    voice_ids: Sequence[str] | None = None,
+    step: int = 3,
+) -> pl.DataFrame:
+    """
+    Builds a tabular Polars DataFrame containing monolithic baked curves (H_diff = H_tgt / H_src)
+    for selected source instruments and target voicings.
+    """
+    data = build_baked_responses_data(step=step)
+    f_pts: list[float] = data["frequencies"]
+    n_pts = len(f_pts)
+
+    filter_insts = set(instrument_ids) if instrument_ids else None
+    filter_voices = set(voice_ids) if voice_ids else None
+
+    freq_col: list[float] = []
+    mag_col: list[float] = []
+    iid_col: list[str] = []
+    iname_col: list[str] = []
+    vid_col: list[str] = []
+    vname_col: list[str] = []
+    pkey_col: list[str] = []
+    pname_col: list[str] = []
+    label_col: list[str] = []
+    topo_col: list[str] = []
+    desc_col: list[str] = []
+
+    for iid, inst_info in sorted(data["instruments"].items()):
+        if filter_insts and iid not in filter_insts:
+            continue
+        iname = inst_info["name"]
+
+        for vid, v_info in sorted(data["voices"].items()):
+            if filter_voices and vid not in filter_voices:
+                continue
+            vname = v_info["name"]
+            resp = data["responses"][iid][vid]
+            mags: list[float] = resp["magnitude_db"]
+            pkey = resp["pickup_key"]
+            pname = resp["pickup_name"]
+            label = f"{iname} ➔ {vname}"
+
+            freq_col.extend(f_pts)
+            mag_col.extend(mags)
+            iid_col.extend([iid] * n_pts)
+            iname_col.extend([iname] * n_pts)
+            vid_col.extend([vid] * n_pts)
+            vname_col.extend([vname] * n_pts)
+            pkey_col.extend([pkey] * n_pts)
+            pname_col.extend([pname] * n_pts)
+            label_col.extend([label] * n_pts)
+            topo_col.extend([v_info["topology"]] * n_pts)
+            desc_col.extend([v_info["description"]] * n_pts)
+
+    return pl.DataFrame(
+        {
+            "frequency": freq_col,
+            "magnitude_db": mag_col,
+            "instrument_id": iid_col,
+            "instrument_name": iname_col,
+            "voice_id": vid_col,
+            "voice_name": vname_col,
+            "pickup_key": pkey_col,
+            "pickup_name": pname_col,
+            "label": label_col,
+            "topology": topo_col,
+            "description": desc_col,
+        }
+    )
+

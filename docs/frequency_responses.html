@@ -329,6 +329,10 @@
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
         <span>Frontend Deconvolutions (Block 1)</span>
       </button>
+      <button class="primary-nav-btn" id="pnav-baked" onclick="selectPrimaryView('baked')">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+        <span>Baked Responses (1-Block)</span>
+      </button>
       <button class="primary-nav-btn" id="pnav-inspector" onclick="selectPrimaryView('inspector')">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" y1="21" x2="4" y2="14"></line><line x1="4" y1="10" x2="4" y2="3"></line><line x1="12" y1="21" x2="12" y2="12"></line><line x1="12" y1="8" x2="12" y2="3"></line><line x1="20" y1="21" x2="20" y2="16"></line><line x1="20" y1="12" x2="20" y2="3"></line><line x1="1" y1="14" x2="7" y2="14"></line><line x1="9" y1="8" x2="15" y2="8"></line><line x1="17" y1="16" x2="23" y2="16"></line></svg>
         <span>Signal Flow Inspector (End-to-End)</span>
@@ -493,12 +497,13 @@
   }
 };
     const baseUrlPrefix = "./frequency_responses/";
-    let currentPrimaryView = "targets"; // 'targets', 'frontends', 'inspector'
+    let currentPrimaryView = "targets"; // 'targets', 'frontends', 'baked', 'inspector'
     let currentId = "30in_emg_mmtw";
 
     function updateView() {
       const pnavTargets = document.getElementById('pnav-targets');
       const pnavFrontends = document.getElementById('pnav-frontends');
+      const pnavBaked = document.getElementById('pnav-baked');
       const pnavInspector = document.getElementById('pnav-inspector');
       const subcontrols = document.getElementById('inspector-subcontrols');
       const frame = document.getElementById('chart-frame');
@@ -510,6 +515,7 @@
 
       pnavTargets.classList.toggle('active', currentPrimaryView === 'targets');
       pnavFrontends.classList.toggle('active', currentPrimaryView === 'frontends');
+      if (pnavBaked) pnavBaked.classList.toggle('active', currentPrimaryView === 'baked');
       pnavInspector.classList.toggle('active', currentPrimaryView === 'inspector');
 
       if (currentPrimaryView === 'targets') {
@@ -535,6 +541,19 @@
         metaPickups.textContent = '2048-tap causal minimum-phase FIRs with strictly positive initial polarity';
         metaViewMode.textContent = 'Frontend Deconvolution IRs';
         if (window.history.replaceState) window.history.replaceState(null, null, '#frontends');
+        return;
+      }
+
+      if (currentPrimaryView === 'baked') {
+        subcontrols.style.display = 'none';
+        const url = `${baseUrlPrefix}baked_responses.html`;
+        frame.src = url;
+        standaloneLink.href = url;
+        metaName.textContent = 'Baked Transformations (1-Block Single Model)';
+        metaScale.textContent = 'Multi-Instrument & Multi-Voicing Differential Matrix';
+        metaPickups.textContent = '276 Monolithic Transfer Curves (H_diff = H_tgt / H_src) with dynamic multi-selection';
+        metaViewMode.textContent = 'Baked End-to-End Single-Block';
+        if (window.history.replaceState) window.history.replaceState(null, null, '#baked');
         return;
       }
 
@@ -603,6 +622,8 @@
         currentPrimaryView = 'targets';
       } else if (hash === 'frontends') {
         currentPrimaryView = 'frontends';
+      } else if (hash === 'baked') {
+        currentPrimaryView = 'baked';
       } else if (hash) {
         const hashId = hash.split(':')[0];
         if (instruments[hashId]) {

@@ -195,6 +195,45 @@ def test_identity_acoustic_transfer_preserves_flat_bass():
     assert not is_voice_matching_source(inst_p, "02_jazz_bass_pair", VOICES["02_jazz_bass_pair"])
 
 
+def test_character_voicings_aperture_and_identity_behavior():
+    """Verify aperture preservation and identity matching invariants for character voicings.
+    15_neutral_character is an acoustic identity (preserve_aperture=True, no_eq=True).
+    15b_active_character and 15c_passive_character preserve physical aperture but apply
+    transformative circuit EQ, so is_voice_matching_source must strictly return False.
+    """
+    test_instruments = [
+        "34in_standard_p",
+        "30in_emg_mmtw",
+        "34in_active_stingray",
+        "37in_multiscale_dingwall",
+        "34in_standard_jazz",
+    ]
+
+    for inst_id in test_instruments:
+        inst = load_instrument(inst_id)
+
+        # 15_neutral_character is an identity spatial match across all basses
+        assert is_voice_matching_source(
+            inst, "15_neutral_character", VOICES["15_neutral_character"]
+        ), f"15_neutral_character must match source aperture on {inst_id}"
+
+        # 15b and 15c are transformative circuits and must NEVER match source circuit
+        assert not is_voice_matching_source(
+            inst, "15b_active_character", VOICES["15b_active_character"]
+        ), f"15b_active_character must NOT be an identity match on {inst_id}"
+        assert not is_voice_matching_source(
+            inst, "15c_passive_character", VOICES["15c_passive_character"]
+        ), f"15c_passive_character must NOT be an identity match on {inst_id}"
+
+        # Prefilter FIRs must be unity impulses (preserve_aperture=True)
+        for char_vid in ["15_neutral_character", "15b_active_character", "15c_passive_character"]:
+            firs = compute_voice_prefilter_firs(char_vid, instrument=inst, num_taps=64)
+            assert len(firs) == 1
+            assert firs[0][0] == 1.0
+            assert all(x == 0.0 for x in firs[0][1:])
+
+
+
 def test_numpy_pickup_macro_aperture_properties():
     """Verify that macro aperture computes a smooth, comb-free sensing envelope."""
     inst = load_instrument("30in_emg_mmtw")

@@ -2,6 +2,7 @@
 Allomorph Visualizer - Interactive Altair Charts Generation
 """
 
+import json
 from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
@@ -17,6 +18,7 @@ from allomorph.config.voices import VOICES
 from allomorph.dsp import FREQS
 from allomorph.physics import is_voice_matching_source
 from allomorph.visualizer.dataframe import (
+    build_baked_responses_data,
     build_composite_instrument_dataframe,
     build_instrument_frontend_dataframe,
     build_universal_targets_dataframe,
@@ -577,6 +579,535 @@ def generate_frontend_deconvolutions_chart(target_path: Path | None = None) -> P
     return target_path
 
 
+def generate_baked_responses_page(target_html: Path | None = None) -> Path:
+    """
+    Renders the Mode 3 Baked Transformations master page (1-Block Monolithic Model).
+    Embeds the compact responses matrix directly in a script tag for instant,
+    zero-CORS local viewing. Allows users to dynamically select multiple source instruments
+    and multiple target voicings with sub-millisecond Vega re-rendering.
+    """
+    if target_html is None:
+        target_html = RESPONSES_DIR / "baked_responses.html"
+    target_html = Path(target_html)
+    target_html.parent.mkdir(parents=True, exist_ok=True)
+
+    data = build_baked_responses_data(step=3)
+    data_json = json.dumps(data)
+
+    default_active_insts = {"34in_standard_p", "34in_standard_jazz"}
+    inst_buttons: list[str] = []
+    for iid, info in sorted(data["instruments"].items()):
+        is_act = " active" if iid in default_active_insts else ""
+        name = info["name"]
+        scale = info["scale_in"]
+        inst_buttons.append(
+            f'        <button class="chip-btn{is_act}" data-id="{iid}" onclick="toggleInstrument(\'{iid}\')">'
+            f'<span class="chip-check">✓</span><span>{name} ({scale:.0f}")</span></button>'
+        )
+    inst_chips_html = "\n".join(inst_buttons)
+
+    default_active_voices = {
+        "05_vintage_62_p_alnico",
+        "02_jazz_bass_pair",
+        "09_stingray_mm_parallel",
+    }
+    voice_buttons: list[str] = []
+    for vid, vinfo in sorted(data["voices"].items()):
+        is_act = " active" if vid in default_active_voices else ""
+        vname = vinfo["name"]
+        fam = vinfo["family"]
+        voice_buttons.append(
+            f'        <button class="chip-btn{is_act}" data-id="{vid}" data-family="{fam}" onclick="toggleVoicing(\'{vid}\')">'
+            f'<span class="chip-check">✓</span><span>{vname}</span></button>'
+        )
+    voice_chips_html = "\n".join(voice_buttons)
+
+    html_content = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Allomorph Master Voices: Baked Transformations (1-Block Single Model)</title>
+  <style>
+    :root {{
+      --bg: #0d1117;
+      --card-bg: #161b22;
+      --card-hover: #1c2128;
+      --border: #30363d;
+      --accent: #38bdf8;
+      --text: #f0f6fc;
+      --text-muted: #8b949e;
+      --tag-bg: #21262d;
+      --btn-active: #1f6feb;
+    }}
+    * {{ box-sizing: border-box; margin: 0; padding: 0; }}
+    body {{
+      background-color: var(--bg) !important;
+      color: #c9d1d9 !important;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      padding: 12px 16px;
+      margin: 0;
+      overflow-x: hidden;
+    }}
+    .header-card {{
+      max-width: 1060px;
+      margin: 0 auto 12px auto;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 14px 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }}
+    .header-title-row {{
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 10px;
+    }}
+    .header-title {{
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }}
+    .badge-counter {{
+      font-size: 11px;
+      font-weight: 700;
+      background: rgba(56, 189, 248, 0.16);
+      color: #38bdf8;
+      border: 1px solid #38bdf8;
+      padding: 3px 10px;
+      border-radius: 12px;
+    }}
+    .section-title-row {{
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 8px;
+      border-top: 1px solid var(--border);
+      padding-top: 10px;
+    }}
+    .section-label {{
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      color: var(--accent);
+    }}
+    .quick-actions {{
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }}
+    .quick-btn {{
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      font-size: 10px;
+      font-weight: 600;
+      padding: 3px 8px;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }}
+    .quick-btn:hover {{
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--text);
+      border-color: #8b949e;
+    }}
+    .chips-container {{
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }}
+    .chip-btn {{
+      background: var(--tag-bg);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      font-size: 11px;
+      font-weight: 600;
+      padding: 5px 10px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      user-select: none;
+    }}
+    .chip-btn:hover {{
+      background: #30363d;
+      color: var(--text);
+      border-color: #8b949e;
+    }}
+    .chip-btn.active {{
+      background: rgba(56, 189, 248, 0.16);
+      color: #38bdf8;
+      border-color: #38bdf8;
+      box-shadow: 0 0 6px rgba(56, 189, 248, 0.25);
+    }}
+    .chip-check {{
+      display: inline-block;
+      font-size: 11px;
+      opacity: 0.3;
+      transition: opacity 0.15s ease;
+    }}
+    .chip-btn.active .chip-check {{
+      opacity: 1;
+      color: #38bdf8;
+    }}
+    .chart-card {{
+      max-width: 1060px;
+      margin: 0 auto;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px;
+      display: flex;
+      justify-content: center;
+    }}
+    #vis {{
+      width: 100%;
+      display: flex;
+      justify-content: center;
+    }}
+    .directives-card {{
+      max-width: 1060px;
+      margin: 14px auto 0 auto;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 14px 18px;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 14px;
+      font-size: 11px;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }}
+    .directive-item {{
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }}
+    .directive-title {{
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--text);
+    }}
+    .highlight {{
+      color: #58a6ff;
+      font-weight: 600;
+    }}
+  </style>
+  <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/vega@6"></script>
+  <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/vega-lite@6.4.1"></script>
+  <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/vega-embed@7"></script>
+</head>
+<body>
+  <div class="header-card">
+    <div class="header-title-row">
+      <div class="header-title">
+        <span>Baked Transformations (1-Block Single Model) — Multi-Instrument & Multi-Voicing Matrix</span>
+      </div>
+      <div id="curve-counter" class="badge-counter">6 active curves</div>
+    </div>
+
+    <div class="section-title-row">
+      <span class="section-label">Source Instruments (Multi-Select):</span>
+      <div class="quick-actions">
+        <button class="quick-btn" onclick="selectAllInstruments()">Select All</button>
+        <button class="quick-btn" onclick="clearInstruments()">Clear</button>
+        <button class="quick-btn" onclick="selectStandardInstruments()">34" Standard</button>
+        <button class="quick-btn" onclick="selectShortMedInstruments()">Short/Medium Scale</button>
+      </div>
+    </div>
+    <div id="inst-chips" class="chips-container">
+{inst_chips_html}
+    </div>
+
+    <div class="section-title-row">
+      <span class="section-label">Target Voicings (Multi-Select):</span>
+      <div class="quick-actions">
+        <button class="quick-btn" onclick="selectAllVoicings()">All Voicings</button>
+        <button class="quick-btn" onclick="clearVoicings()">Clear</button>
+        <button class="quick-btn" onclick="filterVoicingsByFamily('Precision')">Precision</button>
+        <button class="quick-btn" onclick="filterVoicingsByFamily('Jazz')">Jazz</button>
+        <button class="quick-btn" onclick="filterVoicingsByFamily('StingRay')">StingRay</button>
+        <button class="quick-btn" onclick="filterVoicingsByFamily('PJ')">PJ & P/MM</button>
+        <button class="quick-btn" onclick="filterVoicingsByFamily('Character')">Character</button>
+      </div>
+    </div>
+    <div id="voice-chips" class="chips-container">
+{voice_chips_html}
+    </div>
+  </div>
+
+  <div class="chart-card">
+    <div id="vis"></div>
+  </div>
+
+  <div class="directives-card">
+    <div class="directive-item">
+      <div class="directive-title">1. Monolithic 1-Block Deployment</div>
+      <div>Curves plot the regularized differential transfer function <span class="highlight">H<sub>diff</sub>(f) = H<sub>tgt</sub> / H<sub>src</sub></span> generated when executing <span class="highlight">--stage bake</span>. These models run on Darkglass Anagram Block 1 or Neural Amp Modeler without requiring a separate frontend IR block.</div>
+    </div>
+    <div class="directive-item">
+      <div class="directive-title">2. Linear Transfer vs. Dynamic Feel</div>
+      <div>Plotted curves depict the continuous frequency response synthesized by the differential acoustic aperture and loaded SPICE circuit. Non-linear dynamic give (&alpha;), attack sag (k<sub>sag</sub>), and rail saturation (V<sub>sat</sub>) operate dynamically on high-amplitude transients.</div>
+    </div>
+    <div class="directive-item">
+      <div class="directive-title">3. Bit-for-Bit Identity Bypass</div>
+      <div>When a source instrument already embodies the target voice (e.g. 34" Standard P &rarr; Vintage '62 P), the differential transfer evaluates to an exact flat <span class="highlight">0.00 dB</span>, confirming that identity models are safely omitted via <span class="highlight">skip_identity=True</span>.</div>
+    </div>
+  </div>
+
+  <script id="baked-data" type="application/json">
+{data_json}
+  </script>
+
+  <script>
+    const bakedData = JSON.parse(document.getElementById('baked-data').textContent);
+    const selectedInstruments = new Set(["34in_standard_p", "34in_standard_jazz"]);
+    const selectedVoicings = new Set(["05_vintage_62_p_alnico", "02_jazz_bass_pair", "09_stingray_mm_parallel"]);
+    let vegaView = null;
+
+    function toggleInstrument(id) {{
+      if (selectedInstruments.has(id)) {{
+        if (selectedInstruments.size > 1) {{
+          selectedInstruments.delete(id);
+        }}
+      }} else {{
+        selectedInstruments.add(id);
+      }}
+      updateUI();
+    }}
+
+    function selectAllInstruments() {{
+      Object.keys(bakedData.instruments).forEach(id => selectedInstruments.add(id));
+      updateUI();
+    }}
+
+    function clearInstruments() {{
+      selectedInstruments.clear();
+      const first = Object.keys(bakedData.instruments)[0];
+      if (first) selectedInstruments.add(first);
+      updateUI();
+    }}
+
+    function selectStandardInstruments() {{
+      selectedInstruments.clear();
+      Object.keys(bakedData.instruments).forEach(id => {{
+        if (id.startsWith("34in")) selectedInstruments.add(id);
+      }});
+      if (selectedInstruments.size === 0) {{
+        const first = Object.keys(bakedData.instruments)[0];
+        if (first) selectedInstruments.add(first);
+      }}
+      updateUI();
+    }}
+
+    function selectShortMedInstruments() {{
+      selectedInstruments.clear();
+      Object.keys(bakedData.instruments).forEach(id => {{
+        if (id.startsWith("30in") || id.startsWith("32in")) selectedInstruments.add(id);
+      }});
+      if (selectedInstruments.size === 0) {{
+        const first = Object.keys(bakedData.instruments)[0];
+        if (first) selectedInstruments.add(first);
+      }}
+      updateUI();
+    }}
+
+    function toggleVoicing(id) {{
+      if (selectedVoicings.has(id)) {{
+        if (selectedVoicings.size > 1) {{
+          selectedVoicings.delete(id);
+        }}
+      }} else {{
+        selectedVoicings.add(id);
+      }}
+      updateUI();
+    }}
+
+    function selectAllVoicings() {{
+      Object.keys(bakedData.voices).forEach(id => selectedVoicings.add(id));
+      updateUI();
+    }}
+
+    function clearVoicings() {{
+      selectedVoicings.clear();
+      const first = Object.keys(bakedData.voices)[0];
+      if (first) selectedVoicings.add(first);
+      updateUI();
+    }}
+
+    function filterVoicingsByFamily(family) {{
+      selectedVoicings.clear();
+      Object.entries(bakedData.voices).forEach(([vid, vinfo]) => {{
+        const fam = vinfo.family || '';
+        if (family === 'ALL' || fam.toLowerCase().includes(family.toLowerCase()) || (family === 'PJ' && (fam.includes('PJ') || fam.includes('P∕MM')))) {{
+          selectedVoicings.add(vid);
+        }}
+      }});
+      if (selectedVoicings.size === 0) {{
+        const first = Object.keys(bakedData.voices)[0];
+        if (first) selectedVoicings.add(first);
+      }}
+      updateUI();
+    }}
+
+    function buildCurrentRecords() {{
+      const records = [];
+      const freqs = bakedData.frequencies;
+      const n = freqs.length;
+
+      selectedInstruments.forEach(iid => {{
+        const instInfo = bakedData.instruments[iid];
+        if (!instInfo) return;
+        const iname = instInfo.name;
+
+        selectedVoicings.forEach(vid => {{
+          const vinfo = bakedData.voices[vid];
+          if (!vinfo) return;
+          const vname = vinfo.name;
+
+          const resp = bakedData.responses[iid] && bakedData.responses[iid][vid];
+          if (!resp) return;
+          const mags = resp.magnitude_db;
+          const pname = resp.pickup_name;
+          const label = `${{iname}} ➔ ${{vname}}`;
+
+          for (let i = 0; i < n; i++) {{
+            records.push({{
+              frequency: freqs[i],
+              magnitude_db: mags[i],
+              label: label,
+              instrument_name: iname,
+              pickup_name: pname,
+              voice_name: vname,
+              topology: vinfo.topology,
+              description: vinfo.description
+            }});
+          }}
+        }});
+      }});
+      return records;
+    }}
+
+    function updateUI() {{
+      document.querySelectorAll('#inst-chips .chip-btn').forEach(btn => {{
+        btn.classList.toggle('active', selectedInstruments.has(btn.dataset.id));
+      }});
+      document.querySelectorAll('#voice-chips .chip-btn').forEach(btn => {{
+        btn.classList.toggle('active', selectedVoicings.has(btn.dataset.id));
+      }});
+
+      const totalCurves = selectedInstruments.size * selectedVoicings.size;
+      const counterEl = document.getElementById('curve-counter');
+      if (counterEl) {{
+        counterEl.textContent = `${{totalCurves}} active curves (${{selectedInstruments.size}} instruments × ${{selectedVoicings.size}} voicings)`;
+      }}
+
+      if (vegaView) {{
+        const records = buildCurrentRecords();
+        vegaView.change('table', vega.changeset().remove(() => true).insert(records)).runAsync();
+      }}
+    }}
+
+    const baseSpec = {{
+      "config": {{
+        "view": {{"continuousWidth": 300, "continuousHeight": 300, "strokeWidth": 0}},
+        "legend": {{"labelLimit": 340, "orient": "right"}}
+      }},
+      "data": {{"name": "table"}},
+      "layer": [
+        {{
+          "mark": {{"type": "line", "color": "#8b949e", "strokeDash": [6, 4], "strokeWidth": 1.5}},
+          "data": {{"values": [{{"frequency": 20.0, "magnitude_db": 0.0}}, {{"frequency": 20000.0, "magnitude_db": 0.0}}]}},
+          "encoding": {{
+            "x": {{"field": "frequency", "type": "quantitative"}},
+            "y": {{"field": "magnitude_db", "type": "quantitative"}}
+          }}
+        }},
+        {{
+          "mark": {{"type": "line", "strokeWidth": 2.4}},
+          "params": [{{"name": "curve_select", "select": {{"type": "point", "fields": ["label"]}}, "bind": "legend"}}],
+          "encoding": {{
+            "x": {{
+              "field": "frequency",
+              "type": "quantitative",
+              "scale": {{"type": "log", "domain": [20, 20000]}},
+              "title": "Frequency (Hz)",
+              "axis": {{"grid": true, "gridColor": "#333333", "gridDash": [3, 3], "values": [20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000]}}
+            }},
+            "y": {{
+              "field": "magnitude_db",
+              "type": "quantitative",
+              "scale": {{"domain": [-24, 24]}},
+              "title": "Differential Gain / Cut (dB)",
+              "axis": {{"grid": true, "gridColor": "#333333", "gridDash": [3, 3], "values": [-24, -18, -12, -6, 0, 6, 12, 18, 24]}}
+            }},
+            "color": {{
+              "field": "label",
+              "type": "nominal",
+              "scale": {{"scheme": "tableau20"}},
+              "title": "Transformation (Click to isolate)"
+            }},
+            "opacity": {{
+              "condition": {{"param": "curve_select", "value": 0.96}},
+              "value": 0.12
+            }},
+            "strokeWidth": {{
+              "condition": {{"param": "curve_select", "value": 3.0}},
+              "value": 1.4
+            }},
+            "tooltip": [
+              {{"field": "label", "type": "nominal", "title": "Transformation"}},
+              {{"field": "instrument_name", "type": "nominal", "title": "Source Bass"}},
+              {{"field": "pickup_name", "type": "nominal", "title": "Source Pickup"}},
+              {{"field": "voice_name", "type": "nominal", "title": "Target Voice"}},
+              {{"field": "topology", "type": "nominal", "title": "Topology"}},
+              {{"field": "frequency", "type": "quantitative", "format": ".1f", "title": "Frequency (Hz)"}},
+              {{"field": "magnitude_db", "type": "quantitative", "format": "+.2f", "title": "Differential (dB)"}}
+            ]
+          }}
+        }}
+      ],
+      "width": 740,
+      "height": 480,
+      "title": {{
+        "text": "Allomorph Master Voices: Baked Transformations (1-Block Single Model)",
+        "subtitle": "Monolithic Transfer Functions (H_diff = H_tgt / H_src) from Source Instrument Pickups to Target Voicings",
+        "fontSize": 16,
+        "subtitleFontSize": 12,
+        "anchor": "start"
+      }}
+    }};
+
+    window.addEventListener('DOMContentLoaded', () => {{
+      vegaEmbed('#vis', baseSpec, {{renderer: 'canvas', actions: false}}).then(res => {{
+        vegaView = res.view;
+        updateUI();
+      }}).catch(err => {{
+        console.error("VegaEmbed error:", err);
+      }});
+    }});
+  </script>
+</body>
+</html>
+"""
+    target_html.write_text(html_content, encoding="utf-8")
+    print(f"Saved Baked Transformations master page: {target_html}")
+    return target_html
+
+
 def generate_composite_instrument_chart(
     instrument: InstrumentConfig | str = "30in",
     out_html: str | Path | None = None,
@@ -858,6 +1389,10 @@ def generate_interactive_chart(
         return generate_frontend_deconvolutions_chart(
             target_path=Path(out_html) if out_html is not None else None
         )
+    elif mode == "baked":
+        return generate_baked_responses_page(
+            target_html=Path(out_html) if out_html is not None else None
+        )
 
     inst = instrument if isinstance(instrument, InstrumentConfig) else load_instrument(instrument)
     inst_id = inst.id
@@ -936,7 +1471,11 @@ def generate_all_charts(output_dir: str | Path | None = None) -> dict[str, Path]
     print("Generating Frontend Deconvolutions (Block 1)...")
     generate_frontend_deconvolutions_chart(out_dir / "frontend_deconvolutions.html")
 
-    generated: dict[str, Path] = {}
+    # 3. Mode 3: Baked Transformations (1-Block Single Model)
+    print("Generating Baked Transformations (1-Block Single Model)...")
+    baked_html = generate_baked_responses_page(out_dir / "baked_responses.html")
+
+    generated: dict[str, Path] = {"baked": baked_html}
     for inst_id, inst_cfg in all_insts.items():
         if inst_id == "canonical_intermediate":
             continue

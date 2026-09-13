@@ -31,8 +31,8 @@ class VisualizerCliConfig(AllomorphBaseModel):
     """Validated command-line configuration for interactive Altair visualizer."""
 
     instrument: str = "all"
-    mode: Literal["composite", "unified", "output", "difference", "targets", "frontends"] = (
-        "composite"
-    )
+    mode: Literal[
+        "composite", "unified", "output", "difference", "targets", "frontends", "baked"
+    ] = "composite"
     all: bool = False
     out: Path | str | None = None

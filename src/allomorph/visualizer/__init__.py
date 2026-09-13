@@ -10,6 +10,7 @@ from pathlib import Path
 from allomorph.config.instruments import load_instrument
 from allomorph.visualizer.charts import (
     generate_all_charts,
+    generate_baked_responses_page,
     generate_composite_instrument_chart,
     generate_frontend_deconvolutions_chart,
     generate_instrument_frontend_chart,
@@ -21,6 +22,8 @@ from allomorph.visualizer.dataframe import (
     F_MAX,
     F_MIN,
     NUM_POINTS,
+    build_baked_responses_data,
+    build_baked_responses_dataframe,
     build_composite_instrument_dataframe,
     build_frontend_deconvolutions_dataframe,
     build_instrument_frontend_dataframe,
@@ -47,6 +50,8 @@ __all__ = [
     "NUM_POINTS",
     "RESPONSES_DIR",
     "append_spec_panel",
+    "build_baked_responses_data",
+    "build_baked_responses_dataframe",
     "build_composite_instrument_dataframe",
     "build_frontend_deconvolutions_dataframe",
     "build_instrument_frontend_dataframe",
@@ -57,6 +62,7 @@ __all__ = [
     "compute_canonical_intermediate_response",
     "format_instrument_meta",
     "generate_all_charts",
+    "generate_baked_responses_page",
     "generate_composite_instrument_chart",
     "generate_frontend_deconvolutions_chart",
     "generate_instrument_frontend_chart",
@@ -83,9 +89,9 @@ def main(argv: Sequence[str] | None = None) -> None:
     parser.add_argument(
         "--mode",
         "-m",
-        choices=["composite", "unified", "output", "difference", "targets", "frontends"],
+        choices=["composite", "unified", "output", "difference", "targets", "frontends", "baked"],
         default="composite",
-        help="Chart mode: 'composite' (3-curve overlay), 'unified', 'output', 'difference', 'targets', or 'frontends'",
+        help="Chart mode: 'composite' (3-curve overlay), 'unified', 'output', 'difference', 'targets', 'frontends', or 'baked'",
     )
     parser.add_argument(
         "--all", action="store_true", help="Build interactive charts for all configured instruments"
@@ -105,6 +111,8 @@ def main(argv: Sequence[str] | None = None) -> None:
 
     if cli_cfg.all or (isinstance(cli_cfg.instrument, str) and cli_cfg.instrument.lower() == "all"):
         generate_all_charts(output_dir=cli_cfg.out)
+    elif cli_cfg.mode in ("targets", "frontends", "baked"):
+        generate_interactive_chart(mode=cli_cfg.mode, out_html=cli_cfg.out)
     else:
         inst = load_instrument(cli_cfg.instrument)
         generate_interactive_chart(instrument=inst, out_html=cli_cfg.out, mode=cli_cfg.mode)

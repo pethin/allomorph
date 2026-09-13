@@ -932,3 +932,101 @@ def test_guardrail_lossless_c_inf_optimizations():
         )
         assert abs(eval_pot_taper(th, "audio") - expected) < 1e-14
 
+
+def test_guardrail_character_voicings_and_baked_identity_invariants():
+    """Guardrail 5.2.1 / 5.3.1 / 5.3.6: Character voicings aperture preservation,
+    identity matching, and baked response invariants:
+      1. is_voice_matching_source evaluates strictly to True for 15_neutral_character
+         across all 12 playable source instruments (preserving acoustic identity).
+      2. is_voice_matching_source evaluates strictly to False for 15b_active_character
+         and 15c_passive_character across all 12 playable source instruments (transformative
+         circuit models must never be flagged as identities).
+      3. build_baked_responses_data(step=3) produces bit-exact 0.00 dB for 15_neutral_character
+         across all 12 source instruments.
+      4. build_baked_responses_data(step=3) produces non-flat transformative curves (dynamic
+         range > 1.0 dB) for 15b_active_character and 15c_passive_character across all instruments.
+      5. simulate_voice(skip_identity=True) strictly skips 15_neutral_character across active
+         and passive basses while producing valid output for 15b and 15c.
+    """
+    import tempfile
+    from pathlib import Path
+
+    from allomorph.circuit.schema import SimulationConfig
+    from allomorph.circuit.simulation import simulate_voice
+    from allomorph.config import load_all_instruments
+    from allomorph.physics import is_voice_matching_source
+    from allomorph.visualizer import build_baked_responses_data
+
+    all_insts = load_all_instruments()
+    playable_insts = {
+        iid: icfg for iid, icfg in all_insts.items() if iid != "canonical_intermediate"
+    }
+
+    # 1 & 2. is_voice_matching_source invariants across all 12 playable instruments
+    for iid, inst in playable_insts.items():
+        assert is_voice_matching_source(
+            inst, "15_neutral_character", VOICES["15_neutral_character"]
+        ), f"15_neutral_character must match source aperture on {iid}"
+
+        assert not is_voice_matching_source(
+            inst, "15b_active_character", VOICES["15b_active_character"]
+        ), f"15b_active_character must NOT be flagged as identity match on {iid}"
+
+        assert not is_voice_matching_source(
+            inst, "15c_passive_character", VOICES["15c_passive_character"]
+        ), f"15c_passive_character must NOT be flagged as identity match on {iid}"
+
+    # 3 & 4. build_baked_responses_data matrix invariants
+    baked_data = build_baked_responses_data(step=3)
+    responses = baked_data["responses"]
+
+    for iid in playable_insts:
+        # 15_neutral_character must be bit-exact 0.00 dB everywhere
+        mags_neutral = responses[iid]["15_neutral_character"]["magnitude_db"]
+        assert all(m == 0.0 for m in mags_neutral), (
+            f"15_neutral_character on {iid} must evaluate to bit-exact 0.00 dB, got {mags_neutral[:5]}"
+        )
+
+        # 15b_active_character and 15c_passive_character must be transformative (non-flat)
+        for vid in ["15b_active_character", "15c_passive_character"]:
+            mags = responses[iid][vid]["magnitude_db"]
+            assert not all(m == 0.0 for m in mags), f"{vid} on {iid} must NOT be flat 0.00 dB"
+            dr = max(mags) - min(mags)
+            assert dr > 1.0, f"{vid} on {iid} dynamic range was {dr:.2f} dB (expected > 1.0 dB)"
+
+    # 4b. StingRay identity discrimination: parallel is flat 0.0 dB, series is transformative
+    ray_par = responses["34in_active_stingray"]["09_stingray_mm_parallel"]["magnitude_db"]
+    ray_ser = responses["34in_active_stingray"]["09b_stingray_mm_series"]["magnitude_db"]
+    assert all(m == 0.0 for m in ray_par), "34in_active_stingray -> 09_stingray_mm_parallel must be flat 0.00 dB"
+    assert not all(m == 0.0 for m in ray_ser), "34in_active_stingray -> 09b_stingray_mm_series must NOT be flat"
+    assert max(ray_ser) - min(ray_ser) > 5.0, "34in_active_stingray -> 09b_stingray_mm_series dynamic range must exceed 5.0 dB"
+
+    # 5. simulate_voice identity skip invariants
+    with tempfile.TemporaryDirectory() as tmpdir:
+        tmp_p = Path(tmpdir)
+        for iid in ["34in_standard_p", "30in_emg_mmtw", "34in_active_stingray"]:
+            # Neutral character must be skipped
+            out_neutral = tmp_p / f"neutral_{iid}.wav"
+            cfg_neutral = SimulationConfig(
+                instrument=iid,
+                output_wav=out_neutral,
+                skip_identity=True,
+                max_samples=2400,
+            )
+            assert simulate_voice("15_neutral_character", config=cfg_neutral) is False
+            assert not out_neutral.exists()
+
+            # Active character and passive character must be produced
+            for char_vid in ["15b_active_character", "15c_passive_character"]:
+                out_char = tmp_p / f"{char_vid}_{iid}.wav"
+                cfg_char = SimulationConfig(
+                    instrument=iid,
+                    output_wav=out_char,
+                    skip_identity=True,
+                    max_samples=2400,
+                )
+                assert simulate_voice(char_vid, config=cfg_char) is True
+                assert out_char.exists()
+                assert out_char.stat().st_size > 0
+
+

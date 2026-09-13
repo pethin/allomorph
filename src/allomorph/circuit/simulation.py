@@ -848,7 +848,7 @@ def simulate_voice(
         and len(diff_curves) > 0
         and np.allclose(diff_curves[0], 1.0, rtol=1e-3)
     )
-    is_identity = is_spatial_match and (is_circuit_match if has_source_circuit else True)
+    is_identity = is_spatial_match and is_circuit_match
 
     if skip_identity and is_identity:
         out_p = Path(out_wav)
