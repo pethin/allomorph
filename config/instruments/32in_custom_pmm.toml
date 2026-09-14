@@ -16,6 +16,7 @@ name = "32\" Medium Scale Custom (EMG PX + MMTWX)"
 scale_length_in = 32.0
 scale_length_m = 0.8128
 electronics = "active"
+version = 1
 
 # String wave speeds: v = 2 * L * f0 (for E1=41.2Hz, A1=55.0Hz, D2=73.4Hz, G2=98.0Hz)
 string_wave_speeds = [66.98, 89.41, 119.35, 159.31]
@@ -132,29 +133,64 @@ components = [
 ]
 
 # ------------------------------------------------------------------------------
-# 6. SMART VOICE MAPPING
+# 6. NATIVE INSTRUMENT VOICINGS
 # ------------------------------------------------------------------------------
-# Directs the trainer/prefilter which physical pickup state the player selects
-# when recording sweeps or playing through the target digital twin.
+
+[voicings.px_solo]
+version = 1
+name = "Solo Reverse EMG PX Split"
+tone_name = "Custom PX Solo"
+pickup = "px"
+affinity = "neck"
+vol_pos = 1.0
+
+[voicings.mm_single]
+version = 1
+name = "Solo Bridge MMTWX Single Coil"
+tone_name = "Custom MM Single"
+pickup = "mmtwx_single"
+affinity = "bridge"
+vol_pos = 1.0
+
+[voicings.mm_dual]
+version = 1
+name = "Solo Bridge MMTWX Dual Coil"
+tone_name = "Custom MM Dual"
+pickup = "mmtwx_dual"
+affinity = "bridge"
+vol_pos = 1.0
+
+[voicings.blend_parallel]
+version = 1
+name = "Reverse PX + MMTWX Parallel Detent"
+tone_name = "Custom P∕MM Blend"
+pickup = "blend_parallel"
+affinity = "parallel"
+vol_pos = 1.0
+
+[voicings.pj_blend]
+version = 1
+name = "Reverse PX + MMTWX Single (P/J Mode)"
+tone_name = "Custom PJ Blend"
+pickup = "pj_blend_parallel"
+affinity = "parallel"
+vol_pos = 1.0
+
+# ------------------------------------------------------------------------------
+# 7. PICKUP AFFINITY ROUTING
+# ------------------------------------------------------------------------------
 [pickup_mapping]
-"01_modern_jazz_active" = "pj_blend_parallel"   # Dual single-sensing line blend (J-pair scoop)
-"02_jazz_bass_pair" = "pj_blend_parallel"   # Dual single-sensing line blend (J-pair scoop)
-"02b_jazz_bass_pair_22nf" = "pj_blend_parallel" # Dual single-sensing line blend (J-pair scoop, 22nF ToneStyler)
-"02c_jazz_bridge_growl_bias" = "pj_blend_parallel" # Dual single-sensing line blend (Bridge-biased growl)
-"03_jazz_bridge_60s" = "mmtwx_single"       # Solo bridge single-coil (60s J bite)
-"04_modern_p_ceramic" = "px"                # Solo neck PX split
-"05_vintage_62_p_alnico" = "px"             # Solo neck PX split
-"05b_vintage_62_p_22nf" = "px"            # Solo neck PX split (22nF ToneStyler)
-"05c_vintage_62_p_47nf" = "px"            # Solo neck PX split (47nF Motown Flatwounds)
-"05d_vintage_50s_p_100nf" = "px"          # Solo neck PX split (100nF ToneStyler)
-"07_modern_pj_active" = "pj_blend_parallel"   # Modern Active P/J
-"08_vintage_pj_passive" = "pj_blend_parallel"  # Vintage Alnico P/J
-"09_stingray_mm_parallel" = "mmtwx_dual"    # Solo bridge dual-coil (StingRay authority)
-"09b_stingray_mm_series" = "mmtwx_dual"
-"10_rickenbacker_bridge_hpf" = "mmtwx_single" # Solo bridge single-coil
-"11_modern_pmm_active" = "blend_parallel"     # Center detent blend -> Active P/MM digital twin
-"11b_pmm_hybrid_series" = "blend_parallel"    # Center detent blend -> SPICE series digital twin
-"11_pmm_hybrid_series" = "blend_parallel"     # Center detent blend -> SPICE series digital twin (legacy)
-"12_mudbucker_ultra_series" = "px"            # Solo neck pickup -> SPICE mudbucker digital twin
-"13_dingwall_multiscale_bridge" = "mmtwx_dual"
-"14_upright_bridge_transducer" = "px"
+neck = "px"
+bridge = "mmtwx_single"
+parallel = "blend_parallel"
+direct = "px"
+pj_active = "pj_blend_parallel"
+pj_passive = "pj_blend_parallel"
+"34in_standard_pj:pair_parallel" = "pj_blend_parallel"
+"34in_standard_pj:pair_active" = "pj_blend_parallel"
+stingray_parallel = "mmtwx_dual"
+stingray_series = "mmtwx_dual"
+stingray_active = "mmtwx_dual"
+"34in_active_stingray:parallel_classic" = "mmtwx_dual"
+"34in_active_stingray:series_punch" = "mmtwx_dual"
+"34in_active_stingray:active_slap" = "mmtwx_dual"

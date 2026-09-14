@@ -19,6 +19,7 @@ name = "34\" Active StingRay (Music Man MM)"
 scale_length_in = 34.0
 scale_length_m = 0.8636
 electronics = "active"
+version = 1
 
 # String wave speeds: v = 2 * L * f0 (for E1=41.2Hz, A1=55.0Hz, D2=73.4Hz, G2=98.0Hz)
 string_wave_speeds = [71.16, 95.00, 126.81, 169.27]
@@ -44,6 +45,7 @@ tension_lbs = 171.0
 [pickups.mm_parallel]
 name = "Music Man Dual-Coil Humbucker (Parallel)"
 position_name = "Parallel"
+bundle_name = "parallel"
 position_from_bridge_m = 0.0660  # Sweet spot centerline 66.0mm
 aperture_width_in = 1.25         # 1.25" overall aperture envelope
 coil_spacing_in = 0.75           # 0.75" (19.05mm) spacing between coil centers
@@ -56,12 +58,6 @@ coils = [
     { strings = ["all"], position_from_bridge_m = 0.0565, aperture_width_in = 0.75, weight = 0.5 }  # Bridge coil
 ]
 
-# ------------------------------------------------------------------------------
-# 2. SMART VOICE MAPPING
-# ------------------------------------------------------------------------------
-# Single sweet-spot humbucker: all target voices map to the active parallel humbucker.
-# Voice 09 (Music Man StingRay) is a true 1:1 physical and electrical identity match (0.0 dB flat).
-
 [pickups.mm_parallel.circuit]
 topology = "single"
 L = 1.2
@@ -72,25 +68,57 @@ active = true
 preamp = "stingray_2band"
 Rvol = 500000.0
 
+# ------------------------------------------------------------------------------
+# 2. NATIVE INSTRUMENT VOICINGS
+# ------------------------------------------------------------------------------
+
+[voicings.parallel_classic]
+version = 1
+name = "Classic 1979 2-Band Parallel Authority"
+tone_name = "StingRay Parallel"
+pickup = "mm_parallel"
+affinity = "bridge"
+vol_pos = 1.0
+preamp_preset = "stingray_2band"
+
+[voicings.series_punch]
+version = 1
+name = "High-Output Muscular Series Punch"
+tone_name = "StingRay Series"
+pickup = "mm_parallel"
+affinity = "bridge"
+alpha = 0.22
+resonant_frequency_hz = 4100.0
+q_factor = 1.60
+vol_pos = 1.0
+gain_db = 5.6
+preamp_preset = "stingray_2band"
+
+[voicings.series_punch.circuit]
+topology = "single"
+L = 4.8
+Rdc = 8800.0
+Reddy = 150000.0
+Ccoil = 2.1e-10
+active = true
+preamp = "stingray_2band"
+preamp_gain = 1.9
+Rvol = 500000.0
+
+[voicings.active_slap]
+version = 1
+name = "Modern Slap Bass Mid-Scoop"
+tone_name = "StingRay Active"
+pickup = "mm_parallel"
+affinity = "bridge"
+vol_pos = 1.0
+preamp_preset = "stingray_2band"
+
+# ------------------------------------------------------------------------------
+# 3. PICKUP AFFINITY ROUTING
+# ------------------------------------------------------------------------------
 [pickup_mapping]
-"01_modern_jazz_active" = "mm_parallel"
-"02_jazz_bass_pair" = "mm_parallel"
-"02b_jazz_bass_pair_22nf" = "mm_parallel"
-"02c_jazz_bridge_growl_bias" = "mm_parallel"
-"03_jazz_bridge_60s" = "mm_parallel"
-"04_modern_p_ceramic" = "mm_parallel"
-"05_vintage_62_p_alnico" = "mm_parallel"
-"05b_vintage_62_p_22nf" = "mm_parallel"
-"05c_vintage_62_p_47nf" = "mm_parallel"
-"05d_vintage_50s_p_100nf" = "mm_parallel"
-"07_modern_pj_active" = "mm_parallel"
-"08_vintage_pj_passive" = "mm_parallel"
-"09_stingray_mm_parallel" = "mm_parallel"  # Physical identity match!
-"09b_stingray_mm_series" = "mm_parallel"
-"10_rickenbacker_bridge_hpf" = "mm_parallel"
-"11_modern_pmm_active" = "mm_parallel"
-"11b_pmm_hybrid_series" = "mm_parallel"
-"11_pmm_hybrid_series" = "mm_parallel"
-"12_mudbucker_ultra_series" = "mm_parallel"
-"13_dingwall_multiscale_bridge" = "mm_parallel"
-"14_upright_bridge_transducer" = "mm_parallel"
+neck = "mm_parallel"
+bridge = "mm_parallel"
+parallel = "mm_parallel"
+direct = "mm_parallel"

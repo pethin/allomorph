@@ -1,6 +1,6 @@
 # Allomorph - Tone Naming Guidelines for Bassists & Tone3000 Pack Architecture
 
-This document establishes the official tone naming standard across Allomorph. All agents, automated workflows, and human contributors must adhere strictly to these guidelines when naming target voices (`tone_name`), trained Neural Amp Modeler models (`.nam`), baked audio stems (`.wav`), and Tone3000 storefront catalog entries.
+This document establishes the official tone naming standard across Allomorph. All agents, automated workflows, and human contributors must adhere strictly to these guidelines when naming target voices (`tone_name`), trained Neural Amp Modeler models (`.nam`), target audio stems (`.wav`), and Tone3000 storefront catalog entries.
 
 ---
 
@@ -68,7 +68,6 @@ Identifies the bass instrument/pickup archetype:
 | `Dingwall` | Multiscale fanned-fret angled dual-coil bridge | Represents progressive multiscale clarity |
 | `Upright` | Double bass acoustic bridge piezo force transducer | Replaces generic `Piezo` |
 | `Studio` | Aperture-preserving DI / impedance character presets | Replaces generic `Character` |
-| `Canonical` | Internal wideband reference baseline | Excluded from storefront packs |
 
 ### 3.2 Configuration Tokens (`[Configuration]`)
 Specifies the active coil topology or pickup selection on the modeled target instrument:
@@ -94,12 +93,12 @@ Describes the musical tone contour or circuit state. Replaces all raw electronic
 | `Vintage` | Alnico V vintage winding; warm compression | `Vintage 62`, `Alnico` | Alnico V split-coil with authentic 250k CTS harness |
 | `Modern` | Ceramic magnet / high output; crisp bite | `Ceramic`, `Modern P` | High-inductance ceramic coil with 500k harness |
 | `Active` | Onboard active 2-band preamp EQ (slap scoop) | `Active Buffer`, `Modern Jazz` | Active 2-band EQ with boosted lows/highs & scooped mids |
-| `Passive` | Passive high-impedance RLC loading feel | `Vintage PJ`, `Passive Character` | Authentic passive RLC network with 250k pots & 750pF cable |
+| `Passive` | Passive high-impedance RLC loading feel | `Vintage PJ` | Authentic passive RLC network with 250k pots & 750pF cable |
 | `Growl` | Bridge-biased blend for singing fretless tone | `Jaco Bridge Growl` | Decoupled volume pot blend (100% bridge, 75% neck) |
 | `Clank` | Aggressive pick bite and high-pass clank | `4.7nF HPF`, `4003` | In-line series 4.7nF capacitor rolling off sub-bass |
 | `Deep` | Maximum low-end sidewinder sub resonance | `Ultra Series` | 14.4H high-inductance sidewinder coil |
 | `Acoustic` | Wood body resonance & bridge force response | `Piezo`, `Transducer` | Bridge force sensor simulation on 41.5" upright scale |
-| `Direct` | Pure, transparent studio DI transmission | `Neutral Character` | Transparent bypass preserving source aperture |
+| `Direct` | Pure, transparent studio DI transmission | `DI`, `Studio DI` | Transparent bypass preserving source aperture |
 
 ---
 
@@ -123,32 +122,31 @@ Every Allomorph tone name must satisfy two physical and software thresholds:
 
 Below is the definitive catalog of all 24 Allomorph target voices under the systematic naming system, showing character lengths and screen viewport status:
 
-| Voice ID | Declarative `tone_name` | Source Pos Tag | Full Model Basename (`.nam`) | Chars | Screen Status | Musical Personality / Bassist Context |
+| Voice Slug | Declarative `tone_name` | Source Pos Tag | Full Model Basename (`.nam`) | Chars | Screen Status | Musical Personality / Bassist Context |
 | :--- | :--- | :---: | :--- | :---: | :--- | :--- |
-| `00_canonical_intermediate` | `Canonical Datum` | — | `Canonical Datum v2.1.1` | 22 | **Zero-Scroll** | 34" @ 93.5mm reference baseline |
-| `01_modern_jazz_active` | `Jazz Pair Active` | `[Parallel]` | `Jazz Pair Active [Parallel] v2.1.1` | 33 | **Zero-Scroll** | Active 2-band EQ slap scoop; scooped mids |
-| `02_jazz_bass_pair` | `Jazz Pair Open` | `[Parallel]` | `Jazz Pair Open [Parallel] v2.1.1` | 31 | **Zero-Scroll** | Classic 60s dual single-coils, tone wide open |
-| `02b_jazz_bass_pair_22nf` | `Jazz Pair Mids` | `[Parallel]` | `Jazz Pair Mids [Parallel] v2.1.1` | 31 | **Zero-Scroll** | Vocal mid-honk; smooth top with punchy mids |
-| `02c_jazz_bridge_growl_bias` | `Jazz Bridge Growl` | `[Bridge]` | `Jazz Bridge Growl [Bridge] v2.1.1` | 33 | **Zero-Scroll** | Singing fretless bridge burp & vocal growl |
-| `03_jazz_bridge_60s` | `Jazz Bridge Open` | `[Bridge]` | `Jazz Bridge Open [Bridge] v2.1.1` | 33 | **Zero-Scroll** | Tight, biting 60s bridge single-coil, wide open |
-| `04_modern_p_ceramic` | `Precision Modern` | `[Split]` | `Precision Modern [Split] v2.1.1` | 31 | **Zero-Scroll** | High-output ceramic split-P with 500k pots |
-| `05_vintage_62_p_alnico` | `Precision Vintage` | `[Split]` | `Precision Vintage [Split] v2.1.1` | 32 | **Zero-Scroll** | Classic '62 Alnico V split-P, CTS 250k open |
-| `05b_vintage_62_p_22nf` | `Precision Mids` | `[Split]` | `Precision Mids [Split] v2.1.1` | 29 | **Zero-Scroll** | Cutting vocal P-bass with articulate punch |
-| `05c_vintage_62_p_47nf` | `Precision Warm` | `[Split]` | `Precision Warm [Split] v2.1.1` | 29 | **Zero-Scroll** | Classic Motown / flatwound woody thump |
-| `05d_vintage_50s_p_100nf` | `Precision Dub` | `[Split]` | `Precision Dub [Split] v2.1.1` | 28 | **Zero-Scroll** | Deep 1950s sub-bass dub thump |
-| `07_modern_pj_active` | `PJ Active` | `[Parallel]` | `PJ Active [Parallel] v2.1.1` | 28 | **Zero-Scroll** | Split-P + J-bridge with active 2-band preamp |
-| `08_vintage_pj_passive` | `PJ Passive` | `[Parallel]` | `PJ Passive [Parallel] v2.1.1` | 29 | **Zero-Scroll** | Organic P-thump with J-bridge articulation |
-| `09_stingray_mm_parallel` | `StingRay Parallel` | `[Bridge]` | `StingRay Parallel [Bridge] v2.1.1` | 33 | **Zero-Scroll** | Classic 2-band active Music Man authority |
-| `09b_stingray_mm_series` | `StingRay Series` | `[Bridge]` | `StingRay Series [Bridge] v2.1.1` | 31 | **Zero-Scroll** | Muscular, mid-forward high-output MM punch |
-| `10_rickenbacker_bridge_hpf` | `Rickenbacker Clank` | `[Bridge]` | `Rickenbacker Clank [Bridge] v2.1.1` | 34 | **Zero-Scroll** | Classic 4003 bridge coil with high-pass clank |
-| `11_modern_pmm_active` | `P∕MM Parallel` | `[Parallel]` | `P∕MM Parallel [Parallel] v2.1.1` | 31 | **Zero-Scroll** | Split-P + MM bridge in parallel with active buffer |
-| `11b_pmm_hybrid_series` | `P∕MM Series` | `[Series]` | `P∕MM Series [Series] v2.1.1` | 27 | **Zero-Scroll** | Split-P + MM bridge in series with active buffer |
-| `12_mudbucker_ultra_series` | `Mudbucker Deep` | `[Neck]` | `Mudbucker Deep [Neck] v2.1.1` | 29 | **Zero-Scroll** | Massive 14.4H sidewinder neck sub-bass rumble |
-| `13_dingwall_multiscale_bridge` | `Dingwall Bridge` | `[Bridge]` | `Dingwall Bridge [Bridge] v2.1.1` | 32 | **Zero-Scroll** | High-tension fanned-fret progressive clarity |
-| `14_upright_bridge_transducer` | `Upright Acoustic` | — | `Upright Acoustic v2.1.1` | 23 | **Zero-Scroll** | Woody double-bass piezo bridge transducer |
-| `15_neutral_character` | `Studio Direct` | — | `Studio Direct v2.1.1` | 20 | **Zero-Scroll** | Pure acoustic aperture; transparent studio DI |
-| `15b_active_character` | `Studio Active` | — | `Studio Active v2.1.1` | 20 | **Zero-Scroll** | 1MΩ wideband active buffer (restores sparkle) |
-| `15c_passive_character` | `Studio Passive` | — | `Studio Passive v2.1.1` | 21 | **Zero-Scroll** | Organic high-Z passive pickup and cable load |
+| `jazz_pair_active` | `Jazz Pair Active` | `[Parallel]` | `Jazz Pair Active [Parallel] v2.1.1` | 33 | **Zero-Scroll** | Active 2-band EQ slap scoop; scooped mids |
+| `jazz_pair_open` | `Jazz Pair Open` | `[Parallel]` | `Jazz Pair Open [Parallel] v2.1.1` | 31 | **Zero-Scroll** | Classic 60s dual single-coils, tone wide open |
+| `jazz_pair_mids` | `Jazz Pair Mids` | `[Parallel]` | `Jazz Pair Mids [Parallel] v2.1.1` | 31 | **Zero-Scroll** | Vocal mid-honk; smooth top with punchy mids |
+| `jazz_bridge_growl` | `Jazz Bridge Growl` | `[Bridge]` | `Jazz Bridge Growl [Bridge] v2.1.1` | 33 | **Zero-Scroll** | Singing fretless bridge burp & vocal growl |
+| `jazz_bridge_open` | `Jazz Bridge Open` | `[Bridge]` | `Jazz Bridge Open [Bridge] v2.1.1` | 33 | **Zero-Scroll** | Tight, biting 60s bridge single-coil, wide open |
+| `precision_active` | `Precision Active` | `[Split]` | `Precision Active [Split] v2.1.1` | 31 | **Zero-Scroll** | Modern active ceramic split-P with 2-band preamp |
+| `precision_vintage` | `Precision Vintage` | `[Split]` | `Precision Vintage [Split] v2.1.1` | 32 | **Zero-Scroll** | Classic '62 Alnico V split-P, CTS 250k open |
+| `precision_mids` | `Precision Mids` | `[Split]` | `Precision Mids [Split] v2.1.1` | 29 | **Zero-Scroll** | Cutting vocal P-bass with articulate punch |
+| `precision_warm` | `Precision Warm` | `[Split]` | `Precision Warm [Split] v2.1.1` | 29 | **Zero-Scroll** | Classic Motown / flatwound woody thump |
+| `precision_dub` | `Precision Dub` | `[Split]` | `Precision Dub [Split] v2.1.1` | 28 | **Zero-Scroll** | Deep 1950s sub-bass dub thump |
+| `pj_active` | `PJ Active` | `[Parallel]` | `PJ Active [Parallel] v2.1.1` | 28 | **Zero-Scroll** | Split-P + J-bridge with active 2-band preamp |
+| `pj_passive` | `PJ Passive` | `[Parallel]` | `PJ Passive [Parallel] v2.1.1` | 29 | **Zero-Scroll** | Organic P-thump with J-bridge articulation |
+| `stingray_parallel` | `StingRay Parallel` | `[Bridge]` | `StingRay Parallel [Bridge] v2.1.1` | 33 | **Zero-Scroll** | Classic 2-band active Music Man authority |
+| `stingray_series` | `StingRay Series` | `[Bridge]` | `StingRay Series [Bridge] v2.1.1` | 31 | **Zero-Scroll** | Muscular, mid-forward high-output MM punch |
+| `rickenbacker_clank` | `Rickenbacker Clank` | `[Bridge]` | `Rickenbacker Clank [Bridge] v2.1.1` | 34 | **Zero-Scroll** | Classic 4003 bridge coil with high-pass clank |
+| `p_mm_parallel` | `P∕MM Parallel` | `[Parallel]` | `P∕MM Parallel [Parallel] v2.1.1` | 31 | **Zero-Scroll** | Split-P + MM bridge in parallel with active buffer |
+| `p_mm_series` | `P∕MM Series` | `[Series]` | `P∕MM Series [Series] v2.1.1` | 27 | **Zero-Scroll** | Split-P + MM bridge in series with active buffer |
+| `mudbucker_deep` | `Mudbucker Deep` | `[Neck]` | `Mudbucker Deep [Neck] v2.1.1` | 29 | **Zero-Scroll** | Massive 14.4H sidewinder neck sub-bass rumble |
+| `dingwall_bridge` | `Dingwall Bridge` | `[Bridge]` | `Dingwall Bridge [Bridge] v2.1.1` | 32 | **Zero-Scroll** | High-tension fanned-fret progressive clarity |
+| `upright_acoustic` | `Upright Acoustic` | — | `Upright Acoustic v2.1.1` | 23 | **Zero-Scroll** | Woody double-bass piezo bridge transducer |
+| `studio_direct` | `Studio Direct` | — | `Studio Direct v2.1.1` | 20 | **Zero-Scroll** | Pure acoustic aperture; transparent studio DI |
+| `studio_active` | `Studio Active` | — | `Studio Active v2.1.1` | 20 | **Zero-Scroll** | 1MΩ wideband active buffer (restores sparkle) |
+| `studio_passive` | `Studio Passive` | — | `Studio Passive v2.1.1` | 21 | **Zero-Scroll** | Organic high-Z passive pickup and cable load |
 
 ---
 

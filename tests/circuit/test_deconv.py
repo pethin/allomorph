@@ -27,7 +27,7 @@ def test_passive_identity_differential_flatness():
     p_circ = INSTRUMENTS["34in_standard_p"].pickups["split_p"].circuit
     assert p_circ is not None
     m_src_p = load_circuit(p_circ)
-    m_tgt_p = load_circuit("05_vintage_62_p_alnico")
+    m_tgt_p = load_circuit("precision_vintage")
     diff_p = compute_differential_circuit_transfer_functions(m_tgt_p, m_src_p, freqs=FREQS)
     h_p = np.asarray(diff_p[0])
     h_p_db = 20.0 * np.log10(h_p / h_p[0])
@@ -37,7 +37,7 @@ def test_passive_identity_differential_flatness():
     j_circ = INSTRUMENTS["34in_standard_jazz"].pickups["pair_parallel"].circuit
     assert j_circ is not None
     m_src_j = load_circuit(j_circ)
-    m_tgt_j = load_circuit("02_jazz_bass_pair")
+    m_tgt_j = load_circuit("jazz_pair_open")
     diff_j = compute_differential_circuit_transfer_functions(m_tgt_j, m_src_j, freqs=FREQS)
     for ch_idx, ch in enumerate(diff_j):
         h_j = np.asarray(ch)
@@ -46,12 +46,13 @@ def test_passive_identity_differential_flatness():
             f"Jazz channel {ch_idx} identity differential not flat!"
         )
 
-    # 3. Pot unloading: Source Standard P (250k V/T) vs Target Modern Ceramic P (500k V/T + 22nF)
-    m_tgt_mod = load_circuit("04_modern_p_ceramic")
-    diff_mod = compute_differential_circuit_transfer_functions(m_tgt_mod, m_src_p, freqs=FREQS)
-    h_mod = np.asarray(diff_mod[0])
-    h_mod_db = 20.0 * np.log10(h_mod / h_mod[0])
-    assert 0.4 <= np.max(h_mod_db[passband_mask]) <= 2.0
+    # 3. Active Split-P: Source Standard P (250k V/T) vs Target Modern Active Ceramic P (Sadowsky 2-band)
+    m_tgt_act = load_circuit("precision_active")
+    diff_act = compute_differential_circuit_transfer_functions(m_tgt_act, m_src_p, freqs=FREQS)
+    h_act = np.asarray(diff_act[0])
+    h_act_db = 20.0 * np.log10(h_act / h_act[0])
+    assert -5.0 <= np.min(h_act_db[passband_mask])
+    assert np.max(h_act_db[passband_mask]) <= 6.0
 
 
 def test_active_source_differential_deconvolution_and_identity():
@@ -81,18 +82,18 @@ def test_active_source_differential_deconvolution_and_identity():
     assert m_src_sp1.Rbot == 250000.0
 
     # 2. Mathematical identity flatness (exact 0.00 dB everywhere, including DC and 20 kHz)
-    m_tgt_ray = load_circuit("09_stingray_mm_parallel")
+    m_tgt_ray = load_circuit("stingray_parallel")
     diff_ray = compute_differential_circuit_transfer_functions(m_tgt_ray, m_src_ray, freqs=FREQS)
     assert np.all(np.array(diff_ray[0]) == 1.0)
 
-    m_tgt_ding = load_circuit("13_dingwall_multiscale_bridge")
+    m_tgt_ding = load_circuit("dingwall_bridge")
     assert m_tgt_ding.has_active_buffer is True
     assert m_tgt_ding.preamp_type == "none"
     diff_ding = compute_differential_circuit_transfer_functions(m_tgt_ding, m_src_ding, freqs=FREQS)
     assert np.all(np.array(diff_ding[0]) == 1.0)
 
     # 3. Cross-deconvolution: Active StingRay -> Vintage '62 P-Bass
-    m_tgt_p = load_circuit("05_vintage_62_p_alnico")
+    m_tgt_p = load_circuit("precision_vintage")
     diff_cross = compute_differential_circuit_transfer_functions(m_tgt_p, m_src_ray, freqs=FREQS)
     h_cross = np.asarray(diff_cross[0])
     f_arr = np.asarray(FREQS)
@@ -111,7 +112,7 @@ def test_wiener_clamping_prevents_noise_explosion():
     p_circ = INSTRUMENTS["34in_standard_p"].pickups["split_p"].circuit
     assert p_circ is not None
     m_src = load_circuit(p_circ)
-    m_tgt = load_circuit("03_jazz_bridge_60s")
+    m_tgt = load_circuit("jazz_bridge_open")
 
     diff_curves = compute_differential_circuit_transfer_functions(
         m_tgt, m_src, freqs=FREQS, max_boost_db=6.0
@@ -132,7 +133,7 @@ def test_differential_circuit_hf_limiter_smoothness():
     Verify that differential circuit transfer functions crossing 0.0 dB above 8 kHz
     transition smoothly with strictly continuous first derivative and zero slope kinks.
     """
-    tgt_model = load_circuit("03_jazz_bridge_60s")
+    tgt_model = load_circuit("jazz_bridge_open")
     src_circ = INSTRUMENTS["34in_standard_p"].pickups["split_p"].circuit
     assert src_circ is not None
     src_model = load_circuit(src_circ)
@@ -160,10 +161,10 @@ def test_cable_dielectric_loss():
     2. At the resonant peak, tan_delta=0.025 provides gentle 0.2 to 0.7 dB softening of Q peak.
     3. Active buffered pickups (model.has_active_buffer=True) isolate coils from cable dielectric loss.
     """
-    m_lossless = load_circuit("04_modern_p_ceramic")
+    m_lossless = load_circuit("precision_vintage")
     m_lossless.tan_delta = 0.0
 
-    m_lossy = load_circuit("04_modern_p_ceramic")
+    m_lossy = load_circuit("precision_vintage")
     m_lossy.tan_delta = 0.025
 
     c_lossless = np.array(compute_circuit_transfer_functions(m_lossless, freqs=FREQS)[0])
@@ -188,7 +189,7 @@ def test_coil_dielectric_loss():
     Verify Refinement 2: Coil self-capacitance dielectric loss (tan delta = 0.025).
     Gently softens resonant peak by ~0.01-0.5 dB without shifting center frequency.
     """
-    model = load_circuit("04_modern_p_ceramic")
+    model = load_circuit("precision_vintage")
 
     # Compute with zero dielectric loss
     model.tan_delta_coil = 0.0
@@ -215,7 +216,7 @@ def test_coil_dielectric_loss():
 def test_fractional_order_dielectric_absorption():
     """Verify Cole-Davidson fractional-order dielectric absorption in capacitors."""
     # Load Voice 05c (47nF rolled tone)
-    m = load_circuit("05c_vintage_62_p_47nf")
+    m = load_circuit("precision_warm")
 
     # 1. Ideal capacitor (alpha = 1.0)
     m.alpha_dielectric_tone = 1.0
@@ -257,8 +258,8 @@ def test_complex_magnetic_permeability_dispersion():
     assert not np.any(np.isnan(Z_dispersive))
 
     # 2. Differential transfer function of matching model must be exact identity (0.00 dB)
-    m1 = load_circuit("05_vintage_62_p_alnico")
-    m2 = load_circuit("05_vintage_62_p_alnico")
+    m1 = load_circuit("precision_vintage")
+    m2 = load_circuit("precision_vintage")
     m1.chi_mu = 0.04
     m2.chi_mu = 0.04
     diff_curves = compute_differential_circuit_transfer_functions(m1, m2, freqs=FREQS)
@@ -269,8 +270,8 @@ def test_complex_magnetic_permeability_dispersion():
 
 
 def test_neutral_character_simulation():
-    """Verify 15_neutral_character preserves aperture and preserves tier dynamics."""
-    vcfg = VOICES["15_neutral_character"]
+    """Verify studio_direct preserves aperture and provides dynamic feel."""
+    vcfg = VOICES["studio_direct"]
     assert vcfg.sensor_type == "direct"
     assert vcfg.preserve_aperture is True
     assert vcfg.alpha == 0.26
@@ -280,8 +281,8 @@ def test_neutral_character_simulation():
     model = load_circuit(vcfg.circuit)
     assert getattr(model, "no_eq", False) is True
 
-    # Evaluated on canonical intermediate, prefilter FIR preserves physical aperture (unit impulse)
-    firs = compute_voice_prefilter_firs("15_neutral_character", instrument="canonical_intermediate")
+    # Evaluated on an instrument, prefilter FIR preserves physical aperture (unit impulse)
+    firs = compute_voice_prefilter_firs("studio_direct", instrument="34in_standard_p")
     assert len(firs) == 1
     fir = np.array(firs[0])
     assert len(fir) == NUM_TAPS
@@ -290,8 +291,8 @@ def test_neutral_character_simulation():
 
 
 def test_active_character_differential_cable_isolation():
-    """Verify 15b_active_character deconvolves passive cable loading when evaluating from a passive bass."""
-    tgt_model = load_circuit("15b_active_character")
+    """Verify studio_active deconvolves passive cable loading when evaluating from a passive bass."""
+    tgt_model = load_circuit("studio_active")
     p_circ = INSTRUMENTS["34in_standard_p"].pickups["split_p"].circuit
     assert p_circ is not None
     src_model = load_circuit(p_circ)
@@ -310,8 +311,8 @@ def test_active_character_differential_cable_isolation():
 
 
 def test_passive_character_circuit_properties():
-    """Verify 15c_passive_character preserves aperture and models passive cable loading."""
-    vcfg = VOICES["15c_passive_character"]
+    """Verify studio_passive preserves aperture and models passive cable loading."""
+    vcfg = VOICES["studio_passive"]
     assert vcfg.preserve_aperture is True
     assert vcfg.alpha == 0.28
     assert vcfg.vsat == 0.50
@@ -321,9 +322,7 @@ def test_passive_character_circuit_properties():
     assert model.L == 4.2
     assert model.Rdc == 8500.0
 
-    firs = compute_voice_prefilter_firs(
-        "15c_passive_character", instrument="canonical_intermediate"
-    )
+    firs = compute_voice_prefilter_firs("studio_passive", instrument="34in_standard_p")
     assert len(firs) == 1
     fir = np.array(firs[0])
     assert fir[0] == 1.0

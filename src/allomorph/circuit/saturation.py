@@ -102,18 +102,13 @@ if _HAS_NUMBA:
                 excess = 0.0
 
             w_reg = 0.70 + 0.60 * (
-                (x_low_prev * x_low_prev)
-                / (x_low_prev * x_low_prev + x_high * x_high + 1e-8)
+                (x_low_prev * x_low_prev) / (x_low_prev * x_low_prev + x_high * x_high + 1e-8)
             )
 
             if excess > 1e-6:
                 x_norm = math.sqrt(x_high * x_high + 1e-8) - 1e-4
                 eddy_factor = k_eddy * excess * math.tanh(x_norm / vsat)
-                val_pos = (
-                    math.log1p(math.exp(val / vsat))
-                    if val / vsat < 20.0
-                    else val / vsat
-                )
+                val_pos = math.log1p(math.exp(val / vsat)) if val / vsat < 20.0 else val / vsat
                 pull_damping = k_pull * w_reg * excess * math.tanh(val_pos)
                 flux_rate = math.sqrt(diff_high * diff_high + 1e-8) * 7.639437
                 stein_damping = 0.0
@@ -249,18 +244,13 @@ else:
                 excess = 0.0
 
             w_reg = 0.70 + 0.60 * (
-                (x_low_prev * x_low_prev)
-                / (x_low_prev * x_low_prev + x_high * x_high + 1e-8)
+                (x_low_prev * x_low_prev) / (x_low_prev * x_low_prev + x_high * x_high + 1e-8)
             )
 
             if excess > 1e-6:
                 x_norm = math.sqrt(x_high * x_high + 1e-8) - 1e-4
                 eddy_factor = k_eddy * excess * math.tanh(x_norm / vsat)
-                val_pos = (
-                    math.log1p(math.exp(val / vsat))
-                    if val / vsat < 20.0
-                    else val / vsat
-                )
+                val_pos = math.log1p(math.exp(val / vsat)) if val / vsat < 20.0 else val / vsat
                 pull_damping = k_pull * w_reg * excess * math.tanh(val_pos)
                 flux_rate = math.sqrt(diff_high * diff_high + 1e-8) * 7.639437
                 stein_damping = 0.0

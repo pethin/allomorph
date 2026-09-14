@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Allomorph | Two-Stage Frequency Response Suite</title>
+  <title>Allomorph | Voicing Comparisons & Frequency Response Suite</title>
   <style>
     :root {
       --bg: #0d1117;
@@ -17,9 +17,9 @@
       --text-muted: #8b949e;
       --tag-bg: #21262d;
       --btn-active: #1f6feb;
-      --teal: #26a69a;
+      --teal: #10b981;
       --orange: #ff7043;
-      --gold: #ffd54f;
+      --purple: #a855f7;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
@@ -77,7 +77,7 @@
       display: flex;
       flex-direction: column;
       gap: 2px;
-      min-width: 150px;
+      min-width: 160px;
     }
     .flow-step-num {
       font-size: 10px;
@@ -136,89 +136,6 @@
       color: #ffffff;
       box-shadow: 0 0 12px rgba(31, 111, 235, 0.4);
     }
-    .inspector-subcontrols {
-      display: block;
-    }
-    .tabs-container {
-      margin-bottom: 14px;
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-    }
-    .tab-btn {
-      background-color: var(--card-bg);
-      border: 1px solid var(--border);
-      color: var(--text-muted);
-      padding: 6px 14px;
-      border-radius: 6px;
-      font-size: 12px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.15s ease;
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-    }
-    .tab-btn:hover {
-      background-color: var(--tag-bg);
-      color: var(--text);
-      border-color: #8b949e;
-    }
-    .tab-btn.active {
-      background-color: #238636;
-      border-color: #2ea043;
-      color: #ffffff;
-      box-shadow: 0 0 8px rgba(46, 160, 67, 0.4);
-    }
-    .view-mode-bar {
-      margin-bottom: 16px;
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      background-color: var(--card-bg);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 10px 16px;
-    }
-    .mode-toggle-group {
-      display: inline-flex;
-      background-color: var(--tag-bg);
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      padding: 3px;
-      gap: 4px;
-      flex-wrap: wrap;
-    }
-    .mode-btn {
-      background: transparent;
-      border: none;
-      color: var(--text-muted);
-      padding: 6px 14px;
-      border-radius: 4px;
-      font-size: 12px;
-      font-weight: 600;
-      cursor: pointer;
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      transition: all 0.15s ease;
-    }
-    .mode-btn:hover {
-      color: var(--text);
-      background-color: rgba(255, 255, 255, 0.05);
-    }
-    .mode-btn.active {
-      background-color: var(--btn-active);
-      color: #ffffff;
-      box-shadow: 0 0 8px rgba(31, 111, 235, 0.4);
-    }
-    .mode-hint {
-      font-size: 12px;
-      color: var(--text-muted);
-      font-style: italic;
-    }
     .meta-panel {
       background-color: var(--card-bg);
       border: 1px solid var(--border);
@@ -273,7 +190,7 @@
     iframe {
       width: 100%;
       min-height: 720px;
-      height: 760px;
+      height: 820px;
       border: none;
       display: block;
       background-color: #0d1117;
@@ -284,233 +201,83 @@
 <body>
   <div class="container">
     <div class="header">
-      <h1>Allomorph Frequency Response Suite <span class="badge">Architecture C</span> <span class="badge">Two-Stage Signal Flow</span></h1>
-      <div class="subtitle">Universal 2-Stage Acoustic Aperture Deconvolution & SPICE Digital Twins for Darkglass Anagram & Neural Amp Modeler.</div>
+      <h1>Allomorph Frequency Response Suite <span class="badge">Universal Voicings</span> <span class="badge">Direct Forward Simulation</span></h1>
+      <div class="subtitle">Interactive Source vs Target Voicing Comparisons & 3D Differential IR Waterfalls.</div>
     </div>
 
     <div class="flow-pipeline-card">
       <div class="flow-step">
         <div class="flow-step-num">Step 1</div>
-        <div class="flow-step-title">Source Bass</div>
-        <div class="flow-step-desc">Physical pickups & scale (Knobs wide open 100%)</div>
+        <div class="flow-step-title">Source Voicing</div>
+        <div class="flow-step-desc">Acoustic aperture + RLC pickup circuit (H<sub>src</sub>)</div>
       </div>
       <div class="flow-arrow">&rarr;</div>
       <div class="flow-step flow-active">
-        <div class="flow-step-num">Block 1</div>
-        <div class="flow-step-title">Frontend IR</div>
-        <div class="flow-step-desc">2048-tap causal minimum-phase FIR</div>
+        <div class="flow-step-num">Transformation</div>
+        <div class="flow-step-title">Differential Filter</div>
+        <div class="flow-step-desc">Regularized minimum-phase FIR (H<sub>diff</sub> = H<sub>tgt</sub> / H<sub>src</sub>)</div>
       </div>
       <div class="flow-arrow">&rarr;</div>
       <div class="flow-step">
-        <div class="flow-step-num">Datum</div>
-        <div class="flow-step-title">Canonical Intermediate</div>
-        <div class="flow-step-desc">34" @ 93.5mm median (0.00 dB baseline)</div>
-      </div>
-      <div class="flow-arrow">&rarr;</div>
-      <div class="flow-step flow-active">
-        <div class="flow-step-num">Block 2</div>
-        <div class="flow-step-title">Universal Target NAM</div>
-        <div class="flow-step-desc">A2-Lite Preamp (Clean / Dynamic / Hot Rod)</div>
+        <div class="flow-step-num">Step 2</div>
+        <div class="flow-step-title">Target Voicing</div>
+        <div class="flow-step-desc">Acoustic aperture + SPICE loaded RLC resonance (H<sub>tgt</sub>)</div>
       </div>
       <div class="flow-arrow">&rarr;</div>
       <div class="flow-step">
         <div class="flow-step-num">Output</div>
-        <div class="flow-step-title">Target Acoustic Voice</div>
-        <div class="flow-step-desc">Exact tone: Block 1 &times; Block 2 = Acoustic Twin</div>
+        <div class="flow-step-title">Acoustic Digital Twin</div>
+        <div class="flow-step-desc">Exact response: H<sub>src</sub> &times; H<sub>diff</sub> = H<sub>tgt</sub></div>
       </div>
     </div>
 
     <div class="primary-nav-bar" role="tablist">
-      <button class="primary-nav-btn active" id="pnav-targets" onclick="selectPrimaryView('targets')">
+      <button class="primary-nav-btn active" id="pnav-voicings" onclick="selectPrimaryView('voicings')">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="6"></circle><circle cx="12" cy="12" r="2"></circle></svg>
-        <span>Universal Targets (Block 2)</span>
-      </button>
-      <button class="primary-nav-btn" id="pnav-frontends" onclick="selectPrimaryView('frontends')">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
-        <span>Frontend Deconvolutions (Block 1)</span>
-      </button>
-      <button class="primary-nav-btn" id="pnav-inspector" onclick="selectPrimaryView('inspector')">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" y1="21" x2="4" y2="14"></line><line x1="4" y1="10" x2="4" y2="3"></line><line x1="12" y1="21" x2="12" y2="12"></line><line x1="12" y1="8" x2="12" y2="3"></line><line x1="20" y1="21" x2="20" y2="16"></line><line x1="20" y1="12" x2="20" y2="3"></line><line x1="1" y1="14" x2="7" y2="14"></line><line x1="9" y1="8" x2="15" y2="8"></line><line x1="17" y1="16" x2="23" y2="16"></line></svg>
-        <span>Signal Flow Inspector (End-to-End)</span>
-      </button>
-      <button class="primary-nav-btn" id="pnav-baked" onclick="selectPrimaryView('baked')">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
-        <span>Baked Responses (1-Block)</span>
+        <span>Voicing Comparisons (3-Line Response)</span>
       </button>
       <button class="primary-nav-btn" id="pnav-waterfall3d" onclick="selectPrimaryView('waterfall3d')">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline></svg>
-        <span>Baked IR 3D Waterfall</span>
+        <span>Voicing IR 3D Difference Waterfall</span>
       </button>
-    </div>
-
-    <div class="inspector-subcontrols" id="inspector-subcontrols" style="display: none;">
-      <div class="tabs-container" id="tabs">
-      <button class="tab-btn active" data-id="30in_emg_mmtw" onclick="selectInstrument('30in_emg_mmtw')"><span>30" Short Scale MM (EMG MMTW)</span></button>
-    <button class="tab-btn" data-id="30in_mustang_pj" onclick="selectInstrument('30in_mustang_pj')"><span>30" Mustang Bass PJ (Short Scale)</span></button>
-    <button class="tab-btn" data-id="32in_custom_pmm" onclick="selectInstrument('32in_custom_pmm')"><span>32" Medium Scale Custom (EMG PX + MMTWX)</span></button>
-    <button class="tab-btn" data-id="32in_fretless_pmm" onclick="selectInstrument('32in_fretless_pmm')"><span>32" Fretless Custom (EMG PCSX + MMTWX)</span></button>
-    <button class="tab-btn" data-id="34in_active_emg" onclick="selectInstrument('34in_active_emg')"><span>34" Active EMG Bass (Option C Baseline)</span></button>
-    <button class="tab-btn" data-id="34in_active_stingray" onclick="selectInstrument('34in_active_stingray')"><span>34" Active StingRay (Music Man MM)</span></button>
-    <button class="tab-btn" data-id="34in_dingwall_sp1" onclick="selectInstrument('34in_dingwall_sp1')"><span>Dingwall SP1 5-String (32"-35" Super P)</span></button>
-    <button class="tab-btn" data-id="34in_preamp_soapbar" onclick="selectInstrument('34in_preamp_soapbar')"><span>34" Preamp Soapbar Bass (Dual Humbuckers)</span></button>
-    <button class="tab-btn" data-id="34in_standard_jazz" onclick="selectInstrument('34in_standard_jazz')"><span>34" Standard Jazz Bass</span></button>
-    <button class="tab-btn" data-id="34in_standard_p" onclick="selectInstrument('34in_standard_p')"><span>34" Standard P-Bass</span></button>
-    <button class="tab-btn" data-id="34in_standard_pj" onclick="selectInstrument('34in_standard_pj')"><span>34" Standard P/J Bass</span></button>
-    <button class="tab-btn" data-id="37in_multiscale_dingwall" onclick="selectInstrument('37in_multiscale_dingwall')"><span>37" Multi-Scale Dingwall 5-String (FD3n)</span></button>
-      </div>
     </div>
 
     <div class="meta-panel">
       <div class="meta-item">
-        <div class="label" id="meta-label-primary">Active Stage</div>
-        <div class="value" id="meta-name">Universal Targets (Block 2)</div>
+        <div class="label" id="meta-label-primary">Active View</div>
+        <div class="value" id="meta-name">Voicing Comparisons (3-Line Response)</div>
       </div>
       <div class="meta-item">
-        <div class="label" id="meta-label-secondary">Reference / Datum</div>
-        <div class="value" id="meta-scale">Canonical Intermediate: 34" @ 93.5mm median</div>
+        <div class="label" id="meta-label-secondary">Voicing Matrix</div>
+        <div class="value" id="meta-scale">28 Catalog Voicings: Select Any Source and Target</div>
       </div>
       <div class="meta-item">
-        <div class="label" id="meta-label-tertiary">Pickup & Circuit</div>
-        <div class="value" id="meta-pickups">All 22 Universal Targets across 3 Dynamic Feel Tiers</div>
+        <div class="label" id="meta-label-tertiary">Response Overlay</div>
+        <div class="value" id="meta-pickups">H_src (Cyan) | H_tgt (Orange) | H_diff (Purple) with Identity (0.00 dB)</div>
       </div>
       <div class="meta-item">
         <div class="label">Response View Mode</div>
-        <div class="value" id="meta-view-mode">Universal Targets (Block 2)</div>
+        <div class="value" id="meta-view-mode">Interactive 3-Line Voicings</div>
       </div>
       <div>
-        <a id="standalone-link" class="open-standalone-btn" href="./universal_targets.html" target="_blank">
+        <a id="standalone-link" class="open-standalone-btn" href="./voicings.html" target="_blank">
           Open Standalone Chart ↗
         </a>
       </div>
     </div>
 
     <div class="chart-card">
-      <iframe id="chart-frame" src="./universal_targets.html" title="Interactive Vega Frequency Response Chart"></iframe>
+      <iframe id="chart-frame" src="./voicings.html" title="Interactive Voicing Comparisons"></iframe>
     </div>
   </div>
 
   <script>
-    const instruments = {
-  "30in_emg_mmtw": {
-    "id": "30in_emg_mmtw",
-    "name": "30\" Short Scale MM (EMG MMTW)",
-    "scale_in": 30.0,
-    "scale_m": 0.762,
-    "speeds_str": "62.8 m/s, 83.8 m/s, 111.9 m/s, 149.3 m/s",
-    "pickups_summary": "EMG MMTW Dual-Coil (Centerline) (@ 77.5mm) | EMG MMTW Single-Coil (Bridge Coil) (@ 66.1mm)",
-    "default_pickup": "mmtw_dual"
-  },
-  "30in_mustang_pj": {
-    "id": "30in_mustang_pj",
-    "name": "30\" Mustang Bass PJ (Short Scale)",
-    "scale_in": 30.0,
-    "scale_m": 0.762,
-    "speeds_str": "62.8 m/s, 83.8 m/s, 111.9 m/s, 149.3 m/s",
-    "pickups_summary": "Mustang PJ Split-P (Neck) (@ 155.0mm) | Mustang PJ Single-Coil J (Bridge) (@ 55.0mm)",
-    "default_pickup": "pair_parallel"
-  },
-  "32in_custom_pmm": {
-    "id": "32in_custom_pmm",
-    "name": "32\" Medium Scale Custom (EMG PX + MMTWX)",
-    "scale_in": 32.0,
-    "scale_m": 0.8128,
-    "speeds_str": "67.0 m/s, 89.4 m/s, 119.3 m/s, 159.3 m/s",
-    "pickups_summary": "Reverse EMG PX Split-Coil (Neck) (@ 122.8mm) | EMG MMTWX Single-Coil (Bridge) (@ 50.8mm) | EMG MMTWX Dual-Coil (Centerline) (@ 62.2mm)",
-    "default_pickup": "px"
-  },
-  "32in_fretless_pmm": {
-    "id": "32in_fretless_pmm",
-    "name": "32\" Fretless Custom (EMG PCSX + MMTWX)",
-    "scale_in": 32.0,
-    "scale_m": 0.8128,
-    "speeds_str": "67.0 m/s, 89.4 m/s, 119.3 m/s, 159.3 m/s",
-    "pickups_summary": "Reverse EMG PCSX Split-Coil (Neck) (@ 140.4mm) | EMG MMTWX Single-Coil (Bridge) (@ 50.8mm) | EMG MMTWX Dual-Coil (Centerline) (@ 62.2mm)",
-    "default_pickup": "pcsx"
-  },
-  "34in_active_emg": {
-    "id": "34in_active_emg",
-    "name": "34\" Active EMG Bass (Option C Baseline)",
-    "scale_in": 34.0,
-    "scale_m": 0.8636,
-    "speeds_str": "53.3 m/s, 71.2 m/s, 95.0 m/s, 126.8 m/s, 169.3 m/s",
-    "pickups_summary": "Active EMG Soapbar (Neck) (@ 135.0mm) | Active EMG Soapbar (Bridge) (@ 55.0mm)",
-    "default_pickup": "pair_parallel"
-  },
-  "34in_active_stingray": {
-    "id": "34in_active_stingray",
-    "name": "34\" Active StingRay (Music Man MM)",
-    "scale_in": 34.0,
-    "scale_m": 0.8636,
-    "speeds_str": "71.2 m/s, 95.0 m/s, 126.8 m/s, 169.3 m/s",
-    "pickups_summary": "Music Man Dual-Coil Humbucker (Parallel) (@ 66.0mm)",
-    "default_pickup": "mm_parallel"
-  },
-  "34in_dingwall_sp1": {
-    "id": "34in_dingwall_sp1",
-    "name": "Dingwall SP1 5-String (32\"-35\" Super P)",
-    "scale_in": 35.0,
-    "scale_m": 0.889,
-    "speeds_str": "54.9 m/s, 71.7 m/s, 93.6 m/s, 122.1 m/s, 159.3 m/s",
-    "pickups_summary": "Dingwall Dual-P Neodymium (Neck) (@ 125.0mm) | Dingwall FD3n Neodymium (Bridge) (@ 58.0mm)",
-    "default_pickup": "p"
-  },
-  "34in_preamp_soapbar": {
-    "id": "34in_preamp_soapbar",
-    "name": "34\" Preamp Soapbar Bass (Dual Humbuckers)",
-    "scale_in": 34.0,
-    "scale_m": 0.8636,
-    "speeds_str": "53.3 m/s, 71.2 m/s, 95.0 m/s, 126.8 m/s, 169.3 m/s",
-    "pickups_summary": "Passive Soapbar with Preamp (Neck) (@ 135.0mm) | Passive Soapbar with Preamp (Bridge) (@ 55.0mm)",
-    "default_pickup": "pair_parallel"
-  },
-  "34in_standard_jazz": {
-    "id": "34in_standard_jazz",
-    "name": "34\" Standard Jazz Bass",
-    "scale_in": 34.0,
-    "scale_m": 0.8636,
-    "speeds_str": "71.2 m/s, 95.0 m/s, 126.8 m/s, 169.3 m/s",
-    "pickups_summary": "Jazz Neck Single-Coil (@ 155.6mm) | 60s Jazz Bridge Single-Coil (@ 63.5mm)",
-    "default_pickup": "pair_parallel"
-  },
-  "34in_standard_p": {
-    "id": "34in_standard_p",
-    "name": "34\" Standard P-Bass",
-    "scale_in": 34.0,
-    "scale_m": 0.8636,
-    "speeds_str": "71.2 m/s, 95.0 m/s, 126.8 m/s, 169.3 m/s",
-    "pickups_summary": "Standard Split-Coil P (@ 125.0mm)",
-    "default_pickup": "split_p"
-  },
-  "34in_standard_pj": {
-    "id": "34in_standard_pj",
-    "name": "34\" Standard P/J Bass",
-    "scale_in": 34.0,
-    "scale_m": 0.8636,
-    "speeds_str": "71.2 m/s, 95.0 m/s, 126.8 m/s, 169.3 m/s",
-    "pickups_summary": "Vintage Split-Coil P (Neck) (@ 125.0mm) | 60s Jazz Bridge Single-Coil (@ 63.5mm)",
-    "default_pickup": "pair_parallel"
-  },
-  "37in_multiscale_dingwall": {
-    "id": "37in_multiscale_dingwall",
-    "name": "37\" Multi-Scale Dingwall 5-String (FD3n)",
-    "scale_in": 37.0,
-    "scale_m": 0.9398,
-    "speeds_str": "58.0 m/s, 75.9 m/s, 99.2 m/s, 129.6 m/s, 169.3 m/s",
-    "pickups_summary": "Dingwall FD3n Neodymium (Bridge) (@ 48.0mm) | Dingwall FD3n Neodymium (Middle) (@ 96.0mm)",
-    "default_pickup": "pair_parallel"
-  }
-};
     const baseUrlPrefix = "./";
-    let currentPrimaryView = "targets"; // 'targets', 'frontends', 'baked', 'inspector'
-    let currentId = "30in_emg_mmtw";
+    let currentPrimaryView = "voicings" === "waterfall3d" ? "waterfall3d" : "voicings";
 
     function updateView() {
-      const pnavTargets = document.getElementById('pnav-targets');
-      const pnavFrontends = document.getElementById('pnav-frontends');
-      const pnavBaked = document.getElementById('pnav-baked');
+      const pnavVoicings = document.getElementById('pnav-voicings');
       const pnavWaterfall3d = document.getElementById('pnav-waterfall3d');
-      const pnavInspector = document.getElementById('pnav-inspector');
-      const subcontrols = document.getElementById('inspector-subcontrols');
       const frame = document.getElementById('chart-frame');
       const standaloneLink = document.getElementById('standalone-link');
       const metaName = document.getElementById('meta-name');
@@ -518,85 +285,32 @@
       const metaPickups = document.getElementById('meta-pickups');
       const metaViewMode = document.getElementById('meta-view-mode');
 
-      pnavTargets.classList.toggle('active', currentPrimaryView === 'targets');
-      pnavFrontends.classList.toggle('active', currentPrimaryView === 'frontends');
-      if (pnavBaked) pnavBaked.classList.toggle('active', currentPrimaryView === 'baked');
+      pnavVoicings.classList.toggle('active', currentPrimaryView === 'voicings');
       if (pnavWaterfall3d) pnavWaterfall3d.classList.toggle('active', currentPrimaryView === 'waterfall3d');
-      pnavInspector.classList.toggle('active', currentPrimaryView === 'inspector');
 
-      if (currentPrimaryView === 'targets') {
-        subcontrols.style.display = 'none';
-        const url = `${baseUrlPrefix}universal_targets.html`;
+      if (currentPrimaryView === 'voicings') {
+        const url = `${baseUrlPrefix}voicings.html`;
         frame.src = url;
         standaloneLink.href = url;
-        metaName.textContent = 'Universal Target Voicings (Block 2)';
-        metaScale.textContent = 'Canonical Intermediate: 34" @ 93.5mm median';
-        metaPickups.textContent = '22 Target Profiles across 3 Dynamic Feel Tiers (Clean, Dynamic, Hot Rod)';
-        metaViewMode.textContent = 'Universal Target Profiles';
-        if (window.history.replaceState) window.history.replaceState(null, null, '#targets');
-        return;
-      }
-
-      if (currentPrimaryView === 'frontends') {
-        subcontrols.style.display = 'none';
-        const url = `${baseUrlPrefix}frontend_deconvolutions.html`;
-        frame.src = url;
-        standaloneLink.href = url;
-        metaName.textContent = 'Frontend Deconvolutions (Block 1)';
-        metaScale.textContent = '32 Physical Switch Positions across 11 Source Basses';
-        metaPickups.textContent = '2048-tap causal minimum-phase FIRs with strictly positive initial polarity';
-        metaViewMode.textContent = 'Frontend Deconvolution IRs';
-        if (window.history.replaceState) window.history.replaceState(null, null, '#frontends');
-        return;
-      }
-
-      if (currentPrimaryView === 'baked') {
-        subcontrols.style.display = 'none';
-        const url = `${baseUrlPrefix}baked_responses.html`;
-        frame.src = url;
-        standaloneLink.href = url;
-        metaName.textContent = 'Baked Transformations (1-Block Single Model)';
-        metaScale.textContent = 'Multi-Instrument & Multi-Voicing Differential Matrix';
-        metaPickups.textContent = '276 Monolithic Transfer Curves (H_diff = H_tgt / H_src) with dynamic multi-selection';
-        metaViewMode.textContent = 'Baked End-to-End Single-Block';
-        if (window.history.replaceState) window.history.replaceState(null, null, '#baked');
+        metaName.textContent = 'Voicing Comparisons (3-Line Response)';
+        metaScale.textContent = '28 Catalog Voicings: Select Any Source and Target Voicing';
+        metaPickups.textContent = 'H_src (Cyan) | H_tgt (Orange) | H_diff (Purple) with Identity (0.00 dB)';
+        metaViewMode.textContent = 'Interactive 3-Line Voicings';
+        if (window.history.replaceState) window.history.replaceState(null, null, '#voicings');
         return;
       }
 
       if (currentPrimaryView === 'waterfall3d') {
-        subcontrols.style.display = 'none';
-        const url = `${baseUrlPrefix}baked_waterfall_3d.html`;
+        const url = `${baseUrlPrefix}voicing_ir_3d.html`;
         frame.src = url;
         standaloneLink.href = url;
-        metaName.textContent = 'Baked Voicing IR 3D Waterfall & Topography';
-        metaScale.textContent = 'Cumulative Spectral Decay (CSD) & Multi-Voice 3D Landscape';
-        metaPickups.textContent = 'Interactive 3D WebGL Surface: Time Decay (0-10ms) x Frequency x dB with Waveform Inspector';
+        metaName.textContent = 'Voicing IR Difference 3D Waterfall & Waveform';
+        metaScale.textContent = 'Cumulative Spectral Decay (CSD) & Difference Impulse Response (h_diff)';
+        metaPickups.textContent = 'Interactive 3D WebGL Surface: Time Decay (0-10ms) x Frequency x dB with FIR Waveform';
         metaViewMode.textContent = '3D Impulse Response Analysis';
         if (window.history.replaceState) window.history.replaceState(null, null, '#waterfall3d');
         return;
       }
-
-      // Inspector Mode
-      subcontrols.style.display = 'block';
-      const inst = instruments[currentId] || Object.values(instruments)[0];
-
-      document.querySelectorAll('.tab-btn').forEach(btn => {
-        btn.classList.toggle('active', btn.dataset.id === currentId);
-      });
-
-      const chartUrl = `${baseUrlPrefix}${currentId}.html`;
-      frame.src = chartUrl;
-      standaloneLink.href = chartUrl;
-      metaName.textContent = inst.name;
-      metaScale.textContent = `${inst.scale_in}" scale (${inst.scale_m} m) | ${inst.speeds_str}`;
-      metaPickups.textContent = inst.pickups_summary;
-      metaViewMode.textContent = 'End-to-End Signal Flow';
-
-      if (window.history.replaceState) {
-        window.history.replaceState(null, null, `#${currentId}`);
-      }
-      setTimeout(resizeIframe, 150);
-      setTimeout(resizeIframe, 450);
     }
 
     function resizeIframe() {
@@ -618,13 +332,6 @@
       updateView();
     }
 
-    function selectInstrument(id) {
-      if (!instruments[id]) return;
-      currentId = id;
-      currentPrimaryView = 'inspector';
-      updateView();
-    }
-
     window.addEventListener('DOMContentLoaded', () => {
       const frame = document.getElementById('chart-frame');
       if (frame) {
@@ -637,20 +344,10 @@
       window.addEventListener('resize', resizeIframe);
 
       const hash = window.location.hash.replace('#', '');
-      if (hash === 'targets') {
-        currentPrimaryView = 'targets';
-      } else if (hash === 'frontends') {
-        currentPrimaryView = 'frontends';
-      } else if (hash === 'baked') {
-        currentPrimaryView = 'baked';
-      } else if (hash === 'waterfall3d') {
+      if (hash === 'waterfall3d' || hash === '3d') {
         currentPrimaryView = 'waterfall3d';
-      } else if (hash) {
-        const hashId = hash.split(':')[0];
-        if (instruments[hashId]) {
-          currentId = hashId;
-          currentPrimaryView = 'inspector';
-        }
+      } else {
+        currentPrimaryView = 'voicings';
       }
       updateView();
     });

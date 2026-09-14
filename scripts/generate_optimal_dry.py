@@ -67,7 +67,11 @@ def main() -> None:
 
     from allomorph.naming import get_optimal_dry_path
 
-    out_path = Path(args.out) if args.out is not None else get_optimal_dry_path(version_tag=args.version_tag)
+    out_path = (
+        Path(args.out)
+        if args.out is not None
+        else get_optimal_dry_path(version_tag=args.version_tag)
+    )
     if out_path.exists() and not args.overwrite:
         print(f"[Optimal Dry] Output file already exists: {out_path}")
         print("Use --overwrite to regenerate.")
@@ -76,7 +80,9 @@ def main() -> None:
     print("==================================================================")
     print("  ALLOMORPH OPTIMAL BASS SYNTHETIC DRY SIGNAL GENERATOR")
     print(f"  Destination: {out_path}")
-    print(f"  Duration:    {args.duration:.1f} s ({int(args.duration * args.sample_rate):,} samples)")
+    print(
+        f"  Duration:    {args.duration:.1f} s ({int(args.duration * args.sample_rate):,} samples)"
+    )
     print(f"  Sample Rate: {args.sample_rate} Hz (24-bit PCM Mono)")
     print(f"  Peak Ceiling:{args.peak_dbfs:+.2f} dBFS")
     print("==================================================================")
@@ -85,10 +91,18 @@ def main() -> None:
     print("  [1/9] Latency calibration alignment double-blips (0.3s & 0.8s, non-V3 prelude)...")
     print("  [2/9] Slew-rate diverse log chirps (fast 1.8s & slow 8.0s sweeps, 15 Hz -> 22 kHz)...")
     print("  [3/9] 7-step dynamic velocity ladder on E1 (pp -> fff: -28 dBFS to -0.4 dBFS)...")
-    print("  [4/9] Long-decay continuous ring-outs (5.0s - 5.5s, 75 dB gate-free tail linearity)...")
-    print("  [5/9] Modal plucks across registers with heavy-string pitch sag & unilateral fret buzz...")
-    print("  [6/9] Bass articulations (120/140 BPM groove bursts, slap-pop pairs, ghost rakes, Motown thuds, vibrato)...")
-    print("  [7/9] Polyphony, dyads, upper root-tenths, CCIF 2-tone probes & Schroeder multitone (800 Hz corner)...")
+    print(
+        "  [4/9] Long-decay continuous ring-outs (5.0s - 5.5s, 75 dB gate-free tail linearity)..."
+    )
+    print(
+        "  [5/9] Modal plucks across registers with heavy-string pitch sag & unilateral fret buzz..."
+    )
+    print(
+        "  [6/9] Bass articulations (120/140 BPM groove bursts, slap-pop pairs, ghost rakes, Motown thuds, vibrato)..."
+    )
+    print(
+        "  [7/9] Polyphony, dyads, upper root-tenths, CCIF 2-tone probes & Schroeder multitone (800 Hz corner)..."
+    )
     print("  [8/9] Continuous glissandi across 24 frets up to G4 (392 Hz) traversing comb nulls...")
     print("  [9/9] Shaped wideband pink noise bursts & clean silence boundary termination...")
 

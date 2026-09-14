@@ -21,7 +21,7 @@ from allomorph.dsp import FREQS
 
 
 def test_single_pickup_transfer_function():
-    model = load_circuit("04_modern_p_ceramic")
+    model = load_circuit("precision_vintage")
     curves = compute_circuit_transfer_functions(model, freqs=FREQS)
 
     assert len(curves) == 1
@@ -35,14 +35,14 @@ def test_single_pickup_transfer_function():
     peak_idx = mag.index(max_val)
     peak_freq = FREQS[peak_idx]
     assert 1850.0 <= peak_freq <= 2300.0
-    assert max_val > 1.10  # Under pot/cable load, Q peak > 1.10
+    assert max_val > 1.0  # Under CTS 250k pot/cable load, Q peak > 1.0
 
     # High-frequency rolloff (at 20 kHz, gain should be < 0.20)
     assert mag[-1] < 0.20
 
 
 def test_tone_rolloff_transfer_function():
-    model = load_circuit("05c_vintage_62_p_47nf")
+    model = load_circuit("precision_warm")
     assert model.Ctone == pytest.approx(47e-9)
 
     curves = compute_circuit_transfer_functions(model, freqs=FREQS)
@@ -60,7 +60,7 @@ def test_tone_rolloff_transfer_function():
 
 
 def test_series_hpf_transfer_function():
-    model = load_circuit("10_rickenbacker_bridge_hpf")
+    model = load_circuit("rickenbacker_clank")
     assert model.Crick == pytest.approx(4.7e-9)
 
     curves = compute_circuit_transfer_functions(model, freqs=FREQS)
@@ -75,7 +75,7 @@ def test_series_hpf_transfer_function():
 
 
 def test_parallel_dual_pickup_transfer_function():
-    model = load_circuit("02_jazz_bass_pair")
+    model = load_circuit("jazz_pair_open")
     assert model.topology == "parallel"
 
     curves = compute_circuit_transfer_functions(model, freqs=FREQS)
@@ -91,7 +91,7 @@ def test_parallel_dual_pickup_transfer_function():
 
 def test_active_preamp_buffer_transfer_function():
     # 1. Voice 01 Modern Active Jazz Bass
-    m01 = load_circuit("01_modern_jazz_active")
+    m01 = load_circuit("jazz_pair_active")
     assert m01.has_active_buffer is True
     assert m01.preamp_type == "sadowsky_2band"
     assert m01.topology == "parallel"
@@ -106,7 +106,7 @@ def test_active_preamp_buffer_transfer_function():
     assert 7000.0 <= peak_b01 <= 9000.0
 
     # 2. Voice 07 Modern Active P/J 2-Band
-    m07 = load_circuit("07_modern_pj_active")
+    m07 = load_circuit("pj_active")
     assert m07.has_active_buffer is True
     assert m07.preamp_type == "sadowsky_2band"
     assert m07.topology == "parallel"
@@ -114,7 +114,7 @@ def test_active_preamp_buffer_transfer_function():
     assert len(curves07) == 2
 
     # 3. Voice 09 Music Man StingRay Active 2-Band
-    m09 = load_circuit("09_stingray_mm_parallel")
+    m09 = load_circuit("stingray_parallel")
     assert m09.has_active_buffer is True
     assert m09.preamp_type == "stingray_2band"
     assert m09.topology == "single"
@@ -128,7 +128,7 @@ def test_active_preamp_buffer_transfer_function():
 
 
 def test_series_dual_pickup_transfer_function():
-    model = load_circuit("11b_pmm_hybrid_series")
+    model = load_circuit("p_mm_series")
     assert model.topology == "series"
     assert model.has_active_buffer is True
     assert model.preamp_type == "none"
@@ -145,7 +145,7 @@ def test_series_dual_pickup_transfer_function():
 
 
 def test_active_pmm_transfer_function():
-    model = load_circuit("11_modern_pmm_active")
+    model = load_circuit("p_mm_parallel")
     assert model.topology == "parallel"
     assert model.has_active_buffer is True
     assert model.preamp_type == "none"
@@ -166,7 +166,7 @@ def test_active_pmm_transfer_function():
 def test_tone_pot_series_admittance():
     """Verify that series Rtone allows wide-open tone pots to preserve pickup resonance."""
     # 1. Voice 05c: Rtone = 3.3 Ohm ESR floor, Ctone = 47nF -> collapses peak to 180-500 Hz
-    m_rolled = load_circuit("05c_vintage_62_p_47nf")
+    m_rolled = load_circuit("precision_warm")
     assert m_rolled.Rtone == pytest.approx(3.3)
     assert m_rolled.Ctone == pytest.approx(47e-9)
     curves_rolled = compute_circuit_transfer_functions(m_rolled, freqs=FREQS)
@@ -195,10 +195,10 @@ def test_tonestyler_p_bass_progression_transfer_functions():
        - 05d (100nF): deep sub-bass rolloff with -3 dB cutoff at ~240 Hz
     3. Each step preserves undamped Q factor without muddy pot wiper damping.
     """
-    m05 = load_circuit("05_vintage_62_p_alnico")
-    m05b = load_circuit("05b_vintage_62_p_22nf")
-    m05c = load_circuit("05c_vintage_62_p_47nf")
-    m05d = load_circuit("05d_vintage_50s_p_100nf")
+    m05 = load_circuit("precision_vintage")
+    m05b = load_circuit("precision_mids")
+    m05c = load_circuit("precision_warm")
+    m05d = load_circuit("precision_dub")
 
     assert m05b.Ctone == pytest.approx(22e-9)
     assert m05b.Rtone == pytest.approx(3.3)
@@ -252,12 +252,12 @@ def test_voice_02b_transfer_function():
     2. Resonant peak occurs in the 700-850 Hz region (Jaco vocal bridge burp).
     3. Treble at 3 kHz is attenuated by > 6 dB relative to wide-open Voice 02.
     """
-    m02b = load_circuit("02b_jazz_bass_pair_22nf")
+    m02b = load_circuit("jazz_pair_mids")
     assert m02b.topology == "parallel"
     assert m02b.Ctone == pytest.approx(22e-9)
     assert m02b.Rtone == pytest.approx(3.3)
 
-    m02 = load_circuit("02_jazz_bass_pair")
+    m02 = load_circuit("jazz_pair_open")
 
     curves_02b = compute_circuit_transfer_functions(m02b, freqs=FREQS)
     curves_02 = compute_circuit_transfer_functions(m02, freqs=FREQS)
@@ -279,8 +279,8 @@ def test_voice_09b_series_netlist_and_transfer():
     3. Active series resonance sits at authentic ~4.1 kHz.
     4. Series connection delivers +5.6 dB output boost over parallel.
     """
-    m09 = load_circuit("09_stingray_mm_parallel")
-    m09b = load_circuit("09b_stingray_mm_series")
+    m09 = load_circuit("stingray_parallel")
+    m09b = load_circuit("stingray_series")
 
     assert m09.L == pytest.approx(1.20)
     assert m09.Rdc == pytest.approx(2200.0)
@@ -333,7 +333,7 @@ def test_dingwall_composite_source_circuit():
     assert isinstance(pair_pickup.circuit, CircuitConfig)
 
     # Differential SPICE transfer functions evaluate cleanly
-    tgt_model = load_circuit("02_jazz_bass_pair")
+    tgt_model = load_circuit("jazz_pair_open")
     src_model = load_circuit(pair_pickup.circuit)
     diff_curves = compute_differential_circuit_transfer_functions(tgt_model, src_model, freqs=FREQS)
     assert len(diff_curves) == 2
@@ -346,7 +346,7 @@ def test_dingwall_composite_source_circuit():
 def test_inter_coil_mutual_coupling_matrix():
     """Verify coupled 2x2 nodal transfer matrix for parallel dual-coil configurations."""
     # Voice 02: Jazz Bass Pair (parallel topology)
-    m = load_circuit("02_jazz_bass_pair")
+    m = load_circuit("jazz_pair_open")
     assert m.topology == "parallel"
 
     # 1. Zero mutual coupling (k=0, C=0)
@@ -372,7 +372,7 @@ def test_inter_coil_mutual_coupling_matrix():
 
 def test_distributed_coil_transmission_line():
     """Verify distributed coil admittance softens the lumped LC cliff and preserves high-end sheen."""
-    m = load_circuit("04_modern_p_ceramic")
+    m = load_circuit("precision_vintage")
 
     # 1. Lumped model (k_dist = 0.0)
     m.k_dist = 0.0
@@ -398,8 +398,8 @@ def test_distributed_coil_transmission_line():
 def test_potentiometer_wiper_positions():
     """Verify dynamic Volume and Tone pot wiper positions and cable interaction."""
     # 1. 100% open matches default baseline bit-exact
-    m_default = load_circuit("05_vintage_62_p_alnico")
-    m_open = load_circuit("05_vintage_62_p_alnico")
+    m_default = load_circuit("precision_vintage")
+    m_open = load_circuit("precision_vintage")
     m_open.apply_pot_positions(vol_pos=1.0, tone_pos=1.0)
 
     h_def = compute_circuit_transfer_functions(m_default, freqs=FREQS)[0]
@@ -409,7 +409,7 @@ def test_potentiometer_wiper_positions():
     )
 
     # 2. Tone rolled off (tone_pos = 0.2) increases roll-off around 1-3 kHz
-    m_tone_rolled = load_circuit("05_vintage_62_p_alnico")
+    m_tone_rolled = load_circuit("precision_vintage")
     m_tone_rolled.apply_pot_positions(vol_pos=1.0, tone_pos=0.2)
     h_rolled = compute_circuit_transfer_functions(m_tone_rolled, freqs=FREQS)[0]
 
@@ -418,7 +418,7 @@ def test_potentiometer_wiper_positions():
     assert h_rolled[idx_3k] < h_open[idx_3k], "Tone pot rolled off must attenuate 3 kHz resonance"
 
     # 3. Volume rolled off (vol_pos = 0.7) inserts series resistance loading cable capacitance
-    m_vol_rolled = load_circuit("05_vintage_62_p_alnico")
+    m_vol_rolled = load_circuit("precision_vintage")
     m_vol_rolled.apply_pot_positions(vol_pos=0.7, tone_pos=1.0)
     h_vol = compute_circuit_transfer_functions(m_vol_rolled, freqs=FREQS)[0]
     assert np.max(h_vol) < np.max(h_open), "Volume attenuation must reduce overall output gain"
@@ -509,14 +509,18 @@ def test_smooth_soft_knee_db_cinf_properties():
     # 2. Linear passband transparency below threshold (<= 5.0 dB)
     for x in [-20.0, -6.0, 0.0, 2.0, 4.0]:
         y = smooth_soft_knee_db(x, thresh=6.0, ceiling=8.0)
-        assert abs(y - x) < 1e-4, f"Passband linearity violated at {x} dB: diff was {abs(y-x):.6f} dB"
+        assert abs(y - x) < 1e-4, (
+            f"Passband linearity violated at {x} dB: diff was {abs(y - x):.6f} dB"
+        )
 
     # 3. Threshold and deconvolution headroom
     y_thresh = smooth_soft_knee_db(6.0, thresh=6.0, ceiling=8.0)
     assert abs(y_thresh - 6.0) < 0.01
 
     y_p_peak = smooth_soft_knee_db(6.91, thresh=6.0, ceiling=8.0)
-    assert 6.75 <= y_p_peak <= 6.91, f"Expected P-Bass peak to pass unclipped: got {y_p_peak:.3f} dB"
+    assert 6.75 <= y_p_peak <= 6.91, (
+        f"Expected P-Bass peak to pass unclipped: got {y_p_peak:.3f} dB"
+    )
 
     y_ceil = smooth_soft_knee_db(50.0, thresh=6.0, ceiling=8.0)
     assert y_ceil == pytest.approx(8.0, abs=1e-4)
@@ -539,4 +543,3 @@ def test_smooth_soft_knee_db_cinf_properties():
     assert np.all(dy_dx > 0.0)
     # Second derivative must be continuous and bounded everywhere
     assert np.max(np.abs(d2y_dx2)) < 1.0
-

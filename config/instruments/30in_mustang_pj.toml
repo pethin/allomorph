@@ -22,6 +22,7 @@ name = "30\" Mustang Bass PJ (Short Scale)"
 scale_length_in = 30.0
 scale_length_m = 0.762
 electronics = "passive"
+version = 1
 
 # String wave speeds: v = 2 * L * f0 (for E1=41.2Hz, A1=55.0Hz, D2=73.4Hz, G2=98.0Hz)
 string_wave_speeds = [62.79, 83.82, 111.89, 149.35]
@@ -132,7 +133,7 @@ components = [
 [pickups.pair_parallel.circuit]
 topology = "parallel"
 Rtop = 10.0
-Rbot = 125000.0
+Rbot = 250000.0
 Rtone = 250000.0
 Ctone = 4.7000000000000004e-08
 
@@ -148,25 +149,42 @@ Rdc = 7800.0
 Reddy = 125000.0
 Ccoil = 7e-11
 
+# ------------------------------------------------------------------------------
+# 2. NATIVE INSTRUMENT VOICINGS
+# ------------------------------------------------------------------------------
+
+[voicings.pair_parallel]
+version = 1
+name = "Short Scale P/J Parallel"
+tone_name = "Mustang PJ Parallel"
+pickup = "pair_parallel"
+affinity = "parallel"
+vol_pos = 1.0
+tone_pos = 1.0
+
+[voicings.p_solo]
+version = 1
+name = "Solo Short Scale Split P"
+tone_name = "Mustang P Solo"
+pickup = "p"
+affinity = "neck"
+vol_pos = 1.0
+tone_pos = 1.0
+
+[voicings.j_solo]
+version = 1
+name = "Solo Short Scale Bridge J"
+tone_name = "Mustang J Solo"
+pickup = "j"
+affinity = "bridge"
+vol_pos = 1.0
+tone_pos = 1.0
+
+# ------------------------------------------------------------------------------
+# 3. PICKUP AFFINITY ROUTING
+# ------------------------------------------------------------------------------
 [pickup_mapping]
-"01_modern_jazz_active" = "pair_parallel"
-"02_jazz_bass_pair" = "pair_parallel"
-"02b_jazz_bass_pair_22nf" = "pair_parallel"
-"02c_jazz_bridge_growl_bias" = "pair_parallel"
-"03_jazz_bridge_60s" = "j"
-"04_modern_p_ceramic" = "p"
-"05_vintage_62_p_alnico" = "p"
-"05b_vintage_62_p_22nf" = "p"
-"05c_vintage_62_p_47nf" = "p"
-"05d_vintage_50s_p_100nf" = "p"
-"07_modern_pj_active" = "pair_parallel"
-"08_vintage_pj_passive" = "pair_parallel"
-"09_stingray_mm_parallel" = "j"
-"09b_stingray_mm_series" = "j"
-"10_rickenbacker_bridge_hpf" = "j"
-"11_modern_pmm_active" = "pair_parallel"
-"11b_pmm_hybrid_series" = "pair_parallel"
-"11_pmm_hybrid_series" = "pair_parallel"
-"12_mudbucker_ultra_series" = "p"
-"13_dingwall_multiscale_bridge" = "j"
-"14_upright_bridge_transducer" = "p"
+neck = "p"
+bridge = "j"
+parallel = "pair_parallel"
+direct = "pair_parallel"

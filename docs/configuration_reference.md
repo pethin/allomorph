@@ -10,11 +10,12 @@ Allomorph organizes instrument models, target voices, and physical scale wave sp
 
 ```
 config/
-├── instruments/              # Physical source instruments (the bass in the player's hands)
+├── instruments/              # Unified instrument catalog & native target voicings
 │   ├── 30in_emg_mmtw.toml    # 30" Short scale with EMG MMTW dual-mode pickup
 │   ├── 30in_mustang_pj.toml  # 30" Short scale Fender Mustang Bass PJ (passive split-P + single J)
 │   ├── 32in_custom_pmm.toml  # 32" Medium scale with Reverse PX + MMTWX + ABCX active blend
 │   ├── 32in_fretless_pmm.toml # 32" Fretless Medium scale with PCSX + MMTWX
+│   ├── 33in_rickenbacker_4003.toml # 33.25" Rickenbacker 4003 stereo Rick-O-Sound
 │   ├── 34in_standard_p.toml  # 34" Standard Fender Precision Bass (passive datum)
 │   ├── 34in_standard_jazz.toml # 34" Standard Fender Jazz Bass (passive datum)
 │   ├── 34in_standard_pj.toml # 34" Standard P/J Bass (Fender PJ / Yamaha BB style)
@@ -22,11 +23,12 @@ config/
 │   ├── 34in_preamp_soapbar.toml  # 34" Standard Preamp Dual-Soapbar (Ibanez SR / Yamaha TRBX / Sire F10)
 │   ├── 34in_active_emg.toml      # 34" Standard Active EMG Bass (Option C Baseline)
 │   ├── 34in_dingwall_sp1.toml    # 32"-35" Dingwall SP1 5-String (Dual-P + FD3n)
-│   └── 37in_multiscale_dingwall.toml # 34"-37" Multi-Scale Dingwall 5-String Combustion / NG (FD3n)
+│   ├── 37in_multiscale_dingwall.toml # 34"-37" Multi-Scale Dingwall 5-String Combustion / NG (FD3n)
+│   ├── 41in_upright_bass.toml    # 41.5" Orchestral 3/4 Double Bass (Piezo Bridge Transducer)
+│   └── studio_direct.toml        # Studio Direct / Active Buffer / Passive RLC baseline
 ├── preamps.toml              # Reusable active preamp catalog (Sadowsky, StingRay, Aguilar, Dingwall)
 ├── scales.toml               # Physical scale lengths, wave speeds, and string dispersion
-├── strings.toml              # Physical string core/wrap presets
-└── voices/                   # Master target passive pickup voices & embedded [circuit] tables
+└── strings.toml              # Physical string core/wrap presets
 ```
 
 ---
@@ -172,23 +174,25 @@ components = [
 
 ---
 
-### Voice Mapping (`[pickup_mapping]`)
+### Pickup Affinity Routing (`[pickup_mapping]`)
 
-The `[pickup_mapping]` table routes each of the 11 target passive profiles to the optimal physical pickup setting on the player's instrument:
+The `[pickup_mapping]` table routes the 4 canonical position affinities (`neck`, `bridge`, `parallel`, `direct`) to the optimal physical pickup switch position on the player's instrument:
 
 ```toml
 [pickup_mapping]
-"01_jazz_bass_pair" = "blend_parallel"   # Center detent active blend
-"02_jazz_bridge_60s" = "mmtwx_single"    # Solo bridge single-coil
-"03_modern_p_ceramic" = "px"             # Solo neck split-coil
-"04_vintage_62_p_alnico" = "px"          # Solo neck split-coil
-"05_p_bass_47nf_rolloff" = "px"          # Solo neck split-coil
-"06_pj_hybrid_parallel" = "blend_parallel"
-"07_stingray_mm_parallel" = "mmtwx_dual" # Solo bridge dual-coil
-"08_rickenbacker_bridge_hpf" = "mmtwx_single"
-"09_pmm_hybrid_series" = "blend_parallel" # Physical parallel blend -> SPICE series twin
-"10_mudbucker_ultra_series" = "px"       # Solo neck pickup -> SPICE mudbucker twin
-"11_dingwall_multiscale_bridge" = "mmtwx_dual"
+neck = "split_p"
+bridge = "split_p"
+parallel = "split_p"
+direct = "split_p"
+```
+
+For multi-pickup instruments (such as a Jazz Bass or P/MM), each affinity maps to the corresponding physical coil configuration:
+```toml
+[pickup_mapping]
+neck = "neck"
+bridge = "bridge"
+parallel = "pair_parallel"
+direct = "neck"
 ```
 
 ---
@@ -216,164 +220,76 @@ $$v_s = 2 \cdot L \cdot f_{0,s}$$
 
 ---
 
-## 4. Target Voice Definitions (`config/voices/*.toml`)
+## 4. Target Voice Definitions (Native Instrument Voicings & Global VOICES Registry)
 
-`config/voices/*.toml` defines each of the 23 digital twin voices with its embedded declarative SPICE `[circuit]` table, acoustic coil geometry, physical strings, and non-linear magnetic properties. Allomorph's built-in WAV SPICE simulator directly parses and evaluates these netlists on audio streams:
+In modern Allomorph (v0.3.0 / DSP Gen 3), target voices are defined directly within the Unified Instrument Catalog (`config/instruments/*.toml`) under `[voicings.<id>]`. The `allomorph.config.voices` registry dynamically resolves these into validated `VoiceConfig` models. This ensures every target voice is rooted in an authentic, physically verified instrument with declarative SPICE circuits, precise coil apertures, and string setups:
 
 | Field | Type | Units | Description |
 | :--- | :--- | :--- | :--- |
-| `name` | `string` | — | Full display name (e.g. `"04. Modern Split-Coil P (Ceramic)"`). |
-| `circuit` | `table` | — | Embedded declarative SPICE netlist table defining RLC components, active buffers, pots, and preamps. |
-| `topology` | `string` | — | Circuit topology classification (`"Split-Coil Ceramic"`, `"Dual Single-Coil Active Buffer"`, etc.). |
-| `description` | `string` | — | Tonal character, reference pickup model, and hardware notes. |
-| `fr` | `float` | Hz | Target electrical resonant peak frequency under load (composite/single pickup). |
-| `Q` | `float` | — | Target electrical quality factor under pot and cable load (composite/single pickup). |
-| `gain_db` | `float` | dB | Output gain trim for volume normalization. |
-| `scale` | `string` | Key | Target scale key in `scales.toml` (`"34in"`, `"multiscale"`, or `"upright"`). |
-| `magnet_type` | `string` | Key | Core magnet metallurgy: `"alnico_v"`, `"alnico_ii"`, `"alnico_iii"`, `"ceramic"`, `"hybrid"`, `"neodymium"`, `"piezo"`, `"active"`, or `"ideal"`. |
-| `alpha` | `float` | — | *(Optional)* Quadratic asymmetry coefficient override for 2nd-harmonic bloom. |
-| `alpha3` | `float` | — | *(Optional)* Cubic dipole proximity factor override for 3rd-harmonic punch. |
-| `k_sag` | `float` | — | *(Optional)* Dynamic Lenz-law core flux sag damping factor. |
-| `k_eddy` | `float` | — | *(Optional)* Dynamic eddy-current core de-Qing factor. |
-| `eta_hyst` | `float` | — | *(Optional)* Dahl magnetic domain-wall pinning hysteresis coupling factor. |
-| `target_string` | `string` | Key | Goal string preset from `config/strings.toml` (e.g. `"flatwound_vintage_heavy"`). |
+| `name` | `string` | — | Descriptive title (e.g. `"Vintage 1962 Open"`). |
+| `tone_name` | `string` | — | Standardized 2-to-3 token musician label (e.g. `"Precision Vintage"`). |
+| `pickup` | `string` | Key | Physical pickup on this instrument generating the voice (`"split_p"`, `"bridge"`, etc.). |
+| `affinity` | `string` | — | Position affinity for bundle partitioning: `"neck"`, `"bridge"`, `"parallel"`, or `"direct"`. |
+| `circuit` | `table` | — | *(Optional)* Embedded declarative SPICE netlist override (e.g. pots, tone cap, active buffer). |
+| `vol_pos` | `float` | $[0.0, 1.0]$ | Volume potentiometer wiper position (default: `1.0`). |
+| `tone_pos` | `float` | $[0.0, 1.0]$ | Tone potentiometer wiper position (default: `1.0`). |
+| `tone_cap_f` | `float` | Farads | Tone capacitor value in Farads (e.g. `4.7e-8` for 47nF). |
+| `string_preset_override` | `string` | Key | Goal string preset from `config/strings.toml` (e.g. `"flatwound_vintage_heavy"`). |
+| `gain_db` | `float` | dB | Target level trim for loudness normalization. |
 | `sensor_type` | `string` | `"magnetic"` | Physical sensor taxonomy: `"magnetic"`, `"bridge_force"`, or `"direct"`. |
-| `no_eq` | `bool` | `false` | Set `true` in voice or circuit for pure non-linear dynamics with exact $0.00\text{ dB}$ flat transfer. |
-| `preserve_aperture` | `bool` | `false` | Set `true` to preserve source instrument physical aperture (e.g. Character Voicings `15_neutral_character`, `15b_active_character`, `15c_passive_character`). |
-| `hpf` | `float` | Hz | *(Optional)* High-pass filter cutoff frequency (e.g. $150.0\text{ Hz}$ for Rickenbacker). |
-| `coils` | `array[table]` | — | **Flattened Coil Array:** Physical sensing coils with string bindings, positions, and pole types. |
-| `pickups` | `array-of-tables` | — | *(Optional)* **Multi-Pickup Array:** Independent pickups with individual resonant frequencies, quality factors, and magnet metallurgies. |
+| `preserve_aperture` | `bool` | `false` | Set `true` to preserve source instrument physical aperture (e.g. Studio Voicings). |
 
-### Multi-Pickup Definitions (`[[voices.<id>.pickups]]`)
+### Native Voicing Examples
 
-For instruments combining multiple pickups (such as P/J, Jazz Bass pairs, and P/MM), each pickup is modeled with its own independent electrical RLC resonant peak ($f_r$, $Q$), blend weight, magnet metallurgy, and physical coils:
-
-| Key | Type | Default | Description |
-| :--- | :--- | :--- | :--- |
-| `name` | `string` | `"Pickup"` | Display name for the pickup (e.g. `"Modern Jazz Single-Coil (Neck)"`). |
-| `type` | `string` | `"single_coil"` | Classification (`"split_coil"`, `"single_coil"`, `"dual_coil_parallel"`). |
-| `magnet_type`| `string` | `"alnico_v"` | Pickup-specific magnet metallurgy. |
-| `fr` | `float` | **Required** | Standalone electrical resonant frequency in Hz under load. |
-| `Q` | `float` | `1.5` | Quality factor under pot and cable load. |
-| `weight` | `float` | `1.0` | Relative blend/sum weight (e.g. `0.5` for 50/50 parallel blend). |
-| `polarity` | `float` | `1.0` | Phase polarity (`+1.0` in-phase, `-1.0` reverse). |
-| `coils` | `array[table]` | **Required** | Sensing coils belonging to this specific pickup. |
-
-### Target Voice Multi-Pickup Examples
-
-#### 1. Modern Active Jazz Bass Pair (`01_modern_jazz_active`)
+#### 1. Standard P-Bass Vintage Open (`config/instruments/34in_standard_p.toml`) & Active P/J (`config/instruments/34in_standard_pj.toml`)
 ```toml
-# config/voices/01_modern_jazz_active.toml
-name = "01. Modern Active Jazz Bass Pair"
-topology = "Dual Single-Coil Active Buffer"
-blend_mode = "parallel"
-magnet_type = "alnico_v"
-alpha = 0.25
-fr = 4800.0  # High resonant peak due to zero cable capacitive loading on coils
-Q = 1.6
-gain_db = 1.0
-scale = "34in"
-coils = [
-    { strings = ["all"], position_from_bridge_m = 0.1556, aperture_width_in = 0.75, weight = 0.5 }, # 60s Neck Single-Coil
-    { strings = ["all"], position_from_bridge_m = 0.0635, aperture_width_in = 0.75, weight = 0.5 }  # 60s Bridge Single-Coil
-]
+[voicings.vintage_open]
+name = "Vintage 1962 Open"
+tone_name = "Precision Vintage"
+pickup = "split_p"
+affinity = "neck"
+vol_pos = 1.0
+tone_pos = 1.0
+tone_cap_f = 4.7e-08
+string_preset_override = "roundwound_nickel_standard"
 
-[circuit]
+# In config/instruments/34in_standard_pj.toml:
+[voicings.neck_active]
+name = "Solo Modern Active Split P"
+tone_name = "Precision Active"
+pickup = "p_active"
+affinity = "neck"
+vol_pos = 1.0
+tone_pos = 1.0
+gain_db = 1.5
+preamp_preset = "sadowsky_2band"
+```
+
+#### 2. Jazz Bass Pair Active & Open (`config/instruments/34in_standard_jazz.toml`)
+```toml
+[voicings.pair_open]
+name = "Vintage 1960s Pair Open"
+tone_name = "Jazz Pair Open"
+pickup = "pair_parallel"
+affinity = "parallel"
+vol_pos = 1.0
+tone_pos = 1.0
+tone_cap_f = 4.7e-08
+string_preset_override = "roundwound_nickel_standard"
+
+[voicings.pair_active]
+name = "Modern Active Jazz Pair"
+tone_name = "Jazz Pair Active"
+pickup = "pair_parallel"
+affinity = "parallel"
+magnet_type = "alnico_v"
+gain_db = 1.0
+
+[voicings.pair_active.circuit]
 topology = "parallel"
 active = true
 preamp = "sadowsky_2band"
 Rvol = 500000.0
-
-[circuit.neck]
-L = 3.2
-Rdc = 7200.0
-Reddy = 135000.0
-Ccoil = 7e-11
-
-[circuit.bridge]
-L = 3.6
-Rdc = 7800.0
-Reddy = 125000.0
-Ccoil = 7e-11
-```
-
-[[voices.01_modern_jazz_active.pickups]]
-name = "Modern Jazz Single-Coil (Neck)"
-type = "single_coil"
-magnet_type = "alnico_v"
-fr = 5200.0
-Q = 1.7
-weight = 0.5
-coils = [
-    { strings = ["all"], position_from_bridge_m = 0.1556, aperture_width_in = 0.75, weight = 1.0 }
-]
-
-[[voices.01_modern_jazz_active.pickups]]
-name = "Modern Jazz Single-Coil (Bridge)"
-type = "single_coil"
-magnet_type = "alnico_v"
-fr = 4500.0
-Q = 1.6
-weight = 0.5
-coils = [
-    { strings = ["all"], position_from_bridge_m = 0.0635, aperture_width_in = 0.75, weight = 1.0 }
-]
-```
-
-#### 2. Vintage 1960s Jazz Bass Pair (`02_jazz_bass_pair`)
-```toml
-# config/voices/02_jazz_bass_pair.toml
-name = "02. Vintage 60s Jazz Bass Pair (Parallel)"
-topology = "Dual Single-Coil Parallel"
-blend_mode = "parallel"
-magnet_type = "alnico_v"
-alpha = 0.26
-fr = 2700.0
-Q = 1.4
-gain_db = -0.5
-scale = "34in"
-coils = [
-    { strings = ["all"], position_from_bridge_m = 0.1556, aperture_width_in = 0.75, weight = 0.5 },
-    { strings = ["all"], position_from_bridge_m = 0.0635, aperture_width_in = 0.75, weight = 0.5 }
-]
-
-[circuit]
-topology = "parallel"
-Rvol = 125000.0
-Rtone = 250000.0
-Ctone = 47e-9
-
-[circuit.neck]
-L = 3.2
-Rdc = 7200.0
-Reddy = 135000.0
-Ccoil = 7e-11
-
-[circuit.bridge]
-L = 3.6
-Rdc = 7800.0
-Reddy = 125000.0
-Ccoil = 7e-11
-
-[[voices.02_jazz_bass_pair.pickups]]
-name = "Vintage 60s Jazz Single-Coil (Neck)"
-type = "single_coil"
-fr = 3100.0
-Q = 1.5
-weight = 0.5
-coils = [
-    { strings = ["all"], position_from_bridge_m = 0.1556, aperture_width_in = 0.75, weight = 1.0 }
-]
-
-[[voices.02_jazz_bass_pair.pickups]]
-name = "Vintage 60s Jazz Single-Coil (Bridge)"
-type = "single_coil"
-fr = 2800.0
-Q = 1.4
-weight = 0.5
-coils = [
-    { strings = ["all"], position_from_bridge_m = 0.0635, aperture_width_in = 0.75, weight = 1.0 }
-]
 ```
 
 ---
@@ -391,30 +307,28 @@ coils = [
 | `tension_lbs` | `float` | lbs | Total 4-string set tension at pitch. |
 | `damping_cutoff_hz` | `float` | Hz | Viscoelastic high-frequency mechanical roll-off corner frequency ($f_d$). |
 | `damping_order` | `float` | — | High-frequency damping filter order ($n$). |
-| `bloom_db` | `float` | dB | Resonant acoustic low-end cavity and body bloom ($60\text{--}100\text{ Hz}$). |
-| `pluck_excursion_factor` | `float`| Ratio | Physical plucking excursion multiplier relative to standard roundwound baseline ($1.0$). Lower tension strings exhibit higher excursion ($1.25\times$). |
 | `k_long` | `float` | — | Longitudinal core wire percussive clank coupling factor ($0.00\text{ to }0.35$). |
 
 ### Built-In String Presets:
 
 1. **`roundwound_nickel_standard` (Global Default Baseline):**
    * Standard D'Addario EXL / Ernie Ball Slinky $.045\text{--}.105$.
-   * $155.0\text{ lbs}$ tension, $f_d = 8500\text{ Hz}, n = 1.0, \text{bloom} = 0.0\text{ dB}, k_{\text{long}} = 0.20$.
+   * $155.0\text{ lbs}$ tension, $f_d = 8500\text{ Hz}, n = 1.0, k_{\text{long}} = 0.20$.
 2. **`roundwound_nickel_6string` (Extended 6-String Baseline):**
    * Universal 6-string D'Addario EXL170-6 / Ernie Ball Slinky $.032\text{--}.130$.
-   * $230.0\text{ lbs}$ tension, $f_d = 8500\text{ Hz}, n = 1.0, \text{bloom} = 0.0\text{ dB}, k_{\text{long}} = 0.20$.
+   * $230.0\text{ lbs}$ tension, $f_d = 8500\text{ Hz}, n = 1.0, k_{\text{long}} = 0.20$.
 3. **`roundwound_stainless_clank` (Multi-Scale / Dingwall):**
    * Dingwall Custom $.045\text{--}.130$ high-tension stainless steel.
-   * $180.0\text{ lbs}$ tension, $f_d = 12000\text{ Hz}, n = 1.0, \text{bloom} = -1.0\text{ dB}, k_{\text{long}} = 0.35$ (massive metallic clank).
+   * $180.0\text{ lbs}$ tension, $f_d = 12000\text{ Hz}, n = 1.0, k_{\text{long}} = 0.35$ (massive metallic clank).
 4. **`flatwound_low_tension` (Smooth Fretless Thump):**
    * La Bella Low Tension Flats LTF-4A $.043\text{--}.100$ round core.
-   * $132.0\text{ lbs}$ low tension, $f_d = 2800\text{ Hz}, n = 1.8, \text{bloom} = +1.8\text{ dB}$, excursion factor $1.25\times$.
+   * $132.0\text{ lbs}$ low tension, $f_d = 2800\text{ Hz}, n = 1.8$ (lower tension causes $+1.39\text{ dB}$ higher plucking compliance).
 5. **`flatwound_vintage_heavy` (Motown / Jamerson 1954 Spec):**
    * La Bella 760M $.052\text{--}.110$ heavy hex core.
-   * $195.0\text{ lbs}$ heavy tension, $f_d = 1800\text{ Hz}, n = 2.0, \text{bloom} = +2.4\text{ dB}, k_{\text{long}} = 0.05$.
+   * $195.0\text{ lbs}$ heavy tension, $f_d = 1800\text{ Hz}, n = 2.0, k_{\text{long}} = 0.05$ (massive ribbon shear damping rolls off highs above $1.8\text{ kHz}$).
 6. **`double_bass_spirocore` (3/4 Upright Orchestral/Pizz):**
    * Thomastik-Infeld Spirocore / D'Addario Helicore Pizzicato $41.5''$ spiral rope core.
-   * $265.0\text{ lbs}$ massive tension, $f_d = 3800\text{ Hz}, n = 2.0, \text{bloom} = +2.8\text{ dB}$, bridge rocking compliance $0.42\text{V}$.
+   * $265.0\text{ lbs}$ massive tension, $f_d = 3800\text{ Hz}, n = 2.0, k_{\text{long}} = 0.02$.
 
 ---
 
@@ -453,5 +367,5 @@ To model your own bass in Passivizer:
    ```
 4. Run validation and preview:
    ```bash
-   uv run python main.py --stage viz --instrument my_custom_5str
+   uv run allomorph --stage viz --instrument my_custom_5str
    ```

@@ -100,7 +100,9 @@ def test_optimal_bass_dry_zero_artificial_dither_and_silence_bounding():
     # 1. Pure digital silence check: file contains bit-exact zeros in rest intervals
     zero_mask = audio == 0.0
     zero_fraction = float(np.mean(zero_mask))
-    assert zero_fraction > 0.05, f"Expected bit-exact digital zeros in rests, got {zero_fraction:.2%}"
+    assert zero_fraction > 0.05, (
+        f"Expected bit-exact digital zeros in rests, got {zero_fraction:.2%}"
+    )
 
     # 2. Silence intervals: analyze run lengths of exact zeros
     silence_int = zero_mask.astype(np.int8)
@@ -139,7 +141,9 @@ def test_optimal_bass_dry_non_v3_prelude_latency_zero():
     """
     audio, _ = read_wav(OPTIMAL_DRY_PATH)
     rec_delay, lookahead_warn, not_detected = calibrate_nam_v3_latency(audio)
-    assert not_detected is True, f"Expected not_detected=True, got {not_detected} (delay={rec_delay})"
+    assert not_detected is True, (
+        f"Expected not_detected=True, got {not_detected} (delay={rec_delay})"
+    )
     assert rec_delay == 0, f"Expected recommended delay=0, got {rec_delay}"
     assert lookahead_warn is False
 
@@ -187,5 +191,3 @@ def test_optimal_dry_canonical_path():
 
     assert OPTIMAL_DRY_PATH.name == f"optimal_bass_dry_v{DSP_GENERATION}.wav"
     assert OPTIMAL_DRY_PATH.parent.name == "canonical"
-
-

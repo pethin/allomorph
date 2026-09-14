@@ -3,18 +3,18 @@ Tests for minimum-phase FIR synthesis, prefilter pipeline, and multi-pickup audi
 """
 
 import math
-import tempfile
-import wave
-from pathlib import Path
 
-from allomorph.circuit import prefilter_audio
-from allomorph.dsp import NUM_TAPS, write_wav_24bit
-from allomorph.physics import compute_aperture_prefilter_fir, compute_voice_prefilter_firs
+from allomorph.dsp import NUM_TAPS
+from allomorph.physics import compute_voice_prefilter_firs
 
 
-def test_compute_aperture_prefilter_fir_30in():
-    voice_id = "04_modern_p_ceramic"
-    fir = compute_aperture_prefilter_fir(voice_id, src_scale="30in", num_taps=NUM_TAPS)
+def test_compute_voice_prefilter_fir_30in():
+    voice_id = "precision_active"
+    firs = compute_voice_prefilter_firs(
+        voice_id, src_scale="30in", num_taps=NUM_TAPS, normalize=True
+    )
+    assert len(firs) == 1
+    fir = firs[0]
 
     assert len(fir) == NUM_TAPS
     max_peak = max(abs(x) for x in fir)
@@ -29,9 +29,13 @@ def test_compute_aperture_prefilter_fir_30in():
     assert abs(fir[-1]) < 0.01
 
 
-def test_compute_aperture_prefilter_fir_32in():
-    voice_id = "09_stingray_mm_parallel"
-    fir = compute_aperture_prefilter_fir(voice_id, src_scale="32in", num_taps=NUM_TAPS)
+def test_compute_voice_prefilter_fir_32in():
+    voice_id = "stingray_parallel"
+    firs = compute_voice_prefilter_firs(
+        voice_id, src_scale="32in", num_taps=NUM_TAPS, normalize=True
+    )
+    assert len(firs) == 1
+    fir = firs[0]
 
     assert len(fir) == NUM_TAPS
     max_peak = max(abs(x) for x in fir)
@@ -42,9 +46,13 @@ def test_compute_aperture_prefilter_fir_32in():
     assert early_energy > late_energy * 5
 
 
-def test_compute_aperture_prefilter_multiscale():
-    voice_id = "13_dingwall_multiscale_bridge"
-    fir = compute_aperture_prefilter_fir(voice_id, src_scale="30in", num_taps=NUM_TAPS)
+def test_compute_voice_prefilter_multiscale():
+    voice_id = "dingwall_bridge"
+    firs = compute_voice_prefilter_firs(
+        voice_id, src_scale="30in", num_taps=NUM_TAPS, normalize=True
+    )
+    assert len(firs) == 1
+    fir = firs[0]
 
     assert len(fir) == NUM_TAPS
     max_peak = max(abs(x) for x in fir)
@@ -53,40 +61,18 @@ def test_compute_aperture_prefilter_multiscale():
     early_energy = sum(x**2 for x in fir[:256])
     late_energy = sum(x**2 for x in fir[1024:])
     assert early_energy > late_energy * 5
-
-
-def test_prefilter_audio_pipeline():
-    with tempfile.TemporaryDirectory() as tmpdir:
-        input_wav = Path(tmpdir) / "test_in.wav"
-        output_wav = Path(tmpdir) / "test_out.wav"
-
-        # Generate a short 0.05s test audio impulse sequence (2400 samples at 48 kHz)
-        test_samples = [0.5 if i % 100 == 0 else 0.0 for i in range(2400)]
-        write_wav_24bit(str(input_wav), test_samples, sample_rate=48000)
-
-        fir = compute_aperture_prefilter_fir("04_modern_p_ceramic", src_scale="30in", num_taps=512)
-        prefilter_audio(input_wav, output_wav, fir)
-
-        assert output_wav.exists()
-        with wave.open(str(output_wav), "rb") as wf:
-            assert wf.getframerate() == 48000
-            assert wf.getsampwidth() == 3  # 24-bit PCM
-            assert wf.getnchannels() == 1
-            assert wf.getnframes() > 0
 
 
 def test_compute_voice_prefilter_firs_single_and_multi():
     # Single-pickup voice -> exactly 1 channel
-    firs_single = compute_voice_prefilter_firs(
-        "04_modern_p_ceramic", src_scale="30in", num_taps=512
-    )
+    firs_single = compute_voice_prefilter_firs("precision_active", src_scale="30in", num_taps=512)
     assert len(firs_single) == 1
     assert len(firs_single[0]) == 512
     max_peak_single = max(abs(x) for x in firs_single[0])
     assert math.isclose(max_peak_single, 0.99, rel_tol=1e-3)
 
     # Multi-pickup voice (Jazz pair) -> exactly 2 channels (Neck and Bridge)
-    firs_multi = compute_voice_prefilter_firs("02_jazz_bass_pair", src_scale="30in", num_taps=512)
+    firs_multi = compute_voice_prefilter_firs("jazz_pair_open", src_scale="30in", num_taps=512)
     assert len(firs_multi) == 2
     assert len(firs_multi[0]) == 512
     assert len(firs_multi[1]) == 512
@@ -94,26 +80,5 @@ def test_compute_voice_prefilter_firs_single_and_multi():
     assert math.isclose(global_max, 0.99, rel_tol=1e-3)
 
     # Multi-pickup voice (P/MM series) -> exactly 2 channels
-    firs_pmm = compute_voice_prefilter_firs("11_pmm_hybrid_series", src_scale="32in", num_taps=512)
+    firs_pmm = compute_voice_prefilter_firs("p_mm_series", src_scale="32in", num_taps=512)
     assert len(firs_pmm) == 2
-
-
-def test_multi_pickup_prefilter_audio_stereo_export():
-    with tempfile.TemporaryDirectory() as tmpdir:
-        input_wav = Path(tmpdir) / "test_in.wav"
-        output_wav = Path(tmpdir) / "test_stereo_out.wav"
-
-        # Generate a short 0.05s test audio impulse sequence (2400 samples at 48 kHz)
-        test_samples = [0.5 if i % 100 == 0 else 0.0 for i in range(2400)]
-        write_wav_24bit(str(input_wav), test_samples, sample_rate=48000)
-
-        firs = compute_voice_prefilter_firs("02_jazz_bass_pair", src_scale="30in", num_taps=512)
-        assert len(firs) == 2
-        prefilter_audio(input_wav, output_wav, firs)
-
-        assert output_wav.exists()
-        with wave.open(str(output_wav), "rb") as wf:
-            assert wf.getframerate() == 48000
-            assert wf.getsampwidth() == 3  # 24-bit PCM
-            assert wf.getnchannels() == 2  # Stereo (Channel 0 = Neck, Channel 1 = Bridge)
-            assert wf.getnframes() > 0

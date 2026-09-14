@@ -1,0 +1,43 @@
+==============================================================================
+TONE3000 UPLOAD BUNDLE: SPLIT_P
+==============================================================================
+Source Instrument: 34" Standard P-Bass
+Pickup Position: Split
+Physical Switch Setting on Bass: Split
+Tone Knob Setting: 100% (Wide Open)
+
+STEP-BY-STEP UPLOAD INSTRUCTIONS (Tone3000 Studio Trainer):
+1. Open Tone3000 Trainer in your browser or local batch tool.
+2. DRAG DRY FILE: Drag 'dry v3.1.1.wav' from this directory into the '1 Dry File' slot.
+3. DRAG WET STEMS: Select and drag the following 28 .wav files into the 'Wet Stems' slot:
+   • Precision Vintage v3.1.1.wav
+   • Precision Mids v3.1.1.wav
+   • Precision Warm v3.1.1.wav
+   • Precision Active v3.1.1.wav
+   • Precision Dub v3.1.1.wav
+   • Jazz Pair Open v3.1.1.wav
+   • Jazz Pair Mids v3.1.1.wav
+   • Jazz Pair Active v3.1.1.wav
+   • Jazz Bridge Growl v3.1.1.wav
+   • Jazz Bridge Open v3.1.1.wav
+   • Jazz Neck Warm v3.1.1.wav
+   • StingRay Parallel v3.1.1.wav
+   • StingRay Series v3.1.1.wav
+   • StingRay Active v3.1.1.wav
+   • Dingwall Bridge v3.1.1.wav
+   • Dingwall Middle v3.1.1.wav
+   • Dingwall Parallel v3.1.1.wav
+   • Rickenbacker Clank v3.1.1.wav
+   • Rickenbacker Open v3.1.1.wav
+   • PJ Passive v3.1.1.wav
+   • PJ Active v3.1.1.wav
+   • P∕MM Parallel v3.1.1.wav
+   • P∕MM Series v3.1.1.wav
+   • Mudbucker Deep v3.1.1.wav
+   • Upright Acoustic v3.1.1.wav
+   • Studio Direct v3.1.1.wav
+   • Studio Active v3.1.1.wav
+   • Studio Passive v3.1.1.wav
+
+4. START TRAINING: Tone3000 will batch-train all models against this single dry baseline.
+==============================================================================

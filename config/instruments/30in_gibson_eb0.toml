@@ -1,0 +1,90 @@
+# ==============================================================================
+# ALLOMORPH SOURCE INSTRUMENT CONFIGURATION
+# 30.5" Gibson EB-0 Mudbucker (Solid Mahogany Body)
+# ==============================================================================
+
+id = "30in_gibson_eb0"
+name = "30.5\" Gibson EB-0 Mudbucker"
+scale_length_in = 30.5
+scale_length_m = 0.7747
+electronics = "passive"
+version = 1
+
+string_wave_speeds = [63.83, 85.22, 113.75, 151.84]
+default_pickup = "mudbucker"
+
+[strings]
+preset = "flatwound_vintage_heavy"
+brand = "Gibson"
+model = "Vintage Flatwound"
+gauge = "50-105"
+core = "round"
+wrap = "monel_flat"
+tension_lbs = 152.0
+
+# ------------------------------------------------------------------------------
+# 1. PICKUPS
+# ------------------------------------------------------------------------------
+
+[pickups.mudbucker]
+name = "Gibson 30k Sidewinder Neck Humbucker (Mudbucker)"
+position_name = "Neck"
+bundle_name = "neck"
+position_from_bridge_m = 0.2668  # Neck heel datum (266.8mm)
+aperture_width_in = 1.25
+coil_spacing_in = 0.0
+type = "sidewinder"
+magnet_type = "ceramic"
+alpha = 0.12
+resonant_frequency_hz = 1200.0   # Extreme high inductance (14.4H) deep resonance
+q_factor = 1.60
+coils = [
+    { strings = ["all"], position_from_bridge_m = 0.2668, aperture_width_in = 1.25, weight = 1.0 }
+]
+
+[pickups.mudbucker.circuit]
+topology = "single"
+L = 14.4
+Rdc = 27900.0
+Reddy = 450000.0
+Ccoil = 8e-11
+vsat = 0.35
+Rtop = 10.0
+Rbot = 500000.0
+Rtone = 500000.0
+Ctone = 2.2e-08
+
+# ------------------------------------------------------------------------------
+# 2. NATIVE INSTRUMENT VOICINGS
+# ------------------------------------------------------------------------------
+
+[voicings.neck_deep]
+version = 1
+name = "Massive 14.4H Sidewinder Sub-Bass"
+tone_name = "Mudbucker Deep"
+pickup = "mudbucker"
+affinity = "neck"
+vol_pos = 1.0
+tone_pos = 1.0
+tone_cap_f = 2.2e-08
+gain_db = 6.2
+
+[voicings.neck_dub]
+version = 1
+name = "Sub-Bass Heavy Reggae Dub"
+tone_name = "Mudbucker Dub"
+pickup = "mudbucker"
+affinity = "neck"
+vol_pos = 1.0
+tone_pos = 0.0
+tone_cap_f = 4.7e-08
+string_preset_override = "flatwound_vintage_heavy"
+
+# ------------------------------------------------------------------------------
+# 3. PICKUP AFFINITY ROUTING
+# ------------------------------------------------------------------------------
+[pickup_mapping]
+neck = "mudbucker"
+bridge = "mudbucker"
+parallel = "mudbucker"
+direct = "mudbucker"

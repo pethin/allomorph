@@ -23,6 +23,7 @@ from allomorph.config.schema import (
     VoiceConfig,
 )
 from allomorph.config.voices import VOICES
+from allomorph.dsp import cinf_smoothstep
 from allomorph.physics.schema import WaveSpeedContinuumPoint
 from allomorph.physics.strings import (
     generate_wave_speed_continuum,
@@ -99,14 +100,16 @@ def compute_saddle_boundary_coupling(
     """
     Models the exponential boundary layer (l_b ≈ sqrt(B_s) * L) of flexural rigidity
     at the bridge saddle witness point for pickups situated close to the bridge (pos_m < 0.075 m).
-    Smoothly transitions to 1.000 (0.00 dB) as distance increases to >= 75 mm.
+    Smoothly transitions to 1.000 (0.00 dB) as distance increases to >= 75 mm using a real-analytic
+    C^infinity smoothstep mollifier.
     """
     f = np.asarray(freqs, dtype=np.float64)
     _ = scale_m
     if pos_m >= 0.075 or pos_m <= 0.0:
         return np.ones_like(f)
-    ratio = np.clip(pos_m / 0.075, 0.0, 1.0)
-    shelf_db = -4.0 * (1.0 - ratio)
+    t = (pos_m - 0.035) / (0.075 - 0.035)
+    s = float(cinf_smoothstep(t))
+    shelf_db = -4.0 * (1.0 - s)
     g = 10.0 ** (shelf_db / 20.0)
     f0 = 4500.0
     return np.sqrt((1.0 + (g**2) * (f / f0) ** 2) / (1.0 + (f / f0) ** 2))
@@ -135,6 +138,34 @@ def soft_clamp_displacement_ratio(
     if np.isscalar(delta_g):
         return float(soft)
     return soft
+
+
+UNIVERSAL_DATUM_POS_M: float = 0.0935  # 93.5mm datum
+UNIVERSAL_DATUM_SCALE_M: float = 0.8636  # 34.0" scale
+UNIVERSAL_DATUM_ETA: float = UNIVERSAL_DATUM_POS_M / UNIVERSAL_DATUM_SCALE_M  # 0.1082677...
+
+
+def compute_displacement_proximity_shelf(
+    freqs: Sequence[float] | np.ndarray,
+    pos_m: float,
+    scale_m: float = UNIVERSAL_DATUM_SCALE_M,
+    ref_eta: float = UNIVERSAL_DATUM_ETA,
+) -> np.ndarray:
+    """
+    Computes the scale-normalized bridge proximity low-shelf filter H_pos(f)
+    governed by the standing-wave fractional displacement ratio (eta = pos_m / scale_m)
+    relative to a reference fractional coordinate (default: universal datum eta_datum = 10.83%),
+    bounded by the asymmetric C^inf order-4 algebraic limiter ('alg4').
+    Corner frequency fc = 220.0 Hz.
+    """
+    f = np.asarray(freqs, dtype=np.float64)
+    if pos_m <= 0.0 or scale_m <= 0.0:
+        return np.ones_like(f)
+    eta = pos_m / scale_m
+    delta_g = 20.0 * np.log10(max(eta / max(ref_eta, 1e-4), 1e-6))
+    delta_g_soft = soft_clamp_displacement_ratio(delta_g)
+    g_0 = 10.0 ** (delta_g_soft / 20.0)
+    return np.sqrt((g_0**2 + (f / 220.0) ** 2) / (1.0 + (f / 220.0) ** 2))
 
 
 def is_voice_matching_source(

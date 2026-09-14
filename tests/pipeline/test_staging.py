@@ -1,22 +1,21 @@
 """
-Allomorph - Two-Stage Pipeline & Staging Test Suite
-Validates the Canonical Intermediate baseline, 32 frontend IRs, 3-tier dynamic continuum,
+Allomorph - Digital Twin Pipeline & Staging Test Suite
+Validates the direct digital twin forward simulation, Tone3000 upload bundles, dynamic feel,
 and concise stage-friendly naming invariants.
 """
 
+import json
 import math
 import wave
 from pathlib import Path
-from typing import Any
 
 import numpy as np
 import pytest
 
 from allomorph.circuit import (
-    export_all_frontend_irs,
-    generate_canonical_sweep,
-    simulate_backend_targets,
-    simulate_voice,
+    CALIBRATION_PEAK_CEILING,
+    export_instrument_pickup_wav,
+    simulate_instrument_voicing,
 )
 from allomorph.config import (
     VOICES,
@@ -27,92 +26,131 @@ from allomorph.config import (
 from allomorph.dsp import read_wav
 from allomorph.naming import (
     VOICE_CONCISE_SLUGS,
-    get_baked_basename,
     get_t3k_basename,
-    resolve_instruments,
-    resolve_voices,
 )
 from allomorph.physics import compute_voice_prefilter_firs
-from allomorph.pipeline.schema import get_tier_spec
 
 
-def test_canonical_intermediate_config():
-    """Validates the Canonical Intermediate configuration datums."""
-    inst = load_instrument("canonical_intermediate")
-    assert inst.id == "canonical_intermediate"
-    assert inst.scale_length_in == 34.0
-    assert inst.scale_length_m == 0.8636
+def test_direct_instrument_voicings_and_bundles():
+    """Validates that all physical instruments define valid native voicings and affinity-based pickup bundles."""
+    from allomorph.config.instruments import (
+        load_all_instruments,
+        partition_instrument_bundles,
+    )
 
-    pickups = inst.pickups
-    assert len(pickups) == 1
-    p = pickups["canonical_median"]
-    assert p.position_from_bridge_m == pytest.approx(0.0935, abs=1e-4)
-    assert p.aperture_width_in == pytest.approx(0.75, abs=1e-3)
-    assert p.coil_spacing_in == 0.0
+    instruments = load_all_instruments()
+    assert len(instruments) >= 14
 
-    # Wideband passive reference circuit
-    assert inst.electronics == "passive"
-    assert p.magnet_type == "ideal"
-    assert p.pole_type == "rod"
-    assert p.resonant_frequency_hz == pytest.approx(4800.0)
-    assert p.q_factor == pytest.approx(0.75)
+    for iid, inst in instruments.items():
+        assert len(inst.voicings) > 0, f"Instrument '{iid}' has no native voicings"
+        for vid, vcfg in inst.voicings.items():
+            assert vcfg.pickup in inst.pickups, (
+                f"Instrument '{iid}' voicing '{vid}' references undefined pickup '{vcfg.pickup}'"
+            )
+            assert vcfg.affinity in ("neck", "bridge", "parallel", "direct"), (
+                f"Instrument '{iid}' voicing '{vid}' has invalid affinity '{vcfg.affinity}'"
+            )
 
-    # 6-string reference wave speeds (B0 to C3) and standard string preset
-    assert len(inst.string_wave_speeds) == 6
-    assert inst.string_wave_speeds[0] == pytest.approx(53.28, abs=0.01)
-    assert inst.string_wave_speeds[-1] == pytest.approx(225.69, abs=0.01)
-    assert inst.strings.preset == "roundwound_nickel_6string"
+        from allomorph.config.instruments import STANDARD_CATALOG_TARGETS
+
+        bundles = partition_instrument_bundles(inst)
+        assert len(bundles) > 0, f"Instrument '{iid}' produced no bundles"
+        total_targets = sum(len(b.targets) for b in bundles.values())
+        assert total_targets == len(STANDARD_CATALOG_TARGETS), (
+            f"Instrument '{iid}' partitioned {total_targets} targets (expected {len(STANDARD_CATALOG_TARGETS)})"
+        )
 
 
-def test_canonical_sweep_calibration(tmp_path: Path):
-    """Validates that the Canonical Intermediate sweep is unnormalized, matching input sweep peak/RMS within < 0.5 dB."""
-    sweep_path = tmp_path / "canonical_sweep.wav"
-    generate_canonical_sweep(output_wav=sweep_path)
+def test_forward_simulation_engine(tmp_path: Path):
+    """Validates that simulate_instrument_voicing generates wet audio with zero sample delay,
 
-    assert sweep_path.exists()
-    audio, sr = read_wav(sweep_path)
+    calibrated RMS loudness, and true-peak <= -0.09 dBFS.
+    """
+    from allomorph.circuit.forward import simulate_instrument_voicing
+
+    out_wav = tmp_path / "test_forward.wav"
+    res = simulate_instrument_voicing(
+        "34in_standard_p",
+        "vintage_open",
+        output_wav=out_wav,
+        max_samples=48000,
+    )
+    assert res.exists()
+    audio, sr = read_wav(res)
     assert sr == 48000
+    assert len(audio) == 48000
 
     peak = float(np.max(np.abs(audio)))
-    peak_db = 20.0 * math.log10(peak)
-    assert peak_db == pytest.approx(-1.12, abs=0.20)
-    assert not np.isnan(audio).any()
-    assert not np.isinf(audio).any()
+    assert peak <= 0.9905, f"Peak {peak} exceeded -0.09 dBFS ceiling"
+
+    # Verify minimum-phase causal alignment starting at sample 0 (no artificial leading zeroes)
+    assert np.abs(audio[0]) > 0.0 or np.max(np.abs(audio[:16])) > 1e-4
+
+    # Verify sidecar manifest records base_dry_sha256
+    manifest_p = out_wav.parent / "manifest.json"
+    assert manifest_p.exists()
+    import json
+
+    with manifest_p.open("r", encoding="utf-8") as f:
+        m = json.load(f)
+    assert "base_dry_sha256" in m
+    assert out_wav.name in m["files"]
+    assert m["files"][out_wav.name]["base_dry_sha256"] == m["base_dry_sha256"]
 
 
-def test_frontend_ir_generation(tmp_path: Path):
-    """Validates that all 35 frontend IRs are exported with exact 2048-tap length and positive polarity."""
-    exported = export_all_frontend_irs(output_dir=tmp_path)
-    assert len(exported) == 35
+def test_tone_pack_exporter(tmp_path: Path):
+    """Validates that export_tone_pack creates self-contained Tone3000 upload bundles with dry v[dsp].[inst].[voicing].wav and wet stems."""
+    from allomorph.pipeline.pack import export_tone_pack
 
-    for ir_path in exported:
-        assert ir_path.exists(), f"IR missing: {ir_path}"
-        fir, sr = read_wav(ir_path)
-        assert sr == 48000
-        assert len(fir) == 2048, f"{ir_path} has {len(fir)} taps (expected 2048)"
+    pack_dir = export_tone_pack(
+        "34in_standard_p",
+        output_dir=tmp_path / "packs",
+        max_samples=2048,
+        catalog_targets=[("34in_standard_p", "vintage_open"), ("34in_standard_p", "vintage_mids")],
+    )
+    assert pack_dir.exists()
 
-        # Positive initial polarity assertion
-        assert np.sum(fir[:16]) > 0.0, f"{ir_path.name} has inverted polarity ({np.sum(fir[:16])})"
-        # Zero NaN/Inf
-        assert not np.isnan(fir).any()
-        assert not np.isinf(fir).any()
+    bundles_dir = pack_dir / "bundles"
+    assert bundles_dir.exists()
+    bundle_dirs = [d for d in bundles_dir.iterdir() if d.is_dir()]
+    assert len(bundle_dirs) >= 1
+
+    for bdir in bundle_dirs:
+        dry_files = list(bdir.glob("dry*.wav"))
+        assert len(dry_files) == 1, f"Bundle {bdir.name} missing dry file: found {dry_files}"
+        dry_file = dry_files[0]
+        assert dry_file.name.startswith("dry v3.1.")
+        wet_files = [f for f in bdir.glob("*.wav") if not f.name.startswith("dry")]
+        assert len(wet_files) > 0, f"Bundle {bdir.name} has no wet stems"
+        for wf in wet_files:
+            assert "v3.1." in wf.name
+        instructions = bdir / "upload_instructions.txt"
+        assert instructions.exists()
+        assert dry_file.name in instructions.read_text(encoding="utf-8")
+        manifest = bdir / "manifest.json"
+        assert manifest.exists()
+        with open(manifest, "r", encoding="utf-8") as mf:
+            mdata = json.load(mf)
+        assert mdata["dry_file"] == dry_file.name
+        assert mdata["instrument_version"] == 1
+        assert "base_dry_sha256" in mdata
+        for stem in mdata["stems"]:
+            assert "target_instrument_version" in stem
+            assert "target_voicing_version" in stem
+            assert stem["version"].startswith("v3.1.")
 
 
 def test_concise_naming_invariants():
-    """Asserts that all 21 target voice model filenames across all 3 tiers are <= 22 characters."""
+    """Asserts that all target voice model filenames are <= 22 characters."""
     assert isinstance(VOICE_CONCISE_SLUGS, dict)
     for k, v in VOICE_CONCISE_SLUGS.items():
         assert isinstance(k, str)
         assert isinstance(v, str)
         assert k in VOICES
-
-    tier_prefixes = ["cln_", "std_", "hot_"]
-    for slug in VOICE_CONCISE_SLUGS.values():
-        for prefix in tier_prefixes:
-            filename = f"{prefix}{slug}.nam"
-            assert len(filename) <= 22, (
-                f"Model filename '{filename}' exceeds 22 characters ({len(filename)} chars)"
-            )
+        filename = f"{v}.nam"
+        assert len(filename) <= 22, (
+            f"Model filename '{filename}' exceeds 22 characters ({len(filename)} chars)"
+        )
 
 
 def test_t3k_pack_naming_invariants():
@@ -120,8 +158,8 @@ def test_t3k_pack_naming_invariants():
 
     and produce Tone Name [Pickup Position] basenames strictly <= 34 characters.
     """
-    # 1. All 24 target voices declare valid tone_name
-    assert len(VOICES) >= 24
+    # 1. All target voices declare valid tone_name
+    assert len(VOICES) >= 23
     for vid, vcfg in VOICES.items():
         assert vcfg.tone_name is not None and vcfg.tone_name.strip(), (
             f"Voice '{vid}' missing tone_name"
@@ -130,9 +168,8 @@ def test_t3k_pack_naming_invariants():
             f"Voice '{vid}' tone_name '{vcfg.tone_name}' too long ({len(vcfg.tone_name)} chars > 23)"
         )
 
-    # 2. All playable instruments + canonical intermediate declare valid position_name for each pickup
+    # 2. All playable instruments declare valid position_name for each pickup
     instruments = load_all_instruments()
-    instruments["canonical_intermediate"] = load_instrument("canonical_intermediate")
     for iid, inst in instruments.items():
         assert len(inst.pickups) > 0, f"Instrument '{iid}' has no pickups"
         for pid, pcfg in inst.pickups.items():
@@ -164,7 +201,9 @@ def test_t3k_pack_naming_invariants():
                 if vcfg.preserve_aperture:
                     assert basename == tone.replace("/", "\u2215").replace("\\", "\u2215")
                 else:
-                    assert basename == f"{tone} [{pos}]".replace("/", "\u2215").replace("\\", "\u2215")
+                    assert basename == f"{tone} [{pos}]".replace("/", "\u2215").replace(
+                        "\\", "\u2215"
+                    )
 
     # 5. Length boundary and error handling in get_t3k_basename
     with pytest.raises(ValueError, match="exceeds 34 characters"):
@@ -182,9 +221,7 @@ def test_t3k_pack_naming_invariants():
     single_p_inst = instruments["34in_standard_p"]
     assert len(single_p_inst.pickups) == 1
     pos_p = (
-        None
-        if len(single_p_inst.pickups) <= 1
-        else single_p_inst.pickups["split_p"].position_name
+        None if len(single_p_inst.pickups) <= 1 else single_p_inst.pickups["split_p"].position_name
     )
     assert get_t3k_basename("Precision Vintage", pos_p) == "Precision Vintage"
 
@@ -197,64 +234,37 @@ def test_t3k_pack_naming_invariants():
     )
     assert get_t3k_basename("StingRay Parallel", pos_ray) == "StingRay Parallel"
 
-    # 7. Preserve aperture Character tones omit pickup name suffix
-    assert get_t3k_basename("Active Character", "Parallel") == "Active Character"
-    assert get_t3k_basename("Neutral Character", "Neck") == "Neutral Character"
-    assert get_t3k_basename("Passive Character", "Bridge") == "Passive Character"
+    # 7. Preserve aperture Studio tones omit pickup name suffix
+    assert get_t3k_basename("Studio Active", "Parallel") == "Studio Active"
+    assert get_t3k_basename("Studio Direct", "Neck") == "Studio Direct"
+    assert get_t3k_basename("Studio Passive", "Bridge") == "Studio Passive"
     assert get_t3k_basename("Custom Tone", "Parallel", preserve_aperture=True) == "Custom Tone"
 
 
-
-def test_backend_3_tier_dynamics():
-    """Validates that Clean, Standard, and Hot Rod tiers have correct progressive saturation factors."""
-    test_voice = "05_vintage_62_p_alnico"
-    vcfg = VOICES[test_voice]
-    base_alpha = vcfg.alpha if vcfg.alpha is not None else 0.25
-    base_vsat = vcfg.vsat if vcfg.vsat is not None else 0.50
-
-    # Clean: 0% saturation, high vsat
-    clean_alpha = 0.0
-    clean_vsat = 10.0
-    assert clean_alpha == 0.0
-    assert clean_vsat >= 10.0
-
-    # Standard: 100% nominal saturation
-    std_alpha = base_alpha
-    std_vsat = base_vsat
-    assert std_alpha == base_alpha
-    assert std_vsat == base_vsat
-
-    # Hot Rod: 175% saturation, reduced vsat
-    hot_alpha = min(1.0, base_alpha * 1.75)
-    hot_vsat = max(0.20, base_vsat / 1.35)
-    assert hot_alpha > std_alpha
-    assert hot_vsat < std_vsat
-
-
-def test_bake_dynamic_tier_and_auto_pickup():
-    """Validates the dynamic (differential) tier and auto pickup mapping for on-demand bake mode."""
+def test_dynamic_feel_and_auto_pickup():
+    """Validates dynamic differential feel and auto pickup mapping for forward simulation mode."""
     import tempfile
 
     # 1. Auto pickup mapping verification across instruments
     inst_30 = load_instrument("30in")
-    p_p = get_source_pickup(inst_30, "04_modern_p_ceramic")
-    p_j = get_source_pickup(inst_30, "03_jazz_bridge_60s")
+    p_p = get_source_pickup(inst_30, "precision_active")
+    p_j = get_source_pickup(inst_30, "jazz_bridge_open")
     assert p_p.id == "mmtw_dual"
     assert p_j.id == "mmtw_single"
 
     inst_fretless = load_instrument("32in_fretless_pmm")
-    p_upright = get_source_pickup(inst_fretless, "14_upright_bridge_transducer")
+    p_upright = get_source_pickup(inst_fretless, "upright_acoustic")
     assert p_upright.id == "pcsx"
 
     # 2. compute_voice_prefilter_firs supports explicit pickup and auto fallback
     firs_auto = compute_voice_prefilter_firs(
-        "04_modern_p_ceramic", instrument=inst_30, src_pickup_key="auto"
+        "precision_active", instrument=inst_30, src_pickup_key="auto"
     )
     firs_dual = compute_voice_prefilter_firs(
-        "04_modern_p_ceramic", instrument=inst_30, src_pickup_key="mmtw_dual"
+        "precision_active", instrument=inst_30, src_pickup_key="mmtw_dual"
     )
     firs_single = compute_voice_prefilter_firs(
-        "04_modern_p_ceramic", instrument=inst_30, src_pickup_key="mmtw_single"
+        "precision_active", instrument=inst_30, src_pickup_key="mmtw_single"
     )
     assert len(firs_auto) == 1
     assert len(firs_dual) == 1
@@ -263,15 +273,13 @@ def test_bake_dynamic_tier_and_auto_pickup():
     # Single coil vs dual coil aperture response must differ
     assert not np.allclose(firs_dual[0], firs_single[0])
 
-    # 3. Fast simulation test of dynamic tier with max_samples
+    # 3. Fast simulation test of dynamic feel with max_samples
     with tempfile.TemporaryDirectory() as tmpdir:
-        out_wav = Path(tmpdir) / "test_dynamic_bake.wav"
-        simulate_voice(
-            "04_modern_p_ceramic",
-            output_wav=out_wav,
+        out_wav = Path(tmpdir) / "test_dynamic_sim.wav"
+        simulate_instrument_voicing(
             instrument="30in",
-            pickup="auto",
-            tier="dynamic",
+            voicing="precision_active",
+            output_wav=out_wav,
             max_samples=2048,
         )
         assert out_wav.exists()
@@ -281,59 +289,82 @@ def test_bake_dynamic_tier_and_auto_pickup():
             assert wf.getsampwidth() == 3
 
 
-def test_baked_short_distinct_names_and_instrument_directories():
-    """Validates that baked files have short distinct names (<= 22 chars) and group by instrument."""
-    playable_insts = resolve_instruments("all")
-    all_voices = resolve_voices("all")
+def test_export_instrument_pickup_wav(tmp_path: Path):
+    """Verify export_instrument_pickup_wav creates valid 24-bit WAVs directly in destination directory."""
+    from allomorph.dsp import write_wav_24bit
 
-    # 1. Check all voices produce unique, short distinct basenames under auto pickup
-    for tier in ["dynamic", "standard", "clean", "hotrod"]:
-        tier_prefix = get_tier_spec(tier).prefix
-        basenames = set()
-        for vid in all_voices:
-            basename = get_baked_basename(vid, tier=tier, pickup="auto")
-            assert basename.startswith(tier_prefix)
-            wav_filename = f"{basename}.wav"
-            assert len(wav_filename) <= 22, f"WAV filename '{wav_filename}' exceeds 22 chars"
-            assert basename not in basenames, f"Duplicate basename: {basename}"
-            basenames.add(basename)
-        assert len(basenames) == len(all_voices)
+    # Create a calibrated 1-second excitation signal to test the full pipeline fast
+    test_in = tmp_path / "test_excitation.wav"
+    sr = 48000
+    t = np.arange(sr) / sr
+    audio_in = 0.85 * np.sin(2 * np.pi * 100 * t)
+    audio_in = audio_in * (10 ** (-16.0 / 20.0) / np.sqrt(np.mean(audio_in**2)))
+    write_wav_24bit(test_in, audio_in, sample_rate=sr)
 
-    # 2. Non-auto explicit pickup appends pickup key for aperture-shifting voices
-    override_basename = get_baked_basename("04_modern_p_ceramic", tier="dynamic", pickup="bridge")
-    assert override_basename == "dyn_04_modern_p_bridge"
+    out_dir = tmp_path / "34in_standard_jazz"
 
-    # 3. Preserve aperture / character tones strictly omit pickup suffix even with explicit pickup override
-    assert get_baked_basename("15_neutral_character", tier="dynamic", pickup="neck") == "dyn_15_neutral"
-    assert get_baked_basename("15b_active_character", tier="dynamic", pickup="bridge") == "dyn_15b_active"
-    assert get_baked_basename("15c_passive_character", tier="dynamic", pickup="parallel") == "dyn_15c_passive"
-    assert (
-        get_baked_basename(
-            "04_modern_p_ceramic", tier="dynamic", pickup="bridge", preserve_aperture=True
-        )
-        == "dyn_04_modern_p"
+    # Export bridge pickup wet stem
+    wet_bridge = export_instrument_pickup_wav(
+        "34in_standard_jazz", pickup_key="bridge", input_wav=test_in, output_dir=out_dir
     )
+    assert wet_bridge.exists()
+    assert wet_bridge.name == "bridge.wav"
+    assert wet_bridge.parent == out_dir
 
-    # 4. Directory structure verification: each instrument has its own subfolder
-    for inst_id in playable_insts:
-        inst_baked_dir = Path("audio/baked") / inst_id
-        assert inst_baked_dir.parent == Path("audio/baked")
-        assert inst_baked_dir.name == inst_id
+    # Export neck pickup wet stem
+    wet_neck = export_instrument_pickup_wav(
+        "34in_standard_jazz", pickup_key="neck", input_wav=test_in, output_dir=out_dir
+    )
+    assert wet_neck.exists()
+    assert wet_neck.name == "neck.wav"
+    assert wet_neck.parent == out_dir
+
+    # Check WAV formatting
+    with wave.open(str(wet_bridge), "rb") as wf:
+        assert wf.getframerate() == 48000
+        assert wf.getsampwidth() == 3  # 24-bit PCM
+        assert wf.getnchannels() == 1  # Mono
+        assert wf.getnframes() > 0
+
+    # Check audio levels
+    audio, _sr = read_wav(wet_bridge, dtype=np.float64)
+    peak = float(np.max(np.abs(audio)))
+    rms = float(np.sqrt(np.mean(audio**2)))
+    peak_db = 20.0 * math.log10(peak)
+    rms_db = 20.0 * math.log10(rms)
+
+    # Peak must never exceed CALIBRATION_PEAK_CEILING (0.9900 / -0.09 dBFS)
+    assert peak <= CALIBRATION_PEAK_CEILING + 1e-6
+    assert -15.0 <= peak_db <= 0.0
+    assert -18.0 <= rms_db <= -14.0
+
+
+def test_precision_warm_tone_cap_no_artificial_spike():
+    """Verify that compute_voice_prefilter_firs for rolled-off tone cap voice (precision_warm)
+    does not divide by small time-domain impulse peaks, keeping DC gain well-behaved (~ -1.14 dB)
+    instead of the broken +21.35 dB boost.
+    """
+    firs = compute_voice_prefilter_firs("precision_warm", instrument="34in_standard_p")
+    dc_gain = float(np.sum(firs[0]))
+    dc_gain_db = 20.0 * math.log10(dc_gain)
+
+    # Physical flatwound tension differential (155/195 lbs) is ~ -1.14 dB; must be strictly < +5.0 dB
+    assert -3.0 <= dc_gain_db <= +5.0, f"DC gain was {dc_gain_db:+.2f} dB (expected ~ -1.14 dB)"
 
 
 def test_pipeline_cli_streamlined_stages():
-    """Asserts that the CLI parser accepts all 7 pure Architecture C stages and rejects deprecated stages."""
+    """Asserts that the CLI parser accepts modern stages and rejects deprecated stages."""
     import argparse
 
     # We inspect the parser directly by testing valid arguments
-    valid_stages = ["all", "viz", "canonical", "frontends", "targets", "train", "bake"]
-    deprecated_stages = ["prep", "spice", "sim", "simulate"]
+    valid_stages = ["all", "viz", "sim", "pack", "train"]
+    deprecated_stages = ["prep", "spice", "canonical", "frontends", "targets", "bake"]
 
     # Construct test parser matching main()
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--stage",
-        choices=["all", "viz", "canonical", "frontends", "targets", "train", "bake"],
+        choices=["all", "viz", "sim", "pack", "train"],
         default="all",
     )
 
@@ -345,323 +376,41 @@ def test_pipeline_cli_streamlined_stages():
         with pytest.raises(SystemExit):
             parser.parse_args(["--stage", dep_stage])
 
-    # Assert --bake flag is rejected
+    # Assert --bake and --t3k-pack flags are rejected
     with pytest.raises(SystemExit):
         parser.parse_args(["--bake"])
+    with pytest.raises(SystemExit):
+        parser.parse_args(["--t3k-pack"])
 
 
-def test_export_frontend_ir_passive_missing_circuit_raises_error(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """Verify that export_frontend_ir raises ValueError if a passive pickup lacks a circuit model."""
-    import allomorph.circuit.staging as staging_mod
-    from allomorph.config.schema import InstrumentConfig, PickupConfig
-
-    # Mock load_instrument to return a passive bass with a pickup missing 'circuit'
-    dummy_passive = InstrumentConfig(
-        id="mock_passive_p",
-        name="Mock Passive P",
-        electronics="passive",
-        scale_length_in=34.0,
-        string_wave_speeds=[73.4, 98.0, 130.8, 174.6],
-        default_pickup="p",
-        pickups={
-            "p": PickupConfig(
-                name="Passive P",
-                position_from_bridge_m=0.125,
-                aperture_width_in=0.75,
-                coil_spacing_in=0.0,
-                magnet_type="alnico_v",
-                # Note: No 'circuit' defined!
-            )
-        },
-    )
-
-    def mock_load(inst_id: Any) -> InstrumentConfig:
-        return dummy_passive
-
-    monkeypatch.setattr(staging_mod, "load_instrument", mock_load)
-
-    with pytest.raises(
-        ValueError, match="does not define a '\\[pickups.p.circuit\\]' configuration"
-    ):
-        staging_mod.export_frontend_ir("mock_passive_p", "p")
-
-
-def test_simulate_backend_targets(tmp_path: Path):
-    """Validates that simulate_backend_targets runs successfully across clean and standard tiers."""
-    out_dir = tmp_path / "targets"
-    simulate_backend_targets(
-        tier="clean",
-        voice_id="01_modern_jazz_active",
-        max_samples=2048,
-        output_dir=out_dir,
-    )
-    clean_folder = get_tier_spec("clean").folder_name
-    clean_wav = out_dir / clean_folder / "out_01_modern_jazz_active.wav"
-    assert clean_wav.exists()
-    assert clean_wav.stat().st_size > 0
-
-    std_folder = get_tier_spec("standard").folder_name
-    simulate_backend_targets(
-        tier="standard",
-        voice_id="05_vintage_62_p_alnico",
-        max_samples=2048,
-        output_dir=out_dir,
-    )
-    std_wav = out_dir / std_folder / "out_05_vintage_62_p_alnico.wav"
-    assert std_wav.exists()
-    assert std_wav.stat().st_size > 0
-
-
-def test_target_wet_files_normalization_and_true_peak_clamping_modes(tmp_path: Path):
-    """Validates that Target Wet Files default to normalize='auto' matching input sweep RMS (exact default unity),
-
-    strictly enforcing the calibration sweep peak ceiling (<= 0.9900) so no sample ever clips at full scale (0 dBFS)
-    for Tone3000 compliance.
-    """
-    from allomorph.circuit.simulation import CANONICAL_SWEEP_PATH
-
-    out_dir = tmp_path / "targets"
-    # 1. Default mode: normalize='auto' (matching input sweep RMS for default unity)
-    simulate_backend_targets(
-        tier="clean",
-        voice_id="04_modern_p_ceramic",
-        output_dir=out_dir,
-        max_samples=120000,
-    )
-    clean_folder = get_tier_spec("clean").folder_name
-    wav_norm = out_dir / clean_folder / "out_04_modern_p_ceramic.wav"
-    audio_norm, _ = read_wav(wav_norm)
-    can_audio, _ = read_wav(CANONICAL_SWEEP_PATH)
-    can_audio_slice = can_audio[:120000]
-    norm_rms = float(np.sqrt(np.mean(audio_norm**2)))
-    can_rms = float(np.sqrt(np.mean(can_audio_slice**2)))
-    norm_rms_db = 20.0 * math.log10(norm_rms)
-    can_rms_db = 20.0 * math.log10(can_rms)
-    # Output RMS matches Canonical Intermediate input sweep within 0.05 dB (exact default unity)
-    assert abs(norm_rms_db - can_rms_db) < 0.05
-    # Peak is strictly below full scale (<= 0.9900 ceiling) ensuring Tone3000 accepts without clipping
-    assert float(np.max(np.abs(audio_norm))) <= 0.9905
-
-    # 2. Disabled mode: normalize='none'
-    out_dir_none = tmp_path / "targets_none"
-    simulate_backend_targets(
-        tier="clean",
-        voice_id="04_modern_p_ceramic",
-        output_dir=out_dir_none,
-        max_samples=120000,
-        normalize="none",
-    )
-    wav_none = out_dir_none / clean_folder / "out_04_modern_p_ceramic.wav"
-    audio_none, _ = read_wav(wav_none)
-    peak_none = float(np.max(np.abs(audio_none)))
-    # Calibration sweep peak ceiling strictly bounds output to <= 0.9905
-    assert peak_none <= 0.9905
-
-
-def test_frontend_ir_unnormalized_unity_gain_and_normalization_modes(tmp_path: Path):
-    """Validates that frontend deconvolution IRs default to unnormalized physical unity gain
-
-    (~0 dB fundamental transmission), preventing volume jumps and distortion into Block 2,
-    while also verifying optional peak-normalization and gain trims.
-    """
-    from allomorph.circuit.staging import export_frontend_ir
-
-    test_pickups = [
-        ("30in_emg_mmtw", "mmtw_dual"),  # Active humbucker
-        ("30in_emg_mmtw", "mmtw_single"),  # Active single-coil
-        ("34in_standard_p", "split_p"),  # Passive split coil
-        ("34in_standard_jazz", "bridge"),  # Passive single coil
-    ]
-
-    for inst_id, pkey in test_pickups:
-        # Default unnormalized mode: exact physical unity gain
-        ir_path = export_frontend_ir(inst_id, pkey, output_dir=tmp_path / "unnorm")
-        assert ir_path.exists()
-        fir, sr = read_wav(ir_path)
-        assert sr == 48000
-        assert len(fir) == 2048
-
-        # Unnormalized filter reflects true physical aperture displacement (0.45 to 1.6, [-7 dB, +4 dB])
-        dc_gain = float(np.sum(fir))
-        assert 0.45 <= dc_gain <= 1.60, (
-            f"{inst_id} ({pkey}) unnormalized DC gain ({dc_gain:.4f}) deviated from expected physical bounds"
-        )
-        peak = float(np.max(np.abs(fir)))
-        assert peak <= 0.9901, f"{inst_id} ({pkey}) unnormalized peak ({peak:.4f}) exceeded 0.99"
-
-        # Explicit peak-normalized mode
-        ir_norm_path = export_frontend_ir(inst_id, pkey, output_dir=tmp_path / "norm", normalize=True)
-        fir_norm, _ = read_wav(ir_norm_path)
-        peak_norm = float(np.max(np.abs(fir_norm)))
-        assert 0.985 <= peak_norm <= 0.9901, (
-            f"{inst_id} ({pkey}) normalized peak ({peak_norm:.4f}) did not match expected 0.99"
-        )
-
-    # Test explicit gain trim (-3 dB)
-    ir_trimmed = export_frontend_ir(
-        "30in_emg_mmtw", "mmtw_dual", output_dir=tmp_path / "trim", normalize=True, gain_db=-3.0
-    )
-    fir_trimmed, _ = read_wav(ir_trimmed)
-    peak_trimmed = float(np.max(np.abs(fir_trimmed)))
-    expected_peak = 0.99 * (10.0 ** (-3.0 / 20.0))
-    assert abs(peak_trimmed - expected_peak) < 0.01
-
-
-def test_frontend_wet_wav_generation(tmp_path: Path):
-    """Validates that export_frontend_wet_wav generates compliant 24-bit wet sweeps
-    with '_wet.wav' suffix, matching causal convolution of input dry sweep with deconvolution FIR.
-    """
-    from allomorph.circuit.simulation import CALIBRATION_PEAK_CEILING, find_default_input_audio
-    from allomorph.circuit.staging import (
-        compute_frontend_deconvolution_fir,
-        export_frontend_wet_wav,
-    )
-    from allomorph.dsp import fft_convolve, write_wav_24bit
-
-    dry_path = find_default_input_audio()
-    assert dry_path is not None
-    dry_audio, dry_sr = read_wav(dry_path)
-
-    # Use a 48,000-sample (1.0s) active sweep slice to accelerate test runtime
-    test_dry = dry_audio[1104000:1152000]
-    test_dry_path = tmp_path / "test_dry.wav"
-    write_wav_24bit(str(test_dry_path), test_dry, dry_sr)
-
-    # Also create a scaled input (peak ~0.95) that produces a convolved output > 0.9900
-    # to explicitly verify the proportional calibration ceiling clamp on frontend audio
-    hot_dry = test_dry * 1.8
-    hot_dry_path = tmp_path / "hot_dry.wav"
-    write_wav_24bit(str(hot_dry_path), hot_dry, dry_sr)
-
-    test_pickups = [
-        ("30in_emg_mmtw", "mmtw_dual"),
-        ("30in_emg_mmtw", "mmtw_single"),
-    ]
-
-    # 1. Small-signal linearity verification (<= 0.10 peak)
-    # Bypasses non-linear conditioning to preserve exact mathematical linearity
-    small_dry = test_dry * 0.05
-    small_dry_path = tmp_path / "small_dry.wav"
-    write_wav_24bit(str(small_dry_path), small_dry, dry_sr)
-
-    for inst_id, pkey in test_pickups:
-        wet_small_path = export_frontend_wet_wav(
-            inst_id, pkey, input_wav=small_dry_path, output_dir=tmp_path / "small"
-        )
-        assert wet_small_path.exists()
-        audio_small, sr = read_wav(wet_small_path)
-        fir = compute_frontend_deconvolution_fir(inst_id, pkey, num_taps=2048, normalize=False)
-        expected_small = fft_convolve(small_dry, np.asarray(fir, dtype=np.float64), mode="causal")
-        max_err = float(np.max(np.abs(audio_small - expected_small.astype(np.float32))))
-        assert max_err < 1e-5, f"Small-signal wet WAV deviated from linear convolution: {max_err}"
-
-        # 2. Full-scale Approach A conditioning: slew limiting, soft rail protection, and dither
-        wet_path = export_frontend_wet_wav(
-            inst_id, pkey, input_wav=test_dry_path, output_dir=tmp_path / "wet"
-        )
-        assert wet_path.exists(), f"Frontend wet WAV missing: {wet_path}"
-        assert wet_path.name.endswith("_wet.wav")
-
-        audio_wet, sr = read_wav(wet_path)
-        assert sr == 48000
-        assert len(audio_wet) == len(test_dry)
-        assert float(np.max(np.abs(audio_wet))) <= CALIBRATION_PEAK_CEILING + 1e-6
-
-        # 3. Normalized mode
-        wet_norm_path = export_frontend_wet_wav(
-            inst_id, pkey, input_wav=test_dry_path, output_dir=tmp_path / "norm", normalize=True
-        )
-        audio_norm, _ = read_wav(wet_norm_path)
-        assert abs(float(np.max(np.abs(audio_norm))) - CALIBRATION_PEAK_CEILING) < 1e-4
-
-    # 4. Explicit hot input verification: verify soft-knee rail protection and safety clamp
-    wet_hot_path = export_frontend_wet_wav(
-        "30in_emg_mmtw", "mmtw_dual", input_wav=hot_dry_path, output_dir=tmp_path / "hot"
-    )
-    audio_hot, _ = read_wav(wet_hot_path)
-    assert float(np.max(np.abs(audio_hot))) <= CALIBRATION_PEAK_CEILING + 1e-6
-
-
-
-def test_parseval_spectral_integration_rms_accuracy():
-    """Validates that frequency-domain Parseval RMS integration matches time-domain
-
-    causal convolution within 0.001 dB, while executing in microsecond time.
-    """
-    from allomorph.circuit.staging import _get_reference_rms_sweeps
-    from allomorph.dsp import fft_convolve
-
-    sweeps = _get_reference_rms_sweeps()
-    assert sweeps is not None
-    dry_audio, _can_rms, X, n_fft = sweeps
-
-    # Test with synthetic 2048-tap minimum-phase impulse response
-    rng = np.random.default_rng(42)
-    fir = rng.standard_normal(2048).astype(np.float32) * 0.01
-
-    # Time domain:
-    out_time = fft_convolve(dry_audio, fir, mode="causal")
-    rms_time = float(np.sqrt(np.mean(out_time**2)))
-
-    # Freq domain (Parseval):
-    H = np.fft.rfft(fir, n_fft)
-    Y_sq = np.abs(X * H) ** 2
-    sum_y2 = float((Y_sq[0] + 2.0 * np.sum(Y_sq[1:-1]) + Y_sq[-1]) / n_fft)
-    rms_freq = float(np.sqrt(sum_y2 / len(dry_audio)))
-
-    diff_db = abs(20.0 * math.log10(rms_freq / max(rms_time, 1e-9)))
-    assert diff_db < 0.001, (
-        f"Parseval frequency-domain RMS deviated from time-domain by {diff_db:.4f} dB"
-    )
-
-
-def test_clean_tier_saturation_bypass_and_performance(tmp_path: Path):
-    """Validates that tier='clean' enables saturation bypass and linear stage fusion,
-
-    executing target simulation with low latency without nonlinear ODE overhead.
-    """
+def test_forward_simulation_performance(tmp_path: Path):
+    """Validates that forward simulation executes with low latency (< 5.0s on 5-second calibration sweep)."""
     import time
 
-    from allomorph.circuit.simulation import CANONICAL_SWEEP_PATH
+    from allomorph.circuit.audio import find_default_input_audio
 
-    if CANONICAL_SWEEP_PATH.exists():
-        sweep_in = CANONICAL_SWEEP_PATH
-    else:
-        sweep_in = tmp_path / "canonical_sweep.wav"
-        generate_canonical_sweep(output_wav=sweep_in)
+    sweep_in = find_default_input_audio()
+    assert sweep_in is not None
 
-    out_file = tmp_path / "out_clean_test.wav"
+    # Warmup Numba JIT compiler
+    simulate_instrument_voicing(
+        instrument="34in_standard_p",
+        voicing="precision_vintage",
+        input_wav=sweep_in,
+        output_wav=tmp_path / "warmup.wav",
+        max_samples=1024,
+    )
+
+    out_file = tmp_path / "out_perf_test.wav"
     t0 = time.perf_counter()
-    simulate_voice(
-        voice_id="04_modern_p_ceramic",
+    simulate_instrument_voicing(
+        instrument="34in_standard_p",
+        voicing="precision_vintage",
         input_wav=sweep_in,
         output_wav=out_file,
-        instrument="canonical_intermediate",
-        tier="clean",
-        normalize="none",
+        max_samples=48000 * 5,
     )
     elapsed = time.perf_counter() - t0
 
     assert out_file.exists()
-    # Clean tier with stage fusion runs in ~1.5s on full 700k audio file; must be strictly under 3.5s
-    assert elapsed < 3.5, f"Clean tier took {elapsed:.2f}s (expected < 3.5s with stage fusion)"
-
-
-def test_simulate_backend_targets_jobs_parallelism(tmp_path: Path):
-    """Validates that simulate_backend_targets accepts jobs and dispatches parallel worker processes."""
-    out_dir = tmp_path / "parallel_targets"
-    simulate_backend_targets(
-        tier="clean",
-        voice_id="all",
-        max_samples=2048,
-        jobs=2,
-        output_dir=out_dir,
-    )
-    clean_folder = get_tier_spec("clean").folder_name
-    target_folder = out_dir / clean_folder
-    assert target_folder.exists()
-    wav_files = list(target_folder.glob("out_*.wav"))
-    assert len(wav_files) >= 20
-
+    assert elapsed < 5.0, f"Forward simulation took {elapsed:.2f}s (expected < 5.0s)"

@@ -344,10 +344,12 @@ def generate_pack_svg(model_key: str) -> str:
             "num_strings": 4,
             "hero_scale": 1.35,
             "content": _svg_content(
-                lambda accent: f"""
+                lambda accent: (
+                    f"""
                 {make_pbass_half(520, 458, (strings[0], strings[1]), accent, "BASS E/A")}
                 {make_pbass_half(680, 572, (strings[2], strings[3]), accent, "TREBLE D/G")}
                 """
+                )
             ),
         },
         "jazz": {
@@ -360,10 +362,12 @@ def generate_pack_svg(model_key: str) -> str:
             "num_strings": 4,
             "hero_scale": 1.30,
             "content": _svg_content(
-                lambda accent: f"""
+                lambda accent: (
+                    f"""
                 {make_jbass_pickup(600, 415, strings, accent, w=385, h=78, label="NECK PICKUP")}
                 {make_jbass_pickup(600, 615, strings, accent, w=396, h=78, label="BRIDGE PICKUP")}
                 """
+                )
             ),
         },
         "pj": {
@@ -376,11 +380,13 @@ def generate_pack_svg(model_key: str) -> str:
             "num_strings": 4,
             "hero_scale": 1.25,
             "content": _svg_content(
-                lambda accent: f"""
+                lambda accent: (
+                    f"""
                 {make_pbass_half(520, 388, (strings[0], strings[1]), accent, "P-BASS EA")}
                 {make_pbass_half(680, 502, (strings[2], strings[3]), accent, "P-BASS DG")}
                 {make_jbass_pickup(600, 650, strings, accent, w=396, h=78, label="J-BRIDGE")}
                 """
+                )
             ),
         },
         "mustang": {
@@ -399,11 +405,13 @@ def generate_pack_svg(model_key: str) -> str:
                 </g>
             """,
             "content": _svg_content(
-                lambda accent: f"""
+                lambda accent: (
+                    f"""
                 {make_pbass_half(520, 388, (strings[0], strings[1]), accent, "MUSTANG P-EA")}
                 {make_pbass_half(680, 502, (strings[2], strings[3]), accent, "MUSTANG P-DG")}
                 {make_jbass_pickup(600, 650, strings, accent, w=396, h=78, label="MUSTANG J-BRIDGE")}
                 """
+                )
             ),
         },
         "preamp_soapbar": {
@@ -416,10 +424,12 @@ def generate_pack_svg(model_key: str) -> str:
             "num_strings": 5,
             "hero_scale": 1.24,
             "content": _svg_content(
-                lambda accent: f"""
+                lambda accent: (
+                    f"""
                 {make_soapbar_pickup(600, 415, strings_5, accent, label="NECK SOAPBAR")}
                 {make_soapbar_pickup(600, 615, strings_5, accent, label="BRIDGE SOAPBAR")}
                 """
+                )
             ),
         },
         "active_stingray": {
@@ -432,9 +442,11 @@ def generate_pack_svg(model_key: str) -> str:
             "num_strings": 4,
             "hero_scale": 1.45,
             "content": _svg_content(
-                lambda accent: f"""
+                lambda accent: (
+                    f"""
                 {make_stingray_pickup(600, 515, strings, accent, label="SWEET-SPOT HUMBUCKER")}
                 """
+                )
             ),
         },
         "active_emg": {
@@ -447,10 +459,12 @@ def generate_pack_svg(model_key: str) -> str:
             "num_strings": 5,
             "hero_scale": 1.24,
             "content": _svg_content(
-                lambda accent: f"""
+                lambda accent: (
+                    f"""
                 {make_emg40_pickup(600, 415, strings_5, accent, label="NECK EMG SOAPBAR")}
                 {make_emg40_pickup(600, 615, strings_5, accent, label="BRIDGE EMG SOAPBAR")}
                 """
+                )
             ),
         },
     }

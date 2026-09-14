@@ -25,6 +25,7 @@ name = "34\" Active EMG Bass (Option C Baseline)"
 scale_length_in = 34.0
 scale_length_m = 0.8636
 electronics = "active"
+version = 1
 
 # Extended wave speeds: v = 2 * L * f0 (spans B0=30.87Hz to G2=98.00Hz for 4, 5, and 6-string universal compatibility)
 string_wave_speeds = [53.31, 71.16, 95.00, 126.81, 169.27]
@@ -63,6 +64,17 @@ coils = [
     { strings = ["all"], position_from_bridge_m = 0.12675, aperture_width_in = 0.65, weight = 0.5, pole_type = "blade" }
 ]
 
+[pickups.neck.circuit]
+topology = "single"
+L = 2.0
+Rdc = 4500.0
+Reddy = 72000.0
+Ccoil = 5.1e-10
+vsat = 0.50
+active = true
+preamp = "none"
+Rvol = 25000.0
+
 # ------------------------------------------------------------------------------
 # 2. ACTIVE EMG SOAPBAR (Bridge Solo)
 # ------------------------------------------------------------------------------
@@ -81,6 +93,17 @@ coils = [
     { strings = ["all"], position_from_bridge_m = 0.06325, aperture_width_in = 0.65, weight = 0.5, pole_type = "blade" },
     { strings = ["all"], position_from_bridge_m = 0.04675, aperture_width_in = 0.65, weight = 0.5, pole_type = "blade" }
 ]
+
+[pickups.bridge.circuit]
+topology = "single"
+L = 2.0
+Rdc = 4500.0
+Reddy = 72000.0
+Ccoil = 5.1e-10
+vsat = 0.50
+active = true
+preamp = "none"
+Rvol = 25000.0
 
 # ------------------------------------------------------------------------------
 # 3. ACTIVE EMG SOAPBARS PARALLEL (Center Detent / 50-50 Mix)
@@ -101,32 +124,59 @@ components = [
     { pickup = "bridge", weight = 0.5 }
 ]
 
-# ------------------------------------------------------------------------------
-# 4. SMART VOICE MAPPING
-# ------------------------------------------------------------------------------
-# Directs the player to select the closest physical pickup blend on the EMG Bass:
-#   - Neck Solo: Precision bass voicings, Mudbucker, and Upright acoustic depth
-#   - Bridge Solo: 60s Jazz bridge growl, StingRay bite, and Rickenbacker clank
-#   - Both Parallel: Modern active slap, dual-coil clarity, and hybrid authority
+[pickups.pair_parallel.circuit]
+topology = "parallel"
+active = true
+preamp = "none"
+Rvol = 25000.0
 
+[pickups.pair_parallel.circuit.neck]
+L = 2.0
+Rdc = 4500.0
+Reddy = 72000.0
+Ccoil = 5.1e-10
+vsat = 0.50
+
+[pickups.pair_parallel.circuit.bridge]
+L = 2.0
+Rdc = 4500.0
+Reddy = 72000.0
+Ccoil = 5.1e-10
+vsat = 0.50
+
+# ------------------------------------------------------------------------------
+# 4. NATIVE INSTRUMENT VOICINGS
+# ------------------------------------------------------------------------------
+
+[voicings.pair_parallel]
+version = 1
+name = "Active Dual EMG J Parallel"
+tone_name = "Active EMG Pair"
+pickup = "pair_parallel"
+affinity = "parallel"
+vol_pos = 1.0
+
+[voicings.neck_solo]
+version = 1
+name = "Active Solo EMG J Neck"
+tone_name = "Active EMG Neck"
+pickup = "neck"
+affinity = "neck"
+vol_pos = 1.0
+
+[voicings.bridge_solo]
+version = 1
+name = "Active Solo EMG J Bridge"
+tone_name = "Active EMG Bridge"
+pickup = "bridge"
+affinity = "bridge"
+vol_pos = 1.0
+
+# ------------------------------------------------------------------------------
+# 5. PICKUP AFFINITY ROUTING
+# ------------------------------------------------------------------------------
 [pickup_mapping]
-"01_modern_jazz_active" = "pair_parallel"
-"02_jazz_bass_pair" = "pair_parallel"
-"02b_jazz_bass_pair_22nf" = "pair_parallel"
-"02c_jazz_bridge_growl_bias" = "bridge"
-"03_jazz_bridge_60s" = "bridge"
-"04_modern_p_ceramic" = "neck"
-"05_vintage_62_p_alnico" = "neck"
-"05b_vintage_62_p_22nf" = "neck"
-"05c_vintage_62_p_47nf" = "neck"
-"05d_vintage_50s_p_100nf" = "neck"
-"07_modern_pj_active" = "pair_parallel"
-"08_vintage_pj_passive" = "pair_parallel"
-"09_stingray_mm_parallel" = "bridge"
-"09b_stingray_mm_series" = "bridge"
-"10_rickenbacker_bridge_hpf" = "bridge"
-"11_modern_pmm_active" = "pair_parallel"
-"11b_pmm_hybrid_series" = "pair_parallel"
-"12_mudbucker_ultra_series" = "neck"
-"13_dingwall_multiscale_bridge" = "bridge"
-"14_upright_bridge_transducer" = "neck"
+neck = "neck"
+bridge = "bridge"
+parallel = "pair_parallel"
+direct = "pair_parallel"

@@ -19,13 +19,13 @@ def test_30in_mmtw_routing():
     assert "mmtw_single" in inst.pickups
 
     # 60s Jazz Bridge should route to single-coil mode
-    j_pickup = get_source_pickup(inst, "03_jazz_bridge_60s")
+    j_pickup = get_source_pickup(inst, "jazz_bridge_open")
     assert j_pickup.name == "EMG MMTW Single-Coil (Bridge Coil)"
     assert j_pickup.position_from_bridge_m is not None
     assert math.isclose(j_pickup.position_from_bridge_m, 0.06607, abs_tol=1e-4)
 
     # StingRay should route to dual-coil mode
-    mm_pickup = get_source_pickup(inst, "09_stingray_mm_parallel")
+    mm_pickup = get_source_pickup(inst, "stingray_parallel")
     assert mm_pickup.name == "EMG MMTW Dual-Coil (Centerline)"
     assert mm_pickup.position_from_bridge_m is not None
     assert math.isclose(mm_pickup.position_from_bridge_m, 0.0775, abs_tol=1e-4)
@@ -36,7 +36,7 @@ def test_30in_mmtw_routing():
 def test_30in_mm_legacy_routing():
     inst = load_instrument("30in_emg_mm")
     assert inst.id == "30in_emg_mmtw"
-    pickup = get_source_pickup(inst, "09_stingray_mm_parallel")
+    pickup = get_source_pickup(inst, "stingray_parallel")
     assert pickup.name == "EMG MMTW Dual-Coil (Centerline)"
     assert pickup.position_from_bridge_m is not None
     assert math.isclose(pickup.position_from_bridge_m, 0.0775, abs_tol=1e-4)
@@ -49,25 +49,25 @@ def test_32in_custom_pmm_routing():
     assert inst.id == "32in_custom_pmm"
 
     # P-Bass voices route to neck PX split-coil
-    p_pickup = get_source_pickup(inst, "04_modern_p_ceramic")
+    p_pickup = get_source_pickup(inst, "precision_active")
     assert p_pickup.name == "Reverse EMG PX Split-Coil (Neck)"
     assert p_pickup.position_from_bridge_m is not None
     assert math.isclose(p_pickup.position_from_bridge_m, 0.1228, abs_tol=1e-4)
 
     # 60s Jazz Bridge routes to bridge single coil
-    j_pickup = get_source_pickup(inst, "03_jazz_bridge_60s")
+    j_pickup = get_source_pickup(inst, "jazz_bridge_open")
     assert j_pickup.name == "EMG MMTWX Single-Coil (Bridge)"
     assert j_pickup.position_from_bridge_m is not None
     assert math.isclose(j_pickup.position_from_bridge_m, 0.0508, abs_tol=1e-4)
 
     # StingRay MM routes to dual coil centerline
-    mm_pickup = get_source_pickup(inst, "09_stingray_mm_parallel")
+    mm_pickup = get_source_pickup(inst, "stingray_parallel")
     assert mm_pickup.name == "EMG MMTWX Dual-Coil (Centerline)"
     assert mm_pickup.position_from_bridge_m is not None
     assert math.isclose(mm_pickup.position_from_bridge_m, 0.0622, abs_tol=1e-4)
 
     # P/J hybrid routes to parallel P/J pair (Reverse PX + MMTWX single-coil)
-    pj_pickup = get_source_pickup(inst, "07_modern_pj_active")
+    pj_pickup = get_source_pickup(inst, "pj_active")
     assert pj_pickup.name == "EMG PX + MMTWX Single Parallel (P/J Mode)"
     assert pj_pickup.type == "composite"
     assert pj_pickup.components is not None
@@ -78,18 +78,18 @@ def test_32in_custom_pmm_routing():
     assert math.isclose(pj_pickup.position_from_bridge_m, 0.0868, abs_tol=1e-4)
 
     # P/MM series & active voices route to physical parallel center detent blend
-    pmm_pickup = get_source_pickup(inst, "11_pmm_hybrid_series")
+    pmm_pickup = get_source_pickup(inst, "p_mm_series")
     assert pmm_pickup.name == "EMG PX + MMTWX Parallel (P/MM Mode)"
     assert pmm_pickup.position_from_bridge_m is not None
     assert math.isclose(pmm_pickup.position_from_bridge_m, 0.0868, abs_tol=1e-4)
 
-    pmm_act_pickup = get_source_pickup(inst, "11_modern_pmm_active")
+    pmm_act_pickup = get_source_pickup(inst, "p_mm_parallel")
     assert pmm_act_pickup.name == "EMG PX + MMTWX Parallel (P/MM Mode)"
     assert pmm_act_pickup.position_from_bridge_m is not None
     assert math.isclose(pmm_act_pickup.position_from_bridge_m, 0.0868, abs_tol=1e-4)
 
     # Mudbucker routes to neck PX
-    mud_pickup = get_source_pickup(inst, "12_mudbucker_ultra_series")
+    mud_pickup = get_source_pickup(inst, "mudbucker_deep")
     assert mud_pickup.name == "Reverse EMG PX Split-Coil (Neck)"
     assert mud_pickup.position_from_bridge_m is not None
     assert math.isclose(mud_pickup.position_from_bridge_m, 0.1228, abs_tol=1e-4)
@@ -118,7 +118,7 @@ def test_32in_fretless_pmm_routing():
     assert math.isclose(pcsx.coils[1].position_from_bridge_m, 0.1264, abs_tol=1e-4)
 
     # Upright voice routes to solo reverse PCSX neck split-coil (100%)
-    up_pickup = get_source_pickup(inst, "14_upright_bridge_transducer")
+    up_pickup = get_source_pickup(inst, "upright_acoustic")
     assert up_pickup.name == "Reverse EMG PCSX Split-Coil (Neck)"
     assert up_pickup.type == "split_coil"
 
@@ -167,25 +167,25 @@ def test_34in_standard_pj_routing():
     assert load_instrument("34in_pj").id == "34in_standard_pj"
 
     # Routing checks: P voices
-    assert get_source_pickup(inst, "04_modern_p_ceramic").id == "p"
-    assert get_source_pickup(inst, "05_vintage_62_p_alnico").id == "p"
-    assert get_source_pickup(inst, "05c_vintage_62_p_47nf").id == "p"
-    assert get_source_pickup(inst, "12_mudbucker_ultra_series").id == "p"
-    assert get_source_pickup(inst, "14_upright_bridge_transducer").id == "p"
+    assert get_source_pickup(inst, "precision_active").id == "p"
+    assert get_source_pickup(inst, "precision_vintage").id == "p"
+    assert get_source_pickup(inst, "precision_warm").id == "p"
+    assert get_source_pickup(inst, "mudbucker_deep").id == "p"
+    assert get_source_pickup(inst, "upright_acoustic").id == "p"
 
     # Routing checks: Bridge voices
-    assert get_source_pickup(inst, "03_jazz_bridge_60s").id == "j"
-    assert get_source_pickup(inst, "09_stingray_mm_parallel").id == "j"
-    assert get_source_pickup(inst, "10_rickenbacker_bridge_hpf").id == "j"
-    assert get_source_pickup(inst, "13_dingwall_multiscale_bridge").id == "j"
+    assert get_source_pickup(inst, "jazz_bridge_open").id == "j"
+    assert get_source_pickup(inst, "stingray_parallel").id == "j"
+    assert get_source_pickup(inst, "rickenbacker_clank").id == "j"
+    assert get_source_pickup(inst, "dingwall_bridge").id == "j"
 
     # Routing checks: Parallel pair voices
-    assert get_source_pickup(inst, "01_modern_jazz_active").id == "pair_parallel"
-    assert get_source_pickup(inst, "02_jazz_bass_pair").id == "pair_parallel"
-    assert get_source_pickup(inst, "07_modern_pj_active").id == "pair_parallel"
-    assert get_source_pickup(inst, "08_vintage_pj_passive").id == "pair_parallel"
-    assert get_source_pickup(inst, "11_pmm_hybrid_series").id == "pair_parallel"
-    assert get_source_pickup(inst, "11_modern_pmm_active").id == "pair_parallel"
+    assert get_source_pickup(inst, "jazz_pair_active").id == "pair_parallel"
+    assert get_source_pickup(inst, "jazz_pair_open").id == "pair_parallel"
+    assert get_source_pickup(inst, "pj_active").id == "pair_parallel"
+    assert get_source_pickup(inst, "pj_passive").id == "pair_parallel"
+    assert get_source_pickup(inst, "p_mm_series").id == "pair_parallel"
+    assert get_source_pickup(inst, "p_mm_parallel").id == "pair_parallel"
 
 
 def test_34in_active_stingray_routing():
@@ -269,30 +269,31 @@ def test_34in_preamp_soapbar_routing():
 
     # Removed backward compatibility aliases must raise FileNotFoundError
     import pytest
+
     with pytest.raises(FileNotFoundError):
         load_instrument("active_soapbar")
     with pytest.raises(FileNotFoundError):
         load_instrument("soapbar")
 
     # P voices route to neck soapbar
-    assert get_source_pickup(inst, "04_modern_p_ceramic").id == "neck"
-    assert get_source_pickup(inst, "05_vintage_62_p_alnico").id == "neck"
-    assert get_source_pickup(inst, "12_mudbucker_ultra_series").id == "neck"
-    assert get_source_pickup(inst, "14_upright_bridge_transducer").id == "neck"
+    assert get_source_pickup(inst, "precision_active").id == "neck"
+    assert get_source_pickup(inst, "precision_vintage").id == "neck"
+    assert get_source_pickup(inst, "mudbucker_deep").id == "neck"
+    assert get_source_pickup(inst, "upright_acoustic").id == "neck"
 
     # Bridge voices route to bridge soapbar
-    assert get_source_pickup(inst, "03_jazz_bridge_60s").id == "bridge"
-    assert get_source_pickup(inst, "09_stingray_mm_parallel").id == "bridge"
-    assert get_source_pickup(inst, "10_rickenbacker_bridge_hpf").id == "bridge"
-    assert get_source_pickup(inst, "13_dingwall_multiscale_bridge").id == "bridge"
+    assert get_source_pickup(inst, "jazz_bridge_open").id == "bridge"
+    assert get_source_pickup(inst, "stingray_parallel").id == "bridge"
+    assert get_source_pickup(inst, "rickenbacker_clank").id == "bridge"
+    assert get_source_pickup(inst, "dingwall_bridge").id == "bridge"
 
     # Parallel voices route to pair_parallel
-    assert get_source_pickup(inst, "01_modern_jazz_active").id == "pair_parallel"
-    assert get_source_pickup(inst, "02_jazz_bass_pair").id == "pair_parallel"
-    assert get_source_pickup(inst, "07_modern_pj_active").id == "pair_parallel"
-    assert get_source_pickup(inst, "08_vintage_pj_passive").id == "pair_parallel"
-    assert get_source_pickup(inst, "11_pmm_hybrid_series").id == "pair_parallel"
-    assert get_source_pickup(inst, "11_modern_pmm_active").id == "pair_parallel"
+    assert get_source_pickup(inst, "jazz_pair_active").id == "pair_parallel"
+    assert get_source_pickup(inst, "jazz_pair_open").id == "pair_parallel"
+    assert get_source_pickup(inst, "pj_active").id == "pair_parallel"
+    assert get_source_pickup(inst, "pj_passive").id == "pair_parallel"
+    assert get_source_pickup(inst, "p_mm_series").id == "pair_parallel"
+    assert get_source_pickup(inst, "p_mm_parallel").id == "pair_parallel"
 
 
 def test_30in_mustang_pj_routing():
@@ -324,9 +325,9 @@ def test_30in_mustang_pj_routing():
     assert load_instrument("mustang_pj").id == "30in_mustang_pj"
 
     # Smart voice routing
-    assert get_source_pickup(inst, "05_vintage_62_p_alnico").id == "p"
-    assert get_source_pickup(inst, "03_jazz_bridge_60s").id == "j"
-    assert get_source_pickup(inst, "02_jazz_bass_pair").id == "pair_parallel"
+    assert get_source_pickup(inst, "precision_vintage").id == "p"
+    assert get_source_pickup(inst, "jazz_bridge_open").id == "j"
+    assert get_source_pickup(inst, "jazz_pair_open").id == "pair_parallel"
 
 
 def test_37in_multiscale_dingwall_routing():
@@ -365,9 +366,9 @@ def test_37in_multiscale_dingwall_routing():
     assert inst.scale_max_in == 37.0
 
     # Voice 13 maps to bridge
-    assert get_source_pickup(inst, "13_dingwall_multiscale_bridge").id == "bridge"
-    assert get_source_pickup(inst, "05_vintage_62_p_alnico").id == "middle"
-    assert get_source_pickup(inst, "01_modern_jazz_active").id == "pair_parallel"
+    assert get_source_pickup(inst, "dingwall_bridge").id == "bridge"
+    assert get_source_pickup(inst, "precision_vintage").id == "middle"
+    assert get_source_pickup(inst, "jazz_pair_active").id == "pair_parallel"
 
 
 def test_34in_dingwall_sp1_routing():
@@ -407,6 +408,6 @@ def test_34in_dingwall_sp1_routing():
     assert load_instrument("dingwall_super_p").id == "34in_dingwall_sp1"
 
     # Routing
-    assert get_source_pickup(inst, "05_vintage_62_p_alnico").id == "p"
-    assert get_source_pickup(inst, "03_jazz_bridge_60s").id == "bridge"
-    assert get_source_pickup(inst, "08_vintage_pj_passive").id == "pair_parallel"
+    assert get_source_pickup(inst, "precision_vintage").id == "p"
+    assert get_source_pickup(inst, "jazz_bridge_open").id == "bridge"
+    assert get_source_pickup(inst, "pj_passive").id == "pair_parallel"

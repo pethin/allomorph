@@ -105,13 +105,13 @@ For players prioritizing **pure software decoupling with zero cognitive overhead
 * **Hum-Canceling Common-Mode Rejection:** Stacked dummy coil or reverse split bobbins ensure 100% hum-free performance.
 * **Ceramic/Alnico X-Series Preamp @ 18V:** Ultra-wide linear bandwidth, near-zero core saturation, and $>8.5\text{V}_{\text{p-p}}$ dynamic headroom with low $2\text{ k}\Omega$ output impedance (immune to cable loading).
 
-#### 3. Lutherie Datums: The $93.5\text{ mm}$ ($3.68''$) Canonical Intermediate Datum
-On a 34.0" scale length ($863.6\text{ mm}$), **$93.5\text{ mm}$** is the exact mathematical median between a 60s Jazz Bridge ($63.5\text{ mm}$) and a standard Precision Bass ($125.0\text{ mm}$), and serves as Allomorph's **Canonical Intermediate reference datum** ($\eta_{\text{datum}} = 10.83\%$):
+#### 3. Lutherie Datums: The $93.5\text{ mm}$ ($3.68''$) Geometric Reference Datum
+On a 34.0" scale length ($863.6\text{ mm}$), **$93.5\text{ mm}$** is the exact mathematical median between a 60s Jazz Bridge ($63.5\text{ mm}$) and a standard Precision Bass ($125.0\text{ mm}$), and serves as Allomorph's **universal geometric reference datum** ($\eta_{\text{datum}} = 10.83\%$):
 
 $$\bar{x} = \frac{63.5\text{ mm} + 125.0\text{ mm}}{2} = 94.25\text{ mm} \approx \mathbf{93.5\text{ mm}}$$
 
-* **Exact $0.00\text{ dB}$ Spatial Tilt to Canonical Baseline:** Because the physical pickup sits directly on the datum, deconvolution into Stage 3 requires zero spatial shelving tilt ($\Delta\eta = 0.000$).
-* **Symmetric Filter Bounds:** Every voice in the 23-voice catalog is reachable within $\pm 3.7\text{ dB}$ of spatial shelving tilt, never exceeding the $+8.0\text{ dB}$ Wiener soft-knee boost ceiling.
+* **Exact Spatial Center:** Sits halfway between classic bridge growl and neck thump.
+* **Symmetric Filter Bounds:** Every voice in the target voice catalog is reachable within $\pm 3.7\text{ dB}$ of spatial shelving tilt, never exceeding the $+8.0\text{ dB}$ Wiener soft-knee boost ceiling.
 
 #### 4. Disadvantages & Trade-offs Relative to Real Harmonic Sampling
 While operationally foolproof, the single-pickup design introduces distinct acoustic and physical compromises:
@@ -175,35 +175,40 @@ Allomorph converts the lower tension and warm low-mid "bloom" of **30" short-sca
 
 ---
 
-### Target Voice Catalog (21 Master Configurations & Acoustic Transducers)
+#### Target Voice Catalog (24 Master Voicings & Transducers)
 
-Allomorph includes pre-configured physical and electrical parameters for **21 distinct pickup topologies, active buffers, and transducers** including active 2-band preamps, Stellartone ToneStyler discrete capacitive switching, fanned-fret multi-scale, and upright double bass (see [`docs/voice_catalog.md`](file:///Users/peter/Projects/pethin/passivizer/docs/voice_catalog.md) for full engineering specifications):
+Allomorph includes pre-configured physical and electrical parameters for **24 distinct pickup topologies, active buffers, and transducers** including active 2-band preamps, Stellartone ToneStyler discrete capacitive switching, fanned-fret multi-scale, and upright double bass (see [`docs/voice_catalog.md`](docs/voice_catalog.md) for full engineering specifications):
 
-| # | Profile ID | Pickup Type | Topology | Harness / Controls | $L_{\text{eq}}$ | $f_r$ (Peak) | Circuit & Acoustic Character |
-| :- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| **01** | `01_modern_jazz_active` | Modern Active Jazz | Active 2-Band | Sadowsky 2-Band ($R_{\text{in}}=1\text{M}\Omega, R_{\text{out}}=100\,\Omega$) | $1.69\text{ H}$ (isolated) | $7.8\text{ kHz}$ | Isolated 60s J-pair with Sadowsky active 2-band boost; wideband sparkle with $+4\text{ dB}$ bass/treble. |
-| **02** | `02_jazz_bass_pair` | Vintage 60s J-Bass Pair | Dual Parallel | Vintage $2\times 250\text{k}\Omega$ Vol ($125\text{k}\Omega$ net), $250\text{k}\Omega$ Tone, $47\text{nF}$ | $1.69\text{ H}$ | $2.7\text{ kHz}$ | Dual narrow single-coils in parallel; 60s $92.1\text{ mm}$ ($3\frac{5}{8}''$) aperture scoop with woody resonance. |
-| **02b**| `02b_jazz_bass_pair_22nf`| 60s J-Bass Pair (22nF) | Dual Parallel | Vintage $2\times 250\text{k}\Omega$ Vol, 22nF ToneStyler Pure Shunt ($R_{\text{tone}}=3.3\,\Omega$) | $1.69\text{ H}$ | $762\text{ Hz}$ | Vocal midrange honk ($762\text{ Hz}$ peak, $-3\text{ dB}$ at $1225\text{ Hz}$); pure capacitive shunt preserves Jaco bridge growl with zero wiper mud. |
-| **02c**| `02c_jazz_bridge_growl_bias`| Jaco Biased J-Pair (100%/75%) | Dual Parallel Decoupled | Bridge 100% ($0\,\Omega$), Neck 75% ($55\text{k}\Omega$ wiper decoupling), $250\text{k}\Omega$ Tone | $1.69\text{ H}$ | $3.4\text{ kHz}$ | Signature Jaco Pastorius vocal bridge growl; $55\text{k}\Omega$ neck decoupling shifts notch to $550\text{--}800\text{ Hz}$ with $3.4\text{ kHz}$ bite. |
-| **03** | `03_jazz_bridge_60s` | 60s J-Bass Bridge | Single Coil | Vintage $250\text{k}\Omega$ Vol, $250\text{k}\Omega$ Tone, $47\text{nF}$ | $3.60\text{ H}$ | $2.8\text{ kHz}$ | 60s bridge single-coil ($63.5\text{ mm}$ datum); focused midrange bite, authentic Jaco growl. |
-| **04** | `04_modern_p_ceramic` | Modern Split P | Single Split | Boutique $500\text{k}\Omega$ Vol/Tone, $22\text{nF}$ Cap, Treble Bleed | $4.80\text{ H}$ | $2.4\text{ kHz}$ | Modern ceramic split-coil (Bartolini 8CBP); punchy attack with extended clarity from 500k harness. |
-| **05** | `05_vintage_62_p_alnico` | Vintage '62 P (Tone Open)| Single Split | Vintage CTS $250\text{k}\Omega$ Vol/Tone Open, $47\text{nF}$ PIO Cap | $3.80\text{ H}$ | $2.1\text{ kHz}$ | Classic Alnico V split-coil wide open; touch-sensitive dynamic response, woody organic bloom ($4.0\text{ kHz}$ cutoff). |
-| **05b**| `05b_vintage_62_p_22nf` | Vintage '62 P (22nF) | Single Split | 22nF ToneStyler Pure Shunt ($R_{\text{tone}}=3.3\,\Omega$) | $3.80\text{ H}$ | $440\text{ Hz}$ | Modern Fender spec; punchy $440\text{ Hz}$ low-mid resonant focus (+1.5 dB), $-3\text{ dB}$ cutoff at $750\text{ Hz}$. |
-| **05c**| `05c_vintage_62_p_47nf` | Vintage '62 P (47nF) | Single Split | 47nF ToneStyler Pure Shunt ($R_{\text{tone}}=3.3\,\Omega$), Flatwound Heavy | $3.80\text{ H}$ | $450\text{ Hz}$ | Authentic Jamerson Motown flatwound thump; 47nF ToneStyler pure capacitive shunt with pillowy low-end warmth. |
-| **05d**| `05d_vintage_50s_p_100nf`| Vintage '50s P (100nF) | Single Split | 100nF ToneStyler Pure Shunt ($R_{\text{tone}}=3.3\,\Omega$) | $3.80\text{ H}$ | Sub-bass | Original 1951–1959 Fullerton factory paper-in-oil spec; massive sub-bass shelf rolloff ($-3\text{ dB}$ at $240\text{ Hz}$, deep Motown / reggae dub thump). |
-| **07** | `07_modern_pj_active` | Modern Active P/J | Active 2-Band | Sadowsky/Spector 2-Band ($R_{\text{in}}=1\text{M}\Omega, R_{\text{out}}=100\,\Omega$) | $2.06\text{ H}$ (isolated) | $7.6\text{ kHz}$ | Active 2-band boost with isolated ceramic P/J coils; punchy sub-bass fundamental, wideband sparkle, and aggressive clank. |
-| **08** | `08_vintage_pj_passive` | Vintage '80s Passive P/J | Parallel Sum | Dual $250\text{k}\Omega$ Vol ($125\text{k}\Omega$ net), $250\text{k}\Omega$ Tone, $47\text{nF}$ | $1.85\text{ H}$ | $2.8\text{ kHz}$ | Vintage Alnico V split-P and 60s J-bridge in parallel; authentic '80s Fender Special / Yamaha BB thump with woody mid-punch. |
-| **09** | `09_stingray_mm_parallel` | Music Man StingRay | Active MM Buffer | Music Man 2-Band ($R_{\text{in}}=1\text{M}\Omega, R_{\text{out}}=100\,\Omega$) | $1.20\text{ H}$ (isolated) | $8.5\text{ kHz}$ | Authentic active 2-band MM humbucker; cable isolation, comb notch at $2.5\text{ kHz}$, metallic clank. |
-| **09b**| `09b_stingray_mm_series` | Music Man MM (Series) | Active Series Buffer | Music Man 2-Band Preamp Buffer | $4.80\text{ H}$ (isolated) | $4.1\text{ kHz}$ | Dual-coil humbucker in series with active buffer; $+5.6\text{ dB}$ series EMF surge and focused $4.1\text{ kHz}$ active resonance. |
-| **10** | `10_rickenbacker_bridge_hpf` | High-Pass Bridge | Series HPF | Factory Rickenbacker $330\text{k}\Omega$ Vol/Tone, $4.7\text{nF}$ Series Cap | $3.80\text{ H}$ | $2.2\text{ kHz}$ | High-output bridge coil with vintage $4.7\text{ nF}$ series capacitor; tight high-pass cut below $150\text{ Hz}$. |
-| **11** | `11_modern_pmm_active` | Modern Active P/MM | Active Buffer | Studio Active Buffer ($R_{\text{in}}=1\text{M}\Omega, R_{\text{out}}=100\,\Omega$) | $0.96\text{ H}$ (isolated) | $3.4\text{ kHz}$ | Authentic active parallel P/MM (Sandberg VM / Lakland 44-02); Split-P neck + MM parallel bridge into buffer; slap punch and growl. |
-| **11b**| `11b_pmm_hybrid_series` | Modern Active P/MM (Series) | Active Series Buffer | Studio Active Buffer ($R_{\text{in}}=1\text{M}\Omega, R_{\text{out}}=100\,\Omega$) | $8.40\text{ H}$ (isolated) | $3.2\text{ kHz}$ | Split P and MM parallel humbucker wired in series before active buffer; $+5.8\text{ dB}$ inductive boost with zero cable drag. |
-| **12** | `12_mudbucker_ultra_series` | Heavy Series MM | Ultra Series | Gibson $500\text{k}\Omega$ Vol/Tone, $22\text{nF}$ Cap | $14.40\text{ H}$| $1.2\text{ kHz}$ | Overwound dual-coil series humbucker; subterranean low end with natural high-frequency rolloff. |
-| **13** | `13_dingwall_multiscale_bridge` | Multi-Scale MM | Angled Parallel | Dingwall Active Onboard Buffer ($R_{\text{in}}=1\text{M}\Omega, R_{\text{out}}=100\,\Omega$) | $2.30\text{ H}$ (isolated)| $7.3\text{ kHz}$ | 34"-37" fanned-fret angled bridge sweet spot ($48.0\text{ mm}$) with active buffer and stainless clank. |
-| **14** | `14_upright_bridge_transducer` | Upright Transducer | Bridge Force | Direct $100\text{ M}\Omega$ Buffer, $15\text{ nF}$ Subsonic Cap | — | $4.5\text{ kHz}$ | Direct bridge force sensor (Underwood / Realist style); leaky integration, 32 Hz rumble cut, bridge compliance. Recommended with 3 Sigma AST IRs in cab block. |
-| **15** | `15_neutral_character` | Neutral Character (Dynamic DI)| Character (Neutral) | Transparent Studio Buffer ($10\text{ M}\Omega \to 50\,\Omega$) | $0.00\text{ H}$ | Wideband | Preserves physical aperture and imparts only tier character (transparent bypass in Clean, organic Alnico V feel in Dynamic, overwound punch in Hot Rod). |
-| **15b**| `15b_active_character` | Active Character (Active Buffer)| Character (Active) | Studio Ultra-High-Z Buffer ($10\text{ M}\Omega \to 50\,\Omega$) | $3.20\text{ H}$ (isolated) | $5.2\text{ kHz}$ | Removes passive cable loading ($750\text{ pF}$) and pot damping to restore wideband hi-fi sparkle and headroom; preserves natural pickup aperture while stacking with tier dynamics. |
-| **15c**| `15c_passive_character` | Passive Character (Passive Loading)| Character (Passive) | Standard Passive Harness ($250\text{k}\Omega\text{ Vol/Tone}, 47\text{nF}, 750\text{pF}$) | $4.20\text{ H}$ | $2.8\text{ kHz}$ | Adds high-impedance passive character, resonant peak ($2.8\text{ kHz}$), $750\text{ pF}$ cable loading, and $250\text{k}\Omega$ pot damping to active basses or stacks passive tone; preserves natural aperture. |
+| Profile ID | Tone Name | Pickup Type | Topology | Harness / Controls | $L_{\text{eq}}$ | $f_r$ (Peak) | Circuit & Acoustic Character |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| `precision_vintage` | Precision Vintage | Vintage '62 P | Single Split | Vintage CTS $250\text{k}\Omega$ Vol/Tone Open, $47\text{nF}$ PIO Cap | $3.80\text{ H}$ | $2.1\text{ kHz}$ | Classic Alnico V split-coil wide open; touch-sensitive dynamic response, woody organic bloom. |
+| `precision_mids` | Precision Mids | Vintage '62 P (22nF) | Single Split | 22nF ToneStyler Pure Shunt ($R_{\text{tone}}=3.3\,\Omega$) | $3.80\text{ H}$ | $440\text{ Hz}$ | Modern Fender spec; punchy $440\text{ Hz}$ low-mid resonant focus (+1.5 dB), $-3\text{ dB}$ cutoff at $750\text{ Hz}$. |
+| `precision_warm` | Precision Warm | Vintage '62 P (47nF) | Single Split | 47nF ToneStyler Pure Shunt ($R_{\text{tone}}=3.3\,\Omega$), Flatwound Heavy | $3.80\text{ H}$ | $450\text{ Hz}$ | Authentic Jamerson Motown flatwound thump; 47nF pure capacitive shunt with pillowy low-end warmth. |
+| `precision_active` | Precision Active | Modern Active Split P | Single Split | Sadowsky 2-Band Active Preamp ($R_{\text{in}}=1\text{M}\Omega, R_{\text{out}}=100\,\Omega$), $500\text{k}\Omega$ Vol | $4.80\text{ H}$ (isolated) | $4.8\text{ kHz}$ | Ceramic split-coil with active 2-band buffer; transparent punch, pick attack clarity, and wide headroom. |
+| `precision_dub` | Precision Dub | Vintage '50s P (100nF) | Single Split | 100nF ToneStyler Pure Shunt ($R_{\text{tone}}=3.3\,\Omega$) | $3.80\text{ H}$ | Sub-bass | Original 1951–1959 Fullerton factory paper-in-oil spec; massive sub-bass shelf rolloff ($-3\text{ dB}$ at $240\text{ Hz}$). |
+| `jazz_pair_open` | Jazz Pair Open | Vintage 60s J-Bass Pair | Dual Parallel | Vintage $2\times 250\text{k}\Omega$ Vol ($125\text{k}\Omega$ net), $250\text{k}\Omega$ Tone, $47\text{nF}$ | $1.69\text{ H}$ | $2.7\text{ kHz}$ | Dual narrow single-coils in parallel; 60s $92.1\text{ mm}$ aperture scoop with woody resonance. |
+| `jazz_pair_mids` | Jazz Pair Mids | 60s J-Bass Pair (22nF) | Dual Parallel | Vintage $2\times 250\text{k}\Omega$ Vol, 22nF ToneStyler Pure Shunt ($R_{\text{tone}}=3.3\,\Omega$) | $1.69\text{ H}$ | $762\text{ Hz}$ | Vocal midrange honk ($762\text{ Hz}$ peak, $-3\text{ dB}$ at $1225\text{ Hz}$); pure capacitive shunt preserves Jaco bridge growl. |
+| `jazz_pair_active` | Jazz Pair Active | Modern Active Jazz | Active 2-Band | Sadowsky 2-Band ($R_{\text{in}}=1\text{M}\Omega, R_{\text{out}}=100\,\Omega$) | $1.69\text{ H}$ | $7.8\text{ kHz}$ | Isolated 60s J-pair with Sadowsky active 2-band boost; wideband sparkle with $+4\text{ dB}$ bass/treble. |
+| `jazz_bridge_growl`| Jazz Bridge Growl | Jaco Biased J-Pair (100%/75%) | Dual Parallel Decoupled | Bridge 100% ($0\,\Omega$), Neck 75% ($55\text{k}\Omega$ wiper decoupling), $250\text{k}\Omega$ Tone | $1.69\text{ H}$ | $3.4\text{ kHz}$ | Signature Jaco Pastorius vocal bridge growl; $55\text{k}\Omega$ neck decoupling shifts notch to $550\text{--}800\text{ Hz}$. |
+| `jazz_bridge_open` | Jazz Bridge Open | 60s J-Bass Bridge | Single Coil | Vintage $250\text{k}\Omega$ Vol, $250\text{k}\Omega$ Tone, $47\text{nF}$ | $3.60\text{ H}$ | $2.8\text{ kHz}$ | 60s bridge single-coil ($63.5\text{ mm}$ datum); focused midrange bite, authentic Jaco growl. |
+| `jazz_neck_warm` | Jazz Neck Warm | 60s J-Bass Neck | Single Coil | Vintage $250\text{k}\Omega$ Vol, $250\text{k}\Omega$ Tone, $47\text{nF}$ | $3.40\text{ H}$ | $2.9\text{ kHz}$ | 60s neck single-coil ($155.6\text{ mm}$ datum); warm, woody round fundamental with vintage clarity. |
+| `stingray_parallel`| StingRay Parallel | Music Man StingRay | Active MM Buffer | Music Man 2-Band ($R_{\text{in}}=1\text{M}\Omega, R_{\text{out}}=100\,\Omega$) | $1.20\text{ H}$ | $8.5\text{ kHz}$ | Authentic active 2-band MM humbucker; cable isolation, comb notch at $2.5\text{ kHz}$, metallic clank. |
+| `stingray_series` | StingRay Series | Music Man MM (Series) | Active Series Buffer | Music Man 2-Band Preamp Buffer | $4.80\text{ H}$ | $4.1\text{ kHz}$ | Dual-coil humbucker in series with active buffer; $+5.6\text{ dB}$ series EMF surge and focused active resonance. |
+| `stingray_active` | StingRay Active | Music Man MM (Active Slap) | Active Buffer | Studio Active Buffer ($R_{\text{in}}=1\text{M}\Omega, R_{\text{out}}=100\,\Omega$) | $1.20\text{ H}$ | $8.5\text{ kHz}$ | Wideband hi-fi StingRay buffer response; punchy slap transient attack with cable isolation. |
+| `dingwall_bridge` | Dingwall Bridge | Multi-Scale MM Bridge | Angled Parallel | Dingwall Active Onboard Buffer ($R_{\text{in}}=1\text{M}\Omega, R_{\text{out}}=100\,\Omega$) | $2.30\text{ H}$ | $7.3\text{ kHz}$ | 34"-37" fanned-fret angled bridge sweet spot ($48.0\text{ mm}$) with active buffer and stainless clank. |
+| `dingwall_middle` | Dingwall Middle | Multi-Scale MM Middle | Angled Parallel | Dingwall Active Onboard Buffer ($R_{\text{in}}=1\text{M}\Omega, R_{\text{out}}=100\,\Omega$) | $2.30\text{ H}$ | $6.8\text{ kHz}$ | 34"-37" fanned-fret angled middle sweet spot ($87.8\text{ mm}$); punchy low-mid bloom with high tension. |
+| `dingwall_parallel`| Dingwall Parallel | Multi-Scale Bridge/Middle | Dual Parallel | Dingwall Active Onboard Buffer ($R_{\text{in}}=1\text{M}\Omega, R_{\text{out}}=100\,\Omega$) | $1.15\text{ H}$ | $8.2\text{ kHz}$ | Dual angled FD3n coils in parallel; modern scooped slap tone with extended harmonic overtone series. |
+| `rickenbacker_clank`| Rickenbacker Clank | High-Pass Bridge | Series HPF | Factory Rickenbacker $330\text{k}\Omega$ Vol/Tone, $4.7\text{nF}$ Series Cap | $3.80\text{ H}$ | $2.2\text{ kHz}$ | High-output bridge coil with vintage $4.7\text{ nF}$ series capacitor; tight high-pass cut below $150\text{ Hz}$. |
+| `rickenbacker_open` | Rickenbacker Open | Rickenbacker Toaster Neck | Single Coil | Factory Rickenbacker $330\text{k}\Omega$ Vol/Tone, $47\text{nF}$ | $3.80\text{ H}$ | $2.6\text{ kHz}$ | Warm, open vintage toaster neck pickup voicing; organic low end with glassy high-mid articulation. |
+| `pj_passive` | PJ Passive | Vintage '80s Passive P/J | Parallel Sum | Dual $250\text{k}\Omega$ Vol ($125\text{k}\Omega$ net), $250\text{k}\Omega$ Tone, $47\text{nF}$ | $1.85\text{ H}$ | $2.8\text{ kHz}$ | Vintage Alnico V split-P and 60s J-bridge in parallel; authentic '80s Fender Special / Yamaha BB thump. |
+| `pj_active` | PJ Active | Modern Active P/J | Active 2-Band | Sadowsky/Spector 2-Band ($R_{\text{in}}=1\text{M}\Omega, R_{\text{out}}=100\,\Omega$) | $2.06\text{ H}$ | $7.6\text{ kHz}$ | Active 2-band boost with isolated ceramic P/J coils; punchy sub-bass fundamental and aggressive clank. |
+| `p_mm_parallel` | P/MM Parallel | Modern Active P/MM | Active Buffer | Studio Active Buffer ($R_{\text{in}}=1\text{M}\Omega, R_{\text{out}}=100\,\Omega$) | $0.96\text{ H}$ | $3.4\text{ kHz}$ | Authentic active parallel P/MM (Sandberg VM / Lakland 44-02); Split-P neck + MM parallel bridge into buffer. |
+| `p_mm_series` | P/MM Series | Modern Active P/MM (Series) | Active Series Buffer | Studio Active Buffer ($R_{\text{in}}=1\text{M}\Omega, R_{\text{out}}=100\,\Omega$) | $8.40\text{ H}$ | $3.2\text{ kHz}$ | Split P and MM parallel humbucker wired in series before active buffer; $+5.8\text{ dB}$ inductive boost. |
+| `mudbucker_deep` | Mudbucker Deep | Heavy Series MM | Ultra Series | Gibson $500\text{k}\Omega$ Vol/Tone, $22\text{nF}$ Cap | $14.40\text{ H}$| $1.2\text{ kHz}$ | Overwound dual-coil series humbucker; subterranean low end with natural high-frequency rolloff. |
+| `upright_acoustic` | Upright Acoustic | Upright Transducer | Bridge Force | Direct $100\text{ M}\Omega$ Buffer, $15\text{ nF}$ Subsonic Cap | — | $4.5\text{ kHz}$ | Direct bridge force sensor (Underwood / Realist style); leaky integration, 32 Hz rumble cut, bridge compliance. |
+| `studio_direct` | Studio Direct | Dynamic DI | Studio (Direct) | Transparent Studio Buffer ($10\text{ M}\Omega \to 50\,\Omega$) | $0.00\text{ H}$ | Wideband | Preserves physical aperture and imparts organic dynamic DI feel and non-linear Alnico compliance. |
+| `studio_active` | Studio Active | Active Buffer | Studio (Active) | Studio Ultra-High-Z Buffer ($10\text{ M}\Omega \to 50\,\Omega$) | $3.20\text{ H}$ | $5.2\text{ kHz}$ | Removes passive cable loading ($750\text{ pF}$) and pot damping to restore wideband hi-fi sparkle and headroom. |
+| `studio_passive` | Studio Passive | Passive Loading | Studio (Passive) | Standard Passive Harness ($250\text{k}\Omega\text{ Vol/Tone}, 47\text{nF}, 750\text{pF}$) | $4.20\text{ H}$ | $2.8\text{ kHz}$ | Adds high-impedance passive dynamics, resonant peak ($2.8\text{ kHz}$), $750\text{ pF}$ cable loading, and $250\text{k}\Omega$ pot damping. |
 
 ---
 
@@ -212,7 +217,7 @@ Allomorph includes pre-configured physical and electrical parameters for **21 di
 Allomorph models acoustic aperture and scale tension in Python, executes the passive circuit digital twin directly using its native WAV SPICE simulator, and trains lightweight NAM (`.nam`) neural captures for Block 1 of the Darkglass Anagram:
 
 ### 1. Interactive Acoustic & Electrical Visualizer (`scripts/analyze_voices.py`)
-Renders interactive frequency response curves in Altair (Vega-Lite), comparing all 21 target configurations against any source instrument. Outputs are organized into per-instrument standalone charts and a unified interactive portal:
+Renders interactive frequency response curves in Altair (Vega-Lite), comparing all 24 target configurations against any source instrument. Outputs are organized into per-instrument standalone charts and a unified interactive portal:
 
 ```bash
 # Generate interactive charts for all configured source instruments and refresh master portal:
@@ -225,7 +230,7 @@ uv run python scripts/analyze_voices.py --instrument 30in
 *Outputs: Master interactive portal at `docs/frequency_responses.html` (and `docs/frequency_responses/index.html`) with embedded tabbed navigation and spec breakdown, and per-instrument standalone visualizations in `docs/frequency_responses/<instrument_id>.html`.*
 
 ### 2. Native WAV SPICE Circuit Simulation (`allomorph-sim`)
-Directly streams raw bass calibration audio (`audio/canonical/optimal_bass_dry.wav`) through the entire physical digital twin in a single in-memory pass:
+Directly streams raw bass calibration audio (`audio/canonical/optimal_bass_dry_v3.wav`) through the entire physical digital twin in a single in-memory pass:
 1. **Acoustic Aperture & Placement:** De-humbucking sinc aperture filtering, spatial standing-wave comb filtering, displacement tilt ($\Delta x$), and string tension filtering.
 2. **Dynamic Non-Linear Compliance:** Soft-knee saturation ($V_{\text{sat}} \cdot \tanh(v / V_{\text{sat}})$), Lenz flux sag, Dahl hysteresis, back-EMF, and dynamic reluctance quack.
 3. **Passive Pickup Circuit Twin:** Exact closed-form nodal AC transfer functions, eddy-current damping, authentic volume/tone pot dividers, active preamp buffers, hybrid treble bleed, cable capacitance ($750\text{ pF}$), and pedalboard load ($1\text{ M}\Omega \parallel 30\text{ pF}$).
@@ -234,16 +239,16 @@ Allomorph features a built-in **WAV SPICE simulator** running natively on Apple 
 
 ```bash
 # Run unified WAV SPICE simulation from raw audio for a specific voice (~0.8s):
-uv run allomorph-sim --voice 04_modern_p_ceramic --instrument 30in
+uv run allomorph-sim --voice precision_active --instrument 30in
 
-# Simulate all 21 voices in parallel across multi-core CPU (-j / --jobs):
+# Simulate all voices in parallel across multi-core CPU (-j / --jobs):
 uv run allomorph-sim --voice all --instrument 30in -j 8
 
 # Rapid prototyping run on first 2 seconds (96,000 samples):
-uv run allomorph-sim --voice 09_stingray_mm_parallel --max-samples 96000
+uv run allomorph-sim --voice stingray_parallel --max-samples 96000
 
-# Run via master pipeline (Architecture C backend targets):
-uv run allomorph --stage targets --voice 04_modern_p_ceramic
+# Run via master pipeline (direct forward simulation stage):
+uv run allomorph --stage sim --voice precision_active
 ```
 
 ### 3. NAM Neural Model Training (Architecture 2 / A2)
@@ -251,48 +256,43 @@ Trains a high-efficiency **NAM Architecture 2 (A2)** neural model on the input/o
 
 ```bash
 # Train NAM Architecture 2 (A2) model for Darkglass Anagram Block 1:
-# The input is the raw bass calibration signal (audio/canonical/optimal_bass_dry.wav) and the target is the simulated output:
-nam train audio/canonical/optimal_bass_dry.wav audio/30in_emg_mmtw/out_04_modern_p_ceramic.wav ./models/30in_emg_mmtw/04_modern_p_ceramic.nam --architecture "A2"
+# The input is the raw bass calibration signal (audio/canonical/optimal_bass_dry_v3.wav) and the target is the simulated output:
+nam train audio/canonical/optimal_bass_dry_v3.wav audio/wet/30in_emg_mmtw/precision_active.wav ./models/30in_emg_mmtw/precision_active.nam --architecture "A2"
 
 # Run via the automated Allomorph trainer (defaults to Architecture 2 slimmable container with goal ESR <= 0.0080):
-uv run allomorph --stage train --instrument 30in --voice 04_modern_p_ceramic
+uv run allomorph --stage train --instrument 30in --voice precision_active
 
 # Customize goal ESR or disable early stopping:
-uv run allomorph --stage train --instrument 30in --voice 04_modern_p_ceramic --goal-esr 0.0050
-uv run allomorph --stage train --instrument 30in --voice 04_modern_p_ceramic --no-goal-esr --epochs 400
+uv run allomorph --stage train --instrument 30in --voice precision_active --goal-esr 0.0050
+uv run allomorph --stage train --instrument 30in --voice precision_active --no-goal-esr --epochs 400
 
 # Train A2-Lite channels_8 only (instead of the default slimmable container):
-uv run allomorph --stage train --instrument 30in --voice 04_modern_p_ceramic --a2-lite-only
+uv run allomorph --stage train --instrument 30in --voice precision_active --a2-lite-only
 ```
 *(In modern versions of `neural-amp-modeler` and the official Google Colab trainer, `--architecture A2` is the default. With the optimal bass dry excitation file, Allomorph trains the full slimmable Architecture 2 container (both `channels_3` and `channels_8`) by default under the **A2 Studio Reference** standard (`--goal-esr 0.0080`, `400` max epoch safety ceiling, `--batch-size 32`, monitoring `channels_8`). To isolate the 8-channel submodel only, supply `--a2-lite-only`).*
 
 > [!NOTE]
 > **Complete Training Guide & Audio Pairings:**
-> For the complete reference table of input/target audio pairings for Block 1 (Frontend), Block 2 (Target), and 1-Block Baked models, see [`docs/training.md`](docs/training.md).
+> For the complete reference table of input/target audio pairings for direct single-block and Tone3000 models, see [`docs/training.md`](docs/training.md).
 
 ### 4. Master Automation Runner (`allomorph`)
 Execute the entire pipeline or specific stages with a single command:
 
 ```bash
-# Run complete pipeline for 30" source instrument (canonical -> 32 frontends -> targets -> viz):
+# Run complete pipeline for 30" source instrument (sim -> pack -> train -> viz):
 uv run allomorph --instrument 30in
 
-# Generate the Canonical Intermediate baseline sweep:
-uv run allomorph --stage canonical
+# Direct forward simulation of wet audio stems:
+uv run allomorph --stage sim --instrument 30in --voice precision_active
 
-# Export all 32 native frontend deconvolution IRs:
-uv run allomorph --stage frontends
+# Export Tone3000 upload bundles:
+uv run allomorph --stage pack --instrument 30in
 
-# Simulate 3-tier backend universal target sweeps:
-uv run allomorph --stage targets --voice 09_stingray_mm_parallel
+# Train local NAM models:
+uv run allomorph --stage train --instrument 30in --voice precision_active
 
 # Generate interactive Altair frequency visualizations:
 uv run allomorph --stage viz
-
-# On-demand single-block monolithic bake (directly models source instrument to target voice into a single NAM capture):
-uv run allomorph --stage bake --instrument 30in --voice 04_modern_p_ceramic --train
-# (By default, --stage bake uses --tier dynamic to model saturation differentially between source and target,
-#  and --pickup auto to automatically resolve the mapped pickup switch position).
 ```
 
 ---
@@ -304,7 +304,7 @@ uv run allomorph --stage bake --instrument 30in --voice 04_modern_p_ceramic --tr
              │
              ▼
 [Block 1: Allomorph NAM Preamp]
-     └── Model: "07_stingray_mm_parallel.nam" (Nano/Feather neural capture)
+     └── Model: "stingray_parallel.nam" (Architecture 2 neural capture)
              │
              ▼
 [Block 2: Darkglass Preamp / Drive]
@@ -341,28 +341,20 @@ allomorph/
 │   │   └── 34in_standard_jazz.toml        # 34" standard Jazz bass template
 │   ├── preamps.toml                       # Reusable active preamp catalog (Sadowsky, StingRay, Aguilar, Dingwall)
 │   ├── scales.toml                        # Scale lengths & baseline string wave speeds
-│   ├── strings.toml                       # Physical string core/wrap mechanical presets
-│   └── voices/                            # 23 Target voice TOMLs with embedded [circuit] tables
-│       ├── 01_modern_jazz_active.toml     # Sadowsky active 2-band isolated Jazz pair
-│       ├── 02_jazz_bass_pair.toml         # Dual single-coils in parallel (tone open)
-│       ├── 04_modern_p_ceramic.toml       # Modern ceramic split-coil P (500k)
-│       ├── 05_vintage_62_p_alnico.toml    # Vintage '62 Alnico V split-P (tone open)
-│       ├── 09_stingray_mm_parallel.toml   # Music Man parallel humbucker
-│       └── ...                            # 23 total declarative voice models
+│   └── strings.toml                       # Physical string core/wrap mechanical presets
 ├── src/                                   # Core reusable library package
 │   └── allomorph/
 │       ├── config/                        # Modular TOML configurations & geometry
 │       │   ├── scales.py                  # Scale length & wave-speed loader
 │       │   ├── strings.py                 # String mechanics presets loader
-│       │   ├── voices.py                  # Voice registry & alias resolver
+│       │   ├── voices.py                  # Voice registry & 24 declarative target models
 │       │   ├── instruments.py             # Source instrument loader & cache
 │       │   └── geometry.py                # Pickup coils & aperture geometry resolution
-│       ├── naming.py                      # UI slugs, tier prefixes, and CLI resolution
+│       ├── naming.py                      # UI slugs, Tone3000 filenames, and CLI resolution
 │       ├── dsp.py                         # Minimum-phase FIR synthesis and 24-bit WAV I/O
 │       ├── physics/                       # Physical acoustic & spatial modeling subpackage
 │       │   ├── strings.py                 # String mechanics, dispersion, wave continuum
 │       │   ├── aperture.py                # Sinc & Bessel aperture integrals, saddle stiffness
-│       │   ├── deconvolution.py           # Transducer electrical deconvolution biquads
 │       │   └── prefilter.py               # Minimum-phase FIR prefilter synthesis
 │       ├── circuit/                       # Native WAV SPICE circuit simulation subpackage
 │       │   ├── parser.py                  # SPICE netlist tokenizer & CircuitModel
@@ -370,7 +362,7 @@ allomorph/
 │       │   ├── saturation.py              # State-space non-linear saturation & Numba kernels
 │       │   ├── audio.py                   # Vectorized FFT convolution & 24-bit audio buffers
 │       │   ├── simulation.py              # Audio simulation orchestration & batch workers
-│       │   └── staging.py                 # Architecture C two-stage runner & allomorph-sim CLI
+│       │   └── staging.py                 # Virtual analog circuit simulator & allomorph-sim CLI
 │       ├── visualizer/                    # Polars + Altair frequency visualization library
 │       │   ├── dataframe.py               # Polars data modeling & continuum transfer curves
 │       │   ├── charts.py                  # Interactive Altair visualization builders

@@ -32,7 +32,12 @@ class VisualizerCliConfig(AllomorphBaseModel):
 
     instrument: str = "all"
     mode: Literal[
-        "composite", "unified", "output", "difference", "targets", "frontends", "baked"
-    ] = "composite"
+        "voicings",
+        "voicing_ir_3d",
+        "waterfall3d",
+        "unified",
+        "output",
+        "difference",
+    ] = "voicings"
     all: bool = False
     out: Path | str | None = None

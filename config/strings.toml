@@ -3,7 +3,7 @@
 # ==============================================================================
 # Defines physical properties of string sets used across source instruments
 # and target voicings. These parameters govern high-frequency mechanical damping,
-# inharmonicity/tension class, dynamic bridge compliance, and low-frequency bloom.
+# inharmonicity/tension class, dynamic bridge compliance, and tension compliance.
 # ==============================================================================
 
 # ------------------------------------------------------------------------------
@@ -19,8 +19,6 @@ core = "hex"
 tension_lbs = 155.0
 damping_cutoff_hz = 8500.0
 damping_order = 1.0
-bloom_db = 0.0
-pluck_excursion_factor = 1.0
 k_long = 0.20
 
 # ------------------------------------------------------------------------------
@@ -29,7 +27,7 @@ k_long = 0.20
 # Universal 5-string industry baseline (.045-.130: D'Addario EXL170-5, Ernie Ball
 # Regular Slinky Bass5 2836). Spans Low B0 to High G2 with identical alloy and wrap
 # acoustics as standard 4-string nickel roundwounds (8.5 kHz damping cutoff,
-# 0.0 dB bloom, k_long = 0.20) at balanced 195 lbs total tension.
+# k_long = 0.20) at balanced 195 lbs total tension.
 [strings.roundwound_nickel_5string]
 name = "Standard Nickel Roundwound 5-String (.045-.130)"
 type = "roundwound"
@@ -38,8 +36,6 @@ core = "hex"
 tension_lbs = 195.0
 damping_cutoff_hz = 8500.0
 damping_order = 1.0
-bloom_db = 0.0
-pluck_excursion_factor = 1.0
 k_long = 0.20
 
 # ------------------------------------------------------------------------------
@@ -48,7 +44,7 @@ k_long = 0.20
 # Universal 6-string industry baseline (.032-.130: D'Addario EXL170-6, Ernie Ball
 # Slinky 6-String 2838). Spans Low B0 to High C3 with identical alloy and wrap
 # acoustics as standard 4-string nickel roundwounds (8.5 kHz damping cutoff,
-# 0.0 dB bloom, k_long = 0.20) at balanced 230 lbs total tension.
+# k_long = 0.20) at balanced 230 lbs total tension.
 [strings.roundwound_nickel_6string]
 name = "Standard Nickel Roundwound 6-String (.032-.130)"
 type = "roundwound"
@@ -57,8 +53,6 @@ core = "hex"
 tension_lbs = 230.0
 damping_cutoff_hz = 8500.0
 damping_order = 1.0
-bloom_db = 0.0
-pluck_excursion_factor = 1.0
 k_long = 0.20
 
 # ------------------------------------------------------------------------------
@@ -74,8 +68,6 @@ core = "hex"
 tension_lbs = 180.0
 damping_cutoff_hz = 12000.0
 damping_order = 1.0
-bloom_db = -1.0
-pluck_excursion_factor = 0.90
 k_long = 0.35
 
 # ------------------------------------------------------------------------------
@@ -83,7 +75,7 @@ k_long = 0.35
 # ------------------------------------------------------------------------------
 # Flexible round core wrapped in smooth stainless steel ribbon (LTF-4A .043-.100).
 # Low tension (~132 lbs total) yields large string excursion, reduced fretless
-# fingerboard click, early viscoelastic damping, and warm fundamental bloom.
+# fingerboard click, early viscoelastic damping, and warm fundamental tone.
 [strings.flatwound_low_tension]
 name = "La Bella Low Tension Flats LTF-4A (.043-.100)"
 type = "flatwound"
@@ -92,8 +84,6 @@ core = "round"
 tension_lbs = 132.0
 damping_cutoff_hz = 2800.0
 damping_order = 1.8
-bloom_db = 1.8
-pluck_excursion_factor = 1.25    # Lower tension causes ~25% larger string excursion under pluck
 k_long = 0.08
 
 # ------------------------------------------------------------------------------
@@ -109,16 +99,14 @@ core = "hex"
 tension_lbs = 195.0
 damping_cutoff_hz = 1800.0
 damping_order = 2.0
-bloom_db = 2.4
-pluck_excursion_factor = 0.85
 k_long = 0.05
 
 # ------------------------------------------------------------------------------
 # 5. Upright 3/4 Double Bass Strings (Spirocore / Helicore Orchestral/Pizz)
 # ------------------------------------------------------------------------------
 # 41.5" Scale spiral steel rope-core double bass strings (Thomastik-Infeld
-# Spirocore Medium / D'Addario Helicore Pizzicato). Massive tension, coupled spruce
-# soundboard damping, and cavernous 60-90 Hz body and air cavity bloom.
+# Spirocore Medium / D'Addario Helicore Pizzicato). Massive tension, coupled maple bridge
+# mechanical damping, high wave speed, and pure harmonicity.
 [strings.double_bass_spirocore]
 name = "3/4 Double Bass Spiral Rope-Core (Spirocore / Helicore Pizzicato)"
 type = "double_bass"
@@ -127,7 +115,4 @@ core = "spiral_rope"
 tension_lbs = 265.0              # Massive 41.5" acoustic string tension
 damping_cutoff_hz = 3800.0       # Coupled spruce soundboard acoustic damping
 damping_order = 2.0
-bloom_db = 2.8                   # Cavernous 60-100 Hz body & air cavity bloom
-pluck_excursion_factor = 1.0     # Standard acoustic baseline
-bridge_rocking_compliance = 0.42 # Reference acoustic bridge compliance threshold
 k_long = 0.02

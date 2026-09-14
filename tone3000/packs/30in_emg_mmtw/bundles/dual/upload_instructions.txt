@@ -1,0 +1,35 @@
+==============================================================================
+TONE3000 UPLOAD BUNDLE: DUAL
+==============================================================================
+Source Instrument: 30" Short Scale MM (EMG MMTW)
+Pickup Position: Dual
+Physical Switch Setting on Bass: Dual
+Tone Knob Setting: 100% (Wide Open)
+
+STEP-BY-STEP UPLOAD INSTRUCTIONS (Tone3000 Studio Trainer):
+1. Open Tone3000 Trainer in your browser or local batch tool.
+2. DRAG DRY FILE: Drag 'dry v3.1.1.wav' from this directory into the '1 Dry File' slot.
+3. DRAG WET STEMS: Select and drag the following 20 .wav files into the 'Wet Stems' slot:
+   • Precision Vintage [Dual] v3.1.1.wav
+   • Precision Mids [Dual] v3.1.1.wav
+   • Precision Warm [Dual] v3.1.1.wav
+   • Precision Active [Dual] v3.1.1.wav
+   • Precision Dub [Dual] v3.1.1.wav
+   • Jazz Pair Open [Dual] v3.1.1.wav
+   • Jazz Pair Mids [Dual] v3.1.1.wav
+   • Jazz Pair Active [Dual] v3.1.1.wav
+   • Jazz Neck Warm [Dual] v3.1.1.wav
+   • Dingwall Middle [Dual] v3.1.1.wav
+   • Dingwall Parallel [Dual] v3.1.1.wav
+   • PJ Passive [Dual] v3.1.1.wav
+   • PJ Active [Dual] v3.1.1.wav
+   • P∕MM Parallel [Dual] v3.1.1.wav
+   • P∕MM Series [Dual] v3.1.1.wav
+   • Mudbucker Deep [Dual] v3.1.1.wav
+   • Upright Acoustic [Dual] v3.1.1.wav
+   • Studio Direct v3.1.1.wav
+   • Studio Active v3.1.1.wav
+   • Studio Passive v3.1.1.wav
+
+4. START TRAINING: Tone3000 will batch-train all models against this single dry baseline.
+==============================================================================

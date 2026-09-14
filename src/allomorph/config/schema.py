@@ -41,6 +41,7 @@ __all__ = [
     "VoiceCoilConfig",
     "VoiceConfig",
     "VoicePickupConfig",
+    "VoicingConfig",
     "parse_spice_unit",
 ]
 
@@ -105,10 +106,7 @@ class StringPresetConfig(AllomorphBaseModel):
     tension_lbs: float = Field(..., gt=0.0)
     damping_cutoff_hz: float = Field(..., gt=0.0)
     damping_order: float = Field(..., gt=0.0)
-    bloom_db: float = 0.0
-    pluck_excursion_factor: float = Field(1.0, gt=0.0)
     k_long: float = Field(0.20, ge=0.0)
-    bridge_rocking_compliance: float | None = None
 
 
 class InstrumentStringsConfig(AllomorphBaseModel):
@@ -146,10 +144,7 @@ class ResolvedStringConfig(StringPresetConfig):
             ),
             damping_cutoff_hz=preset.damping_cutoff_hz,
             damping_order=preset.damping_order,
-            bloom_db=preset.bloom_db,
-            pluck_excursion_factor=preset.pluck_excursion_factor,
             k_long=preset.k_long,
-            bridge_rocking_compliance=preset.bridge_rocking_compliance,
             preset=overrides.preset,
             brand=overrides.brand,
             model=overrides.model,
@@ -239,6 +234,7 @@ class PickupConfig(AllomorphBaseModel):
     id: str | None = None
     name: str
     position_name: str | None = None
+    bundle_name: str | None = None
     position_from_bridge_m: float | None = None
     aperture_width_in: float = 0.75
     coil_spacing_in: float = 0.0
@@ -247,14 +243,45 @@ class PickupConfig(AllomorphBaseModel):
     pole_type: str | None = None
     resonant_frequency_hz: float | None = None
     q_factor: float | None = None
+    alpha: float | None = None
+    vsat: float | None = None
     coils: list[CoilConfig] = Field(default_factory=list)
     circuit: CircuitConfig | None = None
     components: list[PickupComponentConfig] = Field(default_factory=list)
 
 
 # ==============================================================================
-# 6. SOURCE INSTRUMENT SCHEMAS
+# 6. SOURCE INSTRUMENT & VOICING SCHEMAS
 # ==============================================================================
+
+
+class VoicingConfig(AllomorphBaseModel):
+    """Declarative physical instrument voicing setting."""
+
+    id: str | None = None
+    name: str
+    tone_name: str | None = None
+    pickup: str  # references pickups.<id>
+    affinity: Literal["neck", "bridge", "parallel", "direct"] = "neck"
+    vol_pos: float = Field(1.0, ge=0.0, le=1.0)
+    tone_pos: float = Field(1.0, ge=0.0, le=1.0)
+    blend_pos: float | None = Field(None, ge=0.0, le=1.0)
+    tone_cap_f: float | None = Field(None, gt=0.0)
+    Rtone: float | None = None
+    preamp_preset: str | None = None
+    preamp_bands: list[PreampBandConfig] = Field(default_factory=list)
+    string_preset_override: str | None = None
+    sensor_type: Literal["magnetic", "bridge_force", "direct"] = "magnetic"
+    hpf: float | None = None
+    gain_db: float = 0.0
+    alpha: float | None = None
+    vsat: float | None = None
+    preserve_aperture: bool = False
+    magnet_type: str | None = None
+    resonant_frequency_hz: float | None = None
+    q_factor: float | None = None
+    version: int = Field(1, ge=1, description="Instrument voicing configuration version")
+    circuit: CircuitConfig | None = None
 
 
 class InstrumentConfig(AllomorphBaseModel):
@@ -273,6 +300,7 @@ class InstrumentConfig(AllomorphBaseModel):
     default_pickup: str | None = None
     strings: InstrumentStringsConfig = Field(default_factory=InstrumentStringsConfig)
     pickups: dict[str, PickupConfig] = Field(default_factory=dict)
+    voicings: dict[str, VoicingConfig] = Field(default_factory=dict)
     pickup_mapping: dict[str, str] = Field(default_factory=dict)
 
     @model_validator(mode="after")
@@ -286,6 +314,15 @@ class InstrumentConfig(AllomorphBaseModel):
         elif self.scale_length_m is None and self.scale_length_in is None:
             self.scale_length_in = 34.0
             self.scale_length_m = 0.8636
+
+        for vid, v in self.voicings.items():
+            if v.id is None:
+                v.id = vid
+            if self.pickups and v.pickup not in self.pickups:
+                raise ValueError(
+                    f"Voicing '{vid}' on instrument '{self.id}' references unknown pickup '{v.pickup}'. "
+                    f"Available pickups: {list(self.pickups.keys())}"
+                )
         if self.default_pickup and self.pickups and self.default_pickup not in self.pickups:
             raise KeyError(
                 f"Instrument '{self.id}' default_pickup '{self.default_pickup}' "

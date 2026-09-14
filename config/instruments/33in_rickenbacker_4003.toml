@@ -1,0 +1,200 @@
+# ==============================================================================
+# ALLOMORPH SOURCE INSTRUMENT CONFIGURATION
+# 33.25" Rickenbacker 4003 (Maple Neck-Through)
+# ==============================================================================
+
+id = "33in_rickenbacker_4003"
+name = "33.25\" Rickenbacker 4003"
+scale_length_in = 33.25
+scale_length_m = 0.84455
+electronics = "passive"
+version = 1
+
+string_wave_speeds = [69.60, 92.90, 124.01, 165.53]
+default_pickup = "bridge"
+
+[strings]
+preset = "roundwound_nickel_standard"
+brand = "Rickenbacker"
+model = "Standard 4-String"
+gauge = "45-105"
+core = "hex"
+wrap = "nickel_round"
+tension_lbs = 168.0
+
+# ------------------------------------------------------------------------------
+# 1. PICKUPS
+# ------------------------------------------------------------------------------
+
+[pickups.bridge]
+name = "Rickenbacker Hi-Gain Bridge Single-Coil"
+position_name = "Bridge"
+bundle_name = "bridge"
+position_from_bridge_m = 0.0570  # 57.0mm datum
+aperture_width_in = 0.75
+coil_spacing_in = 0.0
+type = "single_coil"
+magnet_type = "ceramic"
+alpha = 0.12
+resonant_frequency_hz = 3800.0
+q_factor = 1.70
+coils = [
+    { strings = ["all"], position_from_bridge_m = 0.0570, aperture_width_in = 0.75, weight = 1.0 }
+]
+
+[pickups.bridge.circuit]
+topology = "single"
+L = 3.8
+Rdc = 8400.0
+Reddy = 110000.0
+Ccoil = 8.5e-11
+Rtop = 10.0
+Rbot = 250000.0
+Rtone = 250000.0
+Ctone = 4.7e-08
+
+[pickups.bridge_hpf]
+name = "Rickenbacker Bridge Single-Coil with 4.7nF HPF"
+position_name = "Bridge"
+bundle_name = "bridge"
+position_from_bridge_m = 0.0570  # 57.0mm datum (shared physical position with standard bridge)
+aperture_width_in = 0.75
+coil_spacing_in = 0.0
+type = "single_coil"
+magnet_type = "ceramic"
+alpha = 0.12
+resonant_frequency_hz = 3800.0
+q_factor = 1.70
+coils = [
+    { strings = ["all"], position_from_bridge_m = 0.0570, aperture_width_in = 0.75, weight = 1.0 }
+]
+
+[pickups.bridge_hpf.circuit]
+topology = "single"
+L = 3.8
+Rdc = 8400.0
+Reddy = 140000.0
+Ccoil = 9e-11
+Rtop = 10.0
+Rbot = 330000.0
+Rtone = 330000.0
+Ctone = 4.7e-08
+Crick = 4.7e-09
+
+[pickups.neck]
+name = "Rickenbacker Hi-Gain Neck Single-Coil"
+position_name = "Neck"
+bundle_name = "neck"
+position_from_bridge_m = 0.1680  # 168.0mm datum
+aperture_width_in = 0.75
+coil_spacing_in = 0.0
+type = "single_coil"
+magnet_type = "ceramic"
+alpha = 0.12
+resonant_frequency_hz = 3600.0
+q_factor = 1.50
+coils = [
+    { strings = ["all"], position_from_bridge_m = 0.1680, aperture_width_in = 0.75, weight = 1.0 }
+]
+
+[pickups.neck.circuit]
+topology = "single"
+L = 3.5
+Rdc = 8000.0
+Reddy = 120000.0
+Ccoil = 8.0e-11
+Rtop = 10.0
+Rbot = 250000.0
+Rtone = 250000.0
+Ctone = 4.7e-08
+
+[pickups.pair_stereo]
+name = "Rickenbacker Dual Pickups Parallel (Rick-O-Sound)"
+position_name = "Parallel"
+bundle_name = "parallel"
+position_from_bridge_m = 0.1125
+aperture_width_in = 0.75
+coil_spacing_in = 4.37
+type = "multi_pickup_parallel"
+magnet_type = "ceramic"
+alpha = 0.12
+resonant_frequency_hz = 3900.0
+q_factor = 1.40
+coils = [
+    { strings = ["all"], position_from_bridge_m = 0.1680, aperture_width_in = 0.75, weight = 0.5 },
+    { strings = ["all"], position_from_bridge_m = 0.0570, aperture_width_in = 0.75, weight = 0.5 }
+]
+
+[pickups.pair_stereo.circuit]
+topology = "parallel"
+Rtop = 10.0
+Rbot = 125000.0
+Rtone = 250000.0
+Ctone = 4.7e-08
+
+[pickups.pair_stereo.circuit.neck]
+L = 3.5
+Rdc = 8000.0
+Reddy = 120000.0
+Ccoil = 8.0e-11
+
+[pickups.pair_stereo.circuit.bridge]
+L = 3.8
+Rdc = 8400.0
+Reddy = 110000.0
+Ccoil = 8.5e-11
+
+# ------------------------------------------------------------------------------
+# 2. NATIVE INSTRUMENT VOICINGS
+# ------------------------------------------------------------------------------
+
+[voicings.bridge_clank]
+version = 1
+name = "Vintage 4003 Bridge Clank (4.7nF HPF)"
+tone_name = "Rickenbacker Clank"
+pickup = "bridge_hpf"
+affinity = "bridge"
+vol_pos = 1.0
+tone_pos = 1.0
+hpf = 150.0
+gain_db = -1.5
+
+[voicings.bridge_open]
+version = 1
+name = "Modern 4003 Bridge Open Bypass"
+tone_name = "Rickenbacker Open"
+pickup = "bridge"
+affinity = "bridge"
+vol_pos = 1.0
+tone_pos = 1.0
+tone_cap_f = 4.7e-08
+
+[voicings.neck_warm]
+version = 1
+name = "4003 Neck Hi-Gain Warm"
+tone_name = "Rickenbacker Warm"
+pickup = "neck"
+affinity = "neck"
+vol_pos = 1.0
+tone_pos = 0.8
+tone_cap_f = 4.7e-08
+
+[voicings.pair_stereo]
+version = 1
+name = "4003 Dual Pickups Parallel Rick-O-Sound"
+tone_name = "Rickenbacker Pair"
+pickup = "pair_stereo"
+affinity = "parallel"
+vol_pos = 1.0
+tone_pos = 1.0
+
+# ------------------------------------------------------------------------------
+# 3. PICKUP AFFINITY ROUTING
+# ------------------------------------------------------------------------------
+[pickup_mapping]
+neck = "neck"
+bridge = "bridge"
+parallel = "pair_stereo"
+direct = "pair_stereo"
+rickenbacker_clank = "bridge_hpf"
+"33in_rickenbacker_4003:bridge_clank" = "bridge_hpf"

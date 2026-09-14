@@ -222,5 +222,3 @@ def test_cinf_smoothstep():
     # 4. Symmetry: S(1 - t) == 1 - S(t)
     t_mid = np.linspace(0.01, 0.99, 100)
     assert np.allclose(cinf_smoothstep(1.0 - t_mid), 1.0 - cinf_smoothstep(t_mid), atol=1e-12)
-
-

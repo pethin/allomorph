@@ -1,0 +1,157 @@
+# ==============================================================================
+# ALLOMORPH SOURCE INSTRUMENT CONFIGURATION
+# Studio Direct Box / Transparent Audio Interface
+# ==============================================================================
+
+id = "studio_direct"
+name = "Studio Direct Box / Interface"
+scale_length_in = 34.0
+scale_length_m = 0.8636
+electronics = "active"
+version = 1
+
+string_wave_speeds = [71.16, 95.00, 126.81, 169.27]
+default_pickup = "direct"
+
+[strings]
+preset = "roundwound_nickel_standard"
+brand = "Standard"
+model = "Studio Reference"
+gauge = "45-105"
+core = "hex"
+wrap = "nickel_round"
+tension_lbs = 170.0
+
+# ------------------------------------------------------------------------------
+# 1. TRANSDUCER / INPUT INTERFACE
+# ------------------------------------------------------------------------------
+
+[pickups.direct]
+name = "Studio Direct Instrument Input"
+position_name = "Direct"
+bundle_name = "direct"
+position_from_bridge_m = 0.0935  # Reference datum
+aperture_width_in = 0.75
+coil_spacing_in = 0.0
+type = "direct_interface"
+magnet_type = "active"
+alpha = 0.26
+vsat = 0.50
+resonant_frequency_hz = 20000.0
+q_factor = 0.707
+coils = [
+    { strings = ["all"], position_from_bridge_m = 0.0935, aperture_width_in = 0.75, weight = 1.0 }
+]
+
+[pickups.direct.circuit]
+topology = "single"
+L = 1e-06
+Rdc = 10.0
+Reddy = 1000000.0
+Ccoil = 1e-12
+vsat = 0.50
+active = true
+preamp = "none"
+R_out = 50.0
+no_eq = true
+Rvol = 500000.0
+
+[pickups.active_buffer]
+name = "1M-Ohm Active Buffer"
+position_name = "Direct"
+bundle_name = "direct"
+position_from_bridge_m = 0.0935
+aperture_width_in = 0.75
+coil_spacing_in = 0.0
+type = "active_buffer"
+magnet_type = "active"
+alpha = 0.15
+vsat = 1.20
+resonant_frequency_hz = 5200.0
+q_factor = 1.6
+coils = [
+    { strings = ["all"], position_from_bridge_m = 0.0935, aperture_width_in = 0.75, weight = 1.0 }
+]
+
+[pickups.active_buffer.circuit]
+topology = "single"
+L = 3.2
+Rdc = 7200.0
+Reddy = 135000.0
+Ccoil = 7e-11
+vsat = 1.2
+active = true
+preamp = "none"
+Rvol = 500000.0
+
+[pickups.passive_harness]
+name = "Passive High-Z Cable Load"
+position_name = "Direct"
+bundle_name = "direct"
+position_from_bridge_m = 0.0935
+aperture_width_in = 0.75
+coil_spacing_in = 0.0
+type = "passive_transducer"
+magnet_type = "alnico_v"
+alpha = 0.28
+vsat = 0.50
+resonant_frequency_hz = 2800.0
+q_factor = 1.4
+coils = [
+    { strings = ["all"], position_from_bridge_m = 0.0935, aperture_width_in = 0.75, weight = 1.0 }
+]
+
+[pickups.passive_harness.circuit]
+topology = "single"
+L = 4.2
+Rdc = 8500.0
+Reddy = 120000.0
+Ccoil = 8e-11
+vsat = 0.50
+Rtop = 10.0
+Rbot = 250000.0
+Rtone = 250000.0
+Ctone = 4.7e-8
+
+# ------------------------------------------------------------------------------
+# 2. NATIVE INSTRUMENT VOICINGS
+# ------------------------------------------------------------------------------
+
+[voicings.clean_di]
+version = 1
+name = "Pure Transparent Studio DI"
+tone_name = "Studio Direct"
+pickup = "direct"
+affinity = "direct"
+sensor_type = "direct"
+preserve_aperture = true
+vol_pos = 1.0
+
+[voicings.active_di]
+version = 1
+name = "1M-Ohm Active Buffer Studio DI"
+tone_name = "Studio Active"
+pickup = "active_buffer"
+affinity = "direct"
+sensor_type = "direct"
+preserve_aperture = true
+vol_pos = 1.0
+
+[voicings.passive_load]
+version = 1
+name = "Passive High-Z Cable Load Studio DI"
+tone_name = "Studio Passive"
+pickup = "passive_harness"
+affinity = "direct"
+sensor_type = "direct"
+preserve_aperture = true
+vol_pos = 1.0
+
+# ------------------------------------------------------------------------------
+# 3. PICKUP AFFINITY ROUTING
+# ------------------------------------------------------------------------------
+[pickup_mapping]
+neck = "direct"
+bridge = "direct"
+parallel = "direct"
+direct = "direct"

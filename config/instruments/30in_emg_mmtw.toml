@@ -12,6 +12,7 @@ name = "30\" Short Scale MM (EMG MMTW)"
 scale_length_in = 30.0
 scale_length_m = 0.762
 electronics = "active"
+version = 1
 
 # String wave speeds: v = 2 * L * f0 (for E1=41.2Hz, A1=55.0Hz, D2=73.4Hz, G2=98.0Hz)
 string_wave_speeds = [62.79, 83.82, 111.89, 149.35]
@@ -38,6 +39,7 @@ tension_lbs = 145.0
 [pickups.mmtw_dual]
 name = "EMG MMTW Dual-Coil (Centerline)"
 position_name = "Dual"
+bundle_name = "dual"
 position_from_bridge_m = 0.0775  # 77.5mm centerline
 aperture_width_in = 1.50         # Overall pickup housing sensing envelope
 coil_spacing_in = 0.90           # 0.90" (22.86mm) spacing between coil centers
@@ -59,6 +61,7 @@ coils = [
 [pickups.mmtw_single]
 name = "EMG MMTW Single-Coil (Bridge Coil)"
 position_name = "Single"
+bundle_name = "single"
 position_from_bridge_m = 0.06607 # 66.07mm (L2 coil center)
 aperture_width_in = 0.75         # Narrow 0.75" single-coil aperture
 coil_spacing_in = 0.0            # Single sensing line (no humbucker comb notch)
@@ -70,29 +73,45 @@ coils = [
 ]
 
 # ------------------------------------------------------------------------------
-# 3. SMART VOICE MAPPING
+# 3. NATIVE INSTRUMENT VOICINGS
 # ------------------------------------------------------------------------------
-# Directs the trainer/prefilter which physical pickup state the player selects
-# when recording sweeps or playing through the target digital twin.
+
+[voicings.dual_mode]
+version = 1
+name = "Active Dual-Coil Parallel (MM Mode)"
+tone_name = "MMTW Dual"
+pickup = "mmtw_dual"
+affinity = "parallel"
+vol_pos = 1.0
+
+[voicings.single_mode]
+version = 1
+name = "Active Single-Coil Stacked (J Mode)"
+tone_name = "MMTW Single"
+pickup = "mmtw_single"
+affinity = "bridge"
+vol_pos = 1.0
+
+[voicings.dual_warm]
+version = 1
+name = "Active Dual-Coil Warm Low-Mid Bloom"
+tone_name = "MMTW Warm"
+pickup = "mmtw_dual"
+affinity = "neck"
+vol_pos = 1.0
+tone_pos = 0.5
+
+# ------------------------------------------------------------------------------
+# 4. PICKUP AFFINITY ROUTING
+# ------------------------------------------------------------------------------
 [pickup_mapping]
-"01_modern_jazz_active" = "mmtw_dual"
-"02_jazz_bass_pair" = "mmtw_dual"
-"02b_jazz_bass_pair_22nf" = "mmtw_dual"
-"02c_jazz_bridge_growl_bias" = "mmtw_single"
-"03_jazz_bridge_60s" = "mmtw_single"      # Uses single-coil mode for authentic 60s J bridge bite
-"04_modern_p_ceramic" = "mmtw_dual"
-"05_vintage_62_p_alnico" = "mmtw_dual"
-"05b_vintage_62_p_22nf" = "mmtw_dual"
-"05c_vintage_62_p_47nf" = "mmtw_dual"
-"05d_vintage_50s_p_100nf" = "mmtw_dual"
-"07_modern_pj_active" = "mmtw_dual"   # Modern Active P/J
-"08_vintage_pj_passive" = "mmtw_dual"  # Vintage Alnico P/J
-"09_stingray_mm_parallel" = "mmtw_dual"   # Uses dual-coil mode for StingRay authority
-"09b_stingray_mm_series" = "mmtw_dual"
-"10_rickenbacker_bridge_hpf" = "mmtw_single" # Uses single-coil mode for Rickenbacker presence
-"11_modern_pmm_active" = "mmtw_dual"
-"11b_pmm_hybrid_series" = "mmtw_dual"
-"11_pmm_hybrid_series" = "mmtw_dual"
-"12_mudbucker_ultra_series" = "mmtw_dual"
-"13_dingwall_multiscale_bridge" = "mmtw_dual"
-"14_upright_bridge_transducer" = "mmtw_dual"
+neck = "mmtw_dual"
+parallel = "mmtw_dual"
+bridge = "mmtw_single"
+direct = "mmtw_dual"
+"stingray_parallel" = "mmtw_dual"
+"stingray_series" = "mmtw_dual"
+"stingray_active" = "mmtw_dual"
+"34in_active_stingray:parallel_classic" = "mmtw_dual"
+"34in_active_stingray:series_punch" = "mmtw_dual"
+"34in_active_stingray:active_slap" = "mmtw_dual"

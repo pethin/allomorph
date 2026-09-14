@@ -21,6 +21,7 @@ scale_min_in = 34.0
 scale_max_in = 37.0
 is_multiscale = true
 electronics = "active"
+version = 1
 
 # String wave speeds for 34"-37" 5-string multi-scale (B0, E1, A1, D2, G2)
 string_wave_speeds = [58.02, 75.88, 99.19, 129.60, 169.27]
@@ -51,11 +52,12 @@ aperture_width_in = 0.85
 coil_spacing_in = 0.65
 type = "dual_coil_parallel"
 magnet_type = "neodymium"
+alpha = 0.08
 resonant_frequency_hz = 3400.0   # Active buffered resonance
 q_factor = 1.50
 coils = [
-    { strings = ["all"], position_from_bridge_m = 0.05625, aperture_width_in = 0.65, weight = 0.5 },
-    { strings = ["all"], position_from_bridge_m = 0.03975, aperture_width_in = 0.65, weight = 0.5 }
+    { strings = ["all"], position_from_bridge_m = 0.0575, aperture_width_in = 0.75, weight = 0.5 },
+    { strings = ["all"], position_from_bridge_m = 0.0385, aperture_width_in = 0.75, weight = 0.5 }
 ]
 
 # ------------------------------------------------------------------------------
@@ -68,6 +70,7 @@ L = 2.3
 Rdc = 4400.0
 Reddy = 150000.0
 Ccoil = 1.2e-10
+vsat = 0.9
 active = true
 preamp = "none"
 Rvol = 500000.0
@@ -126,34 +129,107 @@ components = [
 
 
 [pickups.pair_parallel.circuit]
-topology = "single"
-L = 2.3
-Rdc = 4400.0
-Reddy = 150000.0
-Ccoil = 1.2e-10
+topology = "parallel"
 active = true
 preamp = "none"
 Rvol = 500000.0
 
+[pickups.pair_parallel.circuit.neck]
+L = 2.3
+Rdc = 4400.0
+Reddy = 150000.0
+Ccoil = 1.2e-10
+
+[pickups.pair_parallel.circuit.bridge]
+L = 2.3
+Rdc = 4400.0
+Reddy = 150000.0
+Ccoil = 1.2e-10
+
+[pickups.pair_series]
+name = "Dingwall Bridge + Middle Series"
+position_name = "Series"
+bundle_name = "series"
+position_from_bridge_m = 0.0720  # Centroid 72.0mm
+aperture_width_in = 0.85
+coil_spacing_in = 0.0
+type = "composite"
+magnet_type = "neodymium"
+resonant_frequency_hz = 3100.0
+q_factor = 1.60
+components = [
+    { pickup = "bridge", weight = 0.5 },
+    { pickup = "middle", weight = 0.5 }
+]
+
+[pickups.pair_series.circuit]
+topology = "series"
+active = true
+preamp = "none"
+Rvol = 500000.0
+
+[pickups.pair_series.circuit.neck]
+L = 2.3
+Rdc = 4400.0
+Reddy = 150000.0
+Ccoil = 1.2e-10
+
+[pickups.pair_series.circuit.bridge]
+L = 2.3
+Rdc = 4400.0
+Reddy = 150000.0
+Ccoil = 1.2e-10
+
+# ------------------------------------------------------------------------------
+# 2. NATIVE INSTRUMENT VOICINGS
+# ------------------------------------------------------------------------------
+
+[voicings.bridge_clank]
+version = 1
+name = "FD3 Solo Bridge Multiscale Clarity"
+tone_name = "Dingwall Bridge"
+pickup = "bridge"
+affinity = "bridge"
+vol_pos = 1.0
+string_preset_override = "roundwound_stainless_clank"
+
+[voicings.middle_growl]
+version = 1
+name = "FD3 Solo Middle Punch"
+tone_name = "Dingwall Middle"
+pickup = "middle"
+affinity = "neck"
+vol_pos = 1.0
+string_preset_override = "roundwound_stainless_clank"
+
+[voicings.pair_parallel]
+version = 1
+name = "FD3 Bridge + Middle Parallel"
+tone_name = "Dingwall Parallel"
+pickup = "pair_parallel"
+affinity = "parallel"
+vol_pos = 1.0
+string_preset_override = "roundwound_stainless_clank"
+
+[voicings.pair_series]
+version = 1
+name = "FD3 Bridge + Middle Series Wall of Sound"
+tone_name = "Dingwall Series"
+pickup = "pair_series"
+affinity = "parallel"
+vol_pos = 1.0
+gain_db = 5.6
+string_preset_override = "roundwound_stainless_clank"
+
+# ------------------------------------------------------------------------------
+# 3. PICKUP AFFINITY ROUTING
+# ------------------------------------------------------------------------------
 [pickup_mapping]
-"01_modern_jazz_active" = "pair_parallel"
-"02_jazz_bass_pair" = "pair_parallel"
-"02b_jazz_bass_pair_22nf" = "pair_parallel"
-"02c_jazz_bridge_growl_bias" = "pair_parallel"
-"03_jazz_bridge_60s" = "bridge"
-"04_modern_p_ceramic" = "middle"
-"05_vintage_62_p_alnico" = "middle"
-"05b_vintage_62_p_22nf" = "middle"
-"05c_vintage_62_p_47nf" = "middle"
-"05d_vintage_50s_p_100nf" = "middle"
-"07_modern_pj_active" = "pair_parallel"
-"08_vintage_pj_passive" = "pair_parallel"
-"09_stingray_mm_parallel" = "bridge"
-"09b_stingray_mm_series" = "bridge"
-"10_rickenbacker_bridge_hpf" = "bridge"
-"11_modern_pmm_active" = "pair_parallel"
-"11b_pmm_hybrid_series" = "pair_parallel"
-"11_pmm_hybrid_series" = "pair_parallel"
-"12_mudbucker_ultra_series" = "middle"
-"13_dingwall_multiscale_bridge" = "bridge"   # Physical identity match!
-"14_upright_bridge_transducer" = "middle"
+neck = "middle"
+bridge = "bridge"
+parallel = "pair_parallel"
+series = "pair_series"
+direct = "pair_parallel"
+dingwall_bridge = "bridge"
+dingwall_series = "pair_series"
+"37in_multiscale_dingwall:bridge_clank" = "bridge"

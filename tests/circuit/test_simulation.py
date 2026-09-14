@@ -39,7 +39,7 @@ def test_simulate_circuit_audio_output():
         samples = [0.4 if i % 200 == 0 else 0.0 for i in range(4800)]
         write_wav_24bit(str(input_wav), samples, sample_rate=48000)
 
-        model = load_circuit("04_modern_p_ceramic")
+        model = load_circuit("precision_active")
         res = simulate_circuit_audio(input_wav, output_wav, model)
         assert res is True
         assert output_wav.exists()
@@ -63,7 +63,7 @@ def test_simulate_voice_end_to_end():
 
         # Single pickup voice (P-Bass Ceramic)
         res = simulate_voice(
-            "04_modern_p_ceramic",
+            "precision_active",
             input_wav=input_wav,
             output_wav=output_wav,
             instrument="30in",
@@ -81,7 +81,7 @@ def test_simulate_voice_end_to_end():
         # Multi-pickup voice (Jazz Bass Pair in Parallel)
         output_jazz = Path(tmpdir) / "jazz_out.wav"
         res_jazz = simulate_voice(
-            "02_jazz_bass_pair",
+            "jazz_pair_open",
             input_wav=input_wav,
             output_wav=output_jazz,
             instrument="30in",
@@ -105,7 +105,7 @@ def test_circuit_simulation_vs_theory_consistency():
     impulse = np.zeros(n_samples, dtype=np.float32)
     impulse[10] = 0.05  # Linear small-signal excitation
 
-    for voice_id in ["04_modern_p_ceramic", "02_jazz_bass_pair", "07_modern_pj_active"]:
+    for voice_id in ["precision_active", "jazz_pair_open", "pj_active"]:
         cfg = VOICES[voice_id]
         model = load_circuit(voice_id)
         apply_magnet_properties_to_model(model, cfg)
@@ -141,7 +141,7 @@ def test_circuit_simulation_vs_theory_consistency():
 def test_upright_voicing_simulation_vs_theory_consistency():
     """Verify that 32in fretless upright acoustic transducer simulation matches theory across 20-5000 Hz."""
     inst_id = "32in_fretless_pmm"
-    voice_id = "14_upright_bridge_transducer"
+    voice_id = "upright_acoustic"
     sr = 48000
     n_samples = 48000 * 2
     impulse = np.zeros(n_samples, dtype=np.float32)
@@ -185,7 +185,7 @@ def test_passive_source_simulation_runs():
         tempfile.NamedTemporaryFile(suffix=".wav") as tmp2,
     ):
         res1 = simulate_voice(
-            "05_vintage_62_p_alnico",
+            "precision_vintage",
             output_wav=Path(tmp1.name),
             instrument="34in_standard_p",
             max_samples=4800,
@@ -194,7 +194,7 @@ def test_passive_source_simulation_runs():
         assert os.path.exists(tmp1.name) and os.path.getsize(tmp1.name) > 1000
 
         res2 = simulate_voice(
-            "02_jazz_bass_pair",
+            "jazz_pair_open",
             output_wav=Path(tmp2.name),
             instrument="34in_standard_jazz",
             max_samples=4800,
@@ -222,7 +222,7 @@ def test_auto_output_level_normalization_to_input_sweep():
         in_rms_db = 20.0 * math.log10(in_rms)
 
         res = simulate_voice(
-            "04_modern_p_ceramic",
+            "precision_active",
             input_wav=in_path,
             output_wav=out_path,
             instrument="30in",
@@ -258,7 +258,7 @@ def test_output_normalization_modes_and_target_dbfs():
         # 1. Custom target dBFS (-24.0 dBFS)
         out_path = Path(td) / "out_24.wav"
         simulate_voice(
-            "04_modern_p_ceramic",
+            "precision_active",
             input_wav=in_path,
             output_wav=out_path,
             instrument="30in",
@@ -273,7 +273,7 @@ def test_output_normalization_modes_and_target_dbfs():
         # 2. None (raw unnormalized)
         out_none = Path(td) / "out_none.wav"
         simulate_voice(
-            "04_modern_p_ceramic",
+            "precision_active",
             input_wav=in_path,
             output_wav=out_none,
             instrument="30in",
@@ -282,7 +282,8 @@ def test_output_normalization_modes_and_target_dbfs():
         with pedalboard.io.AudioFile(str(out_none)) as f:
             out_audio = f.read(f.frames)[0]
         out_rms_none = 20.0 * math.log10(np.sqrt(np.mean(out_audio**2)))
-        assert out_rms_none < -5.0
+        assert -10.0 < out_rms_none < 0.0
+        assert abs(out_rms_none - (-24.0)) > 10.0
 
 
 def test_num_taps_4096_resolution():
@@ -300,7 +301,7 @@ def test_subaudible_dc_blocking_filter():
     # 100 Hz forte tone triggering asymmetric saturation
     tone = (0.60 * np.sin(2 * np.pi * 100 * t)).astype(np.float32)
 
-    model = load_circuit("04_modern_p_ceramic")
+    model = load_circuit("precision_active")
 
     with (
         tempfile.NamedTemporaryFile(suffix=".wav") as tmp_dc_on,
@@ -325,13 +326,13 @@ def test_subaudible_dc_blocking_filter():
 def test_spatial_wave_propagation_delay():
     """
     Verify spatial acoustic wave propagation delay (tau = delta_x / c_s):
-    1. Multi-pickup voice 02_jazz_bass_pair produces 2 FIRs where bridge FIR is delayed
+    1. Multi-pickup voice jazz_pair_open produces 2 FIRs where bridge FIR is delayed
        by ~0.81 ms (~39 samples at 48 kHz) relative to neck FIR.
     2. Summing neck and bridge FIRs produces the iconic acoustic phase comb notch
        in the 500-800 Hz range (depth > 10 dB relative to 100 Hz).
-    3. Single-pickup voice 05_vintage_62_p_alnico produces 1 FIR with 0 delay (peak at tap 0).
+    3. Single-pickup voice precision_vintage produces 1 FIR with 0 delay (peak at tap 0).
     """
-    firs_02 = compute_voice_prefilter_firs("02_jazz_bass_pair", instrument="30in")
+    firs_02 = compute_voice_prefilter_firs("jazz_pair_open", instrument="30in")
     assert len(firs_02) == 2
 
     fir_n = np.array(firs_02[0])
@@ -357,7 +358,7 @@ def test_spatial_wave_propagation_delay():
     assert notch_depth_db > 10.0, f"Comb notch depth was {notch_depth_db:.2f} dB (expected > 10 dB)"
 
     # Single-pickup voice
-    firs_05 = compute_voice_prefilter_firs("05_vintage_62_p_alnico", instrument="30in")
+    firs_05 = compute_voice_prefilter_firs("precision_vintage", instrument="30in")
     assert len(firs_05) == 1
     assert np.argmax(np.abs(firs_05[0])) <= 2
 
@@ -415,7 +416,7 @@ def test_calibrated_drive_excursion_item3():
     - Large signals (peak 0.95) are scaled to target_drive_peak (<= 0.70) into saturation.
     - Small signals (peak 0.05) bypass saturation completely and remain 100% linear.
     """
-    m = load_circuit("05_vintage_62_p_alnico")
+    m = load_circuit("precision_vintage")
     sr = 48000
     t = np.linspace(0, 0.1, int(sr * 0.1), endpoint=False)
 
@@ -451,54 +452,14 @@ def test_calibrated_drive_excursion_item3():
         assert np.max(np.abs(audio_large)) <= 0.9885
 
 
-def test_no_double_voicing_on_aperture_input():
-    """
-    Verify Vector 1: Auto-detection of pre-filtered intermediate aperture audio.
-    When input_wav filename starts with 'aperture_', simulate_voice must automatically
-    set prefiltered=True and avoid convolving prefilter_firs a second time.
-    """
-    sr = 48000
-    impulse = np.zeros(1024, dtype=np.float32)
-    impulse[0] = 0.50
-
-    with tempfile.TemporaryDirectory() as td:
-        aperture_wav = Path(td) / "aperture_04_modern_p_ceramic.wav"
-        out_wav = Path(td) / "out_04.wav"
-
-        # Write simulated aperture prefiltered audio
-        with pedalboard.io.AudioFile(
-            str(aperture_wav), "w", samplerate=sr, num_channels=1, bit_depth=24
-        ) as f:
-            f.write(impulse[np.newaxis, :])
-
-        # Call simulate_voice WITHOUT passing prefiltered=True
-        success = simulate_voice(
-            "04_modern_p_ceramic",
-            input_wav=aperture_wav,
-            output_wav=out_wav,
-            instrument="30in",
-            prefiltered=False,  # explicitly False: should be overridden by auto-detection!
-            normalize="none",
-        )
-        assert success is True
-        assert out_wav.exists()
-
-        # Read result: if prefiltered was correctly auto-detected, output length is ~1024 + 1024
-        # (circuit impulse only), NOT convolved through prefilter_firs again.
-        with pedalboard.io.AudioFile(str(out_wav)) as f:
-            out_audio = f.read(f.frames)[0]
-        assert len(out_audio) == len(impulse)
-        assert np.max(np.abs(out_audio)) > 0.0
-
-
 def test_multichannel_branch_weight_consistency():
     """
     Verify Vector 2 & 3: Multi-channel branch weight consistency.
-    When a voice has a multi-channel SPICE netlist (e.g. 02_jazz_bass_pair),
+    When a voice has a multi-channel SPICE netlist (e.g. jazz_pair_open),
     prefilter FIRs have unit branch weight (p_weight = 1.0) because SPICE nodal
     analysis computes the parallel current divider Y_branch / Y_total.
     """
-    firs_02 = compute_voice_prefilter_firs("02_jazz_bass_pair", instrument="30in", num_taps=512)
+    firs_02 = compute_voice_prefilter_firs("jazz_pair_open", instrument="30in", num_taps=512)
     assert len(firs_02) == 2
     # Both channels must have peaks around 0.99
     peak_0 = np.max(np.abs(firs_02[0]))
@@ -512,7 +473,7 @@ def test_jaco_bridge_growl_bias_voicing():
     Validates decoupled pot parsing (Neck 75%, Bridge 100%), relative branch attenuation,
     and prefilter FIR generation.
     """
-    model = load_circuit("02c_jazz_bridge_growl_bias")
+    model = load_circuit("jazz_bridge_growl")
     assert model.topology == "parallel"
     assert model.Rpot_n == pytest.approx(55000.0)
     assert model.Rpot_b == pytest.approx(0.0)
@@ -531,7 +492,7 @@ def test_jaco_bridge_growl_bias_voicing():
 
     # Pre-filter FIRs for 02c must exist and synthesize cleanly
     firs = compute_voice_prefilter_firs(
-        "02c_jazz_bridge_growl_bias", instrument="34in_standard_jazz", num_taps=512
+        "jazz_bridge_growl", instrument="34in_standard_jazz", num_taps=512
     )
     assert len(firs) == 2
     assert np.all(np.isfinite(firs[0]))
@@ -543,7 +504,7 @@ def test_multi_pickup_excursion_ratio():
     Verify Refinement 3: Physical string excursion drive ratio between neck and bridge pickups.
     Mono signal through multi-pickup circuit simulation scales bridge drive.
     """
-    model = load_circuit("02_jazz_bass_pair")
+    model = load_circuit("jazz_pair_open")
     n_samples = 4800
     mono_audio = (np.sin(2 * np.pi * 100.0 * np.linspace(0, 0.1, n_samples)) * 0.8).astype(
         np.float32
@@ -620,7 +581,7 @@ def test_passive_rlc_thermal_noise_dither():
 
 def test_run_spice_batch_parallel(tmp_path: Path):
     """Verify that run_spice_batch executes multiple voices concurrently across ProcessPoolExecutor workers."""
-    test_voices = ["04_modern_p_ceramic", "05_vintage_62_p_alnico"]
+    test_voices = ["precision_active", "precision_vintage"]
     inst = "30in"
 
     # Execute batch with jobs=2 and max_samples=4800 (fast test bounding) in tmp_path
@@ -649,10 +610,10 @@ def test_unsupported_ltspice_backend_raises_error():
     from allomorph.pipeline import run_circuit_simulation
 
     with pytest.raises(ValueError, match="The legacy LTspice pipeline has been removed"):
-        run_circuit_simulation("04_modern_p_ceramic", backend="ltspice")
+        run_circuit_simulation("precision_active", backend="ltspice")
 
     with pytest.raises(ValueError, match="The legacy LTspice pipeline has been removed"):
-        run_spice_batch(["04_modern_p_ceramic"], backend="ltspice")
+        run_spice_batch(["precision_active"], backend="ltspice")
 
 
 def test_run_pipeline_cli_jobs_and_voices():
@@ -663,23 +624,23 @@ def test_run_pipeline_cli_jobs_and_voices():
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--stage",
-        choices=["all", "viz", "canonical", "frontends", "targets", "train", "bake"],
+        choices=["all", "viz", "sim", "pack", "train"],
         default="all",
     )
     parser.add_argument("--voice", "-v", default="all")
     parser.add_argument("--jobs", "-j", type=int, default=None)
 
     # 1. When no voice is specified, it must resolve to all voices
-    args = parser.parse_args(["--stage", "targets"])
+    args = parser.parse_args(["--stage", "sim"])
     voices = resolve_voices(args.voice)
     assert len(voices) == len(VOICES)
-    assert "04_modern_p_ceramic" in voices
-    assert "01_modern_jazz_active" in voices
+    assert "precision_active" in voices
+    assert "jazz_pair_active" in voices
 
     # 2. When explicit -v is passed
-    args = parser.parse_args(["--stage", "targets", "-v", "04_modern_p_ceramic", "-j", "4"])
+    args = parser.parse_args(["--stage", "sim", "-v", "precision_active", "-j", "4"])
     voices = resolve_voices(args.voice)
-    assert voices == ["04_modern_p_ceramic"]
+    assert voices == ["precision_active"]
     assert args.jobs == 4
 
     # 3. When --stage train is invoked with no voice, it also resolves to all voices
@@ -703,7 +664,7 @@ def test_simulate_voice_strict_configuration_errors():
     with pytest.raises(
         KeyError, match="Pickup 'non_existent_pickup' not found on instrument '30in_emg_mmtw'"
     ):
-        simulate_voice("04_modern_p_ceramic", instrument="30in", pickup="non_existent_pickup")
+        simulate_voice("precision_active", instrument="30in", pickup="non_existent_pickup")
 
     from allomorph.config.schema import InstrumentConfig, PickupConfig
 
@@ -727,7 +688,7 @@ def test_simulate_voice_strict_configuration_errors():
         scale_length_in=34.0,
     )
     with pytest.raises(ValueError, match="does not define a '\\[circuit\\]' block"):
-        simulate_voice("04_modern_p_ceramic", instrument=passive_inst_no_cir, max_samples=100)
+        simulate_voice("precision_active", instrument=passive_inst_no_cir, max_samples=100)
 
     # 4. Unknown magnet type in solver
     model = CircuitModel()

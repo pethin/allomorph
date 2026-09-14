@@ -10,29 +10,20 @@ from pathlib import Path
 from allomorph.config.instruments import load_instrument
 from allomorph.visualizer.charts import (
     generate_all_charts,
-    generate_baked_responses_page,
-    generate_baked_waterfall_3d_page,
-    generate_composite_instrument_chart,
-    generate_frontend_deconvolutions_chart,
-    generate_instrument_frontend_chart,
     generate_interactive_chart,
-    generate_universal_targets_chart,
+    generate_voicing_ir_3d_page,
+    generate_voicings_page,
     render_chart_to_file,
 )
 from allomorph.visualizer.dataframe import (
     F_MAX,
     F_MIN,
     NUM_POINTS,
-    build_baked_responses_data,
-    build_baked_responses_dataframe,
-    build_baked_waterfall_3d_data,
-    build_composite_instrument_dataframe,
-    build_frontend_deconvolutions_dataframe,
-    build_instrument_frontend_dataframe,
-    build_universal_targets_dataframe,
     build_voice_dataframe,
-    compute_canonical_acoustic_response,
-    compute_canonical_intermediate_response,
+    build_voicing_ir_diff_3d_data,
+    build_voicings_comparison_data,
+    build_voicings_comparison_dataframe,
+    compute_curve_rms_db,
     compute_fir_csd,
     log_freqs,
 )
@@ -53,28 +44,19 @@ __all__ = [
     "NUM_POINTS",
     "RESPONSES_DIR",
     "append_spec_panel",
-    "build_baked_responses_data",
-    "build_baked_responses_dataframe",
-    "build_baked_waterfall_3d_data",
-    "build_composite_instrument_dataframe",
-    "build_frontend_deconvolutions_dataframe",
-    "build_instrument_frontend_dataframe",
     "build_portal_html",
-    "build_universal_targets_dataframe",
     "build_voice_dataframe",
-    "compute_canonical_acoustic_response",
-    "compute_canonical_intermediate_response",
+    "build_voicing_ir_diff_3d_data",
+    "build_voicings_comparison_data",
+    "build_voicings_comparison_dataframe",
+    "compute_curve_rms_db",
     "compute_fir_csd",
     "format_instrument_meta",
     "generate_all_charts",
-    "generate_baked_responses_page",
-    "generate_baked_waterfall_3d_page",
-    "generate_composite_instrument_chart",
-    "generate_frontend_deconvolutions_chart",
-    "generate_instrument_frontend_chart",
     "generate_interactive_chart",
     "generate_portal_pages",
-    "generate_universal_targets_chart",
+    "generate_voicing_ir_3d_page",
+    "generate_voicings_page",
     "log_freqs",
     "main",
     "render_chart_to_file",
@@ -84,7 +66,7 @@ __all__ = [
 def main(argv: Sequence[str] | None = None) -> None:
     """CLI entrypoint for interactive frequency response visualizer."""
     parser = argparse.ArgumentParser(
-        description="Generate interactive Altair visualization of Allomorph voices."
+        description="Generate interactive visualizations of Allomorph voicings and instruments."
     )
     parser.add_argument(
         "--instrument",
@@ -95,12 +77,21 @@ def main(argv: Sequence[str] | None = None) -> None:
     parser.add_argument(
         "--mode",
         "-m",
-        choices=["composite", "unified", "output", "difference", "targets", "frontends", "baked"],
-        default="composite",
-        help="Chart mode: 'composite' (3-curve overlay), 'unified', 'output', 'difference', 'targets', 'frontends', or 'baked'",
+        choices=[
+            "voicings",
+            "voicing_ir_3d",
+            "waterfall3d",
+            "unified",
+            "output",
+            "difference",
+        ],
+        default="voicings",
+        help="Chart mode: 'voicings' (interactive 3-line voicing comparison), 'voicing_ir_3d' (3D difference IR waterfall), 'unified', 'output', or 'difference'",
     )
     parser.add_argument(
-        "--all", action="store_true", help="Build interactive charts for all configured instruments"
+        "--all",
+        action="store_true",
+        help="Build interactive charts for all configured instruments and voicings",
     )
     parser.add_argument(
         "--out",
@@ -117,10 +108,10 @@ def main(argv: Sequence[str] | None = None) -> None:
 
     if cli_cfg.all or (isinstance(cli_cfg.instrument, str) and cli_cfg.instrument.lower() == "all"):
         generate_all_charts(output_dir=cli_cfg.out)
-    elif cli_cfg.mode in ("targets", "frontends", "baked"):
+    elif cli_cfg.mode in ("voicings", "voicing_ir_3d", "waterfall3d"):
         generate_interactive_chart(mode=cli_cfg.mode, out_html=cli_cfg.out)
     else:
         inst = load_instrument(cli_cfg.instrument)
         generate_interactive_chart(instrument=inst, out_html=cli_cfg.out, mode=cli_cfg.mode)
         if cli_cfg.out is None or (Path(cli_cfg.out).resolve() == RESPONSES_DIR.resolve()):
-            generate_portal_pages(output_dir=RESPONSES_DIR, default_id=inst.id)
+            generate_portal_pages(output_dir=RESPONSES_DIR)

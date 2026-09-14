@@ -1,66 +1,48 @@
 # Neural Amp Modeler (NAM) Training Architecture & Audio Pairings
 
-This document details the audio excitation files, target wet sweeps, training pairings, and CLI workflows for training **NAM Architecture 2 (A2)** models across both the **Decoupled 2-Block System** (Darkglass Anagram Block 1 + Block 2) and the **Standalone 1-Block Baked System**.
+This document details the audio excitation files, target wet sweeps, training pairings, and CLI workflows for training **NAM Architecture 2 (A2)** models under the **Direct Single-Block Digital Twin System** (Architecture D) and Tone3000 upload bundles.
 
 ---
 
 ## 1. Quick Reference: Training Audio Pairings
 
-| Modeling System | Stage / Role | Input Audio | Target (Output) Audio | Exported NAM Model | Learned Transformation |
+| Modeling System | Stage / Role | Input Audio (Dry Excitation) | Target (Output Wet) Audio | Exported NAM Model | Learned Transformation |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| **Decoupled 2-Block** | **Block 1: Frontend NAM Preamp** | `audio/canonical/optimal_bass_dry.wav` | `audio/frontends/<inst_id>/<inst_id>_<pickup>_wet.wav` | `models/frontends/<inst_id>/<inst_id>_<pickup>.nam` | $H_{\text{front}} = \dfrac{H_{\text{can}}}{H_{\text{src}}}$ + 16 kHz op-amp slew limit & soft rail protection |
-| **Decoupled 2-Block** | **Block 2: Universal Target NAM** | `audio/canonical/canonical_sweep.wav` | `audio/targets/<tier>/out_<voice>.wav` | `models/<tier>/<prefix><slug>.nam` | $H_{\text{back}} = \dfrac{H_{\text{tgt}}}{H_{\text{can}}}$ + non-linear magnetic feel, core hysteresis, & saturation |
-| **1-Block Baked** | **Monolithic Direct NAM** | `audio/baked/<inst_id>/dry/dry_<inst_id>.wav` | `audio/baked/<inst_id>/<model_basename>.wav` | `models/baked/<inst_id>/<model_basename>.nam` | $H_{\text{direct}} = \dfrac{H_{\text{tgt}}}{H_{\text{src}}}$ + differential magnetic softening |
+| **Direct NAM Training** | **Direct Single-Block Digital Twin** | Dedicated dry stem or `optimal_bass_dry.wav` | `audio/wet/<inst_id>/<model_basename>.wav` | `models/<inst_id>/<model_basename>.nam` | $H_{\text{direct}} = \dfrac{H_{\text{tgt}}}{H_{\text{src}}}$ + non-linear magnetic feel, core hysteresis, & saturation |
+| **Tone3000 Upload Bundle** | **Single Dry + Multi Wet Stems** | `bundles/<pickup>/dry.wav` | `bundles/<pickup>/<target_name>.wav` | Trained via Tone3000 cloud trainer | $W = X_{\text{dry}} * h_{\text{aperture}} * h_{\text{circuit}}$ with $-0.09\text{ dBFS}$ true-peak ceiling |
+| **Custom Pair Training** | **Explicit Audio Files** | `--input <path_to_dry.wav>` | `--output <path_to_wet.wav>` | `models/<basename>.nam` | Direct mapping via user-specified excitation and response |
 
 ---
 
 ## 2. Signal Flow Mathematical Proof
 
-### A. Block 1 Live Hardware Operation
-When a player plugs their physical bass into the pedalboard, the instrument produces an electrical voltage governed by its string excitation $X_{\text{string}}$ and pickup/circuit response $H_{\text{src}}$:
+### Direct Single-Block Hardware Operation
+When a player plugs their physical bass into the pedalboard (Darkglass Anagram Block 1), the instrument produces an electrical voltage governed by its physical string excitation $X_{\text{string}}$ and pickup/circuit response $H_{\text{src}}$:
 $$X_{\text{bass}} = X_{\text{string}} \cdot H_{\text{src}}$$
 
-Because Block 1 was trained on $X_{\text{dry}} \longrightarrow X_{\text{dry}} \cdot \left(\dfrac{H_{\text{can}}}{H_{\text{src}}}\right)$, it evaluates the transfer function $H_{\text{front}} = \dfrac{H_{\text{can}}}{H_{\text{src}}}$:
-$$Y_{\text{Block 1}} = X_{\text{bass}} \cdot H_{\text{front}} = (X_{\text{string}} \cdot H_{\text{src}}) \cdot \frac{H_{\text{can}}}{H_{\text{src}}} = X_{\text{string}} \cdot H_{\text{can}}$$
+The monolithic NAM digital twin evaluates the end-to-end forward transformation $H_{\text{direct}} = \dfrac{H_{\text{tgt}}}{H_{\text{src}}}$:
+$$Y_{\text{Block 1}} = X_{\text{bass}} \cdot H_{\text{direct}} = (X_{\text{string}} \cdot H_{\text{src}}) \cdot \frac{H_{\text{tgt}}}{H_{\text{src}}} = X_{\text{string}} \cdot H_{\text{tgt}}$$
 
-The output of Block 1 is the **Canonical Intermediate Baseline** ($34''$ scale, $93.5\text{ mm}$ datum, wideband passive reference circuit).
-
-### B. Block 2 Live Hardware Operation
-Block 2 was trained with `canonical_sweep.wav` ($X_{\text{dry}} \cdot H_{\text{can}}$) as input and `out_<voice>.wav` ($X_{\text{dry}} \cdot H_{\text{tgt}}$) as target:
-$$X_{\text{can}} \longrightarrow X_{\text{tgt}} \implies H_{\text{back}} = \frac{H_{\text{tgt}}}{H_{\text{can}}}$$
-
-When the live output from Block 1 ($Y_{\text{Block 1}} = X_{\text{string}} \cdot H_{\text{can}}$) enters Block 2:
-$$Y_{\text{Block 2}} = Y_{\text{Block 1}} \cdot H_{\text{back}} = (X_{\text{string}} \cdot H_{\text{can}}) \cdot \frac{H_{\text{tgt}}}{H_{\text{can}}} = X_{\text{string}} \cdot H_{\text{tgt}}$$
-
-The output of Block 2 is the exact physical **Target Voice** with full dynamic feel, magnetic drag, and circuit loading.
+The output is the authentic physical **Target Voice** with full dynamic feel, magnetic drag, core hysteresis, and circuit loading, synthesized in a single zero-latency neural forward pass.
 
 ---
 
 ## 3. Excitation Sweeps & Level Calibration
 
-### 1. Raw Dry Excitation (`audio/canonical/optimal_bass_dry.wav`)
+### 1. Master Base Excitation (`audio/canonical/optimal_bass_dry_v3.wav`)
 - **Origin:** Synthesized by [`allomorph.dsp.generate_optimal_bass_dry`](file:///Users/peter/Projects/pethin/passivizer/src/allomorph/dsp.py).
-- **Contents:** Multi-tier logarithmic sine chirps ($15\text{ Hz}$ to $22\text{ kHz}$), 5-step dynamic velocity ladder on open E1 ($pp$ to $ff$), modal plucks with attack pitch sag, plectrum pick strikes, slap thumb pops, palm-muted staccato, percussive ghost notes ($<40\text{ ms}$), natural harmonics, and shaped pink noise bursts.
+- **Contents:** The single unvoiced string vibration signal in the entire system. Contains multi-tier logarithmic sine chirps ($15\text{ Hz}$ to $22\text{ kHz}$), 5-step dynamic velocity ladder on open E1 ($pp$ to $ff$), modal plucks with attack pitch sag, plectrum pick strikes, slap thumb pops, palm-muted staccato, percussive ghost notes ($<40\text{ ms}$), natural harmonics, and shaped pink noise bursts.
 - **Leveling:** Calibrated to **$-1.00\text{ dBFS}$ Peak** and **$-11.97\text{ dBFS}$ RMS**.
 
-### 2. Canonical Intermediate Sweep (`audio/canonical/canonical_sweep.wav`)
-- **Origin:** Generated by [`allomorph.circuit.staging.generate_canonical_sweep`](file:///Users/peter/Projects/pethin/passivizer/src/allomorph/circuit/staging.py#L61).
-- **Contents:** `optimal_bass_dry.wav` convolved through the Canonical Intermediate aperture ($93.5\text{ mm}$ datum, $0.75''$ slit, $34''$ scale) and flat active buffer circuit.
-- **Leveling:** Physically unnormalized baseline bounded by the **$0.9900$ ($-0.09\text{ dBFS}$) True-Peak safety ceiling**.
-- **Measured Levels:** **$-0.43\text{ dBFS}$ Peak**, **$-22.44\text{ dBFS}$ RMS**.
+### 2. Source Instrument Pickup Stems (`audio/wet/<inst_id>/<pickup>.wav`)
+- **Origin:** Generated by [`allomorph.circuit.staging.export_instrument_pickup_wav`](file:///Users/peter/Projects/pethin/passivizer/src/allomorph/circuit/staging.py).
+- **Contents:** The simulated physical output of a source instrument's pickup aperture and circuit, serving as the input stem for wet $\to$ wet paired modeling.
+- **Leveling:** Matches master excitation levels bounded by the **$0.9900$ ($-0.09\text{ dBFS}$) True-Peak safety ceiling**.
 
-### 3. Frontend Wet Sweeps (`audio/frontends/<inst_id>/<inst_id>_<pickup>_wet.wav`)
-- **Origin:** Generated by [`allomorph.circuit.staging.export_frontend_wet_wav`](file:///Users/peter/Projects/pethin/passivizer/src/allomorph/circuit/staging.py#L350).
-- **Contents:** `optimal_bass_dry.wav` convolved through the source pickup's frontend deconvolution FIR ($H_{\text{frontend}} = H_{\text{can}} / H_{\text{src}}$) + **Approach A non-linear conditioning**:
-  - Op-amp $16\text{ kHz}$ slew limiting (`_slew_limit_core`).
-  - Soft-knee rail protection for excursions $> -3.1\text{ dBFS}$ ($0.70$).
-  - Johnson-Nyquist $-108\text{ dBFS}$ thermal noise dither.
-- **Leveling:** Physically unnormalized with **$0.00\text{ dB}$ unity gain at bass fundamentals ($40\text{--}200\text{ Hz}$)**. Peaks sit cleanly between $-0.13\text{ dBFS}$ and $-0.23\text{ dBFS}$.
-
-### 4. Target Backend Sweeps (`audio/targets/<tier>/out_<voice>.wav`)
-- **Origin:** Generated by [`allomorph.circuit.staging.simulate_backend_targets`](file:///Users/peter/Projects/pethin/passivizer/src/allomorph/circuit/staging.py#L568).
-- **Contents:** `canonical_sweep.wav` processed through native SPICE circuit simulation and non-linear magnetic ODE solving.
-- **Leveling:** **`normalize="auto"`** matches each target voice's broadband RMS to the input sweep (`in_rms` = $-22.44\text{ dBFS}$). Peaks uniformly cluster between **$-6.4\text{ dBFS}$ and $-8.7\text{ dBFS}$**, ensuring consistent loudness when switching target voices on stage and providing $6\text{--}8\text{ dB}$ of headroom before full scale.
+### 3. Target Wet Stems (`audio/wet/<inst_id>/<voice_slug>.wav`)
+- **Origin:** Synthesized via native forward simulation and non-linear magnetic ODE solving (`allomorph --stage sim` or `simulate_instrument_voicing`).
+- **Contents:** Fully simulated target voice responses featuring dynamic magnetic string pull damping, back-EMF string braking, dynamic reluctance inductance modulation, core curvature wobble, and soft-knee rail protection.
+- **Leveling:** Calibrated RMS volume matching guarantees uniform stage gain across all target voices, bounded by the **$-0.09\text{ dBFS}$ (0.9900) True-Peak ceiling**.
 
 ---
 
@@ -68,56 +50,28 @@ The output of Block 2 is the exact physical **Target Voice** with full dynamic f
 
 Allomorph includes an automated trainer targeting Apple Silicon Metal (MPS) and AMD ROCm GPU acceleration:
 
-### A. Train Block 1 Frontend NAM Preamp
-Trains an A2 model that deconvolutes your specific physical instrument into the Canonical Intermediate baseline:
+### A. Train Direct NAM Models
+Trains a monolithic A2 model mapping directly from the source instrument pickup to the target voice (wet $\to$ wet paired modeling):
 ```bash
-# Train a specific pickup position (e.g. 30" Short Scale EMG MMTW dual coil):
-uv run python scripts/train_nam.py --frontend --instrument 30in_emg_mmtw --pickup mmtw_dual
+# Train direct model from 30" EMG MMTW to Precision Active:
+uv run python scripts/train_nam.py --instrument 30in_emg_mmtw --voice precision_active
 
-# Train all pickups on an instrument:
-uv run python scripts/train_nam.py --frontend --instrument 32in_custom_pmm --pickup all
+# Train all target voices for an instrument:
+uv run python scripts/train_nam.py --instrument 34in_standard_p --voice all
 
-# Equivalent manual nam train command:
-nam train audio/canonical/optimal_bass_dry.wav \
-          audio/frontends/30in_emg_mmtw/30in_emg_mmtw_dual_wet.wav \
-          models/frontends/30in_emg_mmtw/30in_emg_mmtw_dual.nam \
-          --architecture "A2"
+# Train with explicit input/output files:
+uv run python scripts/train_nam.py --input audio/wet/30in_emg_mmtw/mmtw_dual.wav \
+                                  --output audio/wet/34in_standard_pj/precision_active.wav \
+                                  --basename precision_active
+
+# Or simulate and train via the allomorph pipeline:
+uv run allomorph --stage train --instrument 30in_emg_mmtw --voice precision_active
 ```
 
-### B. Train Block 2 Universal Target NAM
-Trains an A2 target voice model that maps from the Canonical Intermediate baseline to the desired target instrument and tier:
-```bash
-# Train Standard Dynamic tier for Vintage '62 P-Bass:
-uv run python scripts/train_nam.py --tier standard --voice 05_vintage_62_p_alnico
-
-# Train Clean tier for Modern Jazz Active:
-uv run python scripts/train_nam.py --tier clean --voice 01_modern_jazz_active
-
-# Train Hot Rod tier for StingRay Parallel:
-uv run python scripts/train_nam.py --tier hotrod --voice 09_stingray_mm_parallel
-
-# Equivalent manual nam train command:
-nam train audio/canonical/canonical_sweep.wav \
-          audio/targets/02_standard_dynamic/out_05_vintage_62_p_alnico.wav \
-          models/02_standard_dynamic/std_05_vintage_p.nam \
-          --architecture "A2"
-```
-
-### C. Train Standalone 1-Block Direct Baked NAM
-Trains a monolithic model capturing the direct source-to-target transformation in a single neural model. Each pickup switch configuration has its own dedicated subdirectory containing its pickup-specific target stems, and an isolated `dry/` subdirectory containing its physically conditioned dry excitation file (`audio/baked/<inst_id>/<pickup>/dry/dry_<inst_id>_<pickup>.wav`):
-```bash
-# Train direct baked model from 30" source to Modern P (auto-resolves mmtw_dual/dry/dry_30in_emg_mmtw_mmtw_dual.wav):
-uv run python scripts/train_nam.py --baked --instrument 30in_emg_mmtw --voice 04_modern_p_ceramic
-
-# Or bake and train via the allomorph pipeline:
-allomorph --stage bake --instrument 30in_emg_mmtw --voice 04_modern_p_ceramic --train
-
-# Equivalent manual nam train command:
-nam train audio/baked/30in_emg_mmtw/mmtw_dual/dry/dry_30in_emg_mmtw_mmtw_dual.wav \
-          audio/baked/30in_emg_mmtw/mmtw_dual/dyn_04_modern_p.wav \
-          models/baked/30in_emg_mmtw/mmtw_dual/dyn_04_modern_p.nam \
-          --architecture "A2"
-```
+### B. Tone3000 Upload Bundles (`bundles/<pickup>/`)
+For web training on Tone3000, bundles are generated via `allomorph --stage pack`:
+- Each bundle contains a single `dry.wav` and all target wet stems mapped to that pickup switch position.
+- Model names follow the zero-scroll display budget ($\le 34$ characters) and filename ceiling ($\le 64$ characters).
 
 ---
 

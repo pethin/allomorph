@@ -30,6 +30,7 @@ name = "34\" Preamp Soapbar Bass (Dual Humbuckers)"
 scale_length_in = 34.0
 scale_length_m = 0.8636
 electronics = "active"
+version = 1
 
 # Extended wave speeds: v = 2 * L * f0 (spans B0=30.87Hz to G2=98.00Hz for 4, 5, and 6-string universal compatibility)
 string_wave_speeds = [53.31, 71.16, 95.00, 126.81, 169.27]
@@ -145,31 +146,38 @@ Reddy = 90000.0
 Ccoil = 9.5e-11
 
 # ------------------------------------------------------------------------------
-# 4. SMART VOICE MAPPING
+# 4. NATIVE INSTRUMENT VOICINGS
 # ------------------------------------------------------------------------------
-# Directs the player to select the closest physical pickup state on the Soapbar Bass:
-#   - Neck Solo: Precision bass voicings, Mudbucker, and Upright acoustic depth
-#   - Bridge Solo: 60s Jazz bridge growl, StingRay bite, and Rickenbacker clank
-#   - Both Parallel: Modern active slap, dual-coil clarity, and hybrid authority
 
+[voicings.pair_parallel]
+version = 1
+name = "Active Dual Soapbar Parallel"
+tone_name = "Soapbar Pair"
+pickup = "pair_parallel"
+affinity = "parallel"
+vol_pos = 1.0
+
+[voicings.neck_solo]
+version = 1
+name = "Active Solo Neck Soapbar"
+tone_name = "Soapbar Neck"
+pickup = "neck"
+affinity = "neck"
+vol_pos = 1.0
+
+[voicings.bridge_solo]
+version = 1
+name = "Active Solo Bridge Soapbar"
+tone_name = "Soapbar Bridge"
+pickup = "bridge"
+affinity = "bridge"
+vol_pos = 1.0
+
+# ------------------------------------------------------------------------------
+# 5. PICKUP AFFINITY ROUTING
+# ------------------------------------------------------------------------------
 [pickup_mapping]
-"01_modern_jazz_active" = "pair_parallel"
-"02_jazz_bass_pair" = "pair_parallel"
-"02b_jazz_bass_pair_22nf" = "pair_parallel"
-"02c_jazz_bridge_growl_bias" = "bridge"
-"03_jazz_bridge_60s" = "bridge"
-"04_modern_p_ceramic" = "neck"
-"05_vintage_62_p_alnico" = "neck"
-"05b_vintage_62_p_22nf" = "neck"
-"05c_vintage_62_p_47nf" = "neck"
-"05d_vintage_50s_p_100nf" = "neck"
-"07_modern_pj_active" = "pair_parallel"
-"08_vintage_pj_passive" = "pair_parallel"
-"09_stingray_mm_parallel" = "bridge"
-"09b_stingray_mm_series" = "bridge"
-"10_rickenbacker_bridge_hpf" = "bridge"
-"11_modern_pmm_active" = "pair_parallel"
-"11b_pmm_hybrid_series" = "pair_parallel"
-"12_mudbucker_ultra_series" = "neck"
-"13_dingwall_multiscale_bridge" = "bridge"
-"14_upright_bridge_transducer" = "neck"
+neck = "neck"
+bridge = "bridge"
+parallel = "pair_parallel"
+direct = "pair_parallel"

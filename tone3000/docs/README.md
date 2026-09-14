@@ -62,7 +62,7 @@ Bassists browse Tone3000 to find sounds that inspire them, solve gigging problem
 | *14.4H overwound neck-heel sidewinder Mudbucker* | The Gibson Mudbucker: dark, colossal vintage bass wall of sound |
 | *Bridge piezo force sensor with leaky integration* | Acoustic upright double bass: woody resonance, body thump, and organic acoustic feel |
 | *Studio 1MΩ active buffer (750 pF cable deconvolution)* | Studio Active Buffer: opens up wide-open hi-fi highs, fast transients, and airy attack |
-| *4.2H RLC high-Z network replacing active buffering* | Vintage Passive Character: turns an active bass into a warm, organic vintage passive instrument |
+| *4.2H RLC high-Z network replacing active buffering* | Studio Passive: turns an active bass into a warm, organic vintage passive instrument |
 
 ---
 
@@ -98,8 +98,8 @@ Every pack provides comprehensive coverage across eight modular sonic families, 
    - **Modern PJ Active** (Modern Active P/J Bass, Active 2-Band Boost @ 40 Hz & 4 kHz)
    - **Vintage PJ Passive** (Vintage '80s Passive P/J Bass, Duff McKagan / BB3000 Parallel Sum)
 8. **Studio Buffers & Dynamics:**
-   - **Active Character** (Modern Studio Active Buffer, Zero Cable Loading / 1M Impedance Twin @ 7.5–9.0 kHz)
-   - **Passive Character** (High-Impedance Passive Pickup & Cable Loading: 4.2H RLC, 750pF Cable, 250k Pots)
+   - **Studio Active** (Modern Studio Active Buffer, Zero Cable Loading / 1M Impedance Twin @ 7.5–9.0 kHz)
+   - **Studio Passive** (High-Impedance Passive Pickup & Cable Loading: 4.2H RLC, 750pF Cable, 250k Pots)
 
 ---
 

@@ -22,7 +22,9 @@ def _get_cached_s_ratio_power(alpha: float, n_points: int) -> np.ndarray:
     w = 2.0 * np.pi * freqs_arr
     w0 = 2.0 * np.pi * 1000.0
     s_ratio = np.where(w > 0.0, w / w0, 0.0)
-    return s_ratio ** alpha
+    return s_ratio**alpha
+
+
 from allomorph.config.schema import (
     PickupConfig,
     PreampBandConfig,
@@ -383,7 +385,7 @@ def compute_circuit_transfer_functions(
         s_pow_cable = _get_cached_s_ratio_power(alpha_cable, 4096)
     else:
         s_ratio = np.where(w > 0.0, w / w0, 0.0)
-        s_pow_cable = s_ratio ** alpha_cable
+        s_pow_cable = s_ratio**alpha_cable
 
     kappa_cable = 1j * (w0 * model.Ccable) * np.exp(1j * (alpha_cable - 1.0) * (np.pi / 2.0))
     Y_cable_diel = kappa_cable * s_pow_cable
@@ -393,7 +395,7 @@ def compute_circuit_transfer_functions(
             s_pow_tone = _get_cached_s_ratio_power(alpha_tone, 4096)
         else:
             s_ratio = np.where(w > 0.0, w / w0, 0.0)
-            s_pow_tone = s_ratio ** alpha_tone
+            s_pow_tone = s_ratio**alpha_tone
         kappa_tone = 1j * (w0 * model.Ctone) * np.exp(1j * (alpha_tone - 1.0) * (np.pi / 2.0))
         Y_c_tone = kappa_tone * s_pow_tone
         Y_tone = Y_c_tone / (1.0 + Y_c_tone * model.Rtone) if model.Rtone > 0 else Y_c_tone

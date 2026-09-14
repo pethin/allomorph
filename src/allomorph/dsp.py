@@ -407,7 +407,6 @@ from allomorph.version import DSP_GENERATION
 OPTIMAL_DRY_PATH = AUDIO_DIR / "canonical" / f"optimal_bass_dry_v{DSP_GENERATION}.wav"
 
 
-
 @njit(fastmath=True, parallel=True)
 def _accumulate_pluck_modes_simd(
     sig: np.ndarray,
@@ -1073,13 +1072,18 @@ def generate_optimal_bass_dry(
                 audio[cur : cur + avail] = seg[:avail]
                 cur += avail
             return
-        audio[cur : end_idx] = seg
+        audio[cur:end_idx] = seg
         p_samples = max(50, int(pause_dur * sample_rate * scale))
         cur = min(end_idx + p_samples, limit)
 
     # 2. Multi-tier full sweeps (15 Hz -> 22 kHz) with Slew-Rate Diversity
     chirp_tiers = [
-        (15.0, 22000.0, 0.050, 12.0),  # Slow precision sweep (-24 dBFS linear baseline, spans 10-12s V3 window)
+        (
+            15.0,
+            22000.0,
+            0.050,
+            12.0,
+        ),  # Slow precision sweep (-24 dBFS linear baseline, spans 10-12s V3 window)
         (15.0, 22000.0, 0.220, 1.8),  # Fast dynamic sweep (-13 dBFS eddy onset)
         (15.0, 22000.0, 0.500, 7.0),  # Slow high-res sweep (-6 dBFS Lenz drag)
         (15.0, 22000.0, 0.890, 1.8),  # Fast extreme slew sweep (-1 dBFS 16 kHz limit)
@@ -1124,16 +1128,22 @@ def generate_optimal_bass_dry(
     # 6. Bass Articulations & Playing Techniques
     # Rapid groove bursts (pumped core envelope memory)
     if cur < total_samples - trail_silence:
-        gb1 = _synth_groove_burst(41.20, 0.82, bpm=120.0, count=6, sample_rate=sample_rate, technique="finger")
+        gb1 = _synth_groove_burst(
+            41.20, 0.82, bpm=120.0, count=6, sample_rate=sample_rate, technique="finger"
+        )
         append_segment(gb1, 0.4)
     if cur < total_samples - trail_silence:
-        gb2 = _synth_groove_burst(55.00, 0.80, bpm=140.0, count=8, sample_rate=sample_rate, technique="pick")
+        gb2 = _synth_groove_burst(
+            55.00, 0.80, bpm=140.0, count=8, sample_rate=sample_rate, technique="pick"
+        )
         append_segment(gb2, 0.4)
     # Slap-and-pop pairs (thumb slap -> octave pop)
     for f_slap, f_pop in [(41.20, 82.41), (55.00, 110.00)]:
         if cur >= total_samples - trail_silence:
             break
-        sp = _synth_slap_pop_pair(f_slap, f_pop, 0.89, gap_ms=70.0, dur=max(0.4, 1.4 * scale), sample_rate=sample_rate)
+        sp = _synth_slap_pop_pair(
+            f_slap, f_pop, 0.89, gap_ms=70.0, dur=max(0.4, 1.4 * scale), sample_rate=sample_rate
+        )
         append_segment(sp, 0.4)
     # Funk ghost-note percussive rakes & isolated ghost clicks
     if cur < total_samples - trail_silence:
@@ -1154,7 +1164,14 @@ def generate_optimal_bass_dry(
     for v_f in [55.00, 73.42]:
         if cur >= total_samples - trail_silence:
             break
-        vib = _synth_vibrato_pluck(v_f, 0.78, max(0.6, 2.5 * scale), mod_rate=5.0, mod_depth_cents=25.0, sample_rate=sample_rate)
+        vib = _synth_vibrato_pluck(
+            v_f,
+            0.78,
+            max(0.6, 2.5 * scale),
+            mod_rate=5.0,
+            mod_depth_cents=25.0,
+            sample_rate=sample_rate,
+        )
         append_segment(vib, 0.4)
     # Plectrum downstroke/upstroke strikes
     for _ in range(2):
@@ -1184,7 +1201,7 @@ def generate_optimal_bass_dry(
         append_segment(d, 0.4)
     # Upper-register root-tenths (melodic polyphony & mid-band IMD)
     tenths = [
-        (82.41, 207.65),   # E2 + G#3 (tenth)
+        (82.41, 207.65),  # E2 + G#3 (tenth)
         (110.00, 277.18),  # A2 + C#4 (tenth)
         (146.83, 369.99),  # D3 + F#4 (tenth)
     ]
@@ -1213,8 +1230,21 @@ def generate_optimal_bass_dry(
         if nm > 100:
             tm = np.linspace(0.0, dur_m, nm, endpoint=False)
             clusters = [
-                27.50, 30.87, 41.20, 55.00, 82.41, 110.0, 220.0,
-                440.0, 880.0, 1250.0, 1800.0, 2400.0, 3100.0, 4200.0, 6000.0,
+                27.50,
+                30.87,
+                41.20,
+                55.00,
+                82.41,
+                110.0,
+                220.0,
+                440.0,
+                880.0,
+                1250.0,
+                1800.0,
+                2400.0,
+                3100.0,
+                4200.0,
+                6000.0,
             ]
             kc = len(clusters)
             sig_m = np.zeros(nm, dtype=np.float64)
@@ -1238,7 +1268,7 @@ def generate_optimal_bass_dry(
         (73.42, 146.83),
         (146.83, 293.66),
         (293.66, 392.00),  # High G4 on 24th fret
-        (392.00, 41.20),   # Full-fingerboard downward slide
+        (392.00, 41.20),  # Full-fingerboard downward slide
     ]
     for fs, fe in slides:
         if cur >= total_samples - trail_silence:
@@ -1290,7 +1320,6 @@ def generate_optimal_bass_dry(
     return audio.astype(np.float32)
 
 
-
 def ensure_optimal_dry_wav(
     output_path: Path | str | None = None,
     duration_sec: float = 240.0,
@@ -1335,5 +1364,3 @@ def ensure_optimal_dry_wav(
         )
 
     return p
-
-

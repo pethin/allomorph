@@ -135,21 +135,18 @@ def test_tone3000_multi_pickup_tags():
         )
 
         for line in voicing_lines:
-            # Character tones (Studio Active / Passive / Direct) preserve aperture and omit selector tags
+            # Studio tones (Studio Active / Passive / Direct) preserve aperture and omit selector tags
             if any(
-                char_tone in line
-                for char_tone in [
+                studio_tone in line
+                for studio_tone in [
                     "Studio Active",
                     "Studio Passive",
                     "Studio Direct",
-                    "Active Character",
-                    "Passive Character",
-                    "Neutral Character",
                 ]
             ):
-                assert not any(
-                    tag in line for tag in tags
-                ), f"Character tone should not have selector tag: '{line}'"
+                assert not any(tag in line for tag in tags), (
+                    f"Studio tone should not have selector tag: '{line}'"
+                )
                 continue
             has_tag = any(tag in line for tag in tags)
             assert has_tag, f"{pack}.txt voicing line missing selector tag {tags}: '{line}'"
@@ -177,23 +174,19 @@ def test_tone3000_character_voicing_ranking_order():
     for pack in PACK_EDITIONS:
         txt_path = DOCS_DIR / f"{pack}.txt"
         content = txt_path.read_text(encoding="utf-8")
-        pos_p = (
-            content.find("Studio Passive")
-            if "Studio Passive" in content
-            else content.find("Passive Character")
-        )
-        pos_a = (
-            content.find("Studio Active")
-            if "Studio Active" in content
-            else content.find("Active Character")
-        )
+        pos_p = content.find("Studio Passive")
+        pos_a = content.find("Studio Active")
         assert pos_p != -1, f"Studio Passive missing in {pack}.txt"
         assert pos_a != -1, f"Studio Active missing in {pack}.txt"
 
         if pack in ACTIVE_PACKS:
-            assert pos_p < pos_a, f"Active pack {pack}.txt must rank Studio Passive before Studio Active"
+            assert pos_p < pos_a, (
+                f"Active pack {pack}.txt must rank Studio Passive before Studio Active"
+            )
         else:
-            assert pos_a < pos_p, f"Passive pack {pack}.txt must rank Studio Active before Studio Passive"
+            assert pos_a < pos_p, (
+                f"Passive pack {pack}.txt must rank Studio Active before Studio Passive"
+            )
 
 
 def test_tone3000_artwork_files_exist():
@@ -257,13 +250,11 @@ def test_tone3000_t3k_pack_basename_alignment():
 
         valid_basenames = set()
         for vid, vcfg in VOICES.items():
-            if vid == "00_canonical_intermediate":
-                continue
             pcfg = get_source_pickup(inst, vid)
             pos = (
-                None
-                if (len(inst.pickups) <= 1 or vcfg.preserve_aperture)
-                else (pcfg.position_name or pcfg.name)
+                (pcfg.position_name or pcfg.name)
+                if (pack in MULTI_PICKUP_PACKS and not vcfg.preserve_aperture)
+                else None
             )
             tone = vcfg.tone_name or vcfg.name
             valid_basenames.add(

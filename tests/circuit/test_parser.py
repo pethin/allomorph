@@ -51,18 +51,19 @@ def test_load_all_voice_circuits():
             assert model.Rbot > 0
 
         if vid in [
-            "01_modern_jazz_active",
-            "02_jazz_bass_pair",
-            "02b_jazz_bass_pair_22nf",
-            "02c_jazz_bridge_growl_bias",
-            "07_modern_pj_active",
-            "08_vintage_pj_passive",
-            "11_modern_pmm_active",
+            "jazz_pair_active",
+            "jazz_pair_open",
+            "jazz_pair_mids",
+            "jazz_bridge_growl",
+            "pj_active",
+            "pj_passive",
+            "p_mm_parallel",
+            "dingwall_parallel",
         ]:
             assert model.topology == "parallel"
             assert model.L_b > 0
             assert model.Rdc_b > 0
-        elif vid in ["11_pmm_hybrid_series", "11b_pmm_hybrid_series"]:
+        elif vid in ["p_mm_series", "p_mm_series"]:
             assert model.topology == "series"
             assert model.L_b > 0
             assert model.Rdc_b > 0
@@ -152,7 +153,7 @@ def test_sweep_audio_auto_detection():
         out_wav = Path(tmpdir) / "auto_sweep_out.wav"
         # Test with input_wav=None
         res = simulate_voice(
-            "04_modern_p_ceramic",
+            "precision_active",
             input_wav=None,
             output_wav=out_wav,
             instrument="30in",
@@ -164,7 +165,7 @@ def test_sweep_audio_auto_detection():
         # Test with input_wav pointing to missing file (fallback behavior to optimal_bass_dry.wav)
         out_wav_fallback = Path(tmpdir) / "fallback_sweep_out.wav"
         res_fallback = simulate_voice(
-            "04_modern_p_ceramic",
+            "precision_active",
             input_wav="missing_sweep.wav",
             output_wav=out_wav_fallback,
             instrument="30in",

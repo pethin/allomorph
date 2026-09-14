@@ -37,7 +37,7 @@ def test_passive_saturation_bypassed():
     # High amplitude input (0.80) exceeding vsat (0.45)
     in_heavy = np.full((1, n_samples), 0.80, dtype=np.float32)
 
-    m = load_circuit("05_vintage_62_p_alnico")
+    m = load_circuit("precision_vintage")
 
     with (
         tempfile.NamedTemporaryFile(suffix=".wav") as tmp_act,
@@ -342,7 +342,7 @@ def test_higher_order_dipole_expansion_and_sag():
 def test_differential_magnetic_softening_neodymium_to_alnico():
     """
     Verify that converting a passive Neodymium source (34in_dingwall_sp1) to an
-    Alnico V target (05_vintage_62_p_alnico) engages differential magnetic softening:
+    Alnico V target (precision_vintage) engages differential magnetic softening:
     - Delta alpha = 0.18, Delta eta = 0.05, Delta k_sag = 0.07, Vsat_eff ≈ 0.84.
     - Forte peaks (> 0.5V) undergo soft-knee saturation and 2nd harmonic expansion.
     """
@@ -356,7 +356,7 @@ def test_differential_magnetic_softening_neodymium_to_alnico():
         write_wav_24bit(str(in_wav), forte_signal, sample_rate=sr)
 
         res = simulate_voice(
-            "05_vintage_62_p_alnico",
+            "precision_vintage",
             input_wav=in_wav,
             output_wav=out_wav,
             instrument="34in_dingwall_sp1",
@@ -384,7 +384,7 @@ def test_differential_magnetic_softening_neodymium_to_alnico():
 def test_differential_magnetic_softening_alnico_to_neodymium_bypassed():
     """
     Verify that converting a softer Alnico V source (34in_standard_p) to a stiffer
-    Neodymium target (13_dingwall_multiscale_bridge) bypasses forward saturation (Delta <= 0).
+    Neodymium target (dingwall_bridge) bypasses forward saturation (Delta <= 0).
     Input scaling linearity error ||y_full - 2 * y_half|| / ||y_full|| must be < 1e-4.
     """
     sr = 48000
@@ -401,14 +401,14 @@ def test_differential_magnetic_softening_alnico_to_neodymium_bypassed():
         write_wav_24bit(str(in_half), sig_half, sample_rate=sr)
 
         simulate_voice(
-            "13_dingwall_multiscale_bridge",
+            "dingwall_bridge",
             input_wav=in_full,
             output_wav=out_full,
             instrument="34in_standard_p",
             normalize="none",
         )
         simulate_voice(
-            "13_dingwall_multiscale_bridge",
+            "dingwall_bridge",
             input_wav=in_half,
             output_wav=out_half,
             instrument="34in_standard_p",
@@ -428,7 +428,7 @@ def test_differential_magnetic_softening_alnico_to_neodymium_bypassed():
 def test_differential_magnetic_softening_active_to_passive():
     """
     Verify that converting an active 18V EMG source (30in_emg_mmtw) to a passive
-    Alnico V target (05_vintage_62_p_alnico) applies full target magnetic saturation.
+    Alnico V target (precision_vintage) applies full target magnetic saturation.
     Compression and asymmetry cause ||y_full - 2 * y_half|| / ||y_full|| to exceed 5%.
     """
     sr = 48000
@@ -445,14 +445,14 @@ def test_differential_magnetic_softening_active_to_passive():
         write_wav_24bit(str(in_half), sig_half, sample_rate=sr)
 
         simulate_voice(
-            "05_vintage_62_p_alnico",
+            "precision_vintage",
             input_wav=in_full,
             output_wav=out_full,
             instrument="30in_emg_mmtw",
             normalize="none",
         )
         simulate_voice(
-            "05_vintage_62_p_alnico",
+            "precision_vintage",
             input_wav=in_half,
             output_wav=out_half,
             instrument="30in_emg_mmtw",
@@ -472,14 +472,14 @@ def test_differential_magnetic_softening_active_to_passive():
 
 def test_differential_magnetic_softening_identity_bypassed():
     """
-    Verify that an identity voice conversion (34in_standard_p -> 05_vintage_62_p_alnico)
+    Verify that an identity voice conversion (34in_standard_p -> precision_vintage)
     bypasses forward saturation to prevent double-compression.
     Input scaling linearity error ||y_full - 2 * y_half|| / ||y_full|| must be < 1e-4.
     """
     sr = 48000
     t = np.linspace(0, 0.1, int(sr * 0.1), endpoint=False)
-    sig_full = (0.85 * np.sin(2 * np.pi * 100 * t)).astype(np.float32)
-    sig_half = (0.425 * np.sin(2 * np.pi * 100 * t)).astype(np.float32)
+    sig_full = (0.50 * np.sin(2 * np.pi * 100 * t)).astype(np.float32)
+    sig_half = (0.25 * np.sin(2 * np.pi * 100 * t)).astype(np.float32)
 
     with tempfile.TemporaryDirectory() as td:
         in_full = Path(td) / "full.wav"
@@ -490,14 +490,14 @@ def test_differential_magnetic_softening_identity_bypassed():
         write_wav_24bit(str(in_half), sig_half, sample_rate=sr)
 
         simulate_voice(
-            "05_vintage_62_p_alnico",
+            "precision_vintage",
             input_wav=in_full,
             output_wav=out_full,
             instrument="34in_standard_p",
             normalize="none",
         )
         simulate_voice(
-            "05_vintage_62_p_alnico",
+            "precision_vintage",
             input_wav=in_half,
             output_wav=out_half,
             instrument="34in_standard_p",

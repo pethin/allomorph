@@ -16,7 +16,6 @@ from allomorph.circuit.schema import CircuitConfig
 from allomorph.config.schema import VoiceCoilConfig, VoicePickupConfig
 
 __all__ = [
-    "TIER_SPECS",
     "ArtworkPackConfig",
     "NamExportMetadata",
     "NamSourceInstrumentMeta",
@@ -25,9 +24,7 @@ __all__ = [
     "NamTrainingConfig",
     "NamTrainingMetadata",
     "PipelineCliConfig",
-    "TierSpec",
     "Tone3000PackListing",
-    "get_tier_spec",
 ]
 
 
@@ -35,10 +32,7 @@ class PipelineCliConfig(AllomorphBaseModel):
     """Validation schema for Allomorph pipeline command-line arguments."""
 
     instrument: str = "all"
-    stage: Literal[
-        "all", "viz", "canonical", "frontends", "targets", "train", "bake"
-    ] = "all"
-    tier: Literal["clean", "standard", "std", "hotrod", "dynamic", "all"] | None = None
+    stage: Literal["all", "viz", "sim", "pack", "train"] = "all"
     pickup: str | None = None
     voice: str = "all"
     train: bool = False
@@ -47,18 +41,14 @@ class PipelineCliConfig(AllomorphBaseModel):
     blend_pos: float | None = Field(default=None, ge=0.0, le=1.0)
     pot_taper: Literal["audio", "linear", "reverse_audio", "mn_blend"] | None = None
     cable_pf: float = Field(default=750.0, ge=0.0, le=20000.0)
-    frontend_format: Literal["wet", "ir", "both", "nam"] = "wet"
-    normalize_frontend: bool = False
     normalize: Literal["auto", "rms", "peak", "none"] = "auto"
     target_dbfs: float | None = None
-    gain_db: float = 0.0
     out_dir: str | None = None
     input_wav: str | None = None
     output_wav: str | None = None
     export_json: str | None = None
     html: str | None = None
     backend: str = "native"
-    t3k_pack: bool = False
     version_tag: str | None = "auto"
     no_manifest: bool = False
 
@@ -69,7 +59,7 @@ class Tone3000PackListing(AllomorphBaseModel):
     edition: str
     description: str = Field(..., max_length=10000)
     pickup_tags: list[str] = Field(default_factory=list)
-    voicings: list[str] = Field(..., min_length=18, max_length=22)
+    voicings: list[str] = Field(..., min_length=18, max_length=32)
 
 
 class NamSourcePickupMeta(AllomorphBaseModel):
@@ -165,7 +155,6 @@ class NamTrainingConfig(AllomorphBaseModel):
     batch_size: int = Field(default=32, gt=0)
     show_plot: bool = False
     save_plot: bool = False
-    tier: Literal["clean", "standard", "std", "hotrod", "dynamic"] | None = None
     basename: str | None = None
     fast_dev_run: bool = False
     gui: bool = False
@@ -173,8 +162,6 @@ class NamTrainingConfig(AllomorphBaseModel):
         default=False,
         description="Train A2-Lite channels_8 only instead of the full slimmable container (default: False)",
     )
-    t3k_pack: bool = False
-    baked: bool = False
     version_tag: str | None = "auto"
     no_manifest: bool = False
 
@@ -194,6 +181,3 @@ class ArtworkPackConfig(AllomorphBaseModel):
     hero_scale: float = 1.30
     extra_bg: str = ""
     content: Callable[[str], str]
-
-
-from allomorph.naming import TIER_SPECS, TierSpec, get_tier_spec

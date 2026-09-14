@@ -432,7 +432,8 @@ class CircuitModel(AllomorphBaseModel):
                     if self.Rtone_total > 0.0
                     else (self.Rtone if self.Rtone > 0.0 else 250000.0)
                 )
-                self.Rtone = max(r_tone_tot * eff_tone, 0.0)
+                esr_floor = self.Rtone_default if self.Rtone_default <= 10.0 else 3.3
+                self.Rtone = max(r_tone_tot * eff_tone, esr_floor)
 
         if blend_pos is not None:
             self.blend_pos = float(np.clip(blend_pos, 0.0, 1.0))

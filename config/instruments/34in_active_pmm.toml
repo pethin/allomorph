@@ -1,0 +1,223 @@
+# ==============================================================================
+# ALLOMORPH SOURCE INSTRUMENT CONFIGURATION
+# 34" Modern Active P/MM Bass (Sandberg California VM4 / Lakland 44-02 Archetype)
+# ==============================================================================
+# Physical Datums:
+#   - Scale Length: 34.0" (863.6mm total, 431.8mm 12th fret to bridge saddle)
+#   - Precision Split-Coil P: Centerline 125.0mm from bridge saddle
+#       - E/A half (forward towards neck): 139.0mm from bridge (292.8mm from 12th fret)
+#       - D/G half (rearward towards bridge): 111.0mm from bridge (320.8mm from 12th fret)
+#       - Aperture width: 1.00" (25.4mm) per coil half
+#   - Music Man Bridge Humbucker: Centerline 66.0mm from bridge saddle (sweet spot)
+#       - Forward neck coil: 75.5mm from bridge
+#       - Rearward bridge coil: 56.5mm from bridge (coil spacing 0.75" / 19.05mm)
+#       - Aperture width: 1.50" (38.1mm) dual-coil housing
+# Electronics:
+#   - Active high-impedance buffer stage (Rin = 1.0 MOhm, Cin = 25 pF, low-Z Rout = 100 Ohm)
+#     isolating high-impedance coils from cable capacitance drag.
+#   - Calibrated Lakland LH44 MM spec (3.60H, 7.40k, 110pF) and Split-P (4.80H, 9.50k, 80pF)
+#     with onboard active buffer (preamp_gain = 1.5).
+
+id = "34in_active_pmm"
+name = "34\" Modern Active P/MM Bass"
+scale_length_in = 34.0
+scale_length_m = 0.8636
+electronics = "active"
+version = 1
+
+string_wave_speeds = [71.16, 95.00, 126.81, 169.27]
+default_pickup = "pair_parallel"
+
+[strings]
+preset = "roundwound_nickel_standard"
+brand = "D'Addario"
+model = "EXL165"
+gauge = "45-105"
+core = "hex"
+wrap = "nickel_round"
+tension_lbs = 171.0
+
+# ------------------------------------------------------------------------------
+# 1. PICKUPS
+# ------------------------------------------------------------------------------
+
+[pickups.p]
+name = "Precision Split-Coil (Neck)"
+position_name = "Neck"
+bundle_name = "neck"
+position_from_bridge_m = 0.1250
+aperture_width_in = 1.00
+coil_spacing_in = 0.0
+type = "split_coil"
+magnet_type = "alnico_v"
+alpha = 0.26
+resonant_frequency_hz = 3200.0
+q_factor = 1.60
+coils = [
+    { strings = [3, 4], position_from_bridge_m = 0.1390, aperture_width_in = 1.00, weight = 1.0 },
+    { strings = [1, 2], position_from_bridge_m = 0.1110, aperture_width_in = 1.00, weight = 1.0 }
+]
+
+[pickups.p.circuit]
+topology = "single"
+L = 4.8
+Rdc = 9500.0
+Reddy = 110000.0
+Ccoil = 8e-11
+vsat = 0.40
+active = true
+preamp = "none"
+Rvol = 500000.0
+
+[pickups.mm]
+name = "Music Man Dual-Coil Parallel (Bridge)"
+position_name = "Bridge"
+bundle_name = "bridge"
+position_from_bridge_m = 0.0660
+aperture_width_in = 1.50
+coil_spacing_in = 0.75
+type = "dual_coil_parallel"
+magnet_type = "alnico_v"
+alpha = 0.20
+resonant_frequency_hz = 3500.0
+q_factor = 1.50
+coils = [
+    { strings = ["all"], position_from_bridge_m = 0.0755, aperture_width_in = 0.75, weight = 0.5 },
+    { strings = ["all"], position_from_bridge_m = 0.0565, aperture_width_in = 0.75, weight = 0.5 }
+]
+
+[pickups.mm.circuit]
+topology = "single"
+L = 3.6
+Rdc = 7400.0
+Reddy = 125000.0
+Ccoil = 1.1e-10
+vsat = 0.55
+active = true
+preamp = "none"
+Rvol = 500000.0
+
+[pickups.pair_parallel]
+name = "Active P/MM Parallel (Split-P + MM Bridge)"
+position_name = "Parallel"
+bundle_name = "parallel"
+position_from_bridge_m = 0.0955
+aperture_width_in = 0.88
+coil_spacing_in = 0.0
+type = "composite"
+magnet_type = "alnico_v"
+alpha = 0.22
+resonant_frequency_hz = 3400.0
+q_factor = 1.55
+components = [
+    { pickup = "p", weight = 0.5 },
+    { pickup = "mm", weight = 0.5 }
+]
+
+[pickups.pair_parallel.circuit]
+topology = "parallel"
+active = true
+preamp = "none"
+preamp_gain = 1.5
+Rvol = 500000.0
+
+[pickups.pair_parallel.circuit.neck]
+L = 4.8
+Rdc = 9500.0
+Reddy = 110000.0
+Ccoil = 8e-11
+vsat = 0.40
+
+[pickups.pair_parallel.circuit.bridge]
+L = 3.6
+Rdc = 7400.0
+Reddy = 125000.0
+Ccoil = 1.1e-10
+vsat = 0.55
+
+[pickups.pair_series]
+name = "P/MM Series Hybrid (Split-P + MM Bridge Series)"
+position_name = "Series"
+bundle_name = "series"
+position_from_bridge_m = 0.0955
+aperture_width_in = 0.88
+coil_spacing_in = 0.0
+type = "composite"
+magnet_type = "alnico_v"
+alpha = 0.24
+resonant_frequency_hz = 3200.0
+q_factor = 1.60
+components = [
+    { pickup = "p", weight = 0.5 },
+    { pickup = "mm", weight = 0.5 }
+]
+
+[pickups.pair_series.circuit]
+topology = "series"
+active = true
+preamp = "none"
+preamp_gain = 1.5
+Rvol = 500000.0
+
+[pickups.pair_series.circuit.neck]
+L = 4.8
+Rdc = 9500.0
+Reddy = 110000.0
+Ccoil = 8e-11
+vsat = 0.40
+
+[pickups.pair_series.circuit.bridge]
+L = 3.6
+Rdc = 7400.0
+Reddy = 125000.0
+Ccoil = 1.1e-10
+vsat = 0.55
+
+# ------------------------------------------------------------------------------
+# 2. NATIVE INSTRUMENT VOICINGS
+# ------------------------------------------------------------------------------
+
+[voicings.pmm_parallel]
+version = 1
+name = "Modern Active P/MM Bass (Parallel)"
+tone_name = "P∕MM Parallel"
+pickup = "pair_parallel"
+affinity = "parallel"
+vol_pos = 1.0
+gain_db = 1.0
+alpha = 0.22
+
+[voicings.pmm_series]
+version = 1
+name = "P/MM Hybrid Series Bass"
+tone_name = "P∕MM Series"
+pickup = "pair_series"
+affinity = "parallel"
+vol_pos = 1.0
+gain_db = 5.8
+alpha = 0.24
+
+[voicings.p_solo]
+version = 1
+name = "Solo Active Split-P Neck"
+tone_name = "P∕MM P Solo"
+pickup = "p"
+affinity = "neck"
+vol_pos = 1.0
+
+[voicings.mm_solo]
+version = 1
+name = "Solo MM Bridge Parallel Humbucker"
+tone_name = "P∕MM Bridge"
+pickup = "mm"
+affinity = "bridge"
+vol_pos = 1.0
+
+# ------------------------------------------------------------------------------
+# 3. PICKUP AFFINITY ROUTING
+# ------------------------------------------------------------------------------
+[pickup_mapping]
+neck = "p"
+bridge = "mm"
+parallel = "pair_parallel"
+direct = "pair_parallel"

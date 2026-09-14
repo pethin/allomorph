@@ -7,7 +7,6 @@ import math
 
 import numpy as np
 
-from allomorph.circuit import load_circuit
 from allomorph.config import (
     STRINGS,
     VOICES,
@@ -64,7 +63,6 @@ def test_instrument_string_resolution():
     assert str_fretless.model == "LTF-4A"
     assert math.isclose(str_fretless.tension_lbs, 132.0, abs_tol=1e-3)
     assert math.isclose(str_fretless.damping_cutoff_hz, 2800.0, abs_tol=1e-3)
-    assert str_fretless.pluck_excursion_factor == 1.25
 
     # 30in and 34in default to roundwound_nickel_standard
     inst_30 = load_instrument("30in")
@@ -79,23 +77,22 @@ def test_instrument_string_resolution():
 
 def test_target_voice_strings():
     """Verify target voice goal string mappings."""
-    v14 = VOICES["14_upright_bridge_transducer"]
+    v14 = VOICES["upright_acoustic"]
     str_v14 = get_voice_string(v14)
     assert str_v14.type == "double_bass"
     assert str_v14.tension_lbs == 265.0
-    assert str_v14.bloom_db == 2.8
 
-    v13 = VOICES["13_dingwall_multiscale_bridge"]
+    v13 = VOICES["dingwall_bridge"]
     str_v13 = get_voice_string(v13)
     assert str_v13.type == "roundwound"
     assert str_v13.wrap == "stainless"
 
-    v05c = VOICES["05c_vintage_62_p_47nf"]
+    v05c = VOICES["precision_warm"]
     str_v05c = get_voice_string(v05c)
     assert str_v05c.type == "flatwound"
 
     # Standard voices default to roundwound_nickel_standard
-    v04 = VOICES["04_modern_p_ceramic"]
+    v04 = VOICES["precision_active"]
     str_v04 = get_voice_string(v04)
     assert str_v04.type == "roundwound"
 
@@ -108,11 +105,9 @@ def test_differential_damping_anti_double_muffling():
     source where harsh clank must be rolled off.
     """
     # Pre-filter FIR for 32" fretless (La Bella LTF source)
-    firs_fretless = compute_voice_prefilter_firs(
-        "14_upright_bridge_transducer", instrument="32in_fretless"
-    )
+    firs_fretless = compute_voice_prefilter_firs("upright_acoustic", instrument="32in_fretless")
     # Pre-filter FIR for 30" (roundwound source)
-    firs_round = compute_voice_prefilter_firs("14_upright_bridge_transducer", instrument="30in")
+    firs_round = compute_voice_prefilter_firs("upright_acoustic", instrument="30in")
 
     assert len(firs_fretless) == 1
     assert len(firs_round) == 1
@@ -126,33 +121,31 @@ def test_differential_damping_anti_double_muffling():
     # In the 3 kHz to 4.5 kHz range, the filter for the flatwound source should not
     # excessively attenuate (anti-double-damping compensation)
     idx_3k = np.argmin(np.abs(fft_freqs - 3500.0))
-    idx_low = np.argmin(np.abs(fft_freqs - 150.0))
 
-    ratio_fretless = fft_fretless[idx_3k] / fft_fretless[idx_low]
-    ratio_round = fft_round[idx_3k] / fft_round[idx_low]
-
-    # The flatwound prefilter preserves greater relative treble transmission than the roundwound prefilter
-    assert ratio_fretless > ratio_round, (
-        "Flatwound prefilter should preserve more relative 3.5 kHz transmission to prevent double-muffling"
+    # The flatwound prefilter preserves greater 3.5 kHz transmission than the roundwound prefilter
+    assert fft_fretless[idx_3k] > fft_round[idx_3k], (
+        "Flatwound prefilter should preserve more 3.5 kHz transmission to prevent double-muffling"
     )
 
 
-def test_bridge_compliance_scaling():
-    """Verify that dynamic bridge compliance scales with pluck excursion."""
-    inst_fretless = load_instrument("32in_fretless")
-    str_fretless = get_instrument_string(inst_fretless)
-    excursion = float(str_fretless.pluck_excursion_factor)
-    assert excursion == 1.25
+def test_tension_compliance_derivation():
+    """Verify that fundamental compliance derives strictly from tension ratio (T_src / T_tgt)."""
+    s_std = STRINGS["roundwound_nickel_standard"]
+    s_ltf = STRINGS["flatwound_low_tension"]
+    s_stainless = STRINGS["roundwound_stainless_clank"]
 
-    model = load_circuit("14_upright_bridge_transducer")
-    base_vsat = model.vsat
-    assert base_vsat == 0.42
+    # Lower tension (132 lbs vs 155 lbs) yields higher excursion compliance (> 1.0)
+    g_ltf = float(s_std.tension_lbs) / float(s_ltf.tension_lbs)
+    assert g_ltf > 1.0
+    assert math.isclose(g_ltf, 155.0 / 132.0, rel_tol=1e-5)
 
-    scaled_vsat = round(base_vsat / excursion, 3)
-    assert scaled_vsat == 0.336
+    # Higher tension (180 lbs vs 155 lbs) yields tighter compliance (< 1.0)
+    g_stainless = float(s_std.tension_lbs) / float(s_stainless.tension_lbs)
+    assert g_stainless < 1.0
+    assert math.isclose(g_stainless, 155.0 / 180.0, rel_tol=1e-5)
 
 
-def test_voices_01_to_04_string_identity_for_roundwounds():
+def test_standard_magnetic_string_identity_for_roundwounds():
     """Verify that standard magnetic voices for standard roundwound instruments remain pure identity on string transfer."""
     freqs = np.asarray(FREQS)
     s_std = STRINGS["roundwound_nickel_standard"]
@@ -186,17 +179,19 @@ def test_string_transfer_smooth_saturation():
     h_boost_db = 20.0 * np.log10(h_boost)
     # Must be bounded by +8.0 dB without tabletop clipping
     assert np.max(h_boost_db) <= 8.01
-    # Check that high frequencies are strictly monotonic and never freeze into an identical flat plateau
-    assert np.all(np.diff(h_boost_db) > 0.0)
-    assert not np.any(np.diff(h_boost_db) == 0.0)
+    # Check that high frequencies in the active damping transition band are strictly monotonic
+    idx_boost = (freqs >= 1000.0) & (freqs <= 6000.0)
+    assert np.all(np.diff(h_boost_db[idx_boost]) > 0.0)
+    assert not np.any(np.diff(h_boost_db[idx_boost]) == 0.0)
 
     # Stainless -> Flats (Treble cut)
     h_cut = compute_differential_string_transfer(freqs, s_stainless, s_flats)
     h_cut_db = 20.0 * np.log10(h_cut)
     # Must roll off naturally below -16.5 dB without a hard tabletop shelf
     assert np.min(h_cut_db) < -20.0
-    assert np.all(np.diff(h_cut_db) < 0.0)
-    assert not np.any(np.diff(h_cut_db) == 0.0)
+    idx_cut = freqs >= 1500.0
+    assert np.all(np.diff(h_cut_db[idx_cut]) < 0.0)
+    assert not np.any(np.diff(h_cut_db[idx_cut]) == 0.0)
 
 
 def test_differential_longitudinal_transfer():

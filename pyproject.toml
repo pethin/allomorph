@@ -1,6 +1,6 @@
 [project]
 name = "allomorph"
-version = "0.2.0"
+version = "0.3.0"
 description = "Analog digital twin & universal pickup/transducer modeling engine"
 readme = "README.md"
 license = { text = "PolyForm-Noncommercial-1.0.0" }
@@ -31,6 +31,7 @@ rocm = [
 dev = [
     "pyrefly>=1.3.0",
     "pytest>=9.1.1",
+    "pytest-xdist>=3.8.0",
     "ruff>=0.16.7",
 ]
 

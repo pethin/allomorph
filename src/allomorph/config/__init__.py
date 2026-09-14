@@ -52,6 +52,7 @@ from allomorph.config.schema import (
     VoiceCoilConfig,
     VoiceConfig,
     VoicePickupConfig,
+    VoicingConfig,
     parse_spice_unit,
 )
 from allomorph.config.strings import (
@@ -63,8 +64,6 @@ from allomorph.config.strings import (
 )
 from allomorph.config.voices import (
     VOICES,
-    VOICES_DIR,
-    VOICES_FILE,
     VoiceRegistry,
     load_voice_config,
     load_voices_config,
@@ -83,8 +82,6 @@ __all__ = [
     "STRINGS",
     "STRINGS_FILE",
     "VOICES",
-    "VOICES_DIR",
-    "VOICES_FILE",
     "AllomorphBaseModel",
     "CoilConfig",
     "InstrumentConfig",
@@ -105,6 +102,7 @@ __all__ = [
     "VoiceConfig",
     "VoicePickupConfig",
     "VoiceRegistry",
+    "VoicingConfig",
     "_infer_pole_type",
     "compute_effective_position",
     "get_instrument_string",

@@ -49,8 +49,8 @@ Precision Bass & Tone Shaper Family
 01. Precision Vintage [Neck]
 The gold standard: a vintage 1962 Precision Bass with tone wide open. Warm, woody low-mids, open harmonic bloom, and organic touch sensitivity that sits perfectly in any mix.
 
-02. Precision Modern [Neck]
-Modern boutique P-bass tone. Aggressive, punchy, and clear with tight low-mids and bright transient snap—built for aggressive rock, pop, and modern worship.
+02. Precision Active [Neck]
+Modern active ceramic split-coil P-bass tone with 2-band preamp. Punchy, articulate, and wideband with authoritative low-end weight and bright transient clarity—built for modern rock, gospel, and mix cutting authority.
 
 03. Precision Mids [Neck]
 Vintage P-bass with a modern vocal low-mid punch. Cuts finger clatter and high-end sizzle while keeping a muscular, forward presence in a busy mix.
@@ -128,7 +128,7 @@ Classic '80s rock P/J tone (Fender Precision Special / Yamaha BB). Thick hard-ro
 Studio Buffers & Dynamics
 
 21. Studio Passive
-Vintage Passive Character: turns your active bass into a warm, organic passive instrument with natural vintage tube-amp dynamics, woody low-mid body, and smooth, rolled-off highs.
+Studio Passive: turns your active bass into a warm, organic passive instrument with natural vintage tube-amp dynamics, woody low-mid body, and smooth, rolled-off highs.
 
 22. Studio Active
 Studio Active Buffer: removes cable drag and pot loading, opening up pristine hi-fi clarity, ultra-fast transient attack, and airy top-end sparkle.

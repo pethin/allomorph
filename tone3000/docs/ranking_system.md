@@ -30,7 +30,7 @@ Storefront categories must accurately reflect analog electrical topologies and p
 - **Progressive & Classic Rock Legends:** Historic and modern rock clank archetypes (Rickenbacker 4003, Dingwall, Gibson Mudbucker) are unified under a dedicated rock category.
 - **Acoustic Transducers:** Piezo force sensor simulations are cleanly isolated from magnetic pickup guitars.
 
-### 1.4 Terminal Studio Character & Buffer Anchor
+### 1.4 Terminal Studio DI & Buffer Anchor
 The final positions in every pack are reserved for studio impedance and loading transformations:
 - **Studio Active (Modern Studio Active Buffer):** Deconvolves $750\text{ pF}$ cable capacitance and pot damping from the user's physical pickups, shifting resonance into the hi-fi air band ($7.5\text{--}9.0\text{ kHz}$) with $1\text{M}\Omega$ input impedance.
 - **Studio Passive (High-Impedance Passive Pickup & Cable Loading):** Simulates an authentic high-impedance passive RLC network ($L = 4.2\text{ H}, f_r = 2.8\text{ kHz}, Q = 1.4$) loaded by a standard $250\text{k}\Omega$ CTS volume/tone harness and $750\text{ pF}$ cable capacitance. On active instruments (StingRay, Active Soapbar), it replaces sterile onboard active buffering with organic vintage passive dynamics, woody low-mid body, and rolled-off highs.
@@ -53,7 +53,7 @@ The final positions in every pack are reserved for studio impedance and loading 
 | **12** | **Acoustic Transducers** | Bridge piezo force transducer on $41.5''$ upright scale with velocity-to-force leaky integration. |
 | **13–16** | **Precision Bass & Tone Shaper Family** | Modern Ceramic Split-P 500k, and ToneStyler shunts ($22\text{nF}$, $47\text{nF}$ flatwound, $100\text{nF}$ Fullerton). |
 | **17** | **P/J Bass Family** | Modern Active P/J Bass (+4 dB @ 40 Hz & 4 kHz). |
-| **18–19** | **Studio Buffers & Dynamics** | Modern Studio Active Buffer ($1\text{M}\Omega$ zero-loading) and Passive Character ($4.2\text{ H}$ RLC loading). |
+| **18–19** | **Studio Buffers & Dynamics** | Modern Studio Active Buffer ($1\text{M}\Omega$ zero-loading) and Studio Passive ($4.2\text{ H}$ RLC loading). |
 
 ---
 
@@ -70,7 +70,7 @@ The final positions in every pack are reserved for studio impedance and loading 
 | **13** | **Acoustic Transducers** | Bridge piezo force transducer on $41.5''$ upright scale with velocity-to-force leaky integration. |
 | **14–18** | **Precision Bass & Tone Shaper Family** | Full $34''$ scale Vintage '62 CTS, Modern Ceramic 500k, and ToneStyler shunts ($22\text{nF}$, $47\text{nF}$, $100\text{nF}$). |
 | **19–20** | **P/J Bass Family** | Modern Active and Vintage '80s Passive P/J in standard $34''$ scale tension. |
-| **21–22** | **Studio Buffers & Dynamics** | Modern Studio Active Buffer ($1\text{M}\Omega$ zero-loading) and Passive Character ($4.2\text{ H}$ RLC loading). |
+| **21–22** | **Studio Buffers & Dynamics** | Modern Studio Active Buffer ($1\text{M}\Omega$ zero-loading) and Studio Passive ($4.2\text{ H}$ RLC loading). |
 
 ---
 
@@ -87,7 +87,7 @@ The final positions in every pack are reserved for studio impedance and loading 
 | **12–14** | **Progressive & Classic Rock Legends** | Rickenbacker 4003 ($4.7\text{nF}$ HPF pick clank), Dingwall multi-scale ($7.3\text{ kHz}$ peak), and Gibson Mudbucker ($14.4\text{ H}$). |
 | **15** | **Acoustic Transducers** | Bridge piezo force sensor on $41.5''$ upright scale with velocity-to-force leaky integration. |
 | **16–18** | **Jazz Bass Family** | Re-EQed NYC active 2-band, ToneStyler $22\text{nF}$ vocal mid bump, and Jaco decoupled growl. |
-| **19–20** | **Studio Buffers & Dynamics** | Studio $1\text{M}\Omega$ active buffer and Passive Character ($4.2\text{ H}$ RLC loading). |
+| **19–20** | **Studio Buffers & Dynamics** | Studio $1\text{M}\Omega$ active buffer and Studio Passive ($4.2\text{ H}$ RLC loading). |
 
 ---
 
@@ -104,7 +104,7 @@ The final positions in every pack are reserved for studio impedance and loading 
 | **12–14** | **Progressive & Classic Rock Legends** | Rickenbacker 4003 ($4.7\text{nF}$ HPF), Dingwall multi-scale ($7.3\text{ kHz}$ peak), and Gibson Mudbucker ($14.4\text{ H}$). |
 | **15** | **Acoustic Transducers** | Bridge piezo force sensor on $41.5''$ upright scale with velocity-to-force leaky integration. |
 | **16–19** | **Precision Bass & Tone Shaper Family** | Modern Ceramic 500k and ToneStyler shunts ($22\text{nF}$ punch, $47\text{nF}$ flatwound Motown thump, $100\text{nF}$ Fullerton dub). |
-| **20–21** | **Studio Buffers & Dynamics** | Studio $1\text{M}\Omega$ active buffer (cable deconvolution) and Passive Character ($4.2\text{ H}$ RLC loading). |
+| **20–21** | **Studio Buffers & Dynamics** | Studio $1\text{M}\Omega$ active buffer (cable deconvolution) and Studio Passive ($4.2\text{ H}$ RLC loading). |
 
 ---
 
@@ -121,7 +121,7 @@ The final positions in every pack are reserved for studio impedance and loading 
 | **15–17** | **Progressive & Classic Rock Legends** | Rickenbacker 4003 ($4.7\text{nF}$ HPF), Dingwall multi-scale ($7.3\text{ kHz}$ sparkle), and Gibson Mudbucker ($14.4\text{ H}$). |
 | **18** | **Acoustic Transducers** | Bridge piezo force sensor on $41.5''$ upright scale with velocity-to-force leaky integration. |
 | **19–20** | **P/J Bass Family** | Modern active and vintage '80s passive P/J configurations. |
-| **21–22** | **Studio Buffers & Dynamics** | Passive Character ($4.2\text{ H}$ RLC passive network replacing sterile active highs) and Studio $1\text{M}\Omega$ active buffer. |
+| **21–22** | **Studio Buffers & Dynamics** | Studio Passive ($4.2\text{ H}$ RLC passive network replacing sterile active highs) and Studio $1\text{M}\Omega$ active buffer. |
 
 ---
 
@@ -138,7 +138,7 @@ The final positions in every pack are reserved for studio impedance and loading 
 | **15–17** | **Progressive & Classic Rock Legends** | Rickenbacker 4003 ($4.7\text{nF}$ HPF), Dingwall multi-scale ($7.3\text{ kHz}$ peak), and Gibson Mudbucker ($14.4\text{ H}$). |
 | **18** | **Acoustic Transducers** | Bridge piezo force sensor on $41.5''$ upright scale with velocity-to-force leaky integration. |
 | **19** | **Music Man StingRay Family** | Active 2-Band Series bark (+2.5 dB gain, forward 2.1 kHz mids). |
-| **20–21** | **Studio Buffers & Dynamics** | Passive Character ($4.2\text{ H}$ RLC passive network restoring vintage passive dynamics) and Studio $1\text{M}\Omega$ active buffer. |
+| **20–21** | **Studio Buffers & Dynamics** | Studio Passive ($4.2\text{ H}$ RLC passive network restoring vintage passive dynamics) and Studio $1\text{M}\Omega$ active buffer. |
 
 ---
 
@@ -155,7 +155,7 @@ The final positions in every pack are reserved for studio impedance and loading 
 | **15–17** | **Progressive & Classic Rock Legends** | Rickenbacker 4003 ($4.7\text{nF}$ HPF), Dingwall multi-scale ($7.3\text{ kHz}$ sparkle), and Gibson Mudbucker ($14.4\text{ H}$). |
 | **18** | **Acoustic Transducers** | Bridge piezo force sensor on $41.5''$ upright scale with velocity-to-force leaky integration. |
 | **19–20** | **P/J Bass Family** | Modern active and vintage '80s passive P/J configurations. |
-| **21–22** | **Studio Buffers & Dynamics** | Passive Character ($4.2\text{ H}$ RLC passive network replacing active EMG highs) and Studio $1\text{M}\Omega$ active buffer. |
+| **21–22** | **Studio Buffers & Dynamics** | Studio Passive ($4.2\text{ H}$ RLC passive network replacing active EMG highs) and Studio $1\text{M}\Omega$ active buffer. |
 
 ---
 

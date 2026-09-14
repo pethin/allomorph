@@ -11,7 +11,7 @@ import pytest
 
 from allomorph.config.instruments import INSTRUMENTS
 from allomorph.config.voices import VOICES
-from allomorph.naming import get_baked_basename, get_t3k_basename
+from allomorph.naming import get_t3k_basename
 from allomorph.pipeline.schema import (
     NamExportMetadata,
     NamSourceInstrumentMeta,
@@ -36,7 +36,7 @@ from allomorph.version import (
 
 def test_resolve_tri_part_version():
     """Verify default and custom tri-part semantic version strings."""
-    assert resolve_tri_part_version() == "v2.1.1"
+    assert resolve_tri_part_version() == "v3.1.1"
     assert resolve_tri_part_version(2, 1, 1) == "v2.1.1"
     assert resolve_tri_part_version(2, 2, 1) == "v2.2.1"
     assert resolve_tri_part_version(2, 1, 2) == "v2.1.2"
@@ -47,7 +47,7 @@ def test_resolve_tri_part_version():
 def test_get_version_info():
     """Verify provenance metadata dictionary structure and git commit detection."""
     info = get_version_info()
-    assert info["version"] == "v2.1.1"
+    assert info["version"] == "v3.1.1"
     assert info["dsp_version"] == DSP_GENERATION
     assert info["instrument_version"] == DEFAULT_INST_VERSION
     assert info["voice_version"] == DEFAULT_VOICE_VERSION
@@ -81,18 +81,6 @@ def test_anti_collision_guarantee():
     assert t3k_inst == "Precision Vintage [Split] v2.2.1"
     assert t3k_voice == "Precision Vintage [Split] v2.1.2"
 
-    # Baked stems
-    stem_base = get_baked_basename("05_vintage_62_p_alnico", version_tag=v_base)
-    stem_dsp = get_baked_basename("05_vintage_62_p_alnico", version_tag=v_dsp)
-    stem_inst = get_baked_basename("05_vintage_62_p_alnico", version_tag=v_inst)
-    stem_voice = get_baked_basename("05_vintage_62_p_alnico", version_tag=v_voice)
-
-    assert len({stem_base, stem_dsp, stem_inst, stem_voice}) == 4
-    assert stem_base == "dyn_05_vintage_p_v2.1.1"
-    assert stem_dsp == "dyn_05_vintage_p_v3.1.1"
-    assert stem_inst == "dyn_05_vintage_p_v2.2.1"
-    assert stem_voice == "dyn_05_vintage_p_v2.1.2"
-
 
 def test_t3k_filename_length_ceiling():
     """Verify that all target voices across all instruments with version_tag stay strictly <= 64 chars.
@@ -101,11 +89,7 @@ def test_t3k_filename_length_ceiling():
     """
     version_tag = "v2.1.1"
     for inst_id, inst_cfg in INSTRUMENTS.items():
-        if inst_id == "canonical_intermediate":
-            continue
         for vid, vcfg in VOICES.items():
-            if vid == "00_canonical_intermediate":
-                continue
             tone_name = vcfg.tone_name or vcfg.name
             if len(inst_cfg.pickups) <= 1 or vcfg.preserve_aperture:
                 pos_name = None
@@ -115,7 +99,7 @@ def test_t3k_filename_length_ceiling():
                 try:
                     pcfg = get_source_pickup(inst_cfg, vid)
                     pos_name = pcfg.position_name or pcfg.name
-                except (KeyError, ValueError):
+                except KeyError, ValueError:
                     pos_name = None
 
             basename = get_t3k_basename(
@@ -166,7 +150,7 @@ def test_write_manifest_and_sha256(tmp_path: Path):
 
     assert data["version"] == "v2.1.1"
     assert data["stage"] == "test_stage"
-    assert data["dsp_generation"] == 2
+    assert data["dsp_generation"] == 3
     assert data["file_count"] == 2
     assert "dummy.wav" in data["files"]
     assert "dummy.nam" in data["files"]
@@ -183,25 +167,115 @@ def test_write_manifest_and_sha256(tmp_path: Path):
     assert nam_entry["size_bytes"] == dummy_nam.stat().st_size
 
 
-def test_export_frontend_ir_with_version_tag(tmp_path: Path):
-    """Verify export_frontend_ir embeds version tag and creates manifest when requested."""
-    from allomorph.circuit.staging import export_frontend_ir
+def test_export_instrument_pickup_wav_with_version_tag(tmp_path: Path):
+    """Verify export_instrument_pickup_wav embeds version tag and creates manifest when requested."""
+    from allomorph.circuit.staging import export_instrument_pickup_wav
 
-    ir_p = export_frontend_ir(
+    wet_p = export_instrument_pickup_wav(
         inst_id="30in_emg_mmtw",
         pickup_key="mmtw_dual",
         output_dir=tmp_path,
         version_tag="auto",
+        max_samples=2048,
     )
-    assert ir_p.exists()
-    assert ir_p.name == "30in_emg_mmtw_dual_v2.1.1.wav"
+    assert wet_p.exists()
+    assert wet_p.name == "mmtw_dual.wav"
 
-    manifest_p = ir_p.parent / "manifest.json"
+    manifest_p = wet_p.parent / "manifest.json"
     assert manifest_p.exists()
     with manifest_p.open("r", encoding="utf-8") as f:
         m = json.load(f)
-    assert m["version"] == "v2.1.1"
-    assert "30in_emg_mmtw_dual_v2.1.1.wav" in m["files"]
+    assert m["version"] == "v3.1.1"
+    assert wet_p.name in m["files"]
+    assert "base_dry_sha256" in m
+    assert m["files"][wet_p.name]["base_dry_sha256"] == m["base_dry_sha256"]
+
+
+def test_wet_stem_manifest_validation_and_invalidation(tmp_path: Path):
+    """Verify is_wet_stem_valid detects valid stems and catches stale/mismatched base dry audio."""
+    from allomorph.version import compute_file_sha256, is_wet_stem_valid, write_manifest
+
+    # 1. Setup mock base dry excitation file
+    base_dry_file = tmp_path / "test_base_dry.wav"
+    base_dry_file.write_bytes(b"ORIGINAL_BASE_DRY_EXCITATION_DATA_12345")
+    original_sha = compute_file_sha256(base_dry_file)
+
+    # 2. Setup mock wet stem
+    wet_stem = tmp_path / "mock_wet.wav"
+    wet_stem.write_bytes(b"MOCK_WET_CONVOLVED_AUDIO_DATA_67890")
+
+    # 3. Initially without manifest -> invalid
+    assert not is_wet_stem_valid(wet_stem, base_dry_path=base_dry_file)
+
+    # 4. Write authoritative manifest recording base_dry_sha256
+    manifest_p = write_manifest(
+        output_dir=tmp_path,
+        stage="voicing",
+        files=[wet_stem],
+        base_dry_sha256=original_sha,
+        base_dry_file=base_dry_file.name,
+    )
+    assert manifest_p.exists()
+
+    # 5. Now it must be valid
+    assert is_wet_stem_valid(wet_stem, base_dry_path=base_dry_file)
+    assert is_wet_stem_valid(wet_stem, base_dry_path=base_dry_file, expected_version="v3.1.1")
+    assert not is_wet_stem_valid(wet_stem, base_dry_path=base_dry_file, expected_version="v3.2.1")
+
+    # 6. Mutate base dry file (simulating re-generated / updated optimal_bass_dry)
+    base_dry_file.write_bytes(b"UPDATED_MUTATED_BASE_DRY_EXCITATION_99999")
+    mutated_sha = compute_file_sha256(base_dry_file)
+    assert mutated_sha != original_sha
+
+    # 7. Must immediately invalidate stale wet stem cache!
+    assert not is_wet_stem_valid(wet_stem, base_dry_path=base_dry_file)
+
+    # 8. Non-existent wet stem returns False
+    missing_stem = tmp_path / "missing_stem.wav"
+    assert not is_wet_stem_valid(missing_stem, base_dry_path=base_dry_file)
+
+
+def test_manifest_tracks_instrument_and_voicing_versions(tmp_path: Path):
+    """Verify write_manifest records instrument_version and voicing_version at root and in file entries."""
+    from allomorph.version import write_manifest
+
+    mock_stem = tmp_path / "mock_stem.wav"
+    mock_stem.write_bytes(b"MOCK_DATA_123")
+
+    m_path = write_manifest(
+        output_dir=tmp_path,
+        stage="voicing",
+        files=[mock_stem],
+        version_tag="v3.1.2",
+        base_dry_sha256="abc123sha",
+        base_dry_file="base.wav",
+        instrument_version=1,
+        voicing_version=2,
+    )
+    assert m_path.exists()
+    with m_path.open("r", encoding="utf-8") as f:
+        data = json.load(f)
+
+    assert data["version"] == "v3.1.2"
+    assert data["instrument_version"] == 1
+    assert data["voicing_version"] == 2
+    assert "mock_stem.wav" in data["files"]
+    fentry = data["files"]["mock_stem.wav"]
+    assert fentry["instrument_version"] == 1
+    assert fentry["voicing_version"] == 2
+    assert fentry["version"] == "v3.1.2"
+
+
+def test_all_catalog_instruments_and_voicings_declare_version():
+    """Verify all instruments in config/instruments declare version >= 1 at instrument and voicing level."""
+    from allomorph.config.instruments import load_all_instruments
+
+    instruments = load_all_instruments()
+    assert len(instruments) >= 17
+    for iid, inst in instruments.items():
+        assert inst.version >= 1, f"Instrument {iid} has invalid version {inst.version}"
+        for vid, v in inst.voicings.items():
+            assert v.version >= 1, f"Voicing {iid}:{vid} has invalid version {v.version}"
 
 
 def test_nam_export_metadata_schema_version_fields():
@@ -230,7 +304,7 @@ def test_nam_export_metadata_schema_version_fields():
             pickup=NamSourcePickupMeta(name="EMG MM Dual Coil"),
         ),
         target_voice=NamTargetVoiceMeta(
-            id="05_vintage_62_p_alnico",
+            id="precision_vintage",
             name="Vintage 62 P (Alnico V)",
         ),
     )
@@ -257,29 +331,22 @@ def test_resolve_tri_part_version_flexible_none():
     assert resolve_tri_part_version(2, 1, 1) == "v2.1.1"
     assert resolve_tri_part_version(2, 1, None) == "v2.1"
     assert resolve_tri_part_version(2, None, None) == "v2"
-    assert resolve_tri_part_version(inst_version=None, voice_version=None) == "v2"
-    assert resolve_tri_part_version(inst_version=2, voice_version=None) == "v2.2"
+    assert resolve_tri_part_version(inst_version=None, voice_version=None) == "v3"
+    assert resolve_tri_part_version(inst_version=2, voice_version=None) == "v3.2"
 
 
-def test_dry_and_canonical_naming_helpers():
-    """Verify naming helpers for optimal dry file and canonical intermediate."""
+def test_dry_naming_helpers():
+    """Verify naming helpers for optimal dry file."""
     from allomorph.naming import (
-        get_canonical_sweep_basename,
-        get_canonical_sweep_path,
         get_optimal_dry_basename,
         get_optimal_dry_path,
     )
 
-    assert get_optimal_dry_basename() == "optimal_bass_dry_v2"
+    assert get_optimal_dry_basename() == f"optimal_bass_dry_v{DSP_GENERATION}"
     assert get_optimal_dry_basename("v2") == "optimal_bass_dry_v2"
-    assert get_canonical_sweep_basename() == "canonical_sweep_v2"
-    assert get_canonical_sweep_basename("v2") == "canonical_sweep_v2"
 
     dry_p = get_optimal_dry_path(audio_dir="/tmp/test_allomorph")
-    assert dry_p == Path("/tmp/test_allomorph/canonical/optimal_bass_dry_v2.wav")
-
-    can_p = get_canonical_sweep_path(audio_dir="/tmp/test_allomorph")
-    assert can_p == Path("/tmp/test_allomorph/canonical/canonical_sweep_v2.wav")
+    assert dry_p == Path(f"/tmp/test_allomorph/canonical/optimal_bass_dry_v{DSP_GENERATION}.wav")
 
 
 def test_ensure_optimal_dry_wav_versioning(tmp_path: Path):
@@ -294,22 +361,3 @@ def test_ensure_optimal_dry_wav_versioning(tmp_path: Path):
     audio, sr = read_wav(out_file)
     assert sr == FS
     assert len(audio) == int(1.0 * FS)
-
-
-def test_generate_canonical_sweep_versioning(tmp_path: Path):
-    """Verify generate_canonical_sweep produces calibrated versioned sweep from dry audio."""
-    from allomorph.circuit.staging import generate_canonical_sweep
-    from allomorph.dsp import ensure_optimal_dry_wav, read_wav
-
-    dry_file = tmp_path / "canonical" / "optimal_bass_dry_v2.wav"
-    ensure_optimal_dry_wav(output_path=dry_file, duration_sec=1.5)
-
-    can_file = tmp_path / "canonical" / "canonical_sweep_v2.wav"
-    res = generate_canonical_sweep(input_wav=dry_file, output_wav=can_file)
-    assert res == can_file
-    assert can_file.exists()
-
-    audio, sr = read_wav(can_file)
-    assert sr == 48000
-    assert len(audio) == len(read_wav(dry_file)[0])
-

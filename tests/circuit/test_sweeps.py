@@ -18,7 +18,7 @@ from allomorph.dsp import FREQS
 
 def test_tone_pot_sweep_treble_cut():
     """Tone pot sweep (0.0 -> 1.0) must show progressive treble cut (> 20 dB at 5 kHz)."""
-    model = load_circuit("04_modern_p_ceramic")
+    model = load_circuit("precision_vintage")
     res = compute_parametric_sweep(model, param="tone", values=[0.0, 0.25, 0.5, 0.75, 1.0])
 
     assert len(res.curves) == 5
@@ -40,7 +40,7 @@ def test_tone_pot_sweep_treble_cut():
 
 def test_volume_pot_sweep_attenuation():
     """Volume pot sweep (0.0 -> 1.0) must show cable loading attenuation."""
-    model = load_circuit("04_modern_p_ceramic")
+    model = load_circuit("precision_vintage")
     res = compute_parametric_sweep(model, param="vol", values=[0.0, 0.25, 0.5, 0.75, 1.0])
 
     assert len(res.curves) == 5
@@ -58,7 +58,7 @@ def test_volume_pot_sweep_attenuation():
 
 def test_cable_capacitance_resonance_downshift():
     """Cable capacitance sweep (500 to 1500 pF) must show resonance downshifting."""
-    model = load_circuit("04_modern_p_ceramic")
+    model = load_circuit("precision_vintage")
     res = compute_parametric_sweep(model, param="cable", values=[500.0, 750.0, 1000.0, 1500.0])
 
     assert len(res.curves) == 4
@@ -89,9 +89,7 @@ def test_cable_capacitance_resonance_downshift():
 
 def test_active_preamp_boost_sweep():
     """Active preamp bass boost sweep must increase low-frequency gain."""
-    res = compute_parametric_sweep(
-        "01_modern_jazz_active", param="bass_boost", values=[0.0, 6.0, 12.0]
-    )
+    res = compute_parametric_sweep("jazz_pair_active", param="bass_boost", values=[0.0, 6.0, 12.0])
 
     assert len(res.curves) == 3
     f_arr = np.asarray(res.freqs)
@@ -105,7 +103,7 @@ def test_active_preamp_boost_sweep():
 
 def test_sweep_performance_benchmark():
     """100-step parametric sweep must execute in < 50 ms."""
-    model = load_circuit("04_modern_p_ceramic")
+    model = load_circuit("precision_vintage")
     values = np.linspace(0.0, 1.0, 100)
 
     # Warm-up run
@@ -128,7 +126,7 @@ def test_sweep_performance_benchmark():
 
 def test_to_dataframe_schema():
     """to_dataframe() must return a Polars DataFrame with the expected columns."""
-    model = load_circuit("04_modern_p_ceramic")
+    model = load_circuit("precision_vintage")
     res = compute_parametric_sweep(model, param="tone", values=[0.0, 0.5, 1.0])
 
     df = res.to_dataframe()
@@ -138,14 +136,14 @@ def test_to_dataframe_schema():
     assert len(df) == len(FREQS) * 3
 
     # Test with include_voice_id=True
-    res.voice_id = "04_modern_p_ceramic"
+    res.voice_id = "precision_vintage"
     df_voice = res.to_dataframe(include_voice_id=True)
     assert "voice_id" in df_voice.columns
 
 
 def test_circuit_state_restoration():
     """Parametric sweep must not permanently alter the circuit model."""
-    model = load_circuit("04_modern_p_ceramic")
+    model = load_circuit("precision_vintage")
     orig_tone = model.tone_pos
     orig_rtone = model.Rtone
     orig_ccable = model.Ccable

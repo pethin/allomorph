@@ -19,6 +19,7 @@ name = "34\" Standard Jazz Bass"
 scale_length_in = 34.0
 scale_length_m = 0.8636
 electronics = "passive"
+version = 1
 
 # String wave speeds: v = 2 * L * f0 (for E1=41.2Hz, A1=55.0Hz, D2=73.4Hz, G2=98.0Hz)
 string_wave_speeds = [71.16, 95.00, 126.81, 169.27]
@@ -142,25 +143,205 @@ Rdc = 7800.0
 Reddy = 125000.0
 Ccoil = 7e-11
 
+[pickups.neck_active]
+name = "Modern Active Jazz Single-Coil (Neck)"
+position_name = "Neck"
+position_from_bridge_m = 0.1556
+aperture_width_in = 0.75
+coil_spacing_in = 0.0
+type = "single_coil"
+magnet_type = "alnico_v"
+alpha = 0.25
+resonant_frequency_hz = 5200.0
+q_factor = 1.70
+coils = [
+    { strings = ["all"], position_from_bridge_m = 0.1556, aperture_width_in = 0.75, weight = 1.0 }
+]
+
+[pickups.neck_active.circuit]
+topology = "single"
+L = 3.2
+Rdc = 7200.0
+Reddy = 135000.0
+Ccoil = 7e-11
+vsat = 0.4
+active = true
+preamp = "sadowsky_2band"
+Rvol = 500000.0
+
+[pickups.bridge_active]
+name = "Modern Active Jazz Single-Coil (Bridge)"
+position_name = "Bridge"
+position_from_bridge_m = 0.0635
+aperture_width_in = 0.75
+coil_spacing_in = 0.0
+type = "single_coil"
+magnet_type = "alnico_v"
+alpha = 0.28
+resonant_frequency_hz = 4600.0
+q_factor = 1.80
+coils = [
+    { strings = ["all"], position_from_bridge_m = 0.0635, aperture_width_in = 0.75, weight = 1.0 }
+]
+
+[pickups.bridge_active.circuit]
+topology = "single"
+L = 3.6
+Rdc = 7800.0
+Reddy = 125000.0
+Ccoil = 7e-11
+vsat = 0.6
+active = true
+preamp = "sadowsky_2band"
+Rvol = 500000.0
+
+[pickups.pair_active]
+name = "Modern Active Jazz Pair (Neck + Bridge)"
+position_name = "Parallel"
+position_from_bridge_m = 0.1095
+aperture_width_in = 0.75
+coil_spacing_in = 0.0
+type = "composite"
+magnet_type = "alnico_v"
+resonant_frequency_hz = 4800.0
+q_factor = 1.60
+components = [
+    { pickup = "neck_active", weight = 0.5 },
+    { pickup = "bridge_active", weight = 0.5 }
+]
+
+[pickups.pair_active.circuit]
+topology = "parallel"
+active = true
+preamp = "sadowsky_2band"
+Rvol = 500000.0
+
+[pickups.pair_active.circuit.neck]
+L = 3.2
+Rdc = 7200.0
+Reddy = 135000.0
+Ccoil = 7e-11
+vsat = 0.4
+
+[pickups.pair_active.circuit.bridge]
+L = 3.6
+Rdc = 7800.0
+Reddy = 125000.0
+Ccoil = 7e-11
+vsat = 0.6
+
+[pickups.pair_jaco_growl]
+name = "Jazz Jaco Bridge Growl Bias (Neck 75%, Bridge 100%)"
+position_name = "Bridge"
+position_from_bridge_m = 0.0957
+aperture_width_in = 0.75
+coil_spacing_in = 0.0
+type = "composite"
+magnet_type = "alnico_v"
+resonant_frequency_hz = 3400.0
+q_factor = 1.50
+components = [
+    { pickup = "neck", weight = 0.35 },
+    { pickup = "bridge", weight = 0.65 }
+]
+
+[pickups.pair_jaco_growl.circuit]
+topology = "parallel"
+Rtop = 10.0
+Rbot = 109000.0
+Rtone = 250000.0
+Ctone = 4.7e-08
+Rpot_n = 55000.0
+Rpot_b = 0.0
+
+[pickups.pair_jaco_growl.circuit.neck]
+L = 3.2
+Rdc = 7200.0
+Reddy = 135000.0
+Ccoil = 7e-11
+vsat = 0.4
+
+[pickups.pair_jaco_growl.circuit.bridge]
+L = 3.6
+Rdc = 7800.0
+Reddy = 125000.0
+Ccoil = 7e-11
+vsat = 0.6
+
+# ------------------------------------------------------------------------------
+# 2. NATIVE INSTRUMENT VOICINGS
+# ------------------------------------------------------------------------------
+
+[voicings.pair_open]
+version = 1
+name = "60s Dual Single-Coils Open"
+tone_name = "Jazz Pair Open"
+pickup = "pair_parallel"
+affinity = "parallel"
+vol_pos = 1.0
+tone_pos = 1.0
+tone_cap_f = 4.7e-08
+gain_db = -0.5
+
+[voicings.pair_mids]
+version = 1
+name = "60s Dual Single-Coils Vocal Mids"
+tone_name = "Jazz Pair Mids"
+pickup = "pair_parallel"
+affinity = "parallel"
+vol_pos = 1.0
+tone_pos = 1.0
+tone_cap_f = 2.2e-08
+Rtone = 3.3
+gain_db = -0.5
+
+[voicings.pair_active]
+version = 1
+name = "Modern Active 2-Band Slap Scoop"
+tone_name = "Jazz Pair Active"
+pickup = "pair_active"
+affinity = "parallel"
+vol_pos = 1.0
+tone_pos = 1.0
+gain_db = 1.0
+preamp_preset = "sadowsky_2band"
+
+[voicings.bridge_growl]
+version = 1
+name = "Singing Jaco Bridge Growl"
+tone_name = "Jazz Bridge Growl"
+pickup = "pair_jaco_growl"
+affinity = "bridge"
+vol_pos = 1.0
+gain_db = -1.2
+
+[voicings.bridge_open]
+version = 1
+name = "60s Solo Bridge Single-Coil Open"
+tone_name = "Jazz Bridge Open"
+pickup = "bridge"
+affinity = "bridge"
+vol_pos = 1.0
+tone_pos = 1.0
+tone_cap_f = 4.7e-08
+
+[voicings.neck_warm]
+version = 1
+name = "60s Solo Neck Single-Coil Warm"
+tone_name = "Jazz Neck Warm"
+pickup = "neck"
+affinity = "neck"
+vol_pos = 1.0
+tone_pos = 0.7
+tone_cap_f = 4.7e-08
+
+# ------------------------------------------------------------------------------
+# 3. PICKUP AFFINITY ROUTING
+# ------------------------------------------------------------------------------
 [pickup_mapping]
-"01_modern_jazz_active" = "pair_parallel"          # Both pickups in parallel (active twin)
-"02_jazz_bass_pair" = "pair_parallel"          # Both pickups in parallel (identity)
-"02b_jazz_bass_pair_22nf" = "pair_parallel"    # Both pickups in parallel with 22nF ToneStyler
-"02c_jazz_bridge_growl_bias" = "pair_parallel" # Both pickups in parallel (Jaco growl bias)
-"03_jazz_bridge_60s" = "bridge"                # Solo bridge single-coil (identity)
-"04_modern_p_ceramic" = "neck"                  # Solo neck single-coil (closest to P-bass position)
-"05_vintage_62_p_alnico" = "neck"               # Solo neck single-coil (closest to P-bass position)
-"05b_vintage_62_p_22nf" = "neck"                # Solo neck single-coil
-"05c_vintage_62_p_47nf" = "neck"               # Solo neck single-coil
-"05d_vintage_50s_p_100nf" = "neck"              # Solo neck single-coil
-"07_modern_pj_active" = "pair_parallel"   # Modern Active P/J
-"08_vintage_pj_passive" = "pair_parallel"  # Vintage Alnico P/J
-"09_stingray_mm_parallel" = "bridge"            # Solo bridge pickup
-"09b_stingray_mm_series" = "bridge"
-"10_rickenbacker_bridge_hpf" = "bridge"         # Solo bridge pickup
-"11_modern_pmm_active" = "pair_parallel"        # Dual pickups in parallel
-"11b_pmm_hybrid_series" = "pair_parallel"       # Dual pickups in parallel
-"11_pmm_hybrid_series" = "pair_parallel"        # Dual pickups in parallel
-"12_mudbucker_ultra_series" = "neck"            # Solo neck pickup
-"13_dingwall_multiscale_bridge" = "bridge"      # Solo bridge pickup
-"14_upright_bridge_transducer" = "neck"         # Solo neck pickup for acoustic fullness
+neck = "neck"
+bridge = "bridge"
+parallel = "pair_parallel"
+direct = "pair_parallel"
+jazz_pair_active = "pair_active"
+"34in_standard_jazz:pair_active" = "pair_active"

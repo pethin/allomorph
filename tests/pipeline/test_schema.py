@@ -14,17 +14,14 @@ from allomorph.pipeline.schema import (
     NamTrainingConfig,
     NamTrainingMetadata,
     PipelineCliConfig,
-    TierSpec,
     Tone3000PackListing,
-    get_tier_spec,
 )
 
 
 def test_pipeline_cli_config_validation():
     """Verify PipelineCliConfig validation of command line options."""
-    cfg = PipelineCliConfig(stage="targets", tier="standard", instrument="30in", cable_pf=750.0)
-    assert cfg.stage == "targets"
-    assert cfg.tier == "standard"
+    cfg = PipelineCliConfig(stage="sim", instrument="30in", cable_pf=750.0)
+    assert cfg.stage == "sim"
     assert cfg.instrument == "30in"
 
     with pytest.raises(ValidationError):
@@ -51,7 +48,7 @@ def test_tone3000_listing_validation():
             voicings=valid_voicings,
         )
 
-    # Incorrect number of voicings (< 18 or > 22)
+    # Incorrect number of voicings (< 18 or > 32)
     with pytest.raises(ValidationError):
         Tone3000PackListing(
             edition="test",
@@ -62,7 +59,7 @@ def test_tone3000_listing_validation():
         Tone3000PackListing(
             edition="test",
             description=valid_desc,
-            voicings=valid_voicings + ["extra"],
+            voicings=[f"voicing_{i:02d}" for i in range(33)],
         )
 
 
@@ -82,7 +79,7 @@ def test_nam_export_metadata_validation():
             pickup=NamSourcePickupMeta(name="EMG MMTW", position_from_bridge_m=0.0775),
         ),
         target_voice=NamTargetVoiceMeta(
-            id="05_vintage_62_p_alnico",
+            id="precision_vintage",
             name="'62 Precision Bass (Alnico V)",
             topology="single",
             resonant_frequency_hz=3200.0,
@@ -90,7 +87,7 @@ def test_nam_export_metadata_validation():
         ),
     )
     assert meta.source_instrument.id == "30in"
-    assert meta.target_voice.id == "05_vintage_62_p_alnico"
+    assert meta.target_voice.id == "precision_vintage"
     assert meta.training.esr == 0.0004
     assert meta.source_instrument.pickup.name == "EMG MMTW"
 
@@ -112,14 +109,12 @@ def test_nam_training_config_validation():
     # Valid custom configuration
     custom = NamTrainingConfig(
         instrument="30in",
-        voice="05_vintage_62_p_alnico",
-        tier="hotrod",
+        voice="precision_vintage",
         epochs=50,
         batch_size=64,
         fast_dev_run=True,
         a2_lite_only=True,
     )
-    assert custom.tier == "hotrod"
     assert custom.epochs == 50
     assert custom.batch_size == 64
     assert custom.a2_lite_only is True
@@ -127,10 +122,6 @@ def test_nam_training_config_validation():
     # Negative epochs rejection
     with pytest.raises(ValidationError):
         NamTrainingConfig.model_validate({"epochs": 0})
-
-    # Invalid tier rejection
-    with pytest.raises(ValidationError):
-        NamTrainingConfig.model_validate({"tier": "unsupported_tier"})
 
 
 def test_artwork_pack_config_validation():
@@ -164,45 +155,3 @@ def test_artwork_pack_config_validation():
             badge3="PASSIVE",
             content=dummy_renderer,
         )
-
-
-def test_tier_spec_validation_and_resolution():
-    """Verify TierSpec fields, get_tier_spec resolution, alias normalization, and error handling."""
-    tier = TierSpec(
-        name="custom",
-        folder_name="99_custom",
-        prefix="cst_",
-        description="Custom tier",
-    )
-    assert tier.name == "custom"
-    assert tier.folder_name == "99_custom"
-    assert tier.prefix == "cst_"
-
-    # Resolves canonical tiers
-    dyn = get_tier_spec("dynamic")
-    assert dyn.folder_name == "00_dynamic"
-    assert dyn.prefix == "dyn_"
-
-    cln = get_tier_spec("clean")
-    assert cln.folder_name == "01_studio_clean"
-    assert cln.prefix == "cln_"
-
-    std = get_tier_spec("standard")
-    assert std.folder_name == "02_standard_dynamic"
-    assert std.prefix == "std_"
-
-    hot = get_tier_spec("hotrod")
-    assert hot.folder_name == "03_hot_rod"
-    assert hot.prefix == "hot_"
-
-    # Resolves aliases
-    assert get_tier_spec("dyn").prefix == "dyn_"
-    assert get_tier_spec("std").prefix == "std_"
-
-    # Default None resolves to dynamic
-    assert get_tier_spec(None).name == "dynamic"
-
-    # Reject unknown tier
-    with pytest.raises(KeyError) as exc_info:
-        get_tier_spec("unknown_tier")
-    assert "Unknown tier 'unknown_tier'" in str(exc_info.value)

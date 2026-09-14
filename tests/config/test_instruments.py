@@ -23,7 +23,7 @@ from allomorph.config import (
 from allomorph.config.instruments import INSTRUMENT_ALIASES
 from allomorph.dsp import NUM_TAPS
 from allomorph.naming import resolve_instruments, resolve_voices
-from allomorph.physics import compute_aperture_prefilter_fir
+from allomorph.physics import compute_voice_prefilter_firs
 
 
 def test_load_all_default_instruments():
@@ -35,12 +35,17 @@ def test_load_all_default_instruments():
         "34in_standard_p",
         "34in_standard_jazz",
         "34in_standard_pj",
+        "34in_active_pmm",
         "34in_active_stingray",
         "34in_preamp_soapbar",
         "34in_active_emg",
         "30in_mustang_pj",
         "37in_multiscale_dingwall",
         "34in_dingwall_sp1",
+        "33in_rickenbacker_4003",
+        "30in_gibson_eb0",
+        "41in_upright_bass",
+        "studio_direct",
     ]
     for iid in expected_ids:
         assert iid in instruments, f"Default instrument '{iid}' not found"
@@ -52,8 +57,10 @@ def test_load_all_default_instruments():
         assert cfg.scale_length_in is not None
         assert cfg.scale_length_in > 0
         assert len(cfg.string_wave_speeds) in [4, 5]
-        assert len(cfg.pickups) > 0
         assert cfg.default_pickup in cfg.pickups
+        assert cfg.version >= 1
+        for v_name, vcfg in cfg.voicings.items():
+            assert vcfg.version >= 1, f"Voicing {iid}:{v_name} missing version"
 
         for p_name, pcfg in cfg.pickups.items():
             assert isinstance(pcfg, PickupConfig), f"Pickup {p_name} is not a PickupConfig"
@@ -86,8 +93,8 @@ aperture_width_in = 1.35
 coil_spacing_in = 0.65
 
 [pickup_mapping]
-"04_modern_p_ceramic" = "neck_soapbar"
-"09_stingray_mm_parallel" = "bridge_soapbar"
+"precision_active" = "neck_soapbar"
+"stingray_parallel" = "bridge_soapbar"
 """
     with tempfile.TemporaryDirectory() as tmpdir:
         tmp_file = Path(tmpdir) / "my_custom_bass.toml"
@@ -97,13 +104,15 @@ coil_spacing_in = 0.65
         assert inst.id == "custom_35in_soapbar"
         assert inst.scale_length_in == 35.0
 
-        p_pick = get_source_pickup(inst, "04_modern_p_ceramic")
+        p_pick = get_source_pickup(inst, "precision_active")
         assert p_pick.name == "Neck Dual Soapbar"
 
         # Compute prefilter FIR using the custom user bass
-        fir = compute_aperture_prefilter_fir(
-            "04_modern_p_ceramic", instrument=tmp_file, num_taps=NUM_TAPS
+        firs = compute_voice_prefilter_firs(
+            "precision_active", instrument=tmp_file, num_taps=NUM_TAPS, normalize=True
         )
+        assert len(firs) == 1
+        fir = firs[0]
         assert len(fir) == NUM_TAPS
         max_peak = max(abs(x) for x in fir)
         assert math.isclose(max_peak, 0.99, rel_tol=1e-3)
@@ -155,8 +164,8 @@ def test_32in_pj_blend_parallel_definition():
         assert pj.components[1].pickup == "mmtwx_single"
         assert pj.resonant_frequency_hz is not None and pj.resonant_frequency_hz > 0
         assert pj.q_factor is not None and pj.q_factor > 0
-        assert inst.pickup_mapping["07_modern_pj_active"] == "pj_blend_parallel"
-        assert inst.pickup_mapping["08_vintage_pj_passive"] == "pj_blend_parallel"
+        assert inst.pickup_mapping["pj_active"] == "pj_blend_parallel"
+        assert inst.pickup_mapping["pj_passive"] == "pj_blend_parallel"
 
 
 def test_all_instruments_have_valid_string_presets():
@@ -178,8 +187,8 @@ def test_active_identity_differential_flatness():
 
     # 1. 37" Multi-Scale Dingwall -> Voice 13 Dingwall Bridge (< 0.05 dB flat)
     df_ding = build_voice_dataframe(
-        "13_dingwall_multiscale_bridge",
-        VOICES["13_dingwall_multiscale_bridge"],
+        "dingwall_bridge",
+        VOICES["dingwall_bridge"],
         instrument="37in_multiscale_dingwall",
         mode="difference",
     )
@@ -190,8 +199,8 @@ def test_active_identity_differential_flatness():
 
     # 2. 34" Active StingRay -> Voice 09 Music Man MM (< 0.05 dB flat)
     df_ray = build_voice_dataframe(
-        "09_stingray_mm_parallel",
-        VOICES["09_stingray_mm_parallel"],
+        "stingray_parallel",
+        VOICES["stingray_parallel"],
         instrument="34in_active_stingray",
         mode="difference",
     )
@@ -210,30 +219,32 @@ def test_small_sample_delay_inter_pickup_coherence_decay():
     # 34" Preamp Soapbar Bass playing 01 Modern Active Jazz Pair has delta_samples = 5.
     # Must apply spatial coherence decay without plunging into unphysical -40 dB razor notches.
     df = build_voice_dataframe(
-        "01_modern_jazz_active",
-        VOICES["01_modern_jazz_active"],
+        "jazz_pair_active",
+        VOICES["jazz_pair_active"],
         instrument="34in_preamp_soapbar",
         mode="difference",
     )
     mags = df["magnitude_db"].to_numpy()
     min_db = np.min(mags)
     assert min_db > -20.0, f"Soapbar on Jazz Pair has unregularized comb notch: min={min_db} dB"
-    assert -16.0 <= min_db <= -8.0, (
-        f"Expected smooth authentic acoustic mid-scoop, got {min_db} dB"
+    # Mid-scoop depth relative to fundamental passband must be smooth and authentic (8 dB to 16 dB depth)
+    scoop_depth = mags[0] - min_db
+    assert 8.0 <= scoop_depth <= 16.0, (
+        f"Expected smooth authentic acoustic mid-scoop depth, got {scoop_depth} dB"
     )
 
 
 def test_resolve_instruments():
     """Verify resolve_instruments handles 'all', defaults, comma lists, aliases, and unknown tokens."""
-    # 1. 'all' returns all 12 playable instruments and excludes canonical_intermediate
+    # 1. 'all' returns all 17 playable instruments
     all_insts = resolve_instruments("all")
-    assert len(all_insts) == 12
-    assert "canonical_intermediate" not in all_insts
-    expected_12 = {
+    assert len(all_insts) == 17
+    expected_17 = {
         "30in_emg_mmtw",
         "30in_mustang_pj",
         "32in_custom_pmm",
         "32in_fretless_pmm",
+        "34in_active_pmm",
         "34in_active_stingray",
         "34in_dingwall_sp1",
         "34in_active_emg",
@@ -242,8 +253,12 @@ def test_resolve_instruments():
         "34in_standard_p",
         "34in_standard_pj",
         "37in_multiscale_dingwall",
+        "33in_rickenbacker_4003",
+        "30in_gibson_eb0",
+        "41in_upright_bass",
+        "studio_direct",
     }
-    assert set(all_insts) == expected_12
+    assert set(all_insts) == expected_17
 
     # 2. None, empty string, or whitespace defaults to all playable
     assert resolve_instruments(None) == all_insts
@@ -282,14 +297,16 @@ def test_resolve_instruments():
         resolve_instruments("nonexistent_bass, 30in")
 
     # 6. Entirely unknown token raises diagnostic ValueError with close match hints
-    with pytest.raises(ValueError, match="Unknown source instrument identifier 'completely_bogus_token'"):
+    with pytest.raises(
+        ValueError, match="Unknown source instrument identifier 'completely_bogus_token'"
+    ):
         resolve_instruments("completely_bogus_token")
 
 
 def test_instrument_aliases_typing_and_coverage():
     """Verify INSTRUMENT_ALIASES is a dict[str, str] mapping valid aliases to canonical instrument IDs."""
     assert isinstance(INSTRUMENT_ALIASES, dict)
-    all_insts = set(load_all_instruments().keys()) | {"canonical_intermediate"}
+    all_insts = set(load_all_instruments().keys())
     for alias, canonical in INSTRUMENT_ALIASES.items():
         assert isinstance(alias, str)
         assert isinstance(canonical, str)
@@ -303,34 +320,31 @@ def test_resolve_voices():
     assert all_voices == list(VOICES.keys())
 
     # Single voice
-    assert resolve_voices("04_modern_p_ceramic") == ["04_modern_p_ceramic"]
-    # Shorthand prefix matching
-    assert resolve_voices("14") == ["14_upright_bridge_transducer"]
-    assert resolve_voices("01, 03") == ["01_modern_jazz_active", "03_jazz_bridge_60s"]
-    assert resolve_voices("02b") == ["02b_jazz_bass_pair_22nf"]
-    assert resolve_voices("02") == [
-        "02_jazz_bass_pair",
-        "02b_jazz_bass_pair_22nf",
-        "02c_jazz_bridge_growl_bias",
+    assert resolve_voices("precision_active") == ["precision_active"]
+    # Shorthand prefix / slug matching
+    assert resolve_voices("upright") == ["upright_acoustic"]
+    assert resolve_voices("mudbucker") == ["mudbucker_deep"]
+    assert resolve_voices("jazz_pair_mids") == ["jazz_pair_mids"]
+    assert resolve_voices("studio_act") == ["studio_active"]
+    assert resolve_voices("studio") == [
+        "studio_direct",
+        "studio_active",
+        "studio_passive",
     ]
-    assert resolve_voices("05b") == ["05b_vintage_62_p_22nf"]
-    assert resolve_voices("05c") == ["05c_vintage_62_p_47nf"]
-    assert resolve_voices("05d") == ["05d_vintage_50s_p_100nf"]
-    assert resolve_voices("05") == [
-        "05_vintage_62_p_alnico",
-        "05b_vintage_62_p_22nf",
-        "05c_vintage_62_p_47nf",
-        "05d_vintage_50s_p_100nf",
+    assert resolve_voices("precision") == [
+        "precision_vintage",
+        "precision_mids",
+        "precision_warm",
+        "precision_active",
+        "precision_dub",
     ]
-    assert resolve_voices("09b") == ["09b_stingray_mm_series"]
-    assert resolve_voices("09") == ["09_stingray_mm_parallel", "09b_stingray_mm_series"]
-    assert resolve_voices("15") == [
-        "15_neutral_character",
-        "15b_active_character",
-        "15c_passive_character",
+    assert resolve_voices("stingray") == [
+        "stingray_parallel",
+        "stingray_series",
+        "stingray_active",
     ]
-    assert resolve_voices("15b") == ["15b_active_character"]
-    assert resolve_voices("15c") == ["15c_passive_character"]
+    assert resolve_voices("pj") == ["pj_passive", "pj_active"]
+    assert resolve_voices("p_mm") == ["p_mm_parallel", "p_mm_series"]
 
     # Unknown voice raises diagnostic ValueError (Guardrail 5.3.5)
     with pytest.raises(ValueError, match="Unknown target voice identifier 'nonexistent_voice'"):
@@ -343,15 +357,15 @@ def test_get_source_pickup_strict_errors():
 
     # 1. Empty pickups dictionary
     with pytest.raises(ValueError, match="has no pickups defined"):
-        get_source_pickup(InstrumentConfig(id="broken_bass", pickups={}), "04_modern_p_ceramic")
+        get_source_pickup(InstrumentConfig(id="broken_bass", pickups={}), "precision_active")
 
-    # 2. No default_pickup and no mapping
+    # 2. No default_pickup and no mapping on multi-pickup instrument
     no_default = InstrumentConfig(
         id="no_default_bass",
-        pickups={"neck": PickupConfig(name="Neck")},
+        pickups={"neck": PickupConfig(name="Neck"), "bridge": PickupConfig(name="Bridge")},
     )
     with pytest.raises(ValueError, match="defines no 'default_pickup' and has no pickup_mapping"):
-        get_source_pickup(no_default, "04_modern_p_ceramic")
+        get_source_pickup(no_default, "precision_active")
 
     # 3. default_pickup specifies a non-existent pickup key
     with pytest.raises(KeyError, match="default_pickup 'non_existent' not found in pickups"):
@@ -374,9 +388,7 @@ def test_string_preset_strict_errors():
             InstrumentConfig(strings=InstrumentStringsConfig(preset="imaginary_flats"))
         )
 
-    voice = VOICES["04_modern_p_ceramic"].model_copy(
-        update={"target_string": "unknown_target_wire"}
-    )
+    voice = VOICES["precision_active"].model_copy(update={"target_string": "unknown_target_wire"})
     with pytest.raises(KeyError, match="String preset 'unknown_target_wire' not found"):
         get_voice_string(voice)
 
@@ -458,15 +470,24 @@ def test_34in_active_emg_configuration():
     assert pair.q_factor == 1.35
     assert pair.position_from_bridge_m == 0.0950
 
+    # Verify embedded active circuits
+    assert neck.circuit is not None
+    assert neck.circuit.active is True
+    assert neck.circuit.Rvol == pytest.approx(25000.0)
+    assert bridge.circuit is not None
+    assert bridge.circuit.active is True
+    assert bridge.circuit.Rvol == pytest.approx(25000.0)
+    assert pair.circuit is not None
+    assert pair.circuit.active is True
+    assert pair.circuit.Rvol == pytest.approx(25000.0)
+
     # Verify smart voice mapping coverage
     for vid in VOICES:
-        if vid == "00_canonical_intermediate":
-            continue
         p = get_source_pickup(inst, vid)
         assert p.id in ["neck", "bridge", "pair_parallel"]
 
     # Verify differential deconvolution curve generation
-    for test_vid in ["01_modern_jazz_active", "05_vintage_62_p_alnico", "09_stingray_mm_parallel"]:
+    for test_vid in ["jazz_pair_active", "precision_vintage", "stingray_parallel"]:
         df = build_voice_dataframe(test_vid, VOICES[test_vid], instrument=inst, mode="difference")
         assert df is not None and len(df) > 0
         mags = df["magnitude_db"].to_numpy()
@@ -559,7 +580,7 @@ def test_34in_preamp_soapbar_configuration():
             load_instrument(deprecated)
 
     # Verify differential deconvolution curves
-    for test_vid in ["01_modern_jazz_active", "05_vintage_62_p_alnico", "09_stingray_mm_parallel"]:
+    for test_vid in ["jazz_pair_active", "precision_vintage", "stingray_parallel"]:
         df = build_voice_dataframe(test_vid, VOICES[test_vid], instrument=inst, mode="difference")
         assert df is not None and len(df) > 0
         mags = df["magnitude_db"].to_numpy()
@@ -568,3 +589,47 @@ def test_34in_preamp_soapbar_configuration():
         assert np.max(mags) < 30.0
 
 
+def test_calibrated_reference_instruments():
+    """Verify calibrated reference instruments: Rick 4003, Dingwall Multiscale, Dingwall SP1, and Mustang PJ."""
+    # 1. Rickenbacker 4003
+    rick = load_instrument("33in_rickenbacker_4003")
+    assert rick.string_wave_speeds == [69.60, 92.90, 124.01, 165.53]
+    b = rick.pickups["bridge"]
+    b_hpf = rick.pickups["bridge_hpf"]
+    assert b.position_from_bridge_m == pytest.approx(0.0570)
+    assert b.magnet_type == "ceramic"
+    assert b_hpf.position_from_bridge_m == pytest.approx(0.0570)
+    assert b_hpf.aperture_width_in == pytest.approx(0.75)
+    assert b_hpf.magnet_type == "ceramic"
+    assert b_hpf.circuit is not None
+    assert b_hpf.circuit.Crick == pytest.approx(4.7e-9)
+
+    # 2. Dingwall 37" Multi-Scale
+    ding = load_instrument("37in_multiscale_dingwall")
+    assert "pair_series" in ding.pickups
+    p_ser = ding.pickups["pair_series"]
+    assert p_ser.type == "composite"
+    assert p_ser.circuit is not None
+    assert p_ser.circuit.topology == "series"
+    assert p_ser.circuit.neck is not None and p_ser.circuit.neck.L == pytest.approx(2.3)
+    assert p_ser.circuit.bridge is not None and p_ser.circuit.bridge.L == pytest.approx(2.3)
+    p_par = ding.pickups["pair_parallel"]
+    assert p_par.circuit is not None
+    assert p_par.circuit.neck is not None and p_par.circuit.neck.L == pytest.approx(2.3)
+    assert p_par.circuit.bridge is not None and p_par.circuit.bridge.L == pytest.approx(2.3)
+    assert ding.voicings["pair_series"].pickup == "pair_series"
+    assert ding.voicings["pair_series"].gain_db == pytest.approx(5.6)
+
+    # 3. Dingwall SP1 32"-35" Super Multi-Scale
+    sp1 = load_instrument("34in_dingwall_sp1")
+    sp1_par = sp1.pickups["pair_parallel"]
+    assert sp1_par.circuit is not None
+    assert sp1_par.circuit.bridge is not None
+    assert sp1_par.circuit.bridge.L == pytest.approx(2.3)
+    assert sp1_par.circuit.bridge.Rdc == pytest.approx(4400.0)
+
+    # 4. Mustang PJ 30" Short Scale
+    mustang = load_instrument("30in_mustang_pj")
+    mustang_par = mustang.pickups["pair_parallel"]
+    assert mustang_par.circuit is not None
+    assert mustang_par.circuit.Rbot == pytest.approx(250000.0)

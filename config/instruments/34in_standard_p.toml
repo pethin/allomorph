@@ -18,6 +18,7 @@ name = "34\" Standard P-Bass"
 scale_length_in = 34.0
 scale_length_m = 0.8636
 electronics = "passive"
+version = 1
 
 # String wave speeds: v = 2 * L * f0 (for E1=41.2Hz, A1=55.0Hz, D2=73.4Hz, G2=98.0Hz)
 string_wave_speeds = [71.16, 95.00, 126.81, 169.27]
@@ -43,6 +44,7 @@ tension_lbs = 171.0
 [pickups.split_p]
 name = "Standard Split-Coil P"
 position_name = "Split"
+bundle_name = "split_p"
 position_from_bridge_m = 0.1250  # Centerline 125.0mm
 aperture_width_in = 1.00         # 1.00" aperture per split half
 coil_spacing_in = 0.0
@@ -57,11 +59,6 @@ coils = [
     { strings = [1, 2], position_from_bridge_m = 0.1110, aperture_width_in = 1.00, weight = 1.0 }
 ]
 
-# ------------------------------------------------------------------------------
-# 2. SMART VOICE MAPPING
-# ------------------------------------------------------------------------------
-# Single-pickup passive bass: all digital twin voicings map directly to the split-coil P.
-
 [pickups.split_p.circuit]
 topology = "single"
 L = 3.8
@@ -71,27 +68,69 @@ Ccoil = 6e-11
 Rtop = 10.0
 Rbot = 250000.0
 Rtone = 250000.0
-Ctone = 4.7000000000000004e-08
+Ctone = 4.7e-08
 
+# ------------------------------------------------------------------------------
+# 2. NATIVE INSTRUMENT VOICINGS
+# ------------------------------------------------------------------------------
+
+[voicings.vintage_open]
+version = 1
+name = "Vintage 1962 Open"
+tone_name = "Precision Vintage"
+pickup = "split_p"
+affinity = "neck"
+vol_pos = 1.0
+tone_pos = 1.0
+tone_cap_f = 4.7e-08
+string_preset_override = "roundwound_nickel_standard"
+
+[voicings.vintage_mids]
+version = 1
+name = "Vintage 1962 Vocal Mids"
+tone_name = "Precision Mids"
+pickup = "split_p"
+affinity = "neck"
+vol_pos = 1.0
+tone_pos = 1.0
+tone_cap_f = 2.2e-08
+Rtone = 3.3
+gain_db = 0.5
+string_preset_override = "roundwound_nickel_standard"
+
+[voicings.vintage_warm]
+version = 1
+name = "Vintage Motown Flatwound Warmth"
+tone_name = "Precision Warm"
+pickup = "split_p"
+affinity = "neck"
+vol_pos = 1.0
+tone_pos = 0.0
+tone_cap_f = 4.7e-08
+Rtone = 3.3
+gain_db = -0.1
+string_preset_override = "flatwound_vintage_heavy"
+
+
+
+[voicings.slab_dub]
+version = 1
+name = "1951 Slab Sub-Bass Dub"
+tone_name = "Precision Dub"
+pickup = "split_p"
+affinity = "neck"
+vol_pos = 1.0
+tone_pos = 0.0
+tone_cap_f = 1.0e-07
+Rtone = 3.3
+gain_db = -0.5
+string_preset_override = "flatwound_vintage_heavy"
+
+# ------------------------------------------------------------------------------
+# 3. PICKUP AFFINITY ROUTING
+# ------------------------------------------------------------------------------
 [pickup_mapping]
-"01_modern_jazz_active" = "split_p"
-"02_jazz_bass_pair" = "split_p"
-"02b_jazz_bass_pair_22nf" = "split_p"
-"02c_jazz_bridge_growl_bias" = "split_p"
-"03_jazz_bridge_60s" = "split_p"
-"04_modern_p_ceramic" = "split_p"
-"05_vintage_62_p_alnico" = "split_p"
-"05b_vintage_62_p_22nf" = "split_p"
-"05c_vintage_62_p_47nf" = "split_p"
-"05d_vintage_50s_p_100nf" = "split_p"
-"07_modern_pj_active" = "split_p"   # Modern Active P/J
-"08_vintage_pj_passive" = "split_p"  # Vintage Alnico P/J
-"09_stingray_mm_parallel" = "split_p"
-"09b_stingray_mm_series" = "split_p"
-"10_rickenbacker_bridge_hpf" = "split_p"
-"11_modern_pmm_active" = "split_p"
-"11b_pmm_hybrid_series" = "split_p"
-"11_pmm_hybrid_series" = "split_p"
-"12_mudbucker_ultra_series" = "split_p"
-"13_dingwall_multiscale_bridge" = "split_p"
-"14_upright_bridge_transducer" = "split_p"
+neck = "split_p"
+bridge = "split_p"
+parallel = "split_p"
+direct = "split_p"

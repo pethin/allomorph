@@ -23,7 +23,11 @@ def guard_no_audio_pollution() -> Generator[None]:
     after_items = (
         {p for p in audio_dir.rglob("*") if p.name != ".DS_Store"} if audio_dir.exists() else set()
     )
-    new_items = sorted(str(p.relative_to(REPO_ROOT)) for p in (after_items - before_items))
+    new_items = sorted(
+        str(p.relative_to(REPO_ROOT))
+        for p in (after_items - before_items)
+        if not (p == audio_dir / "canonical" or p.is_relative_to(audio_dir / "canonical"))
+    )
     assert not new_items, (
         f"Test suite polluted the audio directory with {len(new_items)} item(s):\n"
         + "\n".join(new_items)

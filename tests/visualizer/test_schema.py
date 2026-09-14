@@ -26,17 +26,26 @@ def test_visualizer_cli_config_validation():
     """Verify VisualizerCliConfig defaults and CLI mode validation."""
     default_cfg = VisualizerCliConfig()
     assert default_cfg.instrument == "all"
-    assert default_cfg.mode == "composite"
+    assert default_cfg.mode == "voicings"
     assert not default_cfg.all
     assert default_cfg.out is None
 
     # Valid custom modes
-    for m in ("composite", "unified", "output", "difference", "targets", "frontends"):
+    for m in (
+        "voicings",
+        "voicing_ir_3d",
+        "waterfall3d",
+        "unified",
+        "output",
+        "difference",
+    ):
         cfg = VisualizerCliConfig(instrument="32in", mode=m, all=True, out="/tmp/test.html")  # type: ignore[arg-type]
         assert cfg.mode == m
         assert cfg.all is True
 
-    # Invalid mode rejection
+    # Invalid mode rejection (including obsolete composite mode)
+    with pytest.raises(ValidationError):
+        VisualizerCliConfig(mode="composite")  # type: ignore[arg-type]
     with pytest.raises(ValidationError):
         VisualizerCliConfig(mode="bogus_mode")  # type: ignore[arg-type]
 

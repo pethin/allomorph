@@ -348,8 +348,8 @@ Each worker process operates on an isolated memory space, generating all 21 digi
 For testing, parameter optimization, or rapid inspection, pass `--max-samples` to restrict simulation to the first $N$ audio frames:
 
 ```bash
-# Simulate first 2 seconds (96,000 samples) of voice 04
-uv run allomorph-sim -v 04_modern_p_ceramic --max-samples 96000
+# Simulate first 2 seconds (96,000 samples) of Modern P
+uv run allomorph-sim -v precision_active --max-samples 96000
 ```
 
 ---
@@ -378,20 +378,20 @@ usage: allomorph-sim [-h] [--voice VOICE] [--instrument INSTRUMENT]
 
 1. **Standard Single Voice Simulation:**
    ```bash
-   uv run allomorph-sim -v 04_modern_p_ceramic -i 30in
+   uv run allomorph-sim -v precision_active -i 30in
    ```
 
-2. **Simulate All 21 Voices in Parallel on Apple Silicon:**
+2. **Simulate All Target Voices in Parallel on Apple Silicon:**
    ```bash
    uv run allomorph-sim -v all -i 30in -j 8
    ```
 
 3. **Simulate with Custom Volume / Tone Wiper Loading:**
    ```bash
-   uv run allomorph-sim -v 02_jazz_bass_pair --vol 0.8 --tone 0.5
+   uv run allomorph-sim -v jazz_pair_open --vol 0.8 --tone 0.5
    ```
 
 4. **Rapid Prototyping Run (2-Second Slice):**
    ```bash
-   uv run allomorph-sim -v 09_stingray_mm_parallel --max-samples 96000
+   uv run allomorph-sim -v stingray_parallel --max-samples 96000
    ```

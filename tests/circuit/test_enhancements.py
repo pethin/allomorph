@@ -19,8 +19,8 @@ from allomorph.circuit import (
     compute_parametric_sweep,
     eval_pot_taper,
     load_circuit,
+    simulate_circuit_audio,
 )
-from allomorph.circuit.simulation import simulate_circuit_audio
 from allomorph.config import VOICES
 
 
@@ -81,7 +81,7 @@ def test_circuit_model_apply_pot_positions_tapers():
 
 def test_mn_blend_potentiometer_behavior():
     """Verify MN blend pot: 0 dB insertion loss at center detent, attenuation away from center."""
-    vcfg = VOICES["02_jazz_bass_pair"]
+    vcfg = VOICES["jazz_pair_open"]
     model = load_circuit(vcfg.circuit)
     assert model.topology == "parallel"
 
@@ -110,7 +110,7 @@ def test_mn_blend_potentiometer_behavior():
 
 def test_compute_parametric_sweep_blend():
     """Verify continuous blend parametric sweep executes and produces valid results."""
-    res = compute_parametric_sweep("02_jazz_bass_pair", param="blend")
+    res = compute_parametric_sweep("jazz_pair_open", param="blend")
     assert res.param == "blend"
     assert len(res.values) == 5
     assert len(res.curves) == 5
@@ -129,7 +129,7 @@ def test_compute_parametric_sweep_blend():
 
 def test_analytical_circuit_metrics_extraction():
     """Verify ParametricSweepResult.metrics() extracts accurate resonant peak, Q, bandwidth, and slope."""
-    res = compute_parametric_sweep("05_vintage_62_p_alnico", param="tone")
+    res = compute_parametric_sweep("precision_vintage", param="tone")
     df_metrics = res.metrics()
 
     assert isinstance(df_metrics, pl.DataFrame)
@@ -171,7 +171,7 @@ def test_linear_filter_stage_fusion():
         success = simulate_circuit_audio(
             input_audio=np.zeros((1, 4800), dtype=np.float32),  # 100 ms silent test buffer
             output_wav_path=out_wav,
-            model=load_circuit("05_vintage_62_p_alnico"),
+            model=load_circuit("precision_vintage"),
             prefilter_firs=[np.zeros(2048, dtype=np.float32)],
             bypass_saturation=True,
             normalize="none",

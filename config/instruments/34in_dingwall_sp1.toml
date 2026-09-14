@@ -25,6 +25,7 @@ scale_min_in = 32.0
 scale_max_in = 35.0
 is_multiscale = true
 electronics = "passive"
+version = 1
 
 # String wave speeds for 32"-35" Super multi-scale (B0, E1, A1, D2, G2)
 string_wave_speeds = [54.88, 71.69, 93.60, 122.14, 159.31]
@@ -147,30 +148,44 @@ Reddy = 180000.0
 Ccoil = 6e-11
 
 [pickups.pair_parallel.circuit.bridge]
-L = 3.6
-Rdc = 7800.0
-Reddy = 125000.0
-Ccoil = 7e-11
+L = 2.3
+Rdc = 4400.0
+Reddy = 150000.0
+Ccoil = 1.2e-10
 
+# ------------------------------------------------------------------------------
+# 2. NATIVE INSTRUMENT VOICINGS
+# ------------------------------------------------------------------------------
+
+[voicings.super_p_parallel]
+version = 1
+name = "Dingwall Super P + Bridge Parallel"
+tone_name = "Dingwall SP1 Parallel"
+pickup = "pair_parallel"
+affinity = "parallel"
+vol_pos = 1.0
+
+[voicings.super_p_solo]
+version = 1
+name = "Dingwall Super P Solo Split"
+tone_name = "Dingwall Super P"
+pickup = "p"
+affinity = "neck"
+vol_pos = 1.0
+
+[voicings.super_bridge_solo]
+version = 1
+name = "Dingwall FD3 Solo Bridge"
+tone_name = "Dingwall SP1 Bridge"
+pickup = "bridge"
+affinity = "bridge"
+vol_pos = 1.0
+
+# ------------------------------------------------------------------------------
+# 3. PICKUP AFFINITY ROUTING
+# ------------------------------------------------------------------------------
 [pickup_mapping]
-"01_modern_jazz_active" = "pair_parallel"
-"02_jazz_bass_pair" = "pair_parallel"
-"02b_jazz_bass_pair_22nf" = "pair_parallel"
-"02c_jazz_bridge_growl_bias" = "pair_parallel"
-"03_jazz_bridge_60s" = "bridge"
-"04_modern_p_ceramic" = "p"
-"05_vintage_62_p_alnico" = "p"
-"05b_vintage_62_p_22nf" = "p"
-"05c_vintage_62_p_47nf" = "p"
-"05d_vintage_50s_p_100nf" = "p"
-"07_modern_pj_active" = "pair_parallel"
-"08_vintage_pj_passive" = "pair_parallel"
-"09_stingray_mm_parallel" = "bridge"
-"09b_stingray_mm_series" = "bridge"
-"10_rickenbacker_bridge_hpf" = "bridge"
-"11_modern_pmm_active" = "pair_parallel"
-"11b_pmm_hybrid_series" = "pair_parallel"
-"11_pmm_hybrid_series" = "pair_parallel"
-"12_mudbucker_ultra_series" = "p"
-"13_dingwall_multiscale_bridge" = "bridge"
-"14_upright_bridge_transducer" = "p"
+neck = "p"
+bridge = "bridge"
+parallel = "pair_parallel"
+direct = "pair_parallel"

@@ -229,8 +229,6 @@ class SimulationConfig(AllomorphBaseModel):
     output_wav: Path | str | None = None
     instrument: str | None = "30in"
     pickup: str | None = None
-    tier: str | None = None
-    prefiltered: bool = False
     cir_path: Path | str | None = None
     normalize: Literal["auto", "peak", "rms", "none"] = "auto"
     target_dbfs: float | None = None
@@ -276,8 +274,6 @@ class SimulationConfig(AllomorphBaseModel):
             "output_wav": self.output_wav,
             "instrument": self.instrument,
             "pickup": self.pickup,
-            "tier": self.tier,
-            "prefiltered": self.prefiltered,
             "cir_path": self.cir_path,
             "normalize": self.normalize,
             "target_dbfs": self.target_dbfs,

@@ -1,6 +1,6 @@
 """
 Allomorph - String Mechanics & Wave Dispersion Modeling
-Computes differential string damping and bloom, longitudinal clank resonance,
+Computes differential string damping and tension compliance, longitudinal clank resonance,
 inharmonicity B_s interpolation, scale-length conversions, and dispersive wave speeds.
 """
 
@@ -52,7 +52,7 @@ _LOG_F0_ANCHORS = np.log2(INHARMONICITY_ANCHORS_F0)
 _LOG_BS_ANCHORS = np.log2(INHARMONICITY_ANCHORS_BS)
 _RBF_EPSILON = 0.5
 _RBF_D = np.abs(_LOG_F0_ANCHORS[:, None] - _LOG_F0_ANCHORS[None, :])
-_RBF_A = np.exp(-(_RBF_EPSILON * _RBF_D) ** 2)
+_RBF_A = np.exp(-((_RBF_EPSILON * _RBF_D) ** 2))
 _RBF_WEIGHTS = np.linalg.solve(_RBF_A, _LOG_BS_ANCHORS)
 MEAN_BASS_F0 = (
     66.9045  # Mean open-string fundamental frequency (E1=41.203, A1=55.000, D2=73.416, G2=97.999)
@@ -67,9 +67,9 @@ def compute_differential_string_transfer(
     """
     Computes differential transfer function between source instrument strings
     and target voicing goal strings using NumPy:
-      H_string_transfer(f) = H_damp_ratio(f) * H_bloom_diff(f)
+      H_string_transfer(f) = H_damp_ratio(f) * H_compliance(f)
     Prevents double-damping when source bass already uses flatwounds, while
-    providing authentic acoustic upright/fanned-fret damping and bloom.
+    providing authentic acoustic upright/fanned-fret damping and compliance.
     """
     f = np.asarray(freqs, dtype=np.float64)
 
@@ -92,14 +92,15 @@ def compute_differential_string_transfer(
     r_soft_db = sigma * f_pos + (1.0 - sigma) * f_neg
     h_damp_ratio = 10.0 ** (r_soft_db / 20.0)
 
-    bloom_src = float(src_string.bloom_db)
-    bloom_tgt = float(tgt_string.bloom_db)
-    delta_bloom_db = bloom_tgt - bloom_src
+    # Fundamental plucking excursion compliance derived from tension:
+    # Transverse displacement under plucking force F_p: y_max = F_p / T * (x_p * (L - x_p) / L)
+    # Excursion compliance ratio: g_compliance = T_src / T_tgt
+    t_src = float(src_string.tension_lbs)
+    t_tgt = float(tgt_string.tension_lbs)
+    g_compliance = t_src / max(t_tgt, 1e-6)
+    h_compliance = np.sqrt((g_compliance**2 + (f / 90.0) ** 2) / (1.0 + (f / 90.0) ** 2))
 
-    g_bloom = 10.0 ** (delta_bloom_db / 20.0)
-    h_bloom = np.sqrt((g_bloom**2 + (f / 90.0) ** 2) / (1.0 + (f / 90.0) ** 2))
-
-    return h_damp_ratio * h_bloom
+    return h_damp_ratio * h_compliance
 
 
 def compute_differential_longitudinal_transfer(
@@ -154,11 +155,11 @@ def get_inharmonicity_for_f0(f0: float | np.ndarray) -> float | np.ndarray:
     if isinstance(f0, np.ndarray):
         log_f0 = np.log2(np.maximum(f0, 15.0))
         d = np.abs(log_f0[:, None] - _LOG_F0_ANCHORS[None, :])
-        basis = np.exp(-(_RBF_EPSILON * d) ** 2)
+        basis = np.exp(-((_RBF_EPSILON * d) ** 2))
         return 2.0 ** (basis @ _RBF_WEIGHTS)
     log_f0 = math.log2(max(f0, 15.0))
     d = np.abs(log_f0 - _LOG_F0_ANCHORS)
-    basis = np.exp(-(_RBF_EPSILON * d) ** 2)
+    basis = np.exp(-((_RBF_EPSILON * d) ** 2))
     return float(2.0 ** (basis @ _RBF_WEIGHTS))
 
 
@@ -299,9 +300,7 @@ def compute_dispersive_wave_speed(
     """
     f = np.asarray(freqs, dtype=np.float64)
     if f0 is None or f0 <= 0:
-        l_eff = (
-            scale_length_m if (scale_length_m is not None and scale_length_m > 0) else 0.8636
-        )
+        l_eff = scale_length_m if (scale_length_m is not None and scale_length_m > 0) else 0.8636
         f0 = max(v0 / (2.0 * l_eff), 15.0)
 
     b_s = get_inharmonicity_for_f0(f0)

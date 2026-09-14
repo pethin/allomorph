@@ -139,7 +139,7 @@ $$\forall n \ge 1, \quad \left.\frac{d^n S_\infty}{dt^n}\right|_{t=0^+} = 0, \qu
 This eliminates boundary discontinuity kinks and Gibbs truncation leakage across five foundational DSP stages:
 1. **Homomorphic Real-Cepstrum FIR Synthesis Tail Windowing (`dsp.py`):** The trailing 15% of the 2048-tap minimum-phase causal FIR is tapered with $w(t) = 1.0 - S_\infty(t)$. Vanishing all boundary derivatives at tap 2047 prevents cyclic truncation spikes when convolving the impulse response in time-domain hosts.
 2. **Multi-Rate Anti-Aliasing Decimation Lowpass Filter (`saturation.py`):** In 2x and 4x oversampled non-linear ODE saturation runs, the frequency-domain decimation anti-aliasing mask uses $H_{\text{aa}}(f) = 1.0 - S_\infty\left(\frac{f - 18000}{6000}\right)$ over $18\text{ kHz}$ to Nyquist ($24\text{ kHz}$). All derivatives vanish smoothly at $18\text{ kHz}$ and $24\text{ kHz}$, completely eliminating spectral foldback ripples without time-domain pre-ringing.
-3. **Frontend Ultrasonic Deconvolution Roll-Off (`staging.py`):** Excess deconvolution boost above $8\text{ kHz}$ is smoothly rolled off via $h_{\text{final}} = h_{\text{clamped}} - h_{\text{excess}} \cdot S_\infty\left(\frac{f - 8000}{12000}\right)$, guaranteeing that ultrasonic gain at $20\text{ kHz}$ satisfies Guardrail 5.3.6 ($< +2.0\text{ dB}$) with infinite mathematical smoothness.
+3. **Differential Ultrasonic Roll-Off (`solver.py`):** Excess deconvolution boost above $8\text{ kHz}$ is smoothly rolled off via $h_{\text{final}} = h_{\text{clamped}} - h_{\text{excess}} \cdot S_\infty\left(\frac{f - 8000}{12000}\right)$, guaranteeing that ultrasonic gain at $20\text{ kHz}$ satisfies Guardrail 5.3.6 ($< +2.0\text{ dB}$) with infinite mathematical smoothness.
 4. **Differential Circuit Deconvolution HF Taper (`solver.py`):** Out-of-band circuit transfer inversions between $8\text{ kHz}$ and $20\text{ kHz}$ are smoothly shelved to $0.00\text{ dB}$ via $w(f) = 1.0 - S_\infty\left(\frac{f - 8000}{12000}\right)$, preventing noisy high-frequency circuit amplification.
 5. **Acoustic Aperture De-Combing Tapers (`prefilter.py`):** Multi-pickup comb-null regularization tapers (both standard magnetic and upright bass piezo) blend into the bridge reference spectrum using $w(f) = 1.0 - S_\infty(t)$, eliminating piecewise slope kinks at the de-combing cutoff boundaries.
 
@@ -152,9 +152,8 @@ This eliminates boundary discontinuity kinks and Gibbs truncation leakage across
 - Directly evaluate model equality: $\text{if } \text{allclose}(H_{\text{tgt}}, H_{\text{src}}): H_{\text{diff}} \equiv 1.000$ ($0.00\text{ dB}$ identity across all frequencies).
 - Universally evaluate differential transfer functions whenever a source circuit is present.
 
-### 3.2 Strict Prevention of Double Voicing
-- Automatically inspect input filenames: if `Path(input_wav).name.startswith("aperture_")`, automatically set `prefiltered = True` to guarantee `compute_voice_prefilter_firs` is never re-convolved.
-- When target voice declares a multi-channel circuit, evaluate branch FIRs with unity weighting ($p_{\text{weight}} = 1.0$), letting the SPICE nodal network evaluate physical current division without $-6\text{ dB}$ double-attenuation.
+### 3.2 Multi-Channel Branch FIR Weighting
+- When a target voice declares a multi-channel circuit, evaluate branch FIRs with unity weighting ($p_{\text{weight}} = 1.0$), letting the SPICE nodal network evaluate physical current division without $-6\text{ dB}$ double-attenuation.
 
 ### 3.3 Sub-Audible DC Decoupling & Gibbs Truncation Ripple Prevention
 - Active bass preamps feature DC-blocking capacitors ($10\text{--}47\ \mu\text{F}$) solely for power rail DC offset isolation. Never include sub-audible AC-coupling differentiator poles ($s / (s + \omega_{\text{sub}})$ where $\omega_{\text{sub}} \le 2\pi \cdot 20\text{ rad/s}$) in active preamp transfer functions (`compute_active_preamp_eq`).
@@ -164,23 +163,20 @@ This eliminates boundary discontinuity kinks and Gibbs truncation leakage across
   across $20\text{--}300\text{ Hz}$.
 - Active preamp models must strictly represent musical shelving contours ($H_{\text{bass}} \cdot H_{\text{treble}}$) with flat, finite DC transmission ($H_{\text{preamp}}(0) \ge 1.0$), ensuring smooth, ripple-free differential curves down to $20\text{ Hz}$.
 
-### 3.4 Architecture C Normative Invariants (Two-Stage Pipeline & Canonical Intermediate)
-1. **Two-Stage Signal Flow Decoupling:**
-   - **Stage 1 (Frontend IR):** Deconvolutes source instrument pickup, aperture sinc, and loaded RLC circuit into the Canonical Intermediate baseline. Synthesized as a 2048-tap minimum-phase causal FIR loaded into Block 1 (IR Loader). Consumes 0% neural CPU and introduces 0 ms algorithmic latency.
-   - **Stage 2 (Backend NAM):** Captures target pickup loaded RLC circuit and non-linear magnetic feel from the Canonical Intermediate baseline. Loaded into Block 2 (NAM Preamp, A2-Lite architecture).
-       - **A2 Studio Reference Standard:** Governed by $\text{ESR} \le 0.0080$ ($\approx -21\text{ dB}$ residual error on `optimal_bass_dry.wav`) with a $400$ max epoch safety ceiling and batch size $32$, monitoring the studio `channels_8` submodel (`ESR_packed_1`). In time-domain mean-squared error ($\text{ESR} = \sum (y - \hat{y})^2 / \sum y^2$), low-frequency fundamentals carry $80\text{--}90\%$ of total signal power. With the optimal bass dry calibration signal, training enables the full slimmable Architecture 2 container (`channels_3` + `channels_8`) by default, yielding lower ESR and superior dynamic fidelity over single-tier models. Isolating the 8-channel submodel alone is selectable via `--a2-lite-only`. Deep convergence ensures the optimizer resolves high-frequency pickup RLC resonant peaks ($3\text{--}5\text{ kHz}$), pick attack transients, and dual-pickup comb filtering without premature cutoff or perceptual high-frequency haziness.
-2. **Canonical Intermediate Baseline Datum:**
-   - Scale Length: Standard $34.0''$ ($863.6\text{ mm}$).
-   - Spatial Sensing Envelope: Single narrow magnetic aperture slit ($w = 0.75''$, $d = 0$, zero comb nulls) centered at the **$93.5\text{ mm}$ ($3.68''$) acoustic median** from the bridge saddle.
-   - Electrical Circuit: Wideband passive reference pickup ($L = 3.2\text{ H}, R_{\text{dc}} = 6.5\text{ k}\Omega, R_{\text{eddy}} = 150\text{ k}\Omega, C_{\text{coil}} = 90\text{ pF}, f_r \approx 4.8\text{ kHz}, Q \approx 0.75$) with $500\text{k}\Omega$ volume pot, $500\text{k}\Omega$ tone pot ($47\text{ nF}$ cap), and $330\text{ pF}$ instrument cable loading. Eliminates unphysical $+40\text{ dB}$ ultrasonic deconvolution spikes and high-frequency double roll-offs when modeling passive instruments.
-   - Dynamic Feel & Magnet Metallurgy: Custom ideal reference magnet (`magnet_type = "ideal"`, $\alpha = 0.0, \alpha_3 = 0.0, k_{\text{sag}} = 0.0, k_{\text{eddy}} = 0.0, k_{\text{core}} = 0.0, V_{\text{sat}} = 10.0\text{V}$) providing zero magnetic non-linearity, zero Lenz core sag, zero dynamic eddy de-Qing, zero Foster network core perturbation, and maximum linear headroom.
-3. **Canonical Intermediate Headroom & Dynamic Range Theorems:**
-   - The Canonical Intermediate sweep is strictly calibrated to **$-1.50\text{ dBFS}$ True Peak** and **$-16.50\text{ dBFS}$ Nominal RMS**.
-   - Preserves $>106.5\text{ dB}$ signal-to-noise ratio while guaranteeing a $1.5\text{ dB}$ anti-clipping margin preventing digital inter-sample overs through downstream high-Q resonant filters.
-4. **Strictly Positive Polarity Invariant:**
-   - Every synthesized frontend IR must enforce $\text{sign}\left(\sum_{n=0}^{16} h_{\text{front}}[n]\right) > 0$. If negative, invert $h = -h$ before 24-bit PCM export to guarantee zero phase cancellation when mixed in parallel with dry DI or analog preamps.
-5. **Physical Source Knobs at 100% Invariant:**
-   - Source deconvolution mathematically requires physical source volume and tone pots wide open ($100\%$). Tone cap roll-offs (22nF, 47nF Motown, 100nF Dub) and loading are selected in Block 2.
+### 3.4 Architecture D Normative Invariants (Direct Single-Block Digital Twin & Tone Pack Bundles)
+1. **Direct Single-Block Signal Flow:**
+   - Replaces the legacy two-stage Canonical Intermediate architecture with direct single-block forward digital twin simulation.
+   - **Forward Simulation & Zero-Latency Alignment:** Synthesizes wet stems directly from dry string excitation ($W = X_{\text{dry}} * h_{\text{aperture}} * h_{\text{circuit}}$) using homomorphic minimum-phase causal FIRs starting strictly at sample 0 (zero latency, no artificial leading zeroes).
+   - **Calibrated RMS Volume Matching:** Guarantees uniform stage gain across all target voicings bounded by a $-0.09\text{ dBFS}$ (0.9900) true-peak ceiling.
+   - **A2 Studio Reference Standard:** Governed by $\text{ESR} \le 0.0080$ ($\approx -21\text{ dB}$ residual error on `optimal_bass_dry.wav`) with a $400$ max epoch safety ceiling and batch size $32$, monitoring the studio `channels_8` submodel (`ESR_packed_1`). In time-domain mean-squared error ($\text{ESR} = \sum (y - \hat{y})^2 / \sum y^2$), low-frequency fundamentals carry $80\text{--}90\%$ of total signal power. Training enables the full slimmable Architecture 2 container (`channels_3` + `channels_8`) by default, yielding lower ESR and superior dynamic fidelity over single-tier models. Isolating the 8-channel submodel alone is selectable via `--a2-lite-only`. Deep convergence ensures the optimizer resolves high-frequency pickup RLC resonant peaks ($3\text{--}5\text{ kHz}$), pick attack transients, and dual-pickup comb filtering without premature cutoff or perceptual high-frequency haziness.
+2. **Tone3000 Upload Bundles (`bundles/<pickup>/`):**
+   - Solves Tone3000's strict 1 Dry + Multiple Wet Stems constraint by partitioning target voicings via physical position affinity (`neck`, `bridge`, `parallel`, `direct`).
+   - Each bundle contains a single `dry v[dsp].[inst].[voicing].wav`, mapped target wet stems with zero-scroll display names ($\le 34$ chars), `upload_instructions.txt`, and `manifest.json`.
+3. **Single-Block Hardware Deployment (Darkglass Anagram Block 1):**
+   - Single neural slot deployment: The player loads the direct digital twin into **Block 1** (NAM Preamp), leaving 8 neural slots free for Darkglass drive engines (Block 2), cab IRs (Block 3), and time-based effects.
+   - The digital twin directly captures the full transformation $H_{\text{direct}} = H_{\text{tgt}} / H_{\text{src}}$ combined with non-linear magnetic feel, Alnico/Ceramic compliance, Lenz attack sag, dynamic eddy de-Qing, and core hysteresis.
+4. **Physical Source Knobs at 100% Invariant:**
+   - Accurate transformation mathematically requires physical source volume and tone pots wide open ($100\%$). Tone shaping (e.g. Vintage Warmth 47nF Motown, Dub 100nF, Active scoop) is modeled authentically in the target digital twin.
 
 ### 3.5 First-Class Transducer Taxonomy & Zero-Conditional Deconvolution Invariant
 1. **Transducer Physical Taxonomy:**
@@ -189,7 +185,7 @@ This eliminates boundary discontinuity kinks and Gibbs truncation leakage across
    - `bridge_force`: Direct piezo force sensing at the bridge witness point with velocity-to-force leaky integration ($+6\text{ dB/oct}$ from $70\text{--}250\text{ Hz}$) and spruce acoustic damping.
    - `direct`: Pure studio DI or dry string vibration baseline with an acoustic transfer function identically flat across all audible frequencies ($H_{\text{tgt, acoustic}}(f) \equiv 1.0$) and flat active buffer circuitry ($H_{\text{circuit}}(f) \equiv 1.0$).
 2. **Prohibition of Procedural Deconvolution Bypasses:**
-   Never short-circuit physical deconvolution using hardcoded voice ID branches (e.g. `if voice_id == "15_neutral_character": return [impulse]`). All acoustic transformations must flow through the universal regularized quotient:
+   Never short-circuit physical deconvolution using hardcoded voice ID branches (e.g. `if voice_id == "studio_direct": return [impulse]`). All acoustic transformations must flow through the universal regularized quotient:
    $$H_{\text{quotient}}(f) = \frac{H_{\text{tgt, acoustic}}(f) \cdot H_{\text{src, macro}}(f)}{H_{\text{src, macro}}(f)^2 + \epsilon^2}$$
    When $H_{\text{tgt, acoustic}}(f) = 1.0$, this equation naturally and stably evaluates the inverse macro-aperture ($1 / H_{\text{src}}$) of the source instrument without special-case logic.
 3. **Direct Output Invariant:**
@@ -199,40 +195,27 @@ This eliminates boundary discontinuity kinks and Gibbs truncation leakage across
 1. **Zero Silent Fallback Policy:**
    Every physical entity in Allomorph (instruments, pickups, coils, circuits, scales, strings, and magnet types) is defined declaratively through validated configuration schemas. The simulation, visualizer, and deconvolution pipelines must adhere to a strict fail-fast invariant: never substitute silent defaults, heuristics, or unverified hardware configurations when an explicit parameter or table is missing or invalid.
 2. **Normative Invariants:**
-   - **Passive Pickup Circuits:** Any passive instrument (`electronics = "passive"`) evaluated in circuit simulation, visualizer difference mode, or frontend IR export must declare an explicit `[circuit]` model for the requested source pickup. A missing circuit model must immediately raise a `ValueError` identifying the missing block. Never default to an arbitrary 34" P-Bass split coil or generic biquad.
+   - **Passive Pickup Circuits:** Any passive instrument (`electronics = "passive"`) evaluated in circuit simulation, visualizer difference mode, or direct digital twin simulation must declare an explicit `[circuit]` model for the requested source pickup. A missing circuit model must immediately raise a `ValueError` identifying the missing block. Never default to an arbitrary 34" P-Bass split coil or generic biquad.
    - **Pickup Option Validation:** Specifying a pickup via CLI or API (`--pickup <name>` or `pickup="<name>"`) must resolve to a valid key in the instrument's `[pickups]` table. Unrecognized pickup names must raise `KeyError` listing available pickups. Never silently fall back to `default_pickup`.
    - **Instrument Default Pickups:** An instrument's `default_pickup` must exist in its `[pickups]` table. If an instrument specifies neither `default_pickup` nor a matching `pickup_mapping`, resolving the source pickup must raise `ValueError`. Never pick the first dictionary key arbitrarily.
    - **Scale Resolution:** Scale lengths and multi-scale boundaries must resolve to valid presets in `config/scales.toml` or explicit numeric dimensions. Unknown scale names or malformed scale dictionaries must raise `ValueError`. Never silently default unknown scale names to 34" ($0.8636\text{ m}$).
    - **String Presets & Magnet Metallurgy:** String presets and magnet types must exist in `config/strings.toml` and `MAGNET_PROPERTIES`. Unknown presets or magnet strings must raise `KeyError` listing available options. Never silently default unknown strings to standard nickel roundwounds or unknown magnets to Alnico V.
    - **Composite Pickup Geometry:** All components in composite pickups referencing other pickups via `pickup = "<name>"` must exist in the parent instrument. Unrecognized references must raise `KeyError`.
 
-### 3.7 Visualizer-Pipeline DSP Staging & IR Fidelity Invariants
+### 3.7 Visualizer-Pipeline DSP Staging & Voicing Comparator Invariants
 
-#### 3.7.1 Signal Flow Inspector (Block 1 + Block 2 Digital Twin)
-The interactive Signal Flow Inspector visualizer (`docs/frequency_responses/{instrument}.html`) is not an illustrative approximation; it is an analytical digital twin of the Darkglass Anagram physical signal chain relative to the standardized Canonical Intermediate datum ($0.00\text{ dB}$):
-$$\text{Stage 1: Source Bass Input} \xrightarrow{H_{\text{front}}} \text{Stage 2: Block 1 Deconvolution} \to \text{Stage 3: Canonical Intermediate (0 dB)} \xrightarrow{H_{\text{back}}} \text{Stage 4: Block 2 Target Voicing} \to \text{Stage 5: Target Voice Output}$$
-1. **Normative Equivalence to `export_frontend_ir`:** Stage 2 (`Block 1 Deconvolution`) evaluates the exact frequency response of the 2048-tap minimum-phase causal FIR filter synthesized by `export_frontend_ir(inst_id, pickup_key)`. The magnitude response plotted in Stage 2 must match the FFT of the actual exported FIR WAV file within $< 0.5\text{ dB}$ across $20\text{ Hz}$ to $20\text{ kHz}$.
-2. **Wiener Regularization & HF Clamping:** Stage 2 must strictly enforce Wiener regularization and soft-knee boost clamping ($\le +8.0\text{ dB}$ peak, $< +2.0\text{ dB}$ at $20\text{ kHz}$). Unbounded theoretical inverse boosts ($> +8\text{ dB}$) are strictly prohibited.
-3. **Canonical Intermediate Neutralization:** Stage 1 (`Source Bass Input`, $\text{db\_src} = -\text{db\_front}$) and Stage 2 (`Block 1 Deconvolution`, $\text{db\_front}$) neutralize the source pickup into the standardized Canonical Intermediate datum:
-4. **Target Voicing & Output Staging:** Stage 4 (`Block 2 Target Voicing`) represents the universal target transfer function ($H_{\text{back}} = H_{\text{tgt}} / H_{\text{can}}$) from the Canonical Intermediate datum. Evaluated relative to the standardized Canonical Intermediate datum ($0.00\text{ dB}$), Stage 5 (`Target Voice Output`) represents the resulting acoustic target voice output:
-   $$\text{Stage 3} + \text{Stage 4} = \text{Stage 5} \quad (0.00\text{ dB} + \text{db\_back} = \text{db\_out})$$
-   ensuring end-to-end additive signal flow consistency across all frequency bins.
+#### 3.7.1 Voicing Comparator & 3D IR Difference Visualizer
+The interactive Voicing Comparator visualizer (`docs/frequency_responses/voicings_explorer.html` and master portal `docs/frequency_responses.html`):
+1. **Three-Line Analytical Graph:** For any selected source voicing and target voicing, evaluates a 3-line frequency response:
+   - Line 1: Source Voicing Response ($H_{\text{src}}(f)$)
+   - Line 2: Target Voicing Response ($H_{\text{tgt}}(f)$)
+   - Line 3: Differential Transformation ($H_{\text{diff}}(f) = H_{\text{tgt}}(f) / H_{\text{src}}(f)$)
+2. **Identity Evaluation:** When source and target voicings are identical, Line 3 evaluates to bit-exact $0.00\text{ dB}$ across all frequency bins.
+3. **3D Differential IR Surface:** The interactive 3D visualization models the temporal and spatial difference between the minimum-phase impulse responses ($h_{\text{tgt}}[n] - h_{\text{src}}[n]$), providing intuitive visual inspection of aperture comb filtering, transient arrival shifts, and resonant ringing.
+4. **Catalog Completeness:** Encompasses all 24 target voices with first-principles physical and electrical parameters, providing complete pair-wise differential modeling across all playable pickup positions.
+5. **Physical Electroacoustic Boundedness:** Decibels must be finite and non-null (zero NaNs, zero Infs), with peak resonant boost $< +25.0\text{ dB}$ and deep tone-cap roll-off attenuation bounded cleanly.
 
-#### 3.7.2 Frontend Deconvolutions (Block 1 IR Fidelity & DC Transmission)
-The standalone Frontend Deconvolution curves (`docs/frequency_responses/{instrument}_frontend.html` and `docs/frequency_responses/frontend_deconvolutions.html`):
-1. **FIR Synthesis Fidelity:** Magnitude curves generated by `build_instrument_frontend_dataframe` and `build_frontend_deconvolutions_dataframe` must match the FFT of the actual 2048-tap minimum-phase FIR from `export_frontend_ir` within $< 0.5\text{ dB}$ across $20\text{ Hz}$ to $20\text{ kHz}$ across all instruments (passive split-P, passive Jazz bridge, active EMG MMTW).
-2. **Wiener Gain Limits:** Peak boost is clamped to $\le +8.0\text{ dB}$ with smooth cosine roll-off above $8.0\text{ kHz}$, keeping $20\text{ kHz}$ ultrasonic gain $< +2.0\text{ dB}$.
-3. **Finite Sub-Audible DC Transmission:** DC transmission at $20\text{ Hz}$ must be finite and bounded within $[-12.0\text{ dB}, +12.0\text{ dB}]$, strictly preventing unphysical $>30\text{ dB}$ sub-audible DC differentiation steps and Gibbs truncation ripples.
-4. **Master-Single Consistency:** `build_frontend_deconvolutions_dataframe()` must match `build_instrument_frontend_dataframe()` bit-exact across all playable instruments.
-
-#### 3.7.3 Universal Target Voicings (Block 2 Loaded RLC & Aperture Transfer)
-The Universal Target Voicings visualizer (`docs/frequency_responses/universal_targets.html` via `build_universal_targets_dataframe`):
-1. **Catalog Completeness:** Must encompass all 23 target voices relative to the Canonical Intermediate baseline ($H_{\text{backend}} = H_{\text{target}} / H_{\text{canonical}}$), containing exactly 600 frequency points per voice.
-2. **Physical Electroacoustic Boundedness:** Decibels must be finite and non-null (zero NaNs, zero Infs), with peak resonant boost $< +25.0\text{ dB}$ and deep tone-cap roll-off attenuation $> -100.0\text{ dB}$.
-3. **Source Invariance:** Universal target voicings are defined purely relative to the Canonical Intermediate baseline and are strictly source-instrument invariant.
-4. **Pipeline Consistency:** For non-matching target voicings, Stage 4 in `build_composite_instrument_dataframe` matches `build_universal_targets_dataframe` within 0.01 dB rounding precision.
-
-#### 3.7.4 Performance & Vectorization Mandate
+#### 3.7.2 Performance & Vectorization Mandate
 All visualizer curves must be evaluated using precomputed, globally cached universal target matrices (`get_cached_target_dfs`) and vectorized NumPy array operations without invoking multi-rate FFT solvers inside per-pickup loops. Full generation of all charts must complete in $< 5.0\text{ seconds}$ (verified in `tests/test_guardrails.py`).
 
 ---
@@ -354,22 +337,22 @@ This guarantees exact mathematical equivalence ($\Delta < 10^{-14}$) to classica
 - **Frame-Bounded Audio Processing (`max_samples`):** Support bounded frame prefixes (`max_samples = 4800` to `48000`) in unit tests to drop test execution from $22\text{s}$ down to $0.15\text{s}$ while preserving complete signal pipeline verification.
 
 ### 6.5 Visualizer Vectorization, Caching & Vega-Lite Payload Bounding (Commit `7c6e634`)
-- **Prohibition of Multi-Rate FFTs in Signal Flow Loops:** Never invoke `build_voice_dataframe(mode="difference")`, FIR filter synthesis, or multi-rate FFTs inside per-pickup/per-voice loops within `build_composite_instrument_dataframe`. Across 11 playable instruments with multiple pickup switch positions and 23 target voices, iterative synthesis executes $> 700$ redundant 2048-tap FIR convolutions and 8192-point FFTs, blowing up chart generation from $< 3\text{ s}$ to $> 20\text{ s}$.
-- **Decoupled Universal Backend Caching:** Universal target voicings are defined relative to the Canonical Intermediate baseline ($H_{\text{backend}} = H_{\text{target}} / H_{\text{canonical}}$). Because the Canonical Intermediate is fixed (34" scale, 93.5mm datum, wideband passive reference circuit), target curves are strictly source-invariant and must be precomputed and cached globally once via `get_cached_target_dfs(step=step)`:
+- **Prohibition of Multi-Rate FFTs in Signal Flow Loops:** Never invoke `build_voice_dataframe(mode="difference")`, FIR filter synthesis, or multi-rate FFTs inside per-pickup/per-voice visualizer loops. Iterative synthesis executes hundreds of redundant 2048-tap FIR convolutions and 8192-point FFTs, blowing up chart generation from $< 3\text{ s}$ to $> 20\text{ s}$.
+- **Decoupled Universal Target Caching:** Target voicings are precomputed and cached globally once via `get_cached_target_dfs(step=step)`:
   $$\text{db\_back\_dict}[vid] = \text{np.round}(\text{db\_tgt} - \text{db\_can}, 2)$$
 - **Analytical Mirror Reflection for Identity Matches:** For authentic source-to-target digital twin matches (`is_match`), set the mirror reflection directly in vector form:
   $$\text{db\_back} = -\text{db\_front}, \quad \text{db\_out} = 0.00\text{ dB}$$
   This simultaneously guarantees:
   1. Exact $0.00\text{ dB}$ flat identity output across all frequency points.
-  2. Authentic Wiener-regularized frontend deconvolution ($\le +6\text{ dB}$ clamping) without unregularized $+24\text{ dB}$ ultrasonic spikes.
+  2. Authentic Wiener-regularized circuit deconvolution ($\le +6\text{ dB}$ clamping) without unregularized $+24\text{ dB}$ ultrasonic spikes.
   3. Microsecond execution speed with zero redundant multi-rate FFTs.
 - **For Non-Matching Voicings:** Evaluate directly as $\text{db\_back} = \text{db\_back\_dict}[vid]$ and $\text{db\_out} = \text{np.round}(\text{db\_front} + \text{db\_back}, 2)$ via vectorized NumPy array additions.
 - **Payload Bounding & Downsampling:** Downsample composite chart curves using `step = 3` (200 log-spaced points from $20\text{ Hz}$ to $20\text{ kHz}$) and round decibel magnitudes to 2 decimal places (`np.round(..., 2)`). Filter stages using Vega-Lite `PredicateComposition` (`(pickup_select & pred_stages_12) | (pickup_select & voice_select & pred_stages_34)`). This compresses standalone HTML payloads from $> 66\text{ MB}$ down to $\sim 5\text{ MB}$ ($92.5\%$ reduction) and prevents browser DOM freezes.
 - **Strict Latency Budget:** Full execution of `generate_all_charts` across all 11 playable instruments must complete in $< 5.0\text{ seconds}$ (verified in `tests/test_guardrails.py`).
 
-### 6.6 Baked Transformations Visualizer Architecture & Single-File Invariants
-- **Monolithic 1-Block Differential Curves:** The Baked Transformations tab (`docs/frequency_responses/baked_responses.html` and `#baked` in the portal) visualizes the full differential transfer functions ($H_{\text{diff}} = H_{\text{tgt}} / H_{\text{src}}$) corresponding directly to the dynamic-tier baked outputs.
-- **Self-Contained Embedded JSON:** To avoid browser `file://` CORS security restrictions when viewing documentation locally without an HTTP server, the 276-curve matrix (12 playable instruments $\times$ 23 target voices) is embedded directly into the HTML as `<script id="baked-data" type="application/json">` and parsed in-memory via `JSON.parse(document.getElementById("baked-data").textContent)`.
+### 6.6 Differential Transformations Visualizer Architecture & Single-File Invariants
+- **Monolithic Differential Curves:** The Voicing Comparator visualizes the full differential transfer functions ($H_{\text{diff}} = H_{\text{tgt}} / H_{\text{src}}$) corresponding directly to the simulated outputs.
+- **Self-Contained Embedded JSON:** To avoid browser `file://` CORS security restrictions when viewing documentation locally without an HTTP server, the complete curve matrix is embedded directly into the HTML as `<script id="comparator-data" type="application/json">` and parsed in-memory via `JSON.parse(document.getElementById("comparator-data").textContent)`.
 - **Matrix Serialization & Payload Bounding:** Downsampling with `step = 3` (200 log-spaced points from $20\text{ Hz}$ to $20\text{ kHz}$) and 2-decimal rounding (`np.round(..., 2)`) bounds the complete 276-curve JSON payload to $\sim 390\text{ KB}$ and produces a self-contained HTML page under $450\text{ KB}$.
 - **Sub-Millisecond Multi-Select Vega Streaming:** Client-side selection filtering uses native JavaScript table assembly and `vegaView.change('table', vega.changeset().remove(...).insert(...)).runAsync()`, updating interactive multi-selected instrument $\times$ voicing combinations instantaneously without redrawing or recreating DOM elements.
 - **Physical Bounds & Identity Invariants:** Identity pairings evaluate to exact $0.00\text{ dB}$, while all other transformations strictly adhere to physical electroacoustic bounds ($< +30\text{ dB}$ boost, $> -100\text{ dB}$ attenuation per Section 5.3).

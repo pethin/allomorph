@@ -1,0 +1,86 @@
+# ==============================================================================
+# ALLOMORPH SOURCE INSTRUMENT CONFIGURATION
+# 41.25" 3/4 Acoustic Upright Double Bass (Spruce Top, Maple Back)
+# ==============================================================================
+
+id = "41in_upright_bass"
+name = "41.25\" Acoustic Double Bass"
+scale_length_in = 41.25
+scale_length_m = 1.04775
+electronics = "piezo"
+version = 1
+
+string_wave_speeds = [86.33, 115.25, 153.86, 205.36]
+default_pickup = "bridge_piezo"
+
+[strings]
+preset = "double_bass_spirocore"
+brand = "Thomastik-Infeld"
+model = "Spirocore Medium 4-String"
+gauge = "Standard 3/4"
+core = "spiral_rope"
+wrap = "chrome_steel_flat"
+tension_lbs = 240.0
+
+# ------------------------------------------------------------------------------
+# 1. PICKUPS / TRANSDUCERS
+# ------------------------------------------------------------------------------
+
+[pickups.bridge_piezo]
+name = "Underwood / Realist Acoustic Bridge Wing Transducer"
+position_name = "Bridge"
+bundle_name = "bridge_piezo"
+position_from_bridge_m = 0.0050  # Saddle / bridge wing contact point (5mm)
+aperture_width_in = 0.25
+coil_spacing_in = 0.0
+type = "piezo_bridge"
+magnet_type = "piezo"
+resonant_frequency_hz = 4500.0
+q_factor = 0.70
+coils = [
+    { strings = ["all"], position_from_bridge_m = 0.0050, aperture_width_in = 0.25, weight = 1.0 }
+]
+
+[pickups.bridge_piezo.circuit]
+topology = "single"
+L = 1e-06
+Rdc = 50.0
+Reddy = 1000000.0
+Ccoil = 1.2e-09
+vsat = 0.42
+Rtop = 10.0
+Rbot = 100000000.0
+Crick = 1.5e-08
+
+# ------------------------------------------------------------------------------
+# 2. NATIVE INSTRUMENT VOICINGS
+# ------------------------------------------------------------------------------
+
+[voicings.bridge_piezo_acoustic]
+version = 1
+name = "Acoustic Double Bass Bridge Force"
+tone_name = "Upright Acoustic"
+pickup = "bridge_piezo"
+affinity = "neck"
+sensor_type = "bridge_force"
+vol_pos = 1.0
+string_preset_override = "double_bass_spirocore"
+
+[voicings.bridge_piezo_jazz]
+version = 1
+name = "Jazz Pizzicato Upright Double Bass"
+tone_name = "Upright Jazz"
+pickup = "bridge_piezo"
+affinity = "neck"
+sensor_type = "bridge_force"
+vol_pos = 1.0
+string_preset_override = "double_bass_spirocore"
+
+# ------------------------------------------------------------------------------
+# 3. PICKUP AFFINITY ROUTING
+# ------------------------------------------------------------------------------
+[pickup_mapping]
+neck = "bridge_piezo"
+bridge = "bridge_piezo"
+parallel = "bridge_piezo"
+direct = "bridge_piezo"

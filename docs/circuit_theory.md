@@ -60,7 +60,7 @@ Where:
 
 Allomorph does not assume a generic volume/tone harness for all instruments. Each voice utilizes its authentic manufacturer and era-specific harness:
 
-### A. Active Preamp Buffer Topologies (`01_modern_jazz_active`, `07_modern_pj_active`, `09_stingray_mm_parallel`, `09b_stingray_mm_series`, `11_modern_pmm_active`, `11b_pmm_hybrid_series`)
+### A. Active Preamp Buffer Topologies (`jazz_pair_active`, `pj_active`, `stingray_parallel`, `stingray_series`, `p_mm_parallel`, `p_mm_series`)
 In instruments equipped with active onboard preamps or active buffers (e.g., Sadowsky NYC 2-band, Spector 2-band, Music Man 2-band, Sandberg/Glockenklang, Lakland LH3, EMG ABCX), an internal discrete JFET or op-amp buffer stage directly interfaces with the pickup coils:
 
 ```
@@ -76,20 +76,20 @@ In instruments equipped with active onboard preamps or active buffers (e.g., Sad
 3. **Active Preamp & Buffer Voicings:**
    * **Sadowsky 2-Band (Jazz & P/J):** $+4.0\text{ dB}$ Bass boost ($40\text{ Hz}$ shelf) and $+4.0\text{ dB}$ Treble boost ($4.0\text{ kHz}$ shelf).
    * **Music Man StingRay 2-Band:** $+1.8\text{ dB}$ Bass boost ($50\text{ Hz}$ shelf) and $+2.2\text{ dB}$ Treble boost ($4\text{--}7\text{ kHz}$ shelf).
-   * **Active Parallel P/MM (`11_modern_pmm_active`):** Split-P neck ($4.80\text{ H}$) and MM bridge parallel humbucker ($1.20\text{ H}$) summed in active parallel ($L_{\text{par}} = 0.96\text{ H}$) into a high-headroom transparent buffer stage; delivers punchy, articulate slap growl with resonant clarity at $3.4\text{ kHz}$ and zero cable drag.
-   * **Active Series P/MM (`11b_pmm_hybrid_series`):** Split-P neck ($4.80\text{ H}$) and MM bridge parallel humbucker ($3.60\text{ H}$) wired in series before the active buffer stage; generates massive $+5.8\text{ dB}$ series boost and authoritative low-mid punch with resonant clarity at $3.2\text{ kHz}$ and complete isolation from cable capacitance.
-   * **Series Coil Open-Circuit EMF Surge (`09b_stingray_mm_series`):** Switching the two MM coils into series doubles the open-circuit induced EMF ($V_{\text{out}} = e_1 + e_2 \approx 2e$), generating $+5.6\text{ dB}$ of authoritative passband gain with an authentic $4.1\text{ kHz}$ upper-mid resonance.
+   * **Active Parallel P/MM (`p_mm_parallel`):** Split-P neck ($4.80\text{ H}$) and MM bridge parallel humbucker ($1.20\text{ H}$) summed in active parallel ($L_{\text{par}} = 0.96\text{ H}$) into a high-headroom transparent buffer stage; delivers punchy, articulate slap growl with resonant clarity at $3.4\text{ kHz}$ and zero cable drag.
+   * **Active Series P/MM (`p_mm_series`):** Split-P neck ($4.80\text{ H}$) and MM bridge parallel humbucker ($3.60\text{ H}$) wired in series before the active buffer stage; generates massive $+5.8\text{ dB}$ series boost and authoritative low-mid punch with resonant clarity at $3.2\text{ kHz}$ and complete isolation from cable capacitance.
+   * **Series Coil Open-Circuit EMF Surge (`stingray_series`):** Switching the two MM coils into series doubles the open-circuit induced EMF ($V_{\text{out}} = e_1 + e_2 \approx 2e$), generating $+5.6\text{ dB}$ of authoritative passband gain with an authentic $4.1\text{ kHz}$ upper-mid resonance.
 
-### B. Vintage Dual-Volume Harness (`02_jazz_bass_pair`, `02b_jazz_bass_pair_22nf`, `08_vintage_pj_passive`)
+### B. Vintage Dual-Volume Harness (`jazz_pair_open`, `jazz_pair_mids`, `pj_passive`)
 * Standard Jazz Basses and passive P/Js utilize two separate $250\text{k}\Omega$ volume pots wired in parallel.
 * At $100\%$ volume, the two pots act as a combined resistive load:
   $$R_{\text{vol\_net}} = 250\text{ k}\Omega \parallel 250\text{ k}\Omega = 125\text{ k}\Omega$$
 * This heavy $125\text{ k}\Omega$ loading naturally damps the $Q$ factor of the pickup coils, producing the warm, woody, organic low-mid bloom characteristic of vintage 1960s Jazz Basses and 1980s P/Js.
-* **Tone Wide Open (`02_jazz_bass_pair`):** Full $250\text{ k}\Omega$ wiper series resistance isolates the $47\text{ nF}$ capacitor, leaving the loaded peak at $2.7\text{ kHz}$.
-* **ToneStyler 22nF Detent (`02b_jazz_bass_pair_22nf`):** Replaces simulated potentiometer wiper resistance with a Stellartone ToneStyler pure capacitive shunt ($R_{\text{tone}} = 3.3\,\Omega$, $C_{\text{tone}} = 22\text{ nF}$). Because there is zero series wiper resistance to damp the tank circuit, the high-$Q$ resonant bump is preserved directly at $762\text{ Hz}$ (+4.8 dB above a rolled pot), preserving the vocal Jaco bridge burp while cutting out harsh treble clank and pick transients.
+* **Tone Wide Open (`jazz_pair_open`):** Full $250\text{ k}\Omega$ wiper series resistance isolates the $47\text{ nF}$ capacitor, leaving the loaded peak at $2.7\text{ kHz}$.
+* **ToneStyler 22nF Detent (`jazz_pair_mids`):** Replaces simulated potentiometer wiper resistance with a Stellartone ToneStyler pure capacitive shunt ($R_{\text{tone}} = 3.3\,\Omega$, $C_{\text{tone}} = 22\text{ nF}$). Because there is zero series wiper resistance to damp the tank circuit, the high-$Q$ resonant bump is preserved directly at $762\text{ Hz}$ (+4.8 dB above a rolled pot), preserving the vocal Jaco bridge burp while cutting out harsh treble clank and pick transients.
 * **Spatial Acoustic Propagation Delay:** Transverse string wave takes $\tau = (x_{\text{neck}} - x_{\text{bridge}}) / \bar{c_s} \approx 0.81\text{ ms}$ to travel between pickups, creating the iconic hollow acoustic phase comb cancellation at $600\text{--}800\text{ Hz}$.
 
-### C. Vintage Split-P ToneStyler Progression (`05`, `05b`, `05c`, `05d`)
+### C. Vintage Split-P ToneStyler Progression (`precision_vintage`, `precision_mids`, `precision_warm`, `precision_dub`)
 * Classic 1962 Fender Precision specification:
   * Volume: CTS $250\text{ k}\Omega$ Audio Pot
   * Net parallel pot load: $250\text{k} \parallel 250\text{k} = 125\text{ k}\Omega$ (unloaded) / with $1\text{ M}\Omega$ receiver: $111\text{ k}\Omega$.
@@ -98,21 +98,20 @@ In instruments equipped with active onboard preamps or active buffers (e.g., Sad
   * **Stellartone ToneStyler Pure Switching:** Connects discrete precision capacitors directly to ground ($R_{\text{tone}} \approx 3.3\,\Omega$). The undamped resonant peak ($Q \approx 1.2\text{--}1.8$) is retained as the resonant frequency glides down through the spectrum:
     $$f_r = \frac{1}{2\pi \sqrt{L \cdot (C_{\text{coil}} + C_{\text{cable}} + C_{\text{tone}})}}$$
 * **The 4-Position ToneStyler Progression:**
-  * **Tone Open (`05_vintage_62_p_alnico`):** CTS $250\text{k}\Omega$ tone pot wide open. Resonant peak at $2128\text{ Hz}$, $-3\text{ dB}$ cutoff at $3985\text{ Hz}$ (open, woody, articulate vintage growl).
-  * **22nF ToneStyler (`05b_vintage_62_p_22nf`):** Pure $22\text{ nF}$ shunt (Modern Fender spec). Resonant peak at $440\text{ Hz}$ (+1.5 dB), $-3\text{ dB}$ cutoff at $750\text{ Hz}$ (punchy low-mid focus, eliminates fret clatter while retaining punch).
-  * **47nF ToneStyler (`05c_vintage_62_p_47nf`):** Pure $47\text{ nF}$ shunt with heavy flatwound damping (Golden '60s Motown / Jamerson spec). Resonant peak at $450\text{ Hz}$ (+1.2 dB), steep rolloff above $800\text{ Hz}$ (pillowy low-mid bloom, authentic Motown thump).
-  * **100nF ToneStyler (`05d_vintage_50s_p_100nf`):** Pure $100\text{ nF}$ (0.1µF) shunt (Original 1951–1959 Fullerton factory spec). Sub-bass shelf, $-3\text{ dB}$ cutoff at $240\text{ Hz}$ (deep Motown / reggae dub thump).
+  * **Tone Open (`precision_vintage`):** CTS $250\text{k}\Omega$ tone pot wide open. Resonant peak at $2128\text{ Hz}$, $-3\text{ dB}$ cutoff at $3985\text{ Hz}$ (open, woody, articulate vintage growl).
+  * **22nF ToneStyler (`precision_mids`):** Pure $22\text{ nF}$ shunt (Modern Fender spec). Resonant peak at $440\text{ Hz}$ (+1.5 dB), $-3\text{ dB}$ cutoff at $750\text{ Hz}$ (punchy low-mid focus, eliminates fret clatter while retaining punch).
+  * **47nF ToneStyler (`precision_warm`):** Pure $47\text{ nF}$ shunt with heavy flatwound damping (Golden '60s Motown / Jamerson spec). Resonant peak at $450\text{ Hz}$ (+1.2 dB), steep rolloff above $800\text{ Hz}$ (pillowy low-mid bloom, authentic Motown thump).
+  * **100nF ToneStyler (`precision_dub`):** Pure $100\text{ nF}$ (0.1µF) shunt (Original 1951–1959 Fullerton factory spec). Sub-bass shelf, $-3\text{ dB}$ cutoff at $240\text{ Hz}$ (deep Motown / reggae dub thump).
 
-### D. Modern Boutique 500k Harness with Treble Bleed (`04_modern_p_ceramic`)
-* Modern ceramic split-coils use $500\text{ k}\Omega$ pots to maintain high-frequency extension:
-  * Volume: $500\text{ k}\Omega$ Audio Pot
-  * Tone: $500\text{ k}\Omega$ Audio Pot with $22\text{ nF}$ Orange Drop capacitor (higher cutoff than $47\text{ nF}$, preserving punchy midrange bite)
-  * **Hybrid Treble Bleed Network:**
-    $$Z_{\text{tb}}(s) = R_{\text{ser}} + \frac{R_{\text{par}}}{1 + s \cdot R_{\text{par}} \cdot C_{\text{tb}}}$$
-    where $C_{\text{tb}} = 1000\text{ pF}$, $R_{\text{par}} = 150\text{ k}\Omega$, $R_{\text{ser}} = 20\text{ k}\Omega$.
-    Maintains crisp pick transient definition when backing off volume without thinness.
+### D. Modern Active Preamp with Ceramic Split-P (`precision_active`)
+* Modern active ceramic split-coils buffer the pickup before the output harness:
+  * Buffer Input Impedance: $R_{\text{in}} = 1\text{ M}\Omega$ (isolates high-inductance coils from cable capacitive loading)
+  * Preamp: Sadowsky 2-band active boost/cut circuit with discrete JFET buffer
+  * Master Volume: $500\text{ k}\Omega$ Audio Pot
+  * **Headroom and Saturation:**
+    Active preamps feature higher clean headroom with soft-knee saturation at $V_{\text{sat}} = 0.40\text{ V}$. Eliminating cable capacitance downshifting preserves crisp ceramic pick attack transients ($f_r = 4.8\text{ kHz}$).
 
-### E. Factory Rickenbacker 330k Harness with Series HPF (`10_rickenbacker_bridge_hpf`)
+### E. Factory Rickenbacker 330k Harness with Series HPF (`rickenbacker_clank`)
 * Authentic Rickenbacker 4001/4003 circuit:
   * Volume: $330\text{ k}\Omega$ Pot
   * Tone: $330\text{ k}\Omega$ Pot with $47\text{ nF}$ capacitor
@@ -120,7 +119,7 @@ In instruments equipped with active onboard preamps or active buffers (e.g., Sad
     $$f_c = \frac{1}{2\pi \cdot R_{\text{load}} \cdot C_{\text{series}}} \approx 150\text{ Hz}$$
     Rolls off sub-bass rumble while sharpening the aggressive $1.5\text{--}2.5\text{ kHz}$ bridge bite.
 
-### F. High-Inductance 500k Harnesses (`12_mudbucker_ultra_series`)
+### F. High-Inductance 500k Harnesses (`mudbucker_deep`)
 * Ultra-high-inductance passive pickups ($L > 10\text{ H}$, such as the Gibson Mudbucker @ $14.4\text{ H}$) require $500\text{ k}\Omega$ volume and tone pots with a $22\text{ nF}$ capacitor to prevent complete treble cutoff, producing a deep, dark subterranean fundamental.
 
 ---
@@ -151,7 +150,7 @@ All Allomorph passive SPICE netlists incorporate this complete load network to g
 
 ---
 
-## 4. Acoustic Bridge Force Transducers (`14_upright_bridge_transducer`)
+## 4. Acoustic Bridge Force Transducers (`upright_acoustic`)
 
 Unlike magnetic pickups whose output is induced via Faraday's Law across an inductive coil ($V \propto d\Phi/dt$), an acoustic bridge transducer (e.g. Underwood, David Gage Realist) operates through the **piezoelectric effect**, generating electrical charge from mechanical shear stress within the bridge:
 
@@ -194,7 +193,7 @@ $$|H_{\text{diff}}(f)| = \frac{|H_{\text{target}}(f)| \cdot |H_{\text{source}}(f
 
 * $\epsilon = 0.05$ is the **Wiener regularization floor**, preventing division by near-zero stopband values.
 * **High-Frequency Clamping:** Above $4.5\text{ kHz}$, maximum boost is clamped to $+6.0\text{ dB}$ relative to $1\text{ kHz}$ reference gain, preventing amplification of passive coil noise and audio interface hiss.
-* **True Identity Verification:** When the source instrument equals the target voice (e.g., standard Precision Bass into `05_vintage_62_p_alnico`, or standard Jazz Bass into `02_jazz_bass_pair`), $H_{\text{diff}}$ evaluates to an exact flat line ($\Delta < 0.10\text{ dB}$ across $40\text{--}4500\text{ Hz}$).
+* **True Identity Verification:** When the source instrument equals the target voice (e.g., standard Precision Bass into `precision_vintage`, or standard Jazz Bass into `jazz_pair_open`), $H_{\text{diff}}$ evaluates to an exact flat line ($\Delta < 0.10\text{ dB}$ across $40\text{--}4500\text{ Hz}$).
 * **Dynamic Saturation Bypass:** When `electronics = "passive"`, forward $\tanh$ saturation is automatically bypassed, preserving authentic uncompressed dynamics.
 
 ---
@@ -388,7 +387,7 @@ Unlike simplified digital models that apply a static volume multiplier, Allomorp
    * When $P_{\text{vol}} = 1.0$: $R_{\text{top}} \approx 0\,\Omega$, $R_{\text{bot}} = R_{\text{vol}}$, reproducing full-output netlist defaults.
    * When $P_{\text{vol}} < 1.0$: $R_{\text{top}}$ inserts series resistance between the pickup coils and the cable, while $R_{\text{bot}}$ attenuates signal to ground. The series resistance interacts directly with cable capacitance ($C_{\text{cable}} = 750\text{ pF}$), shifting the resonant peak downward and producing the classic high-end roll-off experienced when backing off passive volume knobs.
 2. **Treble-Bleed Network Interaction:**
-   When equipped with a treble bleed network (e.g. `04_modern_p_ceramic`), the series impedance $Z_{23}$ becomes:
+   When equipped with a treble bleed network (e.g. boutique passive harnesses), the series impedance $Z_{23}$ becomes:
    $$Z_{\text{tb}}(s) = R_{\text{tb,ser}} + \frac{R_{\text{tb,par}}}{1 + s \cdot R_{\text{tb,par}} \cdot C_{\text{tb}}}$$
    $$Z_{23,\text{pot}}(s) = \frac{R_{\text{top}} \cdot Z_{\text{tb}}(s)}{R_{\text{top}} + Z_{\text{tb}}(s)}$$
    which bypasses high-frequency transients around $R_{\text{top}}$ to maintain pick definition at lower volumes.
@@ -587,7 +586,7 @@ The following table summarizes all 15 electrical, magnetic, and dynamic paramete
 
 ## 26. Differential Circuit Deconvolution Headroom & $C^\infty$ High-Frequency Shelving
 
-When evaluating differential circuit transfer functions ($H_{\text{diff}} = H_{\text{target}} / H_{\text{source}}$), passive pickups with high coil inductance transforming into wideband reference topologies (such as the Canonical Intermediate circuit) generate authentic electrical resonance peaks up to $+6.77\text{ dB}$ (e.g. passive split-P).
+When evaluating differential circuit transfer functions ($H_{\text{diff}} = H_{\text{target}} / H_{\text{source}}$), passive pickups with high coil inductance transforming into wideband active or buffered topologies generate authentic electrical resonance peaks up to $+6.77\text{ dB}$ (e.g. passive split-P).
 
 To accommodate genuine electroacoustic resonance without premature compression while bounding digital gain under Guardrail 5.3.6:
 1. **Thresholded Headroom Expansion (`smooth_soft_knee_db`):**

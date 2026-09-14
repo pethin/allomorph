@@ -105,25 +105,6 @@ def test_train_nam_cli_goal_esr_parsing():
     assert effective is None
 
 
-def test_train_frontend_signature_and_cli_options():
-    import inspect
-
-    from train_nam import train_frontend
-
-    sig = inspect.signature(train_frontend)
-    assert "instrument" in sig.parameters
-    assert "pickup" in sig.parameters
-    assert "output_wav" in sig.parameters
-    assert "models_dir" in sig.parameters
-    assert "epochs" in sig.parameters
-    assert "goal_esr" in sig.parameters
-    assert "fast_dev_run" in sig.parameters
-    assert "normalize" in sig.parameters
-    assert "gain_db" in sig.parameters
-    assert "a2_lite_only" in sig.parameters
-    assert sig.parameters["a2_lite_only"].default is False
-
-
 def test_train_voice_a2_lite_only_parameter():
     import inspect
 
@@ -178,16 +159,12 @@ def test_esr_progress_callback_hook():
     configure_a2_architecture(nam_core, a2_lite_only=False)
     callbacks = nam_core.get_callbacks(threshold_esr=0.0080)
 
-    cb: Any = next(
-        (c for c in callbacks if "EsrProgressCallback" in type(c).__name__), None
-    )
+    cb: Any = next((c for c in callbacks if "EsrProgressCallback" in type(c).__name__), None)
     assert cb is not None
     assert cb.target_esr == 0.0080
     assert cb.a2_lite_only is False
 
-    vs_cb: Any = next(
-        (c for c in callbacks if "ValidationStopping" in type(c).__name__), None
-    )
+    vs_cb: Any = next((c for c in callbacks if "ValidationStopping" in type(c).__name__), None)
     assert vs_cb is not None
     assert vs_cb.monitor == "ESR_packed_1"
     assert vs_cb.stopping_threshold == 0.0080
@@ -230,36 +207,3 @@ def test_esr_progress_callback_hook():
     assert trainer.progress_bar_metrics["best_ESR"] == "0.00780"
     assert cb.best_esr == 0.0078
     assert cb.best_ch3_esr == 0.0145
-
-
-def test_t3k_pack_trainer_options():
-    import argparse
-    import inspect
-
-    from train_nam import train_voice
-
-    from allomorph.pipeline.schema import NamTrainingConfig, PipelineCliConfig
-
-    # 1. train_voice signature has t3k_pack
-    sig = inspect.signature(train_voice)
-    assert "t3k_pack" in sig.parameters
-    assert sig.parameters["t3k_pack"].default is False
-
-    # 2. NamTrainingConfig has t3k_pack
-    cfg = NamTrainingConfig()
-    assert cfg.t3k_pack is False
-    cfg_t3k = NamTrainingConfig(t3k_pack=True)
-    assert cfg_t3k.t3k_pack is True
-
-    # 3. PipelineCliConfig has t3k_pack
-    p_cfg = PipelineCliConfig()
-    assert p_cfg.t3k_pack is False
-    p_cfg_t3k = PipelineCliConfig(t3k_pack=True)
-    assert p_cfg_t3k.t3k_pack is True
-
-    # 4. CLI parser parsing
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--t3k-pack", action="store_true")
-    assert parser.parse_args([]).t3k_pack is False
-    assert parser.parse_args(["--t3k-pack"]).t3k_pack is True
-

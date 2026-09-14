@@ -1,0 +1,65 @@
+ALLOMORPH: 34" STANDARD P-BASS EDITION
+======================================
+
+Transform your 34" Standard P-Bass into 28 legendary active, vintage, modern, and acoustic pickup configurations.
+
+OVERVIEW
+--------
+Allomorph turns your 34" Standard P-Bass into a versatile tonal chameleon.
+Instead of modeling an amplifier or speaker cabinet, Allomorph sits at the very beginning
+of your signal chain (Block 1 on the Darkglass Anagram) to reshape the actual sound,
+pickup response, and feel of your instrument.
+
+RECOMMENDED SIGNAL CHAIN
+------------------------
+[34" Standard P-Bass]
+  -> [Block 1: Allomorph NAM Preamp]  (High-Impedance Pickup Front-End)
+  -> [Block 2: Amp / Drive / Preamp]   (Darkglass B7K, SVT, B-15, etc.)
+  -> [Block 3: Speaker Cabinet IR]     (8x10, 4x10, 1x15, etc.)
+  -> [FOH / Audio Interface / DAW]
+
+QUICK INSTRUMENT SETUP
+----------------------
+• Master Tone Knob: 100% (Wide Open across all models)
+• Single-Pickup Bass: Plug straight in. All pickup placement and pot loading are modeled.
+
+INCLUDED VOICINGS (28 MODELS)
+-----------------------------------------
+
+### Bundle: Split (28 Voicings)
+• Precision Vintage v3.1.1: Vintage 1962 Open (34" Standard P-Bass)
+• Precision Mids v3.1.1: Vintage 1962 Vocal Mids (34" Standard P-Bass)
+• Precision Warm v3.1.1: Vintage Motown Flatwound Warmth (34" Standard P-Bass)
+• Precision Active v3.1.1: Solo Modern Active Split P (34" Standard P/J Bass)
+• Precision Dub v3.1.1: 1951 Slab Sub-Bass Dub (34" Standard P-Bass)
+• Jazz Pair Open v3.1.1: 60s Dual Single-Coils Open (34" Standard Jazz Bass)
+• Jazz Pair Mids v3.1.1: 60s Dual Single-Coils Vocal Mids (34" Standard Jazz Bass)
+• Jazz Pair Active v3.1.1: Modern Active 2-Band Slap Scoop (34" Standard Jazz Bass)
+• Jazz Bridge Growl v3.1.1: Singing Jaco Bridge Growl (34" Standard Jazz Bass)
+• Jazz Bridge Open v3.1.1: 60s Solo Bridge Single-Coil Open (34" Standard Jazz Bass)
+• Jazz Neck Warm v3.1.1: 60s Solo Neck Single-Coil Warm (34" Standard Jazz Bass)
+• StingRay Parallel v3.1.1: Classic 1979 2-Band Parallel Authority (34" Active StingRay (Music Man MM))
+• StingRay Series v3.1.1: High-Output Muscular Series Punch (34" Active StingRay (Music Man MM))
+• StingRay Active v3.1.1: Modern Slap Bass Mid-Scoop (34" Active StingRay (Music Man MM))
+• Dingwall Bridge v3.1.1: FD3 Solo Bridge Multiscale Clarity (37" Multi-Scale Dingwall 5-String (FD3n))
+• Dingwall Middle v3.1.1: FD3 Solo Middle Punch (37" Multi-Scale Dingwall 5-String (FD3n))
+• Dingwall Parallel v3.1.1: FD3 Bridge + Middle Parallel (37" Multi-Scale Dingwall 5-String (FD3n))
+• Rickenbacker Clank v3.1.1: Vintage 4003 Bridge Clank (4.7nF HPF) (33.25" Rickenbacker 4003)
+• Rickenbacker Open v3.1.1: Modern 4003 Bridge Open Bypass (33.25" Rickenbacker 4003)
+• PJ Passive v3.1.1: Vintage Alnico P/J Parallel (34" Standard P/J Bass)
+• PJ Active v3.1.1: Modern Active P/J Preamp Boost (34" Standard P/J Bass)
+• P∕MM Parallel v3.1.1: Modern Active P/MM Bass (Parallel) (34" Modern Active P/MM Bass)
+• P∕MM Series v3.1.1: P/MM Hybrid Series Bass (34" Modern Active P/MM Bass)
+• Mudbucker Deep v3.1.1: Massive 14.4H Sidewinder Sub-Bass (30.5" Gibson EB-0 Mudbucker)
+• Upright Acoustic v3.1.1: Acoustic Double Bass Bridge Force (41.25" Acoustic Double Bass)
+• Studio Direct v3.1.1: Pure Transparent Studio DI (Studio Direct Box / Interface)
+• Studio Active v3.1.1: 1M-Ohm Active Buffer Studio DI (Studio Direct Box / Interface)
+• Studio Passive v3.1.1: Passive High-Z Cable Load Studio DI (Studio Direct Box / Interface)
+
+TECHNICAL SPECIFICATIONS
+------------------------
+• DSP Generation: 3 (v0.3.0)
+• Sample Rate: 48 kHz / 24-bit PCM
+• Latency: 0 samples (Pure causal minimum-phase FIR)
+• Headroom: Calibrated to -0.09 dBFS ceiling
+• Host Compatibility: Darkglass Anagram Block 1, Neural Amp Modeler (NAM), DAW Plugin Hosts

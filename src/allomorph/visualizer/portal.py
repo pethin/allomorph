@@ -5,9 +5,6 @@ Allomorph Visualizer - Interactive HTML Portal Generation
 from collections.abc import Mapping
 from pathlib import Path
 
-from pydantic import TypeAdapter
-
-from allomorph.config.instruments import load_all_instruments
 from allomorph.config.scales import REPO_ROOT
 from allomorph.config.schema import InstrumentConfig
 from allomorph.visualizer.schema import PortalInstrumentMeta
@@ -58,33 +55,17 @@ def format_instrument_meta(inst: InstrumentConfig) -> PortalInstrumentMeta:
 
 
 def build_portal_html(
-    instruments_meta: Mapping[str, PortalInstrumentMeta],
-    default_id: str,
+    instruments_meta: Mapping[str, PortalInstrumentMeta] | None = None,
+    default_id: str = "voicings",
     base_url_prefix: str = "./",
 ) -> str:
-    """Constructs a responsive, dark-mode portal HTML string with 3-way Architecture C signal flow navigation."""
-    meta_json = (
-        TypeAdapter(dict[str, PortalInstrumentMeta])
-        .dump_json(dict(instruments_meta), indent=2)
-        .decode("utf-8")
-    )
-
-    buttons_html = []
-    for inst_id, meta in instruments_meta.items():
-        is_active = " active" if inst_id == default_id else ""
-        buttons_html.append(
-            f'<button class="tab-btn{is_active}" data-id="{inst_id}" onclick="selectInstrument(\'{inst_id}\')">'
-            f"<span>{meta.name}</span>"
-            f"</button>"
-        )
-    tabs_markup = "\n    ".join(buttons_html)
-
+    """Constructs a responsive, dark-mode portal HTML string with interactive Voicing Comparisons and 3D IR Difference Waterfall navigation."""
     html = f"""<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Allomorph | Two-Stage Frequency Response Suite</title>
+  <title>Allomorph | Voicing Comparisons & Frequency Response Suite</title>
   <style>
     :root {{
       --bg: #0d1117;
@@ -98,9 +79,9 @@ def build_portal_html(
       --text-muted: #8b949e;
       --tag-bg: #21262d;
       --btn-active: #1f6feb;
-      --teal: #26a69a;
+      --teal: #10b981;
       --orange: #ff7043;
-      --gold: #ffd54f;
+      --purple: #a855f7;
     }}
     * {{ box-sizing: border-box; margin: 0; padding: 0; }}
     body {{
@@ -158,7 +139,7 @@ def build_portal_html(
       display: flex;
       flex-direction: column;
       gap: 2px;
-      min-width: 150px;
+      min-width: 160px;
     }}
     .flow-step-num {{
       font-size: 10px;
@@ -217,89 +198,6 @@ def build_portal_html(
       color: #ffffff;
       box-shadow: 0 0 12px rgba(31, 111, 235, 0.4);
     }}
-    .inspector-subcontrols {{
-      display: block;
-    }}
-    .tabs-container {{
-      margin-bottom: 14px;
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-    }}
-    .tab-btn {{
-      background-color: var(--card-bg);
-      border: 1px solid var(--border);
-      color: var(--text-muted);
-      padding: 6px 14px;
-      border-radius: 6px;
-      font-size: 12px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.15s ease;
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-    }}
-    .tab-btn:hover {{
-      background-color: var(--tag-bg);
-      color: var(--text);
-      border-color: #8b949e;
-    }}
-    .tab-btn.active {{
-      background-color: #238636;
-      border-color: #2ea043;
-      color: #ffffff;
-      box-shadow: 0 0 8px rgba(46, 160, 67, 0.4);
-    }}
-    .view-mode-bar {{
-      margin-bottom: 16px;
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      background-color: var(--card-bg);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 10px 16px;
-    }}
-    .mode-toggle-group {{
-      display: inline-flex;
-      background-color: var(--tag-bg);
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      padding: 3px;
-      gap: 4px;
-      flex-wrap: wrap;
-    }}
-    .mode-btn {{
-      background: transparent;
-      border: none;
-      color: var(--text-muted);
-      padding: 6px 14px;
-      border-radius: 4px;
-      font-size: 12px;
-      font-weight: 600;
-      cursor: pointer;
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      transition: all 0.15s ease;
-    }}
-    .mode-btn:hover {{
-      color: var(--text);
-      background-color: rgba(255, 255, 255, 0.05);
-    }}
-    .mode-btn.active {{
-      background-color: var(--btn-active);
-      color: #ffffff;
-      box-shadow: 0 0 8px rgba(31, 111, 235, 0.4);
-    }}
-    .mode-hint {{
-      font-size: 12px;
-      color: var(--text-muted);
-      font-style: italic;
-    }}
     .meta-panel {{
       background-color: var(--card-bg);
       border: 1px solid var(--border);
@@ -354,7 +252,7 @@ def build_portal_html(
     iframe {{
       width: 100%;
       min-height: 720px;
-      height: 760px;
+      height: 820px;
       border: none;
       display: block;
       background-color: #0d1117;
@@ -365,113 +263,83 @@ def build_portal_html(
 <body>
   <div class="container">
     <div class="header">
-      <h1>Allomorph Frequency Response Suite <span class="badge">Architecture C</span> <span class="badge">Two-Stage Signal Flow</span></h1>
-      <div class="subtitle">Universal 2-Stage Acoustic Aperture Deconvolution & SPICE Digital Twins for Darkglass Anagram & Neural Amp Modeler.</div>
+      <h1>Allomorph Frequency Response Suite <span class="badge">Universal Voicings</span> <span class="badge">Direct Forward Simulation</span></h1>
+      <div class="subtitle">Interactive Source vs Target Voicing Comparisons & 3D Differential IR Waterfalls.</div>
     </div>
 
     <div class="flow-pipeline-card">
       <div class="flow-step">
         <div class="flow-step-num">Step 1</div>
-        <div class="flow-step-title">Source Bass</div>
-        <div class="flow-step-desc">Physical pickups & scale (Knobs wide open 100%)</div>
+        <div class="flow-step-title">Source Voicing</div>
+        <div class="flow-step-desc">Acoustic aperture + RLC pickup circuit (H<sub>src</sub>)</div>
       </div>
       <div class="flow-arrow">&rarr;</div>
       <div class="flow-step flow-active">
-        <div class="flow-step-num">Block 1</div>
-        <div class="flow-step-title">Frontend IR</div>
-        <div class="flow-step-desc">2048-tap causal minimum-phase FIR</div>
+        <div class="flow-step-num">Transformation</div>
+        <div class="flow-step-title">Differential Filter</div>
+        <div class="flow-step-desc">Regularized minimum-phase FIR (H<sub>diff</sub> = H<sub>tgt</sub> / H<sub>src</sub>)</div>
       </div>
       <div class="flow-arrow">&rarr;</div>
       <div class="flow-step">
-        <div class="flow-step-num">Datum</div>
-        <div class="flow-step-title">Canonical Intermediate</div>
-        <div class="flow-step-desc">34" @ 93.5mm median (0.00 dB baseline)</div>
-      </div>
-      <div class="flow-arrow">&rarr;</div>
-      <div class="flow-step flow-active">
-        <div class="flow-step-num">Block 2</div>
-        <div class="flow-step-title">Universal Target NAM</div>
-        <div class="flow-step-desc">A2-Lite Preamp (Clean / Dynamic / Hot Rod)</div>
+        <div class="flow-step-num">Step 2</div>
+        <div class="flow-step-title">Target Voicing</div>
+        <div class="flow-step-desc">Acoustic aperture + SPICE loaded RLC resonance (H<sub>tgt</sub>)</div>
       </div>
       <div class="flow-arrow">&rarr;</div>
       <div class="flow-step">
         <div class="flow-step-num">Output</div>
-        <div class="flow-step-title">Target Acoustic Voice</div>
-        <div class="flow-step-desc">Exact tone: Block 1 &times; Block 2 = Acoustic Twin</div>
+        <div class="flow-step-title">Acoustic Digital Twin</div>
+        <div class="flow-step-desc">Exact response: H<sub>src</sub> &times; H<sub>diff</sub> = H<sub>tgt</sub></div>
       </div>
     </div>
 
     <div class="primary-nav-bar" role="tablist">
-      <button class="primary-nav-btn active" id="pnav-targets" onclick="selectPrimaryView('targets')">
+      <button class="primary-nav-btn active" id="pnav-voicings" onclick="selectPrimaryView('voicings')">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="6"></circle><circle cx="12" cy="12" r="2"></circle></svg>
-        <span>Universal Targets (Block 2)</span>
-      </button>
-      <button class="primary-nav-btn" id="pnav-frontends" onclick="selectPrimaryView('frontends')">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
-        <span>Frontend Deconvolutions (Block 1)</span>
-      </button>
-      <button class="primary-nav-btn" id="pnav-inspector" onclick="selectPrimaryView('inspector')">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" y1="21" x2="4" y2="14"></line><line x1="4" y1="10" x2="4" y2="3"></line><line x1="12" y1="21" x2="12" y2="12"></line><line x1="12" y1="8" x2="12" y2="3"></line><line x1="20" y1="21" x2="20" y2="16"></line><line x1="20" y1="12" x2="20" y2="3"></line><line x1="1" y1="14" x2="7" y2="14"></line><line x1="9" y1="8" x2="15" y2="8"></line><line x1="17" y1="16" x2="23" y2="16"></line></svg>
-        <span>Signal Flow Inspector (End-to-End)</span>
-      </button>
-      <button class="primary-nav-btn" id="pnav-baked" onclick="selectPrimaryView('baked')">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
-        <span>Baked Responses (1-Block)</span>
+        <span>Voicing Comparisons (3-Line Response)</span>
       </button>
       <button class="primary-nav-btn" id="pnav-waterfall3d" onclick="selectPrimaryView('waterfall3d')">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline></svg>
-        <span>Baked IR 3D Waterfall</span>
+        <span>Voicing IR 3D Difference Waterfall</span>
       </button>
-    </div>
-
-    <div class="inspector-subcontrols" id="inspector-subcontrols" style="display: none;">
-      <div class="tabs-container" id="tabs">
-      {tabs_markup}
-      </div>
     </div>
 
     <div class="meta-panel">
       <div class="meta-item">
-        <div class="label" id="meta-label-primary">Active Stage</div>
-        <div class="value" id="meta-name">Universal Targets (Block 2)</div>
+        <div class="label" id="meta-label-primary">Active View</div>
+        <div class="value" id="meta-name">Voicing Comparisons (3-Line Response)</div>
       </div>
       <div class="meta-item">
-        <div class="label" id="meta-label-secondary">Reference / Datum</div>
-        <div class="value" id="meta-scale">Canonical Intermediate: 34" @ 93.5mm median</div>
+        <div class="label" id="meta-label-secondary">Voicing Matrix</div>
+        <div class="value" id="meta-scale">28 Catalog Voicings: Select Any Source and Target</div>
       </div>
       <div class="meta-item">
-        <div class="label" id="meta-label-tertiary">Pickup & Circuit</div>
-        <div class="value" id="meta-pickups">All 22 Universal Targets across 3 Dynamic Feel Tiers</div>
+        <div class="label" id="meta-label-tertiary">Response Overlay</div>
+        <div class="value" id="meta-pickups">H_src (Cyan) | H_tgt (Orange) | H_diff (Purple) with Identity (0.00 dB)</div>
       </div>
       <div class="meta-item">
         <div class="label">Response View Mode</div>
-        <div class="value" id="meta-view-mode">Universal Targets (Block 2)</div>
+        <div class="value" id="meta-view-mode">Interactive 3-Line Voicings</div>
       </div>
       <div>
-        <a id="standalone-link" class="open-standalone-btn" href="{base_url_prefix}universal_targets.html" target="_blank">
+        <a id="standalone-link" class="open-standalone-btn" href="{base_url_prefix}voicings.html" target="_blank">
           Open Standalone Chart ↗
         </a>
       </div>
     </div>
 
     <div class="chart-card">
-      <iframe id="chart-frame" src="{base_url_prefix}universal_targets.html" title="Interactive Vega Frequency Response Chart"></iframe>
+      <iframe id="chart-frame" src="{base_url_prefix}voicings.html" title="Interactive Voicing Comparisons"></iframe>
     </div>
   </div>
 
   <script>
-    const instruments = {meta_json};
     const baseUrlPrefix = "{base_url_prefix}";
-    let currentPrimaryView = "targets"; // 'targets', 'frontends', 'baked', 'inspector'
-    let currentId = "{default_id}";
+    let currentPrimaryView = "{default_id}" === "waterfall3d" ? "waterfall3d" : "voicings";
 
     function updateView() {{
-      const pnavTargets = document.getElementById('pnav-targets');
-      const pnavFrontends = document.getElementById('pnav-frontends');
-      const pnavBaked = document.getElementById('pnav-baked');
+      const pnavVoicings = document.getElementById('pnav-voicings');
       const pnavWaterfall3d = document.getElementById('pnav-waterfall3d');
-      const pnavInspector = document.getElementById('pnav-inspector');
-      const subcontrols = document.getElementById('inspector-subcontrols');
       const frame = document.getElementById('chart-frame');
       const standaloneLink = document.getElementById('standalone-link');
       const metaName = document.getElementById('meta-name');
@@ -479,85 +347,32 @@ def build_portal_html(
       const metaPickups = document.getElementById('meta-pickups');
       const metaViewMode = document.getElementById('meta-view-mode');
 
-      pnavTargets.classList.toggle('active', currentPrimaryView === 'targets');
-      pnavFrontends.classList.toggle('active', currentPrimaryView === 'frontends');
-      if (pnavBaked) pnavBaked.classList.toggle('active', currentPrimaryView === 'baked');
+      pnavVoicings.classList.toggle('active', currentPrimaryView === 'voicings');
       if (pnavWaterfall3d) pnavWaterfall3d.classList.toggle('active', currentPrimaryView === 'waterfall3d');
-      pnavInspector.classList.toggle('active', currentPrimaryView === 'inspector');
 
-      if (currentPrimaryView === 'targets') {{
-        subcontrols.style.display = 'none';
-        const url = `${{baseUrlPrefix}}universal_targets.html`;
+      if (currentPrimaryView === 'voicings') {{
+        const url = `${{baseUrlPrefix}}voicings.html`;
         frame.src = url;
         standaloneLink.href = url;
-        metaName.textContent = 'Universal Target Voicings (Block 2)';
-        metaScale.textContent = 'Canonical Intermediate: 34" @ 93.5mm median';
-        metaPickups.textContent = '22 Target Profiles across 3 Dynamic Feel Tiers (Clean, Dynamic, Hot Rod)';
-        metaViewMode.textContent = 'Universal Target Profiles';
-        if (window.history.replaceState) window.history.replaceState(null, null, '#targets');
-        return;
-      }}
-
-      if (currentPrimaryView === 'frontends') {{
-        subcontrols.style.display = 'none';
-        const url = `${{baseUrlPrefix}}frontend_deconvolutions.html`;
-        frame.src = url;
-        standaloneLink.href = url;
-        metaName.textContent = 'Frontend Deconvolutions (Block 1)';
-        metaScale.textContent = '32 Physical Switch Positions across 11 Source Basses';
-        metaPickups.textContent = '2048-tap causal minimum-phase FIRs with strictly positive initial polarity';
-        metaViewMode.textContent = 'Frontend Deconvolution IRs';
-        if (window.history.replaceState) window.history.replaceState(null, null, '#frontends');
-        return;
-      }}
-
-      if (currentPrimaryView === 'baked') {{
-        subcontrols.style.display = 'none';
-        const url = `${{baseUrlPrefix}}baked_responses.html`;
-        frame.src = url;
-        standaloneLink.href = url;
-        metaName.textContent = 'Baked Transformations (1-Block Single Model)';
-        metaScale.textContent = 'Multi-Instrument & Multi-Voicing Differential Matrix';
-        metaPickups.textContent = '276 Monolithic Transfer Curves (H_diff = H_tgt / H_src) with dynamic multi-selection';
-        metaViewMode.textContent = 'Baked End-to-End Single-Block';
-        if (window.history.replaceState) window.history.replaceState(null, null, '#baked');
+        metaName.textContent = 'Voicing Comparisons (3-Line Response)';
+        metaScale.textContent = '28 Catalog Voicings: Select Any Source and Target Voicing';
+        metaPickups.textContent = 'H_src (Cyan) | H_tgt (Orange) | H_diff (Purple) with Identity (0.00 dB)';
+        metaViewMode.textContent = 'Interactive 3-Line Voicings';
+        if (window.history.replaceState) window.history.replaceState(null, null, '#voicings');
         return;
       }}
 
       if (currentPrimaryView === 'waterfall3d') {{
-        subcontrols.style.display = 'none';
-        const url = `${{baseUrlPrefix}}baked_waterfall_3d.html`;
+        const url = `${{baseUrlPrefix}}voicing_ir_3d.html`;
         frame.src = url;
         standaloneLink.href = url;
-        metaName.textContent = 'Baked Voicing IR 3D Waterfall & Topography';
-        metaScale.textContent = 'Cumulative Spectral Decay (CSD) & Multi-Voice 3D Landscape';
-        metaPickups.textContent = 'Interactive 3D WebGL Surface: Time Decay (0-10ms) x Frequency x dB with Waveform Inspector';
+        metaName.textContent = 'Voicing IR Difference 3D Waterfall & Waveform';
+        metaScale.textContent = 'Cumulative Spectral Decay (CSD) & Difference Impulse Response (h_diff)';
+        metaPickups.textContent = 'Interactive 3D WebGL Surface: Time Decay (0-10ms) x Frequency x dB with FIR Waveform';
         metaViewMode.textContent = '3D Impulse Response Analysis';
         if (window.history.replaceState) window.history.replaceState(null, null, '#waterfall3d');
         return;
       }}
-
-      // Inspector Mode
-      subcontrols.style.display = 'block';
-      const inst = instruments[currentId] || Object.values(instruments)[0];
-
-      document.querySelectorAll('.tab-btn').forEach(btn => {{
-        btn.classList.toggle('active', btn.dataset.id === currentId);
-      }});
-
-      const chartUrl = `${{baseUrlPrefix}}${{currentId}}.html`;
-      frame.src = chartUrl;
-      standaloneLink.href = chartUrl;
-      metaName.textContent = inst.name;
-      metaScale.textContent = `${{inst.scale_in}}" scale (${{inst.scale_m}} m) | ${{inst.speeds_str}}`;
-      metaPickups.textContent = inst.pickups_summary;
-      metaViewMode.textContent = 'End-to-End Signal Flow';
-
-      if (window.history.replaceState) {{
-        window.history.replaceState(null, null, `#${{currentId}}`);
-      }}
-      setTimeout(resizeIframe, 150);
-      setTimeout(resizeIframe, 450);
     }}
 
     function resizeIframe() {{
@@ -579,13 +394,6 @@ def build_portal_html(
       updateView();
     }}
 
-    function selectInstrument(id) {{
-      if (!instruments[id]) return;
-      currentId = id;
-      currentPrimaryView = 'inspector';
-      updateView();
-    }}
-
     window.addEventListener('DOMContentLoaded', () => {{
       const frame = document.getElementById('chart-frame');
       if (frame) {{
@@ -598,20 +406,10 @@ def build_portal_html(
       window.addEventListener('resize', resizeIframe);
 
       const hash = window.location.hash.replace('#', '');
-      if (hash === 'targets') {{
-        currentPrimaryView = 'targets';
-      }} else if (hash === 'frontends') {{
-        currentPrimaryView = 'frontends';
-      }} else if (hash === 'baked') {{
-        currentPrimaryView = 'baked';
-      }} else if (hash === 'waterfall3d') {{
+      if (hash === 'waterfall3d' || hash === '3d') {{
         currentPrimaryView = 'waterfall3d';
-      }} else if (hash) {{
-        const hashId = hash.split(':')[0];
-        if (instruments[hashId]) {{
-          currentId = hashId;
-          currentPrimaryView = 'inspector';
-        }}
+      }} else {{
+        currentPrimaryView = 'voicings';
       }}
       updateView();
     }});
@@ -633,26 +431,10 @@ def generate_portal_pages(
     """
     out_dir = Path(output_dir) if output_dir else RESPONSES_DIR
     out_dir.mkdir(parents=True, exist_ok=True)
-    all_insts = load_all_instruments()
-
-    active_meta: dict[str, PortalInstrumentMeta] = {}
-    for inst_id, inst_cfg in all_insts.items():
-        if inst_id == "canonical_intermediate":
-            continue
-        chart_file = out_dir / f"{inst_id}.html"
-        if chart_file.exists() or not any(out_dir.glob("*.html")):
-            active_meta[inst_id] = format_instrument_meta(inst_cfg)
-
-    if not active_meta:
-        for inst_id, inst_cfg in all_insts.items():
-            if inst_id == "canonical_intermediate":
-                continue
-            active_meta[inst_id] = format_instrument_meta(inst_cfg)
-
-    def_id = default_id if (default_id and default_id in active_meta) else next(iter(active_meta))
+    def_id = default_id or "voicings"
 
     # 1. Write docs/frequency_responses/index.html
-    index_html = build_portal_html(active_meta, default_id=def_id, base_url_prefix="./")
+    index_html = build_portal_html(default_id=def_id, base_url_prefix="./")
     index_path = out_dir / "index.html"
     index_path.write_text(index_html, encoding="utf-8")
     print(f"Saved interactive portal: {index_path}")
@@ -660,7 +442,7 @@ def generate_portal_pages(
     # 2. Write docs/frequency_responses.html at root of docs/ (only if target directory is default RESPONSES_DIR)
     if out_dir.resolve() == RESPONSES_DIR.resolve():
         root_portal_html = build_portal_html(
-            active_meta, default_id=def_id, base_url_prefix="./frequency_responses/"
+            default_id=def_id, base_url_prefix="./frequency_responses/"
         )
         root_portal_path = DOCS_DIR / "frequency_responses.html"
         root_portal_path.write_text(root_portal_html, encoding="utf-8")

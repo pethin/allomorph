@@ -19,6 +19,7 @@ name = "32\" Fretless Custom (EMG PCSX + MMTWX)"
 scale_length_in = 32.0
 scale_length_m = 0.8128
 electronics = "active"
+version = 1
 
 # String wave speeds: v = 2 * L * f0 (for E1=41.2Hz, A1=55.0Hz, D2=73.4Hz, G2=98.0Hz)
 string_wave_speeds = [66.98, 89.41, 119.35, 159.31]
@@ -133,27 +134,56 @@ components = [
 ]
 
 # ------------------------------------------------------------------------------
-# 6. SMART VOICE MAPPING
+# 6. NATIVE INSTRUMENT VOICINGS
+# ------------------------------------------------------------------------------
+
+[voicings.fretless_blend]
+version = 1
+name = "Fretless PCSX + MMTWX Parallel Blend"
+tone_name = "Fretless P∕MM"
+pickup = "blend_parallel"
+affinity = "parallel"
+vol_pos = 1.0
+
+[voicings.pcsx_solo]
+version = 1
+name = "Solo Fretless PCSX Warm Mwah"
+tone_name = "Fretless P Solo"
+pickup = "pcsx"
+affinity = "neck"
+vol_pos = 1.0
+
+[voicings.jaco_growl]
+version = 1
+name = "Solo Bridge MMTWX Single Singing Growl"
+tone_name = "Fretless J Growl"
+pickup = "mmtwx_single"
+affinity = "bridge"
+vol_pos = 1.0
+
+[voicings.pj_blend]
+version = 1
+name = "Fretless PCSX + Single J Blend"
+tone_name = "Fretless PJ Blend"
+pickup = "pj_blend_parallel"
+affinity = "parallel"
+vol_pos = 1.0
+
+# ------------------------------------------------------------------------------
+# 7. PICKUP AFFINITY ROUTING
 # ------------------------------------------------------------------------------
 [pickup_mapping]
-"01_modern_jazz_active" = "pj_blend_parallel"
-"02_jazz_bass_pair" = "pj_blend_parallel"
-"02b_jazz_bass_pair_22nf" = "pj_blend_parallel"
-"02c_jazz_bridge_growl_bias" = "pj_blend_parallel"
-"03_jazz_bridge_60s" = "mmtwx_single"
-"04_modern_p_ceramic" = "pcsx"
-"05_vintage_62_p_alnico" = "pcsx"
-"05b_vintage_62_p_22nf" = "pcsx"
-"05c_vintage_62_p_47nf" = "pcsx"
-"05d_vintage_50s_p_100nf" = "pcsx"
-"07_modern_pj_active" = "pj_blend_parallel"   # Modern Active P/J
-"08_vintage_pj_passive" = "pj_blend_parallel"  # Vintage Alnico P/J
-"09_stingray_mm_parallel" = "mmtwx_dual"
-"09b_stingray_mm_series" = "mmtwx_dual"
-"10_rickenbacker_bridge_hpf" = "mmtwx_single"
-"11_modern_pmm_active" = "blend_parallel"
-"11b_pmm_hybrid_series" = "blend_parallel"
-"11_pmm_hybrid_series" = "blend_parallel"
-"12_mudbucker_ultra_series" = "pcsx"
-"13_dingwall_multiscale_bridge" = "mmtwx_dual"
-"14_upright_bridge_transducer" = "pcsx"
+neck = "pcsx"
+bridge = "mmtwx_single"
+parallel = "blend_parallel"
+direct = "blend_parallel"
+"pj_active" = "pj_blend_parallel"
+"pj_passive" = "pj_blend_parallel"
+"34in_standard_pj:pair_parallel" = "pj_blend_parallel"
+"34in_standard_pj:pair_active" = "pj_blend_parallel"
+"stingray_parallel" = "mmtwx_dual"
+"stingray_series" = "mmtwx_dual"
+"stingray_active" = "mmtwx_dual"
+"34in_active_stingray:parallel_classic" = "mmtwx_dual"
+"34in_active_stingray:series_punch" = "mmtwx_dual"
+"34in_active_stingray:active_slap" = "mmtwx_dual"

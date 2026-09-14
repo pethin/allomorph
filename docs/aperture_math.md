@@ -177,9 +177,9 @@ $$H_{\text{pos}}(f) = \sqrt{\frac{g_0^2 + (f / 220\text{ Hz})^2}{1 + (f / 220\te
 * **Asymmetric Bound ($+12.0\text{ dB}$ Boost / $-16.0\text{ dB}$ Cut):** Allows the Gibson EB-0 Mudbucker ($+9.11\text{ dB}$ from datum) to output $+8.49\text{ dB}$ of authentic fundamental rumble while bounding digital headroom under Guardrail 5.3.6 ($H(0) \in [-12\text{ dB}, +12\text{ dB}]$ across all catalog pairs), while allowing Rickenbacker ($-7.25\text{ dB}$) and Dingwall bridge pickups full physical attenuation without artificial low-end mud.
 * **DC Fundamental Excursion ($f \to 0$):** $H_{\text{pos}}(0) = g_0 = 10^{\Delta G_{\text{soft}} / 20.0}$, precisely matching the physical fundamental standing wave displacement ratio.
 * **High-Frequency Invariance ($f \gg 220\text{ Hz}$):** $H_{\text{pos}}(\infty) \equiv 1.0000$ ($0.00\text{ dB}$ identity). Zero artificial treble counter-tilt or harsh clank injection.
-* **2-Block Decoupled Architecture Identity:** Because logarithmic distance ratios are strictly additive:
-  $$\Delta G_{\text{B1}} + \Delta G_{\text{B2}} = 20\log_{10}\left(\frac{\eta_{\text{can}}}{\eta_{\text{src}}}\right) + 20\log_{10}\left(\frac{\eta_{\text{tgt}}}{\eta_{\text{can}}}\right) \equiv 20\log_{10}\left(\frac{\eta_{\text{tgt}}}{\eta_{\text{src}}}\right) = \Delta G_{\text{direct}}$$
-  the two-stage decoupled pipeline satisfies the spatial scaling identity bit-exact.
+* **Direct Spatial Scaling Invariance:** Because scale-normalized fractional positions satisfy logarithmic standing wave excursion ratios:
+  $$\Delta G = 20\log_{10}\left(\frac{\eta_{\text{tgt}}}{\eta_{\text{src}}}\right)$$
+  the forward simulation engine models bridge proximity excursion bit-exact.
 * **Proportional Sweet Spot Invariance:** Identical proportional locations across scales (e.g. 32" MM @ $62.2\text{ mm} \implies \eta = 7.65\%$ vs 34" MM @ $66.0\text{ mm} \implies \eta = 7.64\%$) have $\eta_{\text{tgt}} / \eta_{\text{src}} \approx 1.0$ and receive **exact zero spurious scaling** ($0.00\text{ dB}$ flat).
 
 #### Proportional Scale Tension Snap ($H_{\text{tension}}$):
@@ -252,8 +252,8 @@ Normalized by peak gain, this imparts a gentle $+6\text{ dB/octave}$ mechanical 
 
 ### E. Resonant Body Bloom ($41.5''$ 3/4 Double Bass)
 A 3/4 double bass features a $41.5''$ ($105.4\text{ cm}$) vibrating string length and a massive resonant air cavity. Allomorph synthesizes this acoustic body bloom with:
-$$H_{\text{bloom}}(f) = \frac{\sqrt{g_{\text{bloom}}^2 + \left(\frac{f}{100\text{ Hz}}\right)^2}}{\sqrt{1 + \left(\frac{f}{100\text{ Hz}}\right)^2}}, \quad g_{\text{bloom}} = 10^{\Delta \text{bloom} / 20.0}$$
-where $\Delta \text{bloom} = \text{bloom}_{\text{target}} - \text{bloom}_{\text{source}}$, delivering the deep, resonant low-end bloom characteristic of a full-size upright acoustic instrument.
+$$H_{\text{bloom}}(f) = \frac{\sqrt{g_{\text{bloom}}^2 + \left(\frac{f}{100\text{ Hz}}\right)^2}}{\sqrt{1 + \left(\frac{f}{100\text{ Hz}}\right)^2}}, \quad g_{\text{bloom}} = \frac{T_{\text{src}}}{T_{\text{tgt}}}$$
+where $g_{\text{bloom}}$ is the fundamental string tension compliance ratio, delivering the resonant low-end fundamental characteristic of high-tension acoustic upright strings.
 
 ---
 
@@ -274,11 +274,11 @@ When an electric bass is strung with flatwounds (such as **La Bella Low Tension 
    $$r_{\text{soft\_db}} = \begin{cases} \text{smooth\_soft\_knee\_db}(r_{\text{db}}, \text{thresh}=5.0, \text{ceiling}=8.0, \alpha=2.0), & r_{\text{db}} > 0.0 \\ -\text{smooth\_soft\_knee\_db}(-r_{\text{db}}, \text{thresh}=24.0, \text{ceiling}=36.0, \alpha=2.0), & r_{\text{db}} \le 0.0 \end{cases}$$
    All 735 catalog transformations enjoy 100% linear passband transparency down to $-24.0\text{ dB}$ (and up to $+5.0\text{ dB}$ for stainless clank), eliminating the $4.64\text{ dB}$ unphysical loss of legacy unthresholded $\tanh$ saturation while guaranteeing smooth asymptotic saturation to the $-36.0\text{ dB}$ floor.
    $$H_{\text{damp\_ratio}}(f) = 10^{r_{\text{soft\_db}} / 20.0}$$
-3. **Differential String Cavity Bloom ($H_{\text{bloom}}$):**
-   $$\Delta\text{bloom}_{\text{dB}} = \text{bloom}_{\text{tgt}} - \text{bloom}_{\text{src}}$$
-   $$g_{\text{bloom}} = 10^{\Delta\text{bloom}_{\text{dB}} / 20.0}$$
-   $$H_{\text{bloom}}(f) = \sqrt{\frac{g_{\text{bloom}}^2 + \left(\frac{f}{90.0\text{ Hz}}\right)^2}{1 + \left(\frac{f}{90.0\text{ Hz}}\right)^2}}$$
-   $$H_{\text{string\_transfer}}(f) = H_{\text{damp\_ratio}}(f) \cdot H_{\text{bloom}}(f)$$
+3. **Fundamental String Plucking Compliance ($H_{\text{compliance}}$):**
+   Under identical plucking force, transverse displacement scales inversely with tension ($y_{\max} \propto 1/T$). The relative compliance between source and target strings is:
+   $$g_{\text{compliance}} = \frac{T_{\text{src}}}{T_{\text{tgt}}}$$
+   $$H_{\text{compliance}}(f) = \sqrt{\frac{g_{\text{compliance}}^2 + \left(\frac{f}{90.0\text{ Hz}}\right)^2}{1 + \left(\frac{f}{90.0\text{ Hz}}\right)^2}}$$
+   $$H_{\text{string\_transfer}}(f) = H_{\text{damp\_ratio}}(f) \cdot H_{\text{compliance}}(f)$$
 
 This automatically preserves the natural woody clarity and fingerboard mwah of flatwounds on fretless basses, while still applying full acoustic damping when fed by clanky roundwound strings.
 
