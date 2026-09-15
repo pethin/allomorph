@@ -55,8 +55,8 @@ def main() -> None:
     parser.add_argument(
         "--peak-dbfs",
         type=float,
-        default=-1.0,
-        help="True Peak ceiling in dBFS (default: -1.0 dBFS / 0.891)",
+        default=-4.5,
+        help="True Peak ceiling in dBFS (default: -4.5 dBFS / ~ -18.0 dBFS RMS NAM standard)",
     )
     parser.add_argument(
         "--overwrite",

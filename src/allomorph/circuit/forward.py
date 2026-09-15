@@ -37,7 +37,9 @@ from allomorph.dsp import (
 )
 from allomorph.physics import MEAN_BASS_F0
 from allomorph.physics.aperture import (
+    UNIVERSAL_DATUM_POS_M,
     compute_displacement_proximity_shelf,
+    compute_pickup_isolation_leveling,
     compute_saddle_boundary_coupling,
     numpy_pickup_acoustic_response,
 )
@@ -256,6 +258,15 @@ def simulate_instrument_voicing(
             or (curves is not None and len(curves) > 1)
         )
 
+        # Determine reference pickup position for luthier pickup isolation leveling
+        single_positions = [
+            float(p.position_from_bridge_m)
+            for p in inst.pickups.values()
+            if not p.components and p.position_from_bridge_m is not None
+        ]
+        max_p_pos = max(single_positions, default=UNIVERSAL_DATUM_POS_M)
+        ref_pos = max(max_p_pos, UNIVERSAL_DATUM_POS_M)
+
         if is_composite and pickup_cfg.components:
             N = 8192
             f_bins = np.fft.rfftfreq(N, 1.0 / 48000.0)
@@ -295,7 +306,10 @@ def simulate_instrument_voicing(
 
                 b_pos = branch_positions[i]
                 h_pos = compute_displacement_proximity_shelf(f_bins, b_pos, scale_m=scale_m)
-                ac = ac_raw * h_pos
+                k_iso = compute_pickup_isolation_leveling(
+                    b_pos, scale_m=scale_m, ref_pos_m=ref_pos
+                )
+                ac = ac_raw * h_pos * k_iso
 
                 min_pos = min((c.position_from_bridge_m for c in b_coils), default=0.10)
                 if min_pos < 0.075:
@@ -339,7 +353,10 @@ def simulate_instrument_voicing(
 
             # Spatial bridge proximity displacement excursion relative to universal datum
             h_pos = compute_displacement_proximity_shelf(f, eff_pos, scale_m=scale_m)
-            h_ac = h_ac * h_pos
+            k_iso = compute_pickup_isolation_leveling(
+                eff_pos, scale_m=scale_m, ref_pos_m=ref_pos
+            )
+            h_ac = h_ac * h_pos * k_iso
 
             # Saddle boundary coupling for close bridge pickups
             min_pos = min((c.position_from_bridge_m for c in coils), default=0.10)
@@ -355,7 +372,8 @@ def simulate_instrument_voicing(
             h_base = np.abs(h_ac) * np.abs(h_elec)
 
     # 2. Active Preamp EQ Contour H_preamp(f)
-    circ_has_preamp = circ_model is not None and getattr(circ_model, "preamp", None)
+    circ_preamp = getattr(circ_model, "preamp", None) if circ_model is not None else None
+    circ_has_preamp = circ_preamp not in (None, "", "none")
     if voicing_cfg.preamp_bands and not circ_has_preamp:
         h_pre_raw = compute_active_preamp_transfer(voicing_cfg.preamp_bands, s)
         h_preamp = np.abs(h_pre_raw).astype(np.float64)
@@ -443,8 +461,11 @@ def simulate_instrument_voicing(
         else:
             alpha_eff = float(props.alpha)
 
+        drive_db = float(getattr(voicing_cfg, "gain_db", 0.0) or 0.0)
+        drive_in = filtered if drive_db == 0.0 else filtered * (10.0 ** (drive_db / 20.0))
+
         filtered = apply_oversampled_saturation(
-            filtered.astype(np.float32),
+            drive_in.astype(np.float32),
             vsat=vsat_eff,
             alpha=alpha_eff,
             alpha3=float(props.alpha3),

@@ -1016,6 +1016,7 @@ def generate_optimal_bass_dry(
     duration_sec: float = 240.0,
     sample_rate: int = FS,
     peak_dbfs: float = -1.0,
+    target_rms_dbfs: float | None = None,
     seed: int = 42,
 ) -> np.ndarray:
     """Synthesizes a 48 kHz high-fidelity 4-minute synthetic dry excitation signal tailored for bass modeling.
@@ -1311,11 +1312,22 @@ def generate_optimal_bass_dry(
         active_mean = float(np.mean(audio[active_mask]))
         audio[active_mask] -= active_mean
 
-    # Peak ceiling bounding to requested peak_dbfs (preserves pure zero digital silence in rests)
-    target_peak = 10.0 ** (peak_dbfs / 20.0)
-    current_peak = float(np.max(np.abs(audio)))
-    if current_peak > 0:
-        audio = audio * (target_peak / current_peak)
+    # Level scaling (preserves pure zero digital silence in rests)
+    if target_rms_dbfs is not None:
+        target_rms = 10.0 ** (target_rms_dbfs / 20.0)
+        current_rms = float(np.sqrt(np.mean(audio**2)))
+        if current_rms > 0:
+            audio = audio * (target_rms / current_rms)
+        current_peak = float(np.max(np.abs(audio)))
+        ceiling = 10.0 ** (peak_dbfs / 20.0)
+        if current_peak > ceiling:
+            audio = audio * (ceiling / current_peak)
+    else:
+        # Peak ceiling bounding to requested peak_dbfs
+        target_peak = 10.0 ** (peak_dbfs / 20.0)
+        current_peak = float(np.max(np.abs(audio)))
+        if current_peak > 0:
+            audio = audio * (target_peak / current_peak)
 
     return audio.astype(np.float32)
 
@@ -1325,6 +1337,7 @@ def ensure_optimal_dry_wav(
     duration_sec: float = 240.0,
     sample_rate: int = FS,
     peak_dbfs: float = -1.0,
+    target_rms_dbfs: float | None = -20.50,
     overwrite: bool = False,
     version_tag: str | None = None,
     no_manifest: bool = False,
@@ -1332,7 +1345,7 @@ def ensure_optimal_dry_wav(
     """Ensures that the synthesized optimal bass dry signal exists on disk.
 
     If output_path is None, writes the versioned optimal bass dry file to audio/canonical/
-    (e.g., optimal_bass_dry_v2.wav) and records entries in manifest.json.
+    (e.g., optimal_bass_dry_v3.wav) and records entries in manifest.json.
     """
     if output_path is not None:
         p = Path(output_path)
@@ -1349,13 +1362,15 @@ def ensure_optimal_dry_wav(
         duration_sec=duration_sec,
         sample_rate=sample_rate,
         peak_dbfs=peak_dbfs,
+        target_rms_dbfs=target_rms_dbfs,
     )
     write_wav_24bit(p, audio, sample_rate)
 
     if output_path is None and not no_manifest:
-        from allomorph.version import DSP_GENERATION, write_manifest
+        from allomorph.naming import get_optimal_dry_basename
+        from allomorph.version import write_manifest
 
-        v_tag = version_tag or f"v{DSP_GENERATION}"
+        v_tag = get_optimal_dry_basename(version_tag).replace("optimal_bass_dry_", "")
         write_manifest(
             output_dir=p.parent,
             stage="canonical",

@@ -407,6 +407,8 @@ class VoiceConfig(AllomorphBaseModel):
     coils: list[VoiceCoilConfig] = Field(default_factory=list)
     pickups: list[VoicePickupConfig] | None = None
     circuit: CircuitConfig
+    ref_pos_m: float | None = None
+    instrument_id: str | None = None
 
     @classmethod
     def load(cls, identifier_or_path: str | Path) -> VoiceConfig:

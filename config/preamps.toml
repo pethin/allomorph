@@ -70,18 +70,18 @@ bands = [
     { type = "high_shelf", freq_hz = 6500.0, gain_db = 2.0 }
 ]
 
-# ------------------------------------------------------------------------------
-# 5. Dingwall FD3 Active Preamp
+# 5. Dingwall FD3 Active Preamp (Darkglass Tone Capsule)
 # ------------------------------------------------------------------------------
 [preamps.dingwall_active]
 id = "dingwall_active"
-name = "Dingwall Active Tone Capsule / Glockenklang"
-description = "Ultra-transparent multi-scale preamp with low-mid punch and high treble air"
-input_impedance_meg = 1.0
-output_impedance_ohm = 100.0
+name = "Darkglass Tone Capsule Active Preamp"
+description = "Darkglass 3-band active preamp with 70 Hz bass, 500 Hz low-mids, and 2.8 kHz high-mids"
+input_impedance_meg = 0.5
+output_impedance_ohm = 1000.0
 gain_db = 0.0
 bands = [
-    { type = "low_shelf", freq_hz = 40.0, gain_db = 1.5 },
-    { type = "bell", freq_hz = 500.0, gain_db = 1.0, q = 1.0 },
-    { type = "high_shelf", freq_hz = 8000.0, gain_db = 2.0 }
+    { type = "bell", freq_hz = 70.0, gain_db = 0.0, q = 1.0 },
+    { type = "bell", freq_hz = 500.0, gain_db = 0.0, q = 1.0 },
+    { type = "bell", freq_hz = 2800.0, gain_db = 0.0, q = 1.0 }
 ]
+

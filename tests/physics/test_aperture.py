@@ -20,6 +20,7 @@ from allomorph.physics import (
     aperture_response,
     compute_body_microphonic_coupling,
     compute_coil_aperture,
+    compute_pickup_isolation_leveling,
     compute_saddle_boundary_coupling,
     compute_voice_prefilter_firs,
     is_voice_matching_source,
@@ -540,3 +541,32 @@ def test_saddle_witness_point_boundary_stiffness():
     assert h_dingwall[idx_10k] < h_bridge[idx_10k], (
         "Pickups closer to bridge should experience slightly greater boundary stiffness damping"
     )
+
+
+def test_pickup_isolation_leveling():
+    """Verify luthier individual pickup height compensation in isolation."""
+    # 1. Pickup at reference position (or ahead of it) evaluates to exact 1.0000 (0.00 dB)
+    k_ref = compute_pickup_isolation_leveling(0.1556, scale_m=0.8636, ref_pos_m=0.1556)
+    assert math.isclose(k_ref, 1.0, abs_tol=1e-6)
+
+    k_ahead = compute_pickup_isolation_leveling(0.2000, scale_m=0.8636, ref_pos_m=0.1556)
+    assert math.isclose(k_ahead, 1.0, abs_tol=1e-6)
+
+    # 2. Bridge pickup (63.5 mm on Jazz Bass) gets smooth luthier height boost (+4.8 to +5.8 dB)
+    k_jazz_bridge = compute_pickup_isolation_leveling(0.0635, scale_m=0.8636, ref_pos_m=0.1556)
+    boost_db = 20.0 * math.log10(k_jazz_bridge)
+    assert 4.8 <= boost_db <= 5.8, f"Expected Jazz bridge boost ~5.3 dB, got {boost_db:.2f} dB"
+
+    # 3. Dingwall bridge pickup (48.0 mm on 37" scale) relative to middle (96.0 mm)
+    k_dingwall_bridge = compute_pickup_isolation_leveling(0.0480, scale_m=0.9398, ref_pos_m=0.0960)
+    dingwall_boost_db = 20.0 * math.log10(k_dingwall_bridge)
+    assert 4.0 <= dingwall_boost_db <= 5.0, (
+        f"Expected Dingwall bridge boost ~4.5 dB, got {dingwall_boost_db:.2f} dB"
+    )
+
+    # 4. Maximum boost is strictly bounded by max_boost_db (+6.0 dB)
+    k_extreme = compute_pickup_isolation_leveling(
+        0.0100, scale_m=0.8636, ref_pos_m=0.3000, max_boost_db=6.0
+    )
+    assert 20.0 * math.log10(k_extreme) <= 6.0
+

@@ -235,7 +235,7 @@ In modern Allomorph (v0.3.0 / DSP Gen 3), target voices are defined directly wit
 | `tone_pos` | `float` | $[0.0, 1.0]$ | Tone potentiometer wiper position (default: `1.0`). |
 | `tone_cap_f` | `float` | Farads | Tone capacitor value in Farads (e.g. `4.7e-8` for 47nF). |
 | `string_preset_override` | `string` | Key | Goal string preset from `config/strings.toml` (e.g. `"flatwound_vintage_heavy"`). |
-| `gain_db` | `float` | dB | Target level trim for loudness normalization. |
+| `gain_db` | `float` | dB | Saturation drive boost/cut in dB into non-linear magnetic saturation/compression, and informational visualizer vertical offset. Does not alter training level normalization. |
 | `sensor_type` | `string` | `"magnetic"` | Physical sensor taxonomy: `"magnetic"`, `"bridge_force"`, or `"direct"`. |
 | `preserve_aperture` | `bool` | `false` | Set `true` to preserve source instrument physical aperture (e.g. Studio Voicings). |
 

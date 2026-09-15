@@ -344,6 +344,9 @@ def test_dry_naming_helpers():
 
     assert get_optimal_dry_basename() == f"optimal_bass_dry_v{DSP_GENERATION}"
     assert get_optimal_dry_basename("v2") == "optimal_bass_dry_v2"
+    assert get_optimal_dry_basename("auto") == f"optimal_bass_dry_v{DSP_GENERATION}"
+    assert get_optimal_dry_basename("v3.1.1") == f"optimal_bass_dry_v{DSP_GENERATION}"
+    assert get_optimal_dry_basename("none") == f"optimal_bass_dry_v{DSP_GENERATION}"
 
     dry_p = get_optimal_dry_path(audio_dir="/tmp/test_allomorph")
     assert dry_p == Path(f"/tmp/test_allomorph/canonical/optimal_bass_dry_v{DSP_GENERATION}.wav")

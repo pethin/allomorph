@@ -110,7 +110,7 @@
       "target_voicing_version": 1,
       "version": "v3.1.1",
       "tone_name": "Dingwall Middle",
-      "sha256": "ad6f591123d10ae72157fcf41230bed1d552af99a85b60cad23222998a51df32"
+      "sha256": "32d326cad7b7b709c8f57816a9420bbe20601a8af1766464d0aaaec74f1c3083"
     },
     {
       "filename": "Dingwall Parallel [Dual] v3.1.1.wav",
@@ -120,7 +120,7 @@
       "target_voicing_version": 1,
       "version": "v3.1.1",
       "tone_name": "Dingwall Parallel",
-      "sha256": "bbbc09b0dbc336c59907cd235df1f2e3292b00d08999f902eb851cae7779f2e8"
+      "sha256": "a121475ec2c4dfe8b6fc129647348d221c456edca7d2dc6859a52202ebd28da5"
     },
     {
       "filename": "PJ Passive [Dual] v3.1.1.wav",

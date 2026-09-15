@@ -184,6 +184,13 @@ def voicing_to_voice_config(
         or (circuit is not None and getattr(circuit, "topology", None) == "parallel")
     )
     blend_mode = "series" if is_series else ("parallel" if is_parallel else "single")
+    single_positions = [
+        float(p.position_from_bridge_m)
+        for p in instrument.pickups.values()
+        if not p.components and p.position_from_bridge_m is not None
+    ]
+    max_p_pos = max(single_positions, default=0.0935)
+    ref_pos = max(max_p_pos, 0.0935)
 
     return VoiceConfig(
         id=target_slug,
@@ -205,6 +212,8 @@ def voicing_to_voice_config(
         coils=coils,
         pickups=voice_pickups if len(voice_pickups) >= 2 else [],
         circuit=circuit,
+        ref_pos_m=ref_pos,
+        instrument_id=instrument.id,
     )
 
 

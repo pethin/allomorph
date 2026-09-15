@@ -37,9 +37,11 @@ from allomorph.naming import (
     resolve_instruments,
     resolve_voices,
 )
-from allomorph.physics import (
-    MEAN_BASS_F0,
+from allomorph.physics import MEAN_BASS_F0
+from allomorph.physics.aperture import (
+    UNIVERSAL_DATUM_POS_M,
     compute_displacement_proximity_shelf,
+    compute_pickup_isolation_leveling,
     compute_saddle_boundary_coupling,
     numpy_pickup_acoustic_response,
 )
@@ -111,6 +113,14 @@ def export_instrument_pickup_wav(
         or (curves is not None and len(curves) > 1)
     )
 
+    single_positions = [
+        float(p.position_from_bridge_m)
+        for p in inst.pickups.values()
+        if not p.components and p.position_from_bridge_m is not None
+    ]
+    max_p_pos = max(single_positions, default=UNIVERSAL_DATUM_POS_M)
+    ref_pos = max(max_p_pos, UNIVERSAL_DATUM_POS_M)
+
     if is_composite and src_pickup.components:
         N = 8192
         f_bins = np.fft.rfftfreq(N, 1.0 / 48000.0)
@@ -149,7 +159,10 @@ def export_instrument_pickup_wav(
 
             b_pos = branch_positions[i]
             h_pos = compute_displacement_proximity_shelf(f_bins, b_pos, scale_m=scale_m)
-            ac = ac_raw * h_pos
+            k_iso = compute_pickup_isolation_leveling(
+                b_pos, scale_m=scale_m, ref_pos_m=ref_pos
+            )
+            ac = ac_raw * h_pos * k_iso
 
             min_pos = min((c.position_from_bridge_m for c in b_coils), default=0.10)
             if min_pos < 0.075:
@@ -190,7 +203,10 @@ def export_instrument_pickup_wav(
         h_ac = numpy_pickup_acoustic_response(f, coils, scale_length_m=scale_range)
 
         h_pos = compute_displacement_proximity_shelf(f, eff_pos, scale_m=scale_m)
-        h_ac = h_ac * h_pos
+        k_iso = compute_pickup_isolation_leveling(
+            eff_pos, scale_m=scale_m, ref_pos_m=ref_pos
+        )
+        h_ac = h_ac * h_pos * k_iso
 
         min_pos = min((c.position_from_bridge_m for c in coils), default=0.10)
         if min_pos < 0.075:

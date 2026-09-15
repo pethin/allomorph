@@ -161,10 +161,10 @@ def test_compute_fir_csd():
 
 def test_spatial_bridge_proximity_displacement_ratio_in_visualizer():
     """Validates that build_voice_dataframe and build_voicings_comparison_dataframe accurately
-    reflect standing-wave bridge proximity fundamental displacement ratios:
-      - Precision Vintage (125mm): ~ +2.3 to +2.5 dB at 20 Hz
-      - Jazz Bridge Open (63.5mm): ~ -3.3 to -3.6 dB at 20 Hz
-      - Differential (Jazz Bridge - Precision): ~ -5.8 dB at 20 Hz
+    reflect standing-wave bridge proximity displacement and luthier pickup height isolation leveling (K_iso):
+      - Precision Vintage (125mm): ~ +2.2 to +2.5 dB at 20 Hz (K_iso = 0 dB identity)
+      - Jazz Bridge Open (63.5mm): ~ +1.1 to +1.5 dB at 20 Hz (lean bass shelf + K_iso setup boost)
+      - Jazz Bridge mid-register (1 kHz): ~ +4.8 to +5.2 dB, preserving lean bridge fundamental excursion
     """
     df_p = build_voice_dataframe("precision_vintage", VOICES["precision_vintage"], mode="output")
     df_j = build_voice_dataframe("jazz_bridge_open", VOICES["jazz_bridge_open"], mode="output")
@@ -175,14 +175,13 @@ def test_spatial_bridge_proximity_displacement_ratio_in_visualizer():
     # Precision Vintage has warm fundamental excursion (~ +2.27 dB) loaded by passive pot (-0.42 dB)
     assert 1.7 <= mag_p_20 <= 2.5, f"Precision 20 Hz dB {mag_p_20} outside [1.7, 2.5]"
 
-    # Jazz Bridge Open has lean fundamental attenuation (~ -3.42 dB) loaded by passive pot (-0.31 dB)
-    assert -4.0 <= mag_j_20 <= -3.0, f"Jazz Bridge 20 Hz dB {mag_j_20} outside [-4.0, -3.0]"
+    # Jazz Bridge Open incorporates luthier isolation leveling (K_iso ~ +5.26 dB) raising stage volume,
+    # giving +1.27 dB at 20 Hz while preserving lean fundamental excursion relative to mids (1 kHz ~ +4.95 dB)
+    assert 1.0 <= mag_j_20 <= 1.6, f"Jazz Bridge 20 Hz dB {mag_j_20} outside [1.0, 1.6]"
 
-    # Differential comparison matches theoretical -5.88 dB displacement ratio
-    diff_20 = mag_j_20 - mag_p_20
-    assert abs(diff_20 - (-5.88)) < 0.3, (
-        f"Differential 20 Hz cut {diff_20:.2f} dB deviated from -5.88 dB"
-    )
+    mag_j_1k = df_j.filter(pl.col("frequency") > 1000.0)["magnitude_db"].to_list()[0]
+    # Fundamental is leaner than mid-register by > 2.5 dB due to bridge displacement low-shelf
+    assert mag_j_20 < mag_j_1k - 2.5
 
     # Voicings comparison dataframe verifies Norm. Diff curve at 20 Hz
     df_comp = build_voicings_comparison_dataframe("precision_vintage", "jazz_bridge_open", step=1)

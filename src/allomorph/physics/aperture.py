@@ -168,6 +168,36 @@ def compute_displacement_proximity_shelf(
     return np.sqrt((g_0**2 + (f / 220.0) ** 2) / (1.0 + (f / 220.0) ** 2))
 
 
+def compute_pickup_isolation_leveling(
+    pos_m: float,
+    scale_m: float = UNIVERSAL_DATUM_SCALE_M,
+    ref_pos_m: float | None = None,
+    max_boost_db: float = 6.0,
+    alpha: float = 2.0,
+) -> float:
+    """Computes the luthier setup pickup height compensation factor in isolation.
+
+    On physical instruments, bridge pickups are mounted closer to the strings
+    and wound hotter to compensate for the smaller string displacement envelope (eta = x / L).
+    Returns a C^inf smooth linear gain multiplier (1.0 for neck/middle pickups; up to +6.0 dB for bridge pickups).
+    Evaluates with exact 1.0000 (0.00 dB) identity when pos_m >= ref_pos_m.
+    """
+    if pos_m <= 0.0 or scale_m <= 0.0:
+        return 1.0
+    eta = pos_m / scale_m
+    ref_eta = (
+        (ref_pos_m / scale_m)
+        if (ref_pos_m is not None and ref_pos_m > 0.0)
+        else UNIVERSAL_DATUM_ETA
+    )
+    deficit_db = 20.0 * math.log10(max(ref_eta / eta, 1e-4))
+    if deficit_db <= 0.0:
+        return 1.0
+    excess_db = float((np.logaddexp(0.0, alpha * deficit_db) - math.log(2.0)) / alpha)
+    boost_db = max_boost_db * math.tanh(max(excess_db, 0.0) / max_boost_db)
+    return float(10.0 ** (boost_db / 20.0))
+
+
 def is_voice_matching_source(
     instrument: InstrumentConfig | str,
     voice_id: str,

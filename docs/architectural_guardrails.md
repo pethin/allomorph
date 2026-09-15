@@ -88,6 +88,13 @@ Bass strings have finite flexural bending stiffness ($E I$), creating an exponen
 $$f_{\text{saddle}}(x) = 7200.0 \cdot \left(\frac{x}{0.075\text{ m}}\right) + 1200.0\text{ Hz}, \quad H_{\text{saddle}}(f, x) = \frac{1}{\sqrt{1 + (f / f_{\text{saddle}}(x))^2}}$$
 Evaluated differentially ($H_{\text{saddle,tgt}} / H_{\text{saddle,src}}$). Evaluates to exact $1.0000$ ($0.00\text{ dB}$) when $x \ge 0.075\text{ m}$ or on identity matching, gently rolling off brittle ultra-high-frequency artifacts ($> 7\text{ kHz}$) on close-bridge pickups without dulling mid growl.
 
+### 1.11 Luthier Individual Pickup Isolation Leveling ($K_{\text{iso}}$)
+On physical multi-pickup instruments (Jazz Bass, PJ, P/MM, Dingwall), luthiers mount bridge pickups significantly closer to the vibrating strings ($\sim 2.0\text{--}2.5\text{ mm}$ vs $\sim 3.5\text{--}4.0\text{ mm}$ at neck) and wind them with higher impedance/turns to compensate for the smaller string displacement envelope ($\eta(x) = x / L$). In accordance with the principle that **each pickup is leveled independently in isolation**, each pickup branch on an instrument is compensated by an individual luthier height factor:
+$$\text{deficit\_db} = 20 \log_{10}\left(\frac{\eta_{\text{ref}}}{\eta_P}\right), \quad \eta_{\text{ref}} = \max\left(\max_{j} \frac{x_j}{L}, \eta_{\text{datum}}\right)$$
+$$\text{excess\_db} = \frac{\ln\left(1 + e^{\alpha \cdot \text{deficit\_db}}\right) - \ln(2)}{\alpha}, \quad \alpha = 2.0$$
+$$K_{\text{iso}}(P) = 10^{\frac{M \cdot \tanh(\max(\text{excess\_db}, 0) / M)}{20}}, \quad M = 6.0\text{ dB}$$
+Evaluates to exact $1.0000$ ($0.00\text{ dB}$) when $x_P \ge x_{\text{ref}}$ (neck/middle pickups), $+5.26\text{ dB}$ on Jazz bridge, and $+4.51\text{ dB}$ on Dingwall bridge. Blended configurations (`pair_parallel`, `pair_active`, `p_mm_parallel`) sum these individually compensated pickup branch responses, preserving authentic comb-filtering notches and ensuring solo bridge voicings have full stage performance volume.
+
 ---
 
 ## 2. Mathematical Smoothness, Regularization & Boundary Continuity ($C^1 / C^\infty$)
@@ -166,8 +173,7 @@ This eliminates boundary discontinuity kinks and Gibbs truncation leakage across
 ### 3.4 Architecture D Normative Invariants (Direct Single-Block Digital Twin & Tone Pack Bundles)
 1. **Direct Single-Block Signal Flow:**
    - Replaces the legacy two-stage Canonical Intermediate architecture with direct single-block forward digital twin simulation.
-   - **Forward Simulation & Zero-Latency Alignment:** Synthesizes wet stems directly from dry string excitation ($W = X_{\text{dry}} * h_{\text{aperture}} * h_{\text{circuit}}$) using homomorphic minimum-phase causal FIRs starting strictly at sample 0 (zero latency, no artificial leading zeroes).
-   - **Calibrated RMS Volume Matching:** Guarantees uniform stage gain across all target voicings bounded by a $-0.09\text{ dBFS}$ (0.9900) true-peak ceiling.
+   - **Calibrated RMS Volume Matching & Linear Safety Ceiling:** Guarantees uniform stage gain across all target voicings calibrated to the $-18.0\text{ dBFS}$ RMS reference baseline. In Stage 11, linear whole-file peak scaling (`filtered * (CALIBRATION_PEAK_CEILING / max_peak)`) strictly bounds output true-peaks below $-0.09\text{ dBFS}$ (0.9900) without double-compressing the dynamic feel established by Stage 8 magnetic saturation. Peak-based linear scaling is strictly preferred over non-linear limiters to preserve transient dynamic transparency and authentic harmonic balance.
    - **A2 Studio Reference Standard:** Governed by $\text{ESR} \le 0.0080$ ($\approx -21\text{ dB}$ residual error on `optimal_bass_dry.wav`) with a $400$ max epoch safety ceiling and batch size $32$, monitoring the studio `channels_8` submodel (`ESR_packed_1`). In time-domain mean-squared error ($\text{ESR} = \sum (y - \hat{y})^2 / \sum y^2$), low-frequency fundamentals carry $80\text{--}90\%$ of total signal power. Training enables the full slimmable Architecture 2 container (`channels_3` + `channels_8`) by default, yielding lower ESR and superior dynamic fidelity over single-tier models. Isolating the 8-channel submodel alone is selectable via `--a2-lite-only`. Deep convergence ensures the optimizer resolves high-frequency pickup RLC resonant peaks ($3\text{--}5\text{ kHz}$), pick attack transients, and dual-pickup comb filtering without premature cutoff or perceptual high-frequency haziness.
 2. **Tone3000 Upload Bundles (`bundles/<pickup>/`):**
    - Solves Tone3000's strict 1 Dry + Multiple Wet Stems constraint by partitioning target voicings via physical position affinity (`neck`, `bridge`, `parallel`, `direct`).

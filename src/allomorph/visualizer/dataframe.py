@@ -35,9 +35,11 @@ from allomorph.dsp import (
 )
 from allomorph.physics import (
     MEAN_BASS_F0,
+    UNIVERSAL_DATUM_POS_M,
     compute_differential_longitudinal_transfer,
     compute_differential_string_transfer,
     compute_displacement_proximity_shelf,
+    compute_pickup_isolation_leveling,
     compute_saddle_boundary_coupling,
     compute_voice_prefilter_firs,
     is_voice_matching_source,
@@ -158,6 +160,7 @@ def build_voice_dataframe(
             tgt_scale_m = (tgt_scale_range[0] + tgt_scale_range[1]) / 2.0
             positions = [compute_effective_position(p.coils) for p in pickups]
             pos_max = max(positions) if positions else 0.0
+            ref_pos = cfg.ref_pos_m or max(pos_max, UNIVERSAL_DATUM_POS_M)
             c_mean = 2.0 * tgt_scale_m * MEAN_BASS_F0
 
             N = 8192
@@ -178,7 +181,10 @@ def build_voice_dataframe(
 
                 p_pos = compute_effective_position(p.coils)
                 h_pos = compute_displacement_proximity_shelf(f_bins, p_pos, scale_m=tgt_scale_m)
-                ac = ac_raw * h_pos
+                k_iso = compute_pickup_isolation_leveling(
+                    p_pos, scale_m=tgt_scale_m, ref_pos_m=ref_pos
+                )
+                ac = ac_raw * h_pos * k_iso
 
                 min_pos = min((c.position_from_bridge_m for c in p.coils), default=0.10)
                 if min_pos < 0.075:

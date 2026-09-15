@@ -176,13 +176,27 @@ def resolve_instruments(instrument_arg: str | Sequence[str] | None) -> list[str]
 def get_optimal_dry_basename(version_tag: str | None = None) -> str:
     """Generates the filename basename for the synthetic optimal bass dry calibration file.
 
-    Default version tag is single-part DSP generation 'v{dsp}' (e.g. 'v2'),
-    as the unvoiced synthetic excitation signal depends strictly on the core DSP physics generation.
-    Example: 'optimal_bass_dry_v2'
+    The unvoiced synthetic excitation signal depends strictly on the core DSP physics generation
+    (e.g. 'optimal_bass_dry_v3.wav'). Instrument- or voicing-level version tokens (like 'v3.1.1')
+    and 'auto' are mapped strictly to the DSP generation prefix ('v{DSP_GENERATION}').
+    Example: 'optimal_bass_dry_v3'
     """
     from allomorph.version import DSP_GENERATION
 
-    v_tag = version_tag or f"v{DSP_GENERATION}"
+    if not version_tag or version_tag in ("auto", "none"):
+        v_tag = f"v{DSP_GENERATION}"
+    elif "." in version_tag:
+        dsp_part = version_tag.split(".")[0]
+        v_tag = (
+            dsp_part
+            if (dsp_part.startswith("v") and dsp_part[1:].isdigit())
+            else f"v{DSP_GENERATION}"
+        )
+    elif version_tag.startswith("v") and version_tag[1:].isdigit():
+        v_tag = version_tag
+    else:
+        v_tag = f"v{DSP_GENERATION}"
+
     return f"optimal_bass_dry_{v_tag}"
 
 
