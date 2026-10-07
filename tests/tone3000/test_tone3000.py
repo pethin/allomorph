@@ -295,3 +295,22 @@ def test_generated_pack_storefront_descriptions():
         assert len(content) <= 10000, (
             f"Pack {pack_id} exceeds 10,000 characters: {len(content)}"
         )
+
+        # 6. Voicing entries match file names and have versions
+        voicing_lines = [
+            line.strip() for line in content.splitlines() if re.match(r"^\d{2}\.", line.strip())
+        ]
+        assert len(voicing_lines) >= 15, f"Pack {pack_id} has fewer than 15 voicings: {len(voicing_lines)}"
+
+        bundle_wav_stems = {
+            f.stem for f in desc_file.parent.glob("bundles/*/*.wav") if not f.name.startswith("dry")
+        }
+        for vline in voicing_lines:
+            assert re.match(r"^\d{2}\. .+ v\d+\.\d+\.\d+$", vline), (
+                f"Pack {pack_id} voicing line missing version tag: '{vline}'"
+            )
+            tone_entry = re.sub(r"^\d{2}\. ", "", vline)
+            if bundle_wav_stems:
+                assert tone_entry in bundle_wav_stems, (
+                    f"Pack {pack_id} voicing '{tone_entry}' does not match any bundle stem file name"
+                )

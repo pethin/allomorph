@@ -344,8 +344,8 @@ def _family_sort_key(fam: str, inst: InstrumentConfig) -> tuple[int, int]:
     return (1 if is_native else 0, order_idx)
 
 
-def _target_sort_key(target_item: tuple[str, str, str, str, str]) -> int:
-    slug, _, _, _, fam = target_item
+def _target_sort_key(target_item: tuple[str, str, str, str]) -> int:
+    slug, _, _, fam = target_item
     order_list = VOICE_ORDER_IN_FAMILY.get(fam, [])
     return order_list.index(slug) if slug in order_list else 99
 
@@ -357,9 +357,11 @@ def generate_storefront_description(
     """Generates standard Tone3000 storefront product listing description in raw text format."""
     total_targets = sum(len(b.targets) for b in bundles.values())
 
-    target_items: list[tuple[str, str, str, str, str]] = []
+    target_items: list[tuple[str, str, str, str]] = []
+    is_multi_pickup = len(bundles) > 1
     for b_name, b in bundles.items():
         pos_label = b.pickup.position_name or b_name.capitalize()
+        pos_tag = pos_label if is_multi_pickup else None
         for t in b.targets:
             raw_tone = t.voicing.tone_name or t.voicing.name
             raw_slug = raw_tone.lower().replace(" ", "_").replace("∕", "_").replace("/", "_")
@@ -381,11 +383,22 @@ def generate_storefront_description(
                 display_name = raw_tone
                 desc = f"{t.voicing.name} ({t.instrument.name})"
 
-            target_items.append((slug, display_name, pos_label, desc, family))
+            target_v_tag = resolve_tri_part_version(
+                DSP_GENERATION,
+                t.instrument.version,
+                t.voicing.version,
+            )
+            stem_base = get_t3k_basename(
+                tone_name=display_name,
+                position_name=pos_tag,
+                version_tag=target_v_tag,
+            )
 
-    grouped: dict[str, list[tuple[str, str, str, str, str]]] = {}
+            target_items.append((slug, stem_base, desc, family))
+
+    grouped: dict[str, list[tuple[str, str, str, str]]] = {}
     for item in target_items:
-        grouped.setdefault(item[4], []).append(item)
+        grouped.setdefault(item[3], []).append(item)
 
     sorted_families = sorted(grouped.keys(), key=lambda f: _family_sort_key(f, inst))
 
@@ -505,10 +518,9 @@ def generate_storefront_description(
         lines.append("")
         lines.append(fam)
         lines.append("")
-        for slug, display_name, pos_label, desc, _ in grouped[fam]:
-            tag = f" [{pos_label}]" if len(bundles) > 1 else ""
+        for slug, stem_base, desc, _ in grouped[fam]:
             num_str = f"{count:02d}."
-            lines.append(f"{num_str} {display_name}{tag}")
+            lines.append(f"{num_str} {stem_base}")
             lines.append(desc)
             lines.append("")
             count += 1

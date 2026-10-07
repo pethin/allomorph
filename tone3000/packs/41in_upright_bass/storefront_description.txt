@@ -41,88 +41,88 @@ THE 23 DIGITAL TWIN VOICINGS
 
 Precision Bass & Tone Shaper Family
 
-01. Precision Vintage
+01. Precision Vintage v4.1.1
 The gold standard: a vintage 1962 Precision Bass with tone wide open. Warm, woody low-mids, open harmonic bloom, and organic touch sensitivity that sits perfectly in any mix.
 
-02. Precision Active
+02. Precision Active v4.1.1
 Modern active ceramic split-coil P-bass tone with 2-band preamp. Punchy, articulate, and wideband with authoritative low-end weight and bright transient clarity—built for modern rock, gospel, and mix cutting authority.
 
-03. Precision Mids
+03. Precision Mids v4.1.1
 Vintage P-bass with a modern vocal low-mid punch. Cuts finger clatter and high-end sizzle while keeping a muscular, forward presence in a busy mix.
 
-04. Precision Warm
+04. Precision Warm v4.1.1
 The legendary Motown flatwound sound (James Jamerson / Pino Palladino). Fat, pillowy sub-bass thump with rolled-off highs that glues the groove together.
 
-05. Precision Dub
+05. Precision Dub v4.1.1
 Ultra-deep vintage '50s dub spec. Pure, earth-shaking sub-bass thump with zero top-end click—perfect for reggae, dub, hip-hop, and classic R&B.
 
 
 Jazz Bass Family
 
-06. Jazz Pair Active
+06. Jazz Pair Active v4.1.1
 The quintessential NYC active slap tone: tight, massive sub-bass and crisp, glassy highs with a scooped midrange that pops right out of a dense mix.
 
-07. Jazz Pair Open
+07. Jazz Pair Open v4.1.1
 The golden-era '60s Jazz Bass sound. Both pickups wide open deliver that iconic hollow midrange scoop, warm low-mids, and smooth, singing top-end.
 
-08. Jazz Pair Mids
+08. Jazz Pair Mids v4.1.1
 Jazz Bass pair with a vocal midrange punch. Thickens up your fingerstyle attack and smooths out harsh fret clank while keeping every note articulate.
 
-09. Jazz Bridge Growl
+09. Jazz Bridge Growl v4.1.1
 The unmistakable Jaco Pastorius tone: rolling the neck volume back just a touch unlocks that singing, vocal, honky bridge growl without losing low-end body.
 
-10. Jazz Bridge Open
+10. Jazz Bridge Open v4.1.1
 Solo '60s bridge single-coil. Tight, laser-focused midrange bite and percussive attack, perfect for 16th-note funk and fast staccato fingerstyle.
 
-11. Jazz Neck Warm
+11. Jazz Neck Warm v4.1.1
 Solo '60s neck single-coil. Deep, warm, and round with a woody low-end bloom that rivals a P-bass while retaining single-coil openness.
 
 
 Music Man StingRay Family
 
-12. StingRay Parallel
+12. StingRay Parallel v4.1.1
 The iconic Music Man StingRay sound: thunderous low end, aggressive metallic slap clank, and that hollow midrange scoop heard on thousands of hit records.
 
-13. StingRay Series
+13. StingRay Series v4.1.1
 StingRay wired in series for a hotter, thicker signal with punchy low-mids and an aggressive, in-your-face rock bark.
 
 
 P/J Bass Family
 
-14. PJ Active
+14. PJ Active v4.1.1
 Modern active P/J punch (Sadowsky/Spector style). Combines thick split-coil body with bridge single-coil cut, boosted by a powerful active 2-band EQ.
 
-15. PJ Passive
+15. PJ Passive v4.1.1
 Classic '80s rock P/J tone (Fender Precision Special / Yamaha BB). Thick hard-rock punch with aggressive midrange bite and authoritative low-end grunt.
 
 
 P/MM Modern Hybrids
 
-16. P∕MM Parallel
+16. P∕MM Parallel v4.1.1
 Modern boutique session hybrid (Sandberg California / Lakland style). Blends the warm body of a P-bass neck with the punchy slap bite of a Music Man bridge humbucker.
 
-17. P∕MM Series
+17. P∕MM Series v4.1.1
 P-bass neck and Music Man bridge wired in series for a massive wall of sound with immense low-mid thrust and heavy overdrive sustain.
 
 
 Progressive & Classic Rock Legends
 
-18. Rickenbacker Clank
+18. Rickenbacker Clank v4.1.1
 The quintessential prog-rock clank (Chris Squire / Geddy Lee). Tight, lean low end with biting, aggressive pick attack and cutting upper-mid grit.
 
-19. Rickenbacker Open
+19. Rickenbacker Open v4.1.1
 Modern 4003 bridge tone with the vintage capacitor bypassed. Fuller low-end body and punch while retaining that signature biting Rickenbacker top-end cut.
 
-20. Dingwall Bridge
+20. Dingwall Bridge v4.1.1
 Modern progressive metal tone: razor-sharp pick clank, extreme note clarity, and piano-like low-B definition tailored for drop tunings and heavy distortion.
 
-21. Dingwall Middle
+21. Dingwall Middle v4.1.1
 FD3 middle pickup solo: focused, aggressive low-mid grunt and punchy growl with exceptional articulation across all registers.
 
-22. Dingwall Parallel
+22. Dingwall Parallel v4.1.1
 FD3 bridge and middle coils in parallel: modern scooped aggression with ultra-fast transient attack, tight sub-bass, and pristine harmonic sparkle.
 
-23. Mudbucker Deep
+23. Mudbucker Deep v4.1.1
 The legendary Gibson "Mudbucker": a dark, colossal wall of pure vintage bass rumble with zero top-end harshness—pure '60s and '70s British blues-rock.
 
 
