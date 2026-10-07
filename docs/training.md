@@ -82,7 +82,8 @@ For web training on Tone3000, bundles are generated via `allomorph --stage pack`
 | **Architecture** | `--architecture` | `A2` | Modern slimmable Architecture 2 (`channels_3` + `channels_8`) |
 | **Submodel Mode** | `--a2-lite-only` | `False` | When True, isolates the `channels_8` submodel only |
 | **Batch Size** | `--batch-size` | `32` | Optimizes GPU core saturation and gradient stability |
-| **Goal ESR** | `--goal-esr` | `0.0080` | Studio Reference Early Stopping target ($\approx -21\text{ dB}$ ESR) |
+| **Min Epochs** | `--min-epochs` | `180` | Minimum epoch floor before early stopping is permitted |
+| **Goal ESR** | `--goal-esr` | `0.0002` | Studio Reference Early Stopping target ($\approx -37.0\text{ dB}$ ESR) |
 | **Max Epochs** | `--epochs` | `400` | Safety ceiling to prevent over-fitting on noise floor |
 | **Sample Rate** | `--sample-rate`| `48000` | Standard Darkglass Anagram & professional audio clock rate |
 

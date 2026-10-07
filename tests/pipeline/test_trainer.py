@@ -52,10 +52,21 @@ def test_default_goal_esr():
 
     from train_nam import DEFAULT_GOAL_ESR, train_voice
 
-    assert DEFAULT_GOAL_ESR == 0.0080
+    assert DEFAULT_GOAL_ESR == 0.0002
     sig = inspect.signature(train_voice)
     assert "goal_esr" in sig.parameters
     assert sig.parameters["goal_esr"].default == DEFAULT_GOAL_ESR
+
+
+def test_default_min_epochs():
+    import inspect
+
+    from train_nam import DEFAULT_MIN_EPOCHS, train_voice
+
+    assert DEFAULT_MIN_EPOCHS == 180
+    sig = inspect.signature(train_voice)
+    assert "min_epochs" in sig.parameters
+    assert sig.parameters["min_epochs"].default == DEFAULT_MIN_EPOCHS
 
 
 def test_train_nam_cli_goal_esr_parsing():
@@ -75,7 +86,7 @@ def test_train_nam_cli_goal_esr_parsing():
         if args.no_goal_esr or (args.goal_esr is not None and args.goal_esr <= 0)
         else args.goal_esr
     )
-    assert effective == 0.0080
+    assert effective == 0.0002
 
     # Custom goal ESR
     args = parser.parse_args(["--goal-esr", "0.0001"])
@@ -103,6 +114,23 @@ def test_train_nam_cli_goal_esr_parsing():
         else args.goal_esr
     )
     assert effective is None
+
+
+def test_train_nam_cli_min_epochs_parsing():
+    import argparse
+
+    from train_nam import DEFAULT_MIN_EPOCHS
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--min-epochs", type=int, default=DEFAULT_MIN_EPOCHS)
+
+    # Default case
+    args = parser.parse_args([])
+    assert args.min_epochs == 180
+
+    # Custom min epochs
+    args = parser.parse_args(["--min-epochs", "160"])
+    assert args.min_epochs == 160
 
 
 def test_train_voice_a2_lite_only_parameter():
@@ -153,57 +181,88 @@ def test_configure_a2_architecture():
 
 def test_esr_progress_callback_hook():
     import nam.train.core as nam_core
+    import torch
     from train_nam import configure_a2_architecture
 
     # Test slimmable mode early stopping monitors ESR_packed_1 (channels_8)
-    configure_a2_architecture(nam_core, a2_lite_only=False)
-    callbacks = nam_core.get_callbacks(threshold_esr=0.0080)
+    configure_a2_architecture(nam_core, a2_lite_only=False, min_epochs=180)
+    callbacks = nam_core.get_callbacks(threshold_esr=0.0002)
 
     cb: Any = next((c for c in callbacks if "EsrProgressCallback" in type(c).__name__), None)
     assert cb is not None
-    assert cb.target_esr == 0.0080
+    assert cb.target_esr == 0.0002
     assert cb.a2_lite_only is False
+    assert cb.min_epochs == 180
 
     vs_cb: Any = next((c for c in callbacks if "ValidationStopping" in type(c).__name__), None)
     assert vs_cb is not None
     assert vs_cb.monitor == "ESR_packed_1"
-    assert vs_cb.stopping_threshold == 0.0080
+    assert vs_cb.stopping_threshold == 0.0002
+    assert vs_cb.min_epochs == 180
 
     # Test lite-only mode early stopping monitors ESR
-    configure_a2_architecture(nam_core, a2_lite_only=True)
-    callbacks_lite = nam_core.get_callbacks(threshold_esr=0.0080)
+    configure_a2_architecture(nam_core, a2_lite_only=True, min_epochs=180)
+    callbacks_lite = nam_core.get_callbacks(threshold_esr=0.0002)
     vs_cb_lite: Any = next(
         (c for c in callbacks_lite if "ValidationStopping" in type(c).__name__), None
     )
     assert vs_cb_lite is not None
     assert vs_cb_lite.monitor == "ESR"
+    assert vs_cb_lite.stopping_threshold == 0.0002
+    assert vs_cb_lite.min_epochs == 180
 
     # Test threshold_esr=None adds no stopping callback
     callbacks_none = nam_core.get_callbacks(threshold_esr=None)
     assert not any("ValidationStopping" in type(c).__name__ for c in callbacks_none)
 
     # Re-test slimmable validation epoch end with dual submodel metrics
-    configure_a2_architecture(nam_core, a2_lite_only=False)
-    callbacks = nam_core.get_callbacks(threshold_esr=0.0080)
+    configure_a2_architecture(nam_core, a2_lite_only=False, min_epochs=180)
+    callbacks = nam_core.get_callbacks(threshold_esr=0.0002)
     cb: Any = next(c for c in callbacks if "EsrProgressCallback" in type(c).__name__)
+    vs_cb: Any = next(c for c in callbacks if "ValidationStopping" in type(c).__name__)
 
     class DummyTrainer:
         def __init__(self) -> None:
             self.sanity_checking = False
             self.callback_metrics = {
-                "ESR_packed_1": 0.0078,
-                "ESR_packed_0": 0.0145,
-                "ESR": 0.0223,
+                "ESR_packed_1": 0.0005,
+                "ESR_packed_0": 0.0008,
+                "ESR": 0.0013,
             }
             self.progress_bar_metrics: dict[str, str] = {}
             self.current_epoch = 12
             self.max_epochs = 400
 
     trainer: Any = DummyTrainer()
-    cb.on_validation_epoch_end(trainer, None)
-    assert trainer.progress_bar_metrics["val_ESR"] == "0.00780"
-    assert trainer.progress_bar_metrics["val_ESR_ch8"] == "0.00780"
-    assert trainer.progress_bar_metrics["val_ESR_ch3"] == "0.01450"
-    assert trainer.progress_bar_metrics["best_ESR"] == "0.00780"
-    assert cb.best_esr == 0.0078
-    assert cb.best_ch3_esr == 0.0145
+    dummy_pl_module: Any = None
+    cb.on_validation_epoch_end(trainer, dummy_pl_module)
+    assert trainer.progress_bar_metrics["val_ESR"] == "0.00050"
+    assert trainer.progress_bar_metrics["val_ESR_ch8"] == "0.00050"
+    assert trainer.progress_bar_metrics["val_ESR_ch3"] == "0.00080"
+    assert trainer.progress_bar_metrics["best_ESR"] == "0.00050"
+    assert cb.best_esr == 0.0005
+    assert cb.best_ch3_esr == 0.0008
+
+    # Test min_epochs guard prevents early stopping before epoch 180 even when ESR is very low (e.g. 0.00015 < 0.0002)
+    class DummyStrategy:
+        @staticmethod
+        def reduce_boolean_decision(decision: bool, all: bool = False) -> bool:
+            return decision
+
+    class EarlyStoppingTestTrainer:
+        def __init__(self, current_epoch: int) -> None:
+            self.fast_dev_run = False
+            self.current_epoch = current_epoch
+            self.should_stop = False
+            self.callback_metrics = {"ESR_packed_1": torch.tensor(0.00015)}
+            self.strategy = DummyStrategy()
+
+    # At epoch 12 (< 180), stopping condition (0.00015 <= 0.0002) is met, but guard suppresses should_stop
+    trainer_early = EarlyStoppingTestTrainer(current_epoch=12)
+    vs_cb._run_early_stopping_check(trainer_early)
+    assert trainer_early.should_stop is False
+
+    # At epoch 185 (>= 180), stopping condition (0.00015 <= 0.0002) is met and triggers should_stop = True
+    trainer_late = EarlyStoppingTestTrainer(current_epoch=185)
+    vs_cb._run_early_stopping_check(trainer_late)
+    assert trainer_late.should_stop is True

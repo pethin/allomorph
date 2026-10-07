@@ -102,8 +102,9 @@ def test_nam_training_config_validation():
     assert cfg.instrument == "all"
     assert cfg.voice == "all"
     assert cfg.epochs == 400
+    assert cfg.min_epochs == 180
     assert cfg.batch_size == 32
-    assert cfg.goal_esr == 0.0080
+    assert cfg.goal_esr == 0.0002
     assert cfg.a2_lite_only is False
 
     # Valid custom configuration
@@ -111,11 +112,13 @@ def test_nam_training_config_validation():
         instrument="30in",
         voice="precision_vintage",
         epochs=50,
+        min_epochs=20,
         batch_size=64,
         fast_dev_run=True,
         a2_lite_only=True,
     )
     assert custom.epochs == 50
+    assert custom.min_epochs == 20
     assert custom.batch_size == 64
     assert custom.a2_lite_only is True
 

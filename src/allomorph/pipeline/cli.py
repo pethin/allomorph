@@ -173,14 +173,20 @@ def main(argv: Sequence[str] | None = None):
     parser.add_argument(
         "--epochs",
         type=int,
-        default=500,
-        help="Maximum number of training epochs for NAM model (default: 500 for A2-Lite studio reference)",
+        default=400,
+        help="Maximum number of training epochs for NAM model (default: 400 for Architecture 2 studio reference)",
+    )
+    parser.add_argument(
+        "--min-epochs",
+        type=int,
+        default=180,
+        help="Minimum number of training epochs before early stopping can trigger (default: 180)",
     )
     parser.add_argument(
         "--goal-esr",
         type=float,
-        default=0.0005,
-        help="Goal validation ESR for early stopping (default: 0.0005 for A2-Lite studio reference; set to 0 to disable)",
+        default=0.0002,
+        help="Goal validation ESR for early stopping (default: 0.0002 for Architecture 2 studio reference; set to 0 to disable)",
     )
     parser.add_argument(
         "--no-goal-esr",
@@ -313,9 +319,13 @@ def main(argv: Sequence[str] | None = None):
         from allomorph.circuit.audit import audit_wet_audio_catalog
 
         if force_exec:
-            print("\n[QA Telemetry Audit] Performing deep audio signal verification across wet audio digital twins...")
+            print(
+                "\n[QA Telemetry Audit] Performing deep audio signal verification across wet audio digital twins..."
+            )
         else:
-            print("\n[QA Telemetry Audit] Scanning wet audio digital twins (manifest-accelerated)...")
+            print(
+                "\n[QA Telemetry Audit] Scanning wet audio digital twins (manifest-accelerated)..."
+            )
         report = audit_wet_audio_catalog(force=force_exec)
         print("\n=================== AUDIO TELEMETRY REPORT ===================")
         print(f"  Total Files:        {report.total_files}")
@@ -387,6 +397,7 @@ def main(argv: Sequence[str] | None = None):
                     voice=voice,
                     input_wav=input_wav,
                     epochs=args.epochs,
+                    min_epochs=args.min_epochs,
                     goal_esr=effective_goal_esr,
                     fast_dev_run=args.fast_dev_run,
                     batch_size=args.batch_size,

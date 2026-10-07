@@ -147,10 +147,15 @@ class NamTrainingConfig(AllomorphBaseModel):
         gt=0,
         description="Maximum number of training epochs (default: 400 for Architecture 2 studio reference)",
     )
+    min_epochs: int = Field(
+        default=180,
+        ge=0,
+        description="Minimum number of training epochs before early stopping can trigger (default: 180)",
+    )
     goal_esr: float | None = Field(
-        default=0.0080,
+        default=0.0002,
         ge=0.0,
-        description="Goal validation ESR for early stopping (default: 0.0080 for Architecture 2 studio reference)",
+        description="Goal validation ESR for early stopping (default: 0.0002 for Architecture 2 studio reference)",
     )
     no_goal_esr: bool = False
     batch_size: int = Field(default=32, gt=0)

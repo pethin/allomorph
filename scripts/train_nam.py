@@ -85,9 +85,8 @@ def find_sweep_input(
     return find_default_input_audio(version_tag=version_tag)
 
 
-DEFAULT_GOAL_ESR = (
-    0.0080  # Architecture 2 studio reference stretch target (~ -21 dB ESR on optimal_bass_dry.wav)
-)
+DEFAULT_GOAL_ESR = 0.0002  # Architecture 2 studio reference stretch target (~ -37.0 dB ESR on optimal_bass_dry.wav)
+DEFAULT_MIN_EPOCHS = 180  # Architecture 2 minimum epoch floor before early stopping is permitted
 DEFAULT_MAX_EPOCHS = 400  # Architecture 2 studio reference epoch safety ceiling
 DEFAULT_BATCH_SIZE = 32  # Standard batch size for high GPU core utilization
 from allomorph.naming import get_default_input_path
@@ -95,7 +94,11 @@ from allomorph.naming import get_default_input_path
 DEFAULT_INPUT_PATH = get_default_input_path()
 
 
-def configure_a2_architecture(nam_core: Any, a2_lite_only: bool = False) -> None:
+def configure_a2_architecture(
+    nam_core: Any,
+    a2_lite_only: bool = False,
+    min_epochs: int = DEFAULT_MIN_EPOCHS,
+) -> None:
     """Configure NAM Architecture 2 packed model submodels and ESR progress logging.
 
     By default (a2_lite_only=False), retains all submodels (channels_3 + channels_8)
@@ -145,10 +148,12 @@ def configure_a2_architecture(nam_core: Any, a2_lite_only: bool = False) -> None
             self,
             target_esr: float | None = None,
             a2_lite_only: bool = False,
+            min_epochs: int = DEFAULT_MIN_EPOCHS,
         ) -> None:
             super().__init__()
             self.target_esr: float | None = target_esr
             self.a2_lite_only: bool = a2_lite_only
+            self.min_epochs: int = min_epochs
             self.best_esr: float = float("inf")
             self.best_ch3_esr: float = float("inf")
 
@@ -163,7 +168,12 @@ def configure_a2_architecture(nam_core: Any, a2_lite_only: bool = False) -> None
             target_str: str = ""
             if self.target_esr is not None:
                 target_db: float = 10.0 * math.log10(max(self.target_esr, 1e-12))
-                target_str = f" | Target: {self.target_esr:.6f} ({target_db:+.2f} dB)"
+                min_ep_str = (
+                    f" (guard: active after ep {self.min_epochs})"
+                    if epoch < self.min_epochs
+                    else " (guard passed)"
+                )
+                target_str = f" | Target: {self.target_esr:.6f} ({target_db:+.2f} dB){min_ep_str}"
 
             if self.a2_lite_only:
                 raw_esr: Any = metrics.get("ESR")
@@ -233,11 +243,15 @@ def configure_a2_architecture(nam_core: Any, a2_lite_only: bool = False) -> None
     def get_callbacks_with_logging(
         threshold_esr: float | None = None,
         *args: Any,
+        min_epochs_override: int | None = None,
         **kwargs: Any,
     ) -> list[Any]:
         # Call orig_get_callbacks with threshold_esr=None to configure base callbacks
         # without hardcoding monitor="ESR".
         callbacks: list[Any] = orig_get_callbacks(None, *args, **kwargs)
+        effective_min_epochs = (
+            min_epochs_override if min_epochs_override is not None else min_epochs
+        )
 
         # In slimmable mode, monitor ESR_packed_1 (channels_8) so early stopping
         # targets the studio model that runs on the Darkglass Anagram.
@@ -245,11 +259,37 @@ def configure_a2_architecture(nam_core: Any, a2_lite_only: bool = False) -> None
             monitor_key = "ESR" if a2_lite_only else "ESR_packed_1"
             stopping_cb_cls = getattr(nam_core, "_ValidationStopping", None)
             if stopping_cb_cls is not None:
+
+                class AllomorphValidationStopping(stopping_cb_cls):  # type: ignore[misc, valid-type]
+                    """Early stopping callback that respects a minimum epoch floor before stopping."""
+
+                    def __init__(
+                        self,
+                        *cb_args: Any,
+                        min_epochs: int = effective_min_epochs,
+                        **cb_kwargs: Any,
+                    ) -> None:
+                        super().__init__(*cb_args, **cb_kwargs)
+                        self.min_epochs = min_epochs
+
+                    def _run_early_stopping_check(self, trainer: Any) -> None:
+                        if getattr(trainer, "current_epoch", 0) < self.min_epochs:
+                            return
+                        super()._run_early_stopping_check(trainer)
+
                 callbacks.append(
-                    stopping_cb_cls(monitor=monitor_key, stopping_threshold=threshold_esr)
+                    AllomorphValidationStopping(
+                        monitor=monitor_key,
+                        stopping_threshold=threshold_esr,
+                        min_epochs=effective_min_epochs,
+                    )
                 )
 
-        progress_cb = EsrProgressCallback(target_esr=threshold_esr, a2_lite_only=a2_lite_only)
+        progress_cb = EsrProgressCallback(
+            target_esr=threshold_esr,
+            a2_lite_only=a2_lite_only,
+            min_epochs=effective_min_epochs,
+        )
         nam_core._last_esr_callback = progress_cb
         callbacks.append(progress_cb)
         return callbacks
@@ -264,6 +304,7 @@ def train_voice(
     output_wav: str | Path | None = None,
     models_dir: str | Path = MODELS_DIR,
     epochs: int = DEFAULT_MAX_EPOCHS,
+    min_epochs: int = DEFAULT_MIN_EPOCHS,
     goal_esr: float | None = DEFAULT_GOAL_ESR,
     batch_size: int = DEFAULT_BATCH_SIZE,
     silent: bool = True,
@@ -286,7 +327,7 @@ def train_voice(
         if hasattr(torch, "backends") and hasattr(torch.backends, "cudnn"):
             torch.backends.cudnn.benchmark = False
 
-        configure_a2_architecture(nam_core, a2_lite_only=a2_lite_only)
+        configure_a2_architecture(nam_core, a2_lite_only=a2_lite_only, min_epochs=min_epochs)
     except ImportError:
         print("Error: 'neural-amp-modeler' is not installed in the current environment.")
         print("Please run `uv sync` or install project dependencies:")
@@ -435,11 +476,12 @@ def train_voice(
     print(f"  Input Audio: {input_path.name}")
     print(f"  Output Audio:{output_path.name}")
     print(f"  Max Epochs:  {epochs}")
+    print(f"  Min Epochs:  {min_epochs if threshold_esr is not None else 'N/A'}")
     esr_display = (
-        f"{threshold_esr:.6f} (A2-Lite Studio Reference Early Stopping)"
+        f"{threshold_esr:.6f} (A2-Lite Studio Reference Early Stopping, min {min_epochs} epochs)"
         if (threshold_esr is not None and a2_lite_only)
         else (
-            f"{threshold_esr:.6f} (A2 Slimmable Studio Reference Early Stopping, Ch8 <= {threshold_esr:.6f})"
+            f"{threshold_esr:.6f} (A2 Slimmable Studio Reference Early Stopping, Ch8 <= {threshold_esr:.6f}, min {min_epochs} epochs)"
             if threshold_esr is not None
             else "Disabled (Fixed Epochs)"
         )
@@ -572,7 +614,9 @@ def train_voice(
             esr_status = ""
             if threshold_esr is not None:
                 if best_studio_esr <= threshold_esr:
-                    esr_status = f" (Goal Met <= {threshold_esr:.6f})"
+                    esr_status = (
+                        f" (Goal Met <= {threshold_esr:.6f}, min {min_epochs} epochs observed)"
+                    )
                 else:
                     esr_status = f" (Safety ceiling reached at {epochs} epochs)"
             if not a2_lite_only:
@@ -621,6 +665,12 @@ def main():
         type=int,
         default=DEFAULT_MAX_EPOCHS,
         help=f"Maximum number of training epochs (default: {DEFAULT_MAX_EPOCHS} for Architecture 2 studio reference)",
+    )
+    parser.add_argument(
+        "--min-epochs",
+        type=int,
+        default=DEFAULT_MIN_EPOCHS,
+        help=f"Minimum number of training epochs before early stopping can trigger (default: {DEFAULT_MIN_EPOCHS})",
     )
     parser.add_argument(
         "--goal-esr",
@@ -682,6 +732,7 @@ def main():
             "output_wav": args.output,
             "models_dir": args.models_dir,
             "epochs": args.epochs,
+            "min_epochs": args.min_epochs,
             "goal_esr": args.goal_esr,
             "no_goal_esr": args.no_goal_esr,
             "batch_size": args.batch_size,
@@ -738,6 +789,7 @@ def main():
                 output_wav=out_wav,
                 models_dir=cli_cfg.models_dir,
                 epochs=cli_cfg.epochs,
+                min_epochs=cli_cfg.min_epochs,
                 goal_esr=effective_goal_esr,
                 batch_size=cli_cfg.batch_size,
                 silent=not cli_cfg.show_plot,
