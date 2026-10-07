@@ -1477,14 +1477,46 @@ def generate_optimal_bass_dry(
         )
         append_segment(sp_pair, 0.4)
 
-    # D. String-tilted logarithmic harmonic sweep filling cleanly to exact duration
-    rem_samples = max(0, total_samples - trail_silence - cur)
-    if rem_samples > int(0.5 * sample_rate):
-        dur_fill = rem_samples / sample_rate
+    # D. String-tilted logarithmic harmonic sweep filling the training set up to pre-validation boundary
+    val_samples = 432_000  # NAM V3 validation window (last 9.0s at 48 kHz)
+    val_start = total_samples - val_samples
+    pre_val_pause_samples = int(0.5 * sample_rate)
+    train_fill_limit = val_start - pre_val_pause_samples
+
+    if cur < train_fill_limit - int(0.5 * sample_rate):
+        dur_fill = (train_fill_limit - cur) / sample_rate
         c_fill = _synth_log_chirp(
             dur_fill, 15.0, 22000.0, 0.35, sample_rate, string_tilt=True, f_corner=1200.0
         )
         append_segment(c_fill, 0.0)
+
+    # Enforce pure digital silence before validation window (zero transient bleed into NAM validation)
+    cur = max(cur, val_start)
+
+    # E. Dedicated Representative Bass Validation Suite (samples[-432_000:])
+    # 1. Sub-bass fundamental decay with Lenz drag (Low-B0 30.87 Hz)
+    v_ring = _synth_long_ringout(30.87, 0.85, max(1.0, 2.8 * scale), sample_rate)
+    append_segment(v_ring, 0.35)
+
+    # 2. Pick tremolo groove burst at 140 BPM on E1 (41.20 Hz, 8 strikes)
+    v_groove = _synth_groove_burst(
+        41.20, 0.80, bpm=140.0, count=8, sample_rate=sample_rate, technique="pick"
+    )
+    append_segment(v_groove, 0.35)
+
+    # 3. Slap & Pop octave pair (E1 -> E2)
+    v_slap = _synth_slap_pop_pair(
+        41.20, 82.41, 0.88, gap_ms=65.0, dur=max(0.4, 1.4 * scale), sample_rate=sample_rate
+    )
+    append_segment(v_slap, 0.35)
+
+    # 4. Natural harmonic bell chime (A2 123.6 Hz)
+    v_harm = _synth_natural_harmonic(123.6, 0.75, max(0.4, 1.6 * scale), sample_rate)
+    append_segment(v_harm, 0.35)
+
+    # 5. Palm-mute punch on A1 (55.00 Hz)
+    v_pm = _synth_pluck(55.00, 0.82, max(0.3, 0.6 * scale), sample_rate, technique="palm_mute")
+    append_segment(v_pm, 0.0)
 
     # Zero-DC centering on active regions (preserves pure zero digital silence in rests)
     active_mask = audio != 0.0
