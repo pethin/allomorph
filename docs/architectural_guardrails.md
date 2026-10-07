@@ -224,6 +224,40 @@ The interactive Voicing Comparator visualizer (`docs/frequency_responses/voicing
 #### 3.7.2 Performance & Vectorization Mandate
 All visualizer curves must be evaluated using precomputed, globally cached universal target matrices (`get_cached_target_dfs`) and vectorized NumPy array operations without invoking multi-rate FFT solvers inside per-pickup loops. Full generation of all charts must complete in $< 5.0\text{ seconds}$ (verified in `tests/test_guardrails.py`).
 
+### 3.8 DSP Generation 4: Universal Forward Twin & Audio Telemetry Pipeline
+
+DSP Generation 4 (Allomorph v0.4.0) establishes the next-generation forward simulation architecture for synthesizing 24-bit PCM digital twins directly from dry excitation audio, eliminating canonical intermediate abstractions, hardcoded piecewise branch combiners, and heuristic level matching.
+
+#### 3.8.1 Physical Invariant: Branch-Wise Pre-Summing Saturation
+In physical multi-pickup bass systems (e.g. Jazz Bass neck + bridge, PJ split + J single coil, Dingwall multi-scale dual coils), vibrating strings induce independent magnetic flux variations across physically separated magnetic apertures with different pole pieces, individual heights, and localized clearance. The non-linear dynamics of magnetic saturation occur in each pickup branch independently before electrical current summation at the control harness:
+1. **Discrete Branch Processing:** Each pickup branch $i \in [1, M]$ is convolved with its individual acoustic aperture response ($H_{\text{ac}, i}$), loaded circuit transfer ($H_{\text{elec}, i}$), and causal arrival delay ($\tau_i$).
+2. **Branch-Wise Saturation:** State-space non-linear saturation (`apply_oversampled_saturation`) is evaluated individually per branch using the specific sub-pickup's magnet properties ($V_{\text{sat}, i}, \alpha_i, k_{\text{sag}, i}, \kappa_{\text{ap}, i}$).
+3. **Current Summation & Spatial Coherence:** The saturated branch signals are summed in the time domain ($x_{\text{sum}}[n] = \sum_i x_i[n]$). If cross-coherence arrival delay is active ($\Delta\text{samples} > 0$), the cross-coherence filter:
+   $$H_{\text{spatial}}(f) = \frac{\sqrt{\gamma(f) P_{\text{coh}}(f) + (1 - \gamma(f)) P_{\text{incoh}}(f)}}{\max(|H_{\text{coh}}(f)|, 10^{-4})}$$
+   is synthesized into a causal minimum-phase FIR ($N = 1024$) and applied to the summed audio.
+4. **Downstream Staging:** Active preamp EQ ($H_{\text{preamp}}$), scale tension snap ($H_{\text{tension}}$), and string mechanics ($H_{\text{long}} \cdot H_{\text{string}}$) are applied downstream of the summed, saturated signal.
+5. **Linear Small-Signal Invariant:** On small signals ($\le 0.10$ peak), saturation kernels bypass non-linearity bit-exactly, guaranteeing that branch-wise simulation reduces mathematically to the unified linear convolution.
+
+#### 3.8.2 Psychoacoustic Invariant: EBU R128 / ITU-R BS.1770-4 Gated LUFS Matching
+Output stage gain must reflect human perceptual loudness rather than raw unweighted RMS energy. Standard bass frequency rolloffs (e.g. passive tone circuits with 47nF or 100nF capacitors) attenuate high frequencies by $-25\text{ to } -45\text{ dB}$, which unfairly skews unweighted RMS on synthetic test signals.
+1. **ITU-R BS.1770-4 K-Weighting:** Audio is processed through the standard 2-stage K-weighting filter:
+   - Stage 1: High-shelf pre-filter modeling head acoustic diffraction ($f_0 = 1681.97\text{ Hz}, G = +3.999\text{ dB}, Q = 0.7071$).
+   - Stage 2: 2nd-order highpass filter modeling torso/ear canal bass rejection ($f_0 = 38.14\text{ Hz}, Q = 0.5003$).
+2. **Dual-Gate Loudness Integration:** Energy is computed in $400\text{ ms}$ blocks with $75\%$ overlap ($100\text{ ms}$ hop). Blocks falling below the absolute threshold ($-70\text{ LUFS}$) or relative threshold ($-10\text{ LU}$ below un-gated mean) are gated out.
+3. **Dynamic Matching:** The wet audio is scaled by:
+   $$\Delta G_{\text{LUFS}} = L_{\text{tgt}} - L_{\text{wet}} \quad (\text{dB})$$
+   targeting the calibrated reference baseline ($-20.50\text{ LUFS}$).
+
+#### 3.8.3 Reconstruction Invariant: 4x Oversampled True-Peak Ceiling (-0.09 dBFS)
+To prevent inter-sample clipping when 24-bit PCM digital twin audio is reconstructed by downstream digital-to-analog converters (DACs) or neural inference engines (Darkglass Anagram, NAM):
+1. **4x Oversampled True-Peak Sinc Interpolation:** True peaks are evaluated by upsampling the audio $4\times$ via zero-padded frequency-domain FFT sinc interpolation (`compute_true_peak`).
+2. **Linear Headroom Ceiling:** If the 4x true peak exceeds $0.9900$ ($-0.087\text{ dBFS}$), the entire file is scaled transparently by $(0.9900 / \text{tp})$. Peak-based whole-file linear scaling preserves dynamic punch without introducing non-linear limiter pumping.
+
+#### 3.8.4 Provenance Invariant: Cryptographic Bit-Provenance & Telemetry Audit
+1. **DSP Gen 4 Tri-Part Semantic Versioning:** All compiled wet stems, Tone3000 upload packs, and models embed the DSP Generation 4 semantic token `v4.[inst].[voice]`.
+2. **Sidecar Manifest Telemetry:** Sidecar `manifest.json` files record `sample_rate`, `peak_dbfs`, `rms_dbfs`, `true_peak_dbfs`, `lufs`, `base_dry_sha256`, and `version`.
+3. **Automated Verification:** The `allomorph --stage audit` command programmatically audits 100% of wet files in the catalog, verifying zero clipping ($\text{true\_peak} \le 0.9900$) and uniform loudness compliance.
+
 ---
 
 ## 4. Differential Non-Linear Metallurgy, Magnetic Dynamics & Analog Realism

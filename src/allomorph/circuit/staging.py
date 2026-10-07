@@ -27,6 +27,9 @@ from allomorph.config.instruments import load_instrument
 from allomorph.config.scales import REPO_ROOT, resolve_scale_range
 from allomorph.dsp import (
     FREQS,
+    compute_lufs,
+    compute_true_peak,
+    compute_true_peak_dbfs,
     fft_convolve,
     read_wav,
     synthesize_minimum_phase_fir,
@@ -159,9 +162,7 @@ def export_instrument_pickup_wav(
 
             b_pos = branch_positions[i]
             h_pos = compute_displacement_proximity_shelf(f_bins, b_pos, scale_m=scale_m)
-            k_iso = compute_pickup_isolation_leveling(
-                b_pos, scale_m=scale_m, ref_pos_m=ref_pos
-            )
+            k_iso = compute_pickup_isolation_leveling(b_pos, scale_m=scale_m, ref_pos_m=ref_pos)
             ac = ac_raw * h_pos * k_iso
 
             min_pos = min((c.position_from_bridge_m for c in b_coils), default=0.10)
@@ -203,9 +204,7 @@ def export_instrument_pickup_wav(
         h_ac = numpy_pickup_acoustic_response(f, coils, scale_length_m=scale_range)
 
         h_pos = compute_displacement_proximity_shelf(f, eff_pos, scale_m=scale_m)
-        k_iso = compute_pickup_isolation_leveling(
-            eff_pos, scale_m=scale_m, ref_pos_m=ref_pos
-        )
+        k_iso = compute_pickup_isolation_leveling(eff_pos, scale_m=scale_m, ref_pos_m=ref_pos)
         h_ac = h_ac * h_pos * k_iso
 
         min_pos = min((c.position_from_bridge_m for c in coils), default=0.10)
@@ -255,6 +254,7 @@ def export_instrument_pickup_wav(
         k_stein=float(props.k_stein),
         k_emf=float(props.k_emf),
         lambda_L=float(props.lambda_L),
+        kappa_ap=float(props.kappa_ap),
         slew_limit=True,
         f_slew=16000.0,
         oversample=2,
@@ -268,14 +268,22 @@ def export_instrument_pickup_wav(
     filtered = filtered - float(np.mean(filtered))
 
     # Level matching & peak ceiling
-    in_rms = float(np.sqrt(np.mean(input_mono**2)))
-    out_rms = float(np.sqrt(np.mean(filtered**2)))
-    if in_rms > 1e-9 and out_rms > 1e-9:
-        filtered = filtered * (in_rms / out_rms)
+    in_lufs = compute_lufs(input_mono, sample_rate=sr)
+    cur_lufs = compute_lufs(filtered, sample_rate=sr)
+    if not (
+        math.isinf(cur_lufs) or math.isnan(cur_lufs) or math.isinf(in_lufs) or math.isnan(in_lufs)
+    ):
+        gain_db = in_lufs - cur_lufs
+        filtered = filtered * (10.0 ** (gain_db / 20.0))
+    else:
+        in_rms = float(np.sqrt(np.mean(input_mono**2)))
+        out_rms = float(np.sqrt(np.mean(filtered**2)))
+        if in_rms > 1e-9 and out_rms > 1e-9:
+            filtered = filtered * (in_rms / out_rms)
 
-    max_val = float(np.max(np.abs(filtered)))
-    if max_val > CALIBRATION_PEAK_CEILING:
-        filtered = filtered * (CALIBRATION_PEAK_CEILING / max_val)
+    tp = compute_true_peak(filtered)
+    if tp > CALIBRATION_PEAK_CEILING:
+        filtered = filtered * (CALIBRATION_PEAK_CEILING / tp)
 
     wet_audio = filtered.astype(np.float32)
 
@@ -296,10 +304,16 @@ def export_instrument_pickup_wav(
     dest_dir.mkdir(parents=True, exist_ok=True)
     write_wav_24bit(str(primary_path), wet_audio, sr)
 
-    final_peak_db = 20.0 * math.log10(max(float(np.max(np.abs(wet_audio))), 1e-9))
+    final_tp_db = compute_true_peak_dbfs(wet_audio)
     final_rms_db = 20.0 * math.log10(max(float(np.sqrt(np.mean(wet_audio**2))), 1e-9))
+    final_lufs = compute_lufs(wet_audio, sample_rate=sr)
+    lufs_str = (
+        f"{final_lufs:.2f} LUFS"
+        if not (math.isinf(final_lufs) or math.isnan(final_lufs))
+        else "-inf LUFS"
+    )
     print(
-        f"[Pickup Audio] Exported {primary_path.name} in {dest_dir}/: Peak = {final_peak_db:.2f} dBFS, RMS = {final_rms_db:.2f} dBFS"
+        f"[Pickup Audio] Exported {primary_path.name} in {dest_dir}/: True Peak = {final_tp_db:.2f} dBFS, RMS = {final_rms_db:.2f} dBFS, Loudness = {lufs_str}"
     )
 
     if not no_manifest:

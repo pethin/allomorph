@@ -33,7 +33,7 @@ except ImportError:
 
 if _HAS_NUMBA:
 
-    @njit(fastmath=True)
+    @njit(fastmath=True, nogil=True)
     def _dahl_core(x_arr: np.ndarray, eta: float, r: float) -> np.ndarray:
         n = len(x_arr)
         z = np.empty(n, dtype=np.float64)
@@ -49,7 +49,7 @@ if _HAS_NUMBA:
         z[0] = 0.0
         return (1.0 - eta) * x_arr + eta * z
 
-    @njit(fastmath=True)
+    @njit(fastmath=True, nogil=True)
     def _lenz_envelope_core(x_arr: np.ndarray, alpha_att: float, alpha_rel: float) -> np.ndarray:
         n = len(x_arr)
         env = np.empty(n, dtype=np.float64)
@@ -63,7 +63,7 @@ if _HAS_NUMBA:
             env[i] = e_prev
         return env
 
-    @njit(fastmath=True)
+    @njit(fastmath=True, nogil=True)
     def _lenz_velocity_drag_core(
         x_arr: np.ndarray,
         env: np.ndarray,
@@ -76,6 +76,7 @@ if _HAS_NUMBA:
         k_stein: float = 0.0,
         k_emf: float = 0.0,
         lambda_L: float = 0.0,
+        kappa_ap: float = 0.0,
     ) -> np.ndarray:
         n = len(x_arr)
         out = np.empty(n, dtype=np.float64)
@@ -118,11 +119,22 @@ if _HAS_NUMBA:
                 emf_damping = 0.0
                 if k_emf > 0.0:
                     emf_damping = k_emf * excess * math.tanh(x_norm / vsat)
+                ap_damping = kappa_ap * excess * math.tanh(x_norm / vsat)
                 drag_high = 1.0 / (
                     1.0
-                    + (k_sag + eddy_factor + pull_damping + stein_damping + emf_damping) * excess
+                    + (
+                        k_sag
+                        + eddy_factor
+                        + pull_damping
+                        + stein_damping
+                        + emf_damping
+                        + ap_damping
+                    )
+                    * excess
                 )
-                drag_low = 1.0 / (1.0 + (0.25 * k_sag + 0.50 * pull_damping) * excess)
+                drag_low = (1.0 + 0.15 * kappa_ap * excess) / (
+                    1.0 + (0.25 * k_sag + 0.50 * pull_damping) * excess
+                )
             else:
                 drag_high = 1.0
                 drag_low = 1.0
@@ -148,7 +160,7 @@ if _HAS_NUMBA:
             out[i] = drag_low * x_low_prev + drag_high * (x_high + wobble + pitch_sag + ind_mod)
         return out
 
-    @njit(fastmath=True)
+    @njit(fastmath=True, nogil=True)
     def _slew_limit_core(x_arr: np.ndarray, max_delta: float) -> np.ndarray:
         n = len(x_arr)
         out = np.empty(n, dtype=np.float64)
@@ -163,7 +175,7 @@ if _HAS_NUMBA:
             out[i] = prev
         return out
 
-    @njit(fastmath=True)
+    @njit(fastmath=True, nogil=True)
     def _algebraic_limiter_p8_core(x_arr: np.ndarray, vsat: float) -> np.ndarray:
         n = len(x_arr)
         out = np.empty(n, dtype=np.float64)
@@ -218,6 +230,7 @@ else:
         k_stein: float = 0.0,
         k_emf: float = 0.0,
         lambda_L: float = 0.0,
+        kappa_ap: float = 0.0,
     ) -> np.ndarray:
         n = len(x_arr)
         out = np.empty(n, dtype=np.float64)
@@ -260,11 +273,22 @@ else:
                 emf_damping = 0.0
                 if k_emf > 0.0:
                     emf_damping = k_emf * excess * math.tanh(x_norm / vsat)
+                ap_damping = kappa_ap * excess * math.tanh(x_norm / vsat)
                 drag_high = 1.0 / (
                     1.0
-                    + (k_sag + eddy_factor + pull_damping + stein_damping + emf_damping) * excess
+                    + (
+                        k_sag
+                        + eddy_factor
+                        + pull_damping
+                        + stein_damping
+                        + emf_damping
+                        + ap_damping
+                    )
+                    * excess
                 )
-                drag_low = 1.0 / (1.0 + (0.25 * k_sag + 0.50 * pull_damping) * excess)
+                drag_low = (1.0 + 0.15 * kappa_ap * excess) / (
+                    1.0 + (0.25 * k_sag + 0.50 * pull_damping) * excess
+                )
             else:
                 drag_high = 1.0
                 drag_low = 1.0
@@ -463,6 +487,7 @@ def apply_oversampled_saturation(
     k_stein: float = 0.0,
     k_emf: float = 0.0,
     lambda_L: float = 0.0,
+    kappa_ap: float = 0.0,
     slew_limit: bool = True,
     f_slew: float = 16000.0,
     oversample: int = 2,
@@ -487,6 +512,7 @@ def apply_oversampled_saturation(
     13. Dahl magnetic domain-wall pinning hysteresis in displacement domain (sustain bloom).
     14. Displacement-domain pre/de-emphasis excursion weighting (suppressing treble IMD hash).
     15. Multi-rate anti-aliased oversampling (2x or 4x) suppressing ultrasonic harmonic foldback by >100 dB.
+    16. Dynamic magnetic aperture bloom (kappa_ap displacement-dependent aperture widening).
     For small-signal linear excitations (e.g. test impulses <= 0.10 peak), bypasses non-linearity
     to preserve 100% exact mathematical impulse response linearity.
     Optimized with single-pass frequency-domain weighting and decimation.
@@ -506,6 +532,7 @@ def apply_oversampled_saturation(
         k_stein = config.k_stein
         k_emf = config.k_emf
         lambda_L = config.lambda_L
+        kappa_ap = config.kappa_ap
         slew_limit = config.slew_limit
         f_slew = config.f_slew
         oversample = config.oversample
@@ -526,7 +553,7 @@ def apply_oversampled_saturation(
 
     # 1. Dynamic Lenz-Law Core Flux Sag on forte peak excursions (velocity-proportional high-frequency damping),
     # dynamic core inductance curvature wobble, localized magnetic string pull damping / pitch sag, Steinmetz loss,
-    # electromechanical back-EMF string braking, and dynamic reluctance inductance modulation
+    # electromechanical back-EMF string braking, dynamic reluctance inductance modulation, and aperture bloom
     if (
         magnet_drag
         and vsat > 0
@@ -538,6 +565,7 @@ def apply_oversampled_saturation(
             or k_stein > 0.0
             or k_emf > 0.0
             or lambda_L > 0.0
+            or kappa_ap > 0.0
         )
     ):
         tau_att = 0.006  # 6 ms fast attack on string strike
@@ -548,7 +576,18 @@ def apply_oversampled_saturation(
         # 1-pole crossover at 750 Hz separating punchy bass fundamental from transient string clank
         alpha_c = 1.0 - math.exp(-2.0 * math.pi * 750.0 / 48000.0)
         x = _lenz_velocity_drag_core(
-            x, env, vsat, k_sag, alpha_c, k_eddy, beta_curv, k_pull, k_stein, k_emf, lambda_L
+            x,
+            env,
+            vsat,
+            k_sag,
+            alpha_c,
+            k_eddy,
+            beta_curv,
+            k_pull,
+            k_stein,
+            k_emf,
+            lambda_L,
+            kappa_ap,
         )
 
     if oversample <= 1:

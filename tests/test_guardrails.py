@@ -13,6 +13,7 @@ specified in AGENTS.md and docs/architectural_guardrails.md are strictly upheld:
 
 import ast
 import math
+from pathlib import Path
 
 import numpy as np
 
@@ -440,7 +441,6 @@ def test_guardrail_visualizer_voicings_comparison_fidelity():
     assert np.allclose((s2_norm - s1_norm)[idx_pass], s3[idx_pass], atol=0.10)
     assert np.max(s3) <= 7.05
     assert s3[-1] <= 0.0
-
 
 
 def test_guardrail_c_infinity_algebraic_rail_limiter():
@@ -883,7 +883,9 @@ def test_guardrail_identity_and_transformative_invariants():
     s3_p = df_p_id.filter(df_p_id["line_type"] == "3. Normalized Difference (Norm. Diff)")[
         "magnitude_db"
     ]
-    assert (s3_p == 0.0).all(), "precision_vintage self-comparison must evaluate to bit-exact 0.00 dB"
+    assert (s3_p == 0.0).all(), (
+        "precision_vintage self-comparison must evaluate to bit-exact 0.00 dB"
+    )
 
     # 4. StingRay identity discrimination: parallel is flat 0.0 dB, series is transformative
     df_ray_par = build_voicings_comparison_dataframe(
@@ -1045,3 +1047,121 @@ def test_guardrail_cinf_dsp_smoothness():
     idx_24k = int(np.argmin(np.abs(freqs - 24000.0)))
     assert aa_mask[idx_22k] == 1.0, "aa_mask must be exactly 1.0 at 22 kHz"
     assert aa_mask[idx_24k] == 0.0, "aa_mask must be exactly 0.0 at 24 kHz"
+
+
+def test_guardrail_dsp_gen_4_telemetry_and_manifest(tmp_path: Path):
+    """Guardrail 5.3.6: DSP Generation 4 specifications, true-peak and LUFS telemetry,
+    and sidecar manifest provenance invariants."""
+    import json
+
+    from allomorph.circuit.audit import audit_audio_file
+    from allomorph.dsp import FS, write_wav_24bit
+    from allomorph.version import ALLOMORPH_VERSION, DSP_GENERATION, write_manifest
+
+    # 1. Version invariants
+    assert DSP_GENERATION == 4
+    assert ALLOMORPH_VERSION == "0.4.0"
+
+    # 2. Manifest telemetry invariants
+    t_arr = np.linspace(0.0, 1.0, FS, endpoint=False)
+    sine_wave = (0.5 * np.sin(2.0 * np.pi * 100.0 * t_arr)).astype(np.float32)
+    test_wav = tmp_path / "telemetry_test.wav"
+    write_wav_24bit(str(test_wav), sine_wave, FS)
+
+    m_path = write_manifest(
+        output_dir=tmp_path,
+        stage="audit_test",
+        files=[test_wav],
+    )
+    with m_path.open("r", encoding="utf-8") as f:
+        data = json.load(f)
+
+    assert data["dsp_generation"] == 4
+    entry = data["files"]["telemetry_test.wav"]
+    assert "true_peak_dbfs" in entry
+    assert "lufs" in entry
+    assert isinstance(entry["true_peak_dbfs"], float)
+    assert isinstance(entry["lufs"], float)
+
+    # 3. Audio QA audit record invariant
+    rec = audit_audio_file(test_wav)
+    assert rec.is_valid is True
+    assert rec.sample_rate == FS
+    assert abs(rec.peak_dbfs - (-6.02)) < 0.20
+    assert abs(rec.true_peak_dbfs - (-6.02)) < 0.20
+    assert rec.crest_factor_db > 2.5
+
+
+def test_guardrail_composite_branchwise_presum_saturation_linearity():
+    """Guardrail 5.4.1 & 5.1.2: Branch-wise pre-summing saturation preserves bit-exact linearity
+    on small signals (peak <= 0.10) while isolating non-linear interaction to individual branches."""
+    from allomorph.circuit.saturation import apply_oversampled_saturation
+
+    sr = 48000
+    n_samples = 4800
+    t = np.linspace(0.0, float(n_samples) / sr, n_samples, endpoint=False)
+
+    # Small signal (peak 0.05) -> below 0.10 threshold bypasses saturation bit-exactly
+    sig_small = (0.05 * np.sin(2.0 * np.pi * 110.0 * t)).astype(np.float32)
+    out_small = apply_oversampled_saturation(
+        sig_small,
+        vsat=0.985,
+        alpha=0.20,
+        alpha3=0.08,
+        eta_hyst=0.06,
+        k_sag=0.08,
+    )
+    assert np.array_equal(out_small, sig_small), (
+        "Small signal must preserve bit-exact linearity bypass"
+    )
+
+    # High signal (peak 0.80) -> above 0.10 threshold engages non-linear saturation
+    sig_high = (0.80 * np.sin(2.0 * np.pi * 110.0 * t)).astype(np.float32)
+    out_high = apply_oversampled_saturation(
+        sig_high,
+        vsat=0.985,
+        alpha=0.20,
+        alpha3=0.08,
+        eta_hyst=0.06,
+        k_sag=0.08,
+    )
+    assert not np.array_equal(out_high, sig_high), (
+        "High amplitude signal must engage magnetic saturation"
+    )
+    # Harmonic generation creates 2nd and 3rd harmonics (220 Hz and 330 Hz) not present in pure 110 Hz sine
+    fft_in = np.abs(np.fft.rfft(sig_high))
+    fft_out = np.abs(np.fft.rfft(out_high))
+    freqs = np.fft.rfftfreq(n_samples, 1.0 / sr)
+    idx_220 = int(np.argmin(np.abs(freqs - 220.0)))
+    idx_330 = int(np.argmin(np.abs(freqs - 330.0)))
+    assert fft_out[idx_220] > fft_in[idx_220] * 10.0, "Saturation must generate 2nd harmonic"
+    assert fft_out[idx_330] > fft_in[idx_330] * 10.0, "Saturation must generate 3rd harmonic"
+
+
+def test_guardrail_true_peak_and_lufs_bounding():
+    """Guardrail 5.3.6: True peak 4x sinc oversampled ceiling bounding (<= 0.9905)
+    and EBU R128 / ITU-R BS.1770-4 gated loudness calculation stability."""
+    from allomorph.dsp import compute_lufs, compute_true_peak
+
+    # 1. 4x sinc oversampling detects inter-sample peaks
+    # A quarter-Nyquist cosine sample sequence: [0.0, 1.0, 0.0, -1.0, 0.0, 1.0...] shifted by 45 degrees
+    # where continuous peak is sqrt(2) * sample value
+    f_test = 12000.0  # fs/4 at fs=48000
+    sr = 48000
+    t_samp = np.arange(1024) / sr
+    # Sample shifted by 1/8 cycle (pi/4) where continuous max is 1.0 but discrete samples are ~0.707
+    x_intersample = np.cos(2.0 * np.pi * f_test * t_samp + np.pi / 4.0).astype(np.float32)
+    sample_peak = float(np.max(np.abs(x_intersample)))
+    true_peak = compute_true_peak(x_intersample, sample_rate=sr, oversample=4)
+
+    # Discrete peak is cos(pi/4) ~ 0.7071, but true peak reconstructed is ~1.0
+    assert abs(sample_peak - (1.0 / np.sqrt(2.0))) < 1e-3
+    assert abs(true_peak - 1.0) < 0.02
+    assert true_peak > sample_peak * 1.35, "True peak must detect inter-sample peak reconstruction"
+
+    # 2. BS.1770-4 gated loudness stability on silence
+    silence = np.zeros(48000, dtype=np.float32)
+    lufs_silence = compute_lufs(silence, sample_rate=sr)
+    assert lufs_silence <= -70.0
+    assert not math.isnan(lufs_silence)
+    assert not math.isinf(lufs_silence)

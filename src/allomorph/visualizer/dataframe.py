@@ -117,9 +117,7 @@ def build_voice_dataframe(
     else:
         is_spatial_match = (mode != "output") and is_voice_matching_source(inst, voice_id, cfg)
 
-    is_pure_di = (
-        tgt_circuit is not None and getattr(load_circuit(tgt_circuit), "no_eq", False)
-    )
+    is_pure_di = tgt_circuit is not None and getattr(load_circuit(tgt_circuit), "no_eq", False)
     if is_pure_di and mode == "output":
         data = {
             "frequency": log_freqs,
@@ -651,6 +649,3 @@ def compute_fir_csd(
         csd_matrix.append([round(float(v), 1) for v in db])
 
     return time_ms, csd_matrix
-
-
-

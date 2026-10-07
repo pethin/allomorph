@@ -165,6 +165,7 @@ class MagnetPropertiesConfig(AllomorphBaseModel):
     k_dist: float = 0.0
     kappa_geom: float = 0.0
     k_stein: float = 0.0
+    kappa_ap: float = 0.0
 
     def diff(self, source: Self) -> MagnetPropertiesConfig:
         """
@@ -193,6 +194,7 @@ class MagnetPropertiesConfig(AllomorphBaseModel):
             k_dist=max(self.k_dist - source.k_dist, 0.0),
             kappa_geom=max(self.kappa_geom - source.kappa_geom, 0.0),
             k_stein=max(self.k_stein - source.k_stein, 0.0),
+            kappa_ap=max(self.kappa_ap - source.kappa_ap, 0.0),
         )
 
 
@@ -214,6 +216,7 @@ class SaturationConfig(AllomorphBaseModel):
     k_emf: float = Field(default=0.0, ge=0.0)
     lambda_L: float = Field(default=0.0, ge=0.0)
     k_core: float = Field(default=0.0, ge=0.0)
+    kappa_ap: float = Field(default=0.0, ge=0.0)
     slew_limit: bool = True
     f_slew: float = Field(default=16000.0, gt=0.0)
     oversample: Literal[1, 2, 4] = 2
@@ -230,7 +233,7 @@ class SimulationConfig(AllomorphBaseModel):
     instrument: str | None = "30in"
     pickup: str | None = None
     cir_path: Path | str | None = None
-    normalize: Literal["auto", "peak", "rms", "none"] = "auto"
+    normalize: Literal["auto", "peak", "rms", "lufs", "none"] = "auto"
     target_dbfs: float | None = None
     oversample: int = Field(default=2, ge=1)
     displacement_weighting: bool = True
@@ -248,6 +251,7 @@ class SimulationConfig(AllomorphBaseModel):
     k_stein: float | None = None
     k_emf: float | None = None
     lambda_L: float | None = None
+    kappa_ap: float | None = None
     vol_pos: float | None = Field(default=None, ge=0.0, le=1.0)
     tone_pos: float | None = Field(default=None, ge=0.0, le=1.0)
     blend_pos: float | None = Field(default=None, ge=0.0, le=1.0)

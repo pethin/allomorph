@@ -36,6 +36,9 @@ This document serves as the master living registry tracking every clamp, limit, 
 | **CL-24** | Acoustic Aperture Comb-Null De-Combing Taper | `prefilter.py:221, 401` | `1.0 - cinf_smoothstep((f - f_start) / (f_end - f_start))` | Transition $[f_{\text{start}}, f_{\text{end}}]$ | ✅ **Evaluated & Verified** ($C^\infty$ de-combing taper, zero slope kinks at boundary) |
 | **CL-25** | Differential Circuit Deconvolution HF Taper | `solver.py:885-886` | `1.0 - cinf_smoothstep((f - 8000) / 12000)` | Transition $[8\text{ kHz}, 20\text{ kHz}]$ | ✅ **Evaluated & Verified** ($C^\infty$ high-frequency deconvolution shelf to $0.00\text{ dB}$) |
 | **CL-26** | Luthier Pickup Isolation Leveling | `aperture.py:171` | $M \cdot \tanh(\text{excess} / M)$ with shifted softplus ($\alpha=2.0, M=6.0\text{ dB}$) | $[0.00\text{ dB}, +5.26\text{ dB}]$ | ✅ **Evaluated & Verified** (Exact $0.000\text{ dB}$ for neck/middle pickups; $+5.26\text{ dB}$ on Jazz bridge; $+4.51\text{ dB}$ on Dingwall bridge) |
+| **CL-27** | Dynamic BS.1770-4 LUFS Matching | `forward.py`, `dsp.py` | ITU-R BS.1770-4 / EBU R128 dual-gated integrated loudness ($\Delta G = L_{\text{tgt}} - L_{\text{wet}}$) | Target $-20.50\text{ LUFS}$ ($\pm 0.5\text{ LU}$) | ✅ **Evaluated & Verified** (Eliminates passive tone capacitor RMS loudness skew) |
+| **CL-28** | 4x Oversampled True-Peak Ceiling | `forward.py`, `staging.py` | 4x zero-padded FFT sinc interpolation, linear scale if $tp > 0.9900$ | $tp \le 0.9900$ ($-0.087\text{ dBFS}$) | ✅ **Evaluated & Verified** (Zero DAC reconstruction inter-sample clipping) |
+| **CL-29** | Dynamic Magnetic Aperture Bloom | `saturation.py`, `parser.py` | $\kappa_{\text{ap}} \cdot \text{excess} \cdot \tanh(x/V_{\text{sat}})$ | $\kappa_{\text{ap}} \in [0.000, 0.045]$ | ✅ **Evaluated & Verified** (Alnico/Ceramic displacement aperture expansion, exact $0.00$ on small signals) |
 
 ---
 

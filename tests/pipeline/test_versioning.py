@@ -36,18 +36,19 @@ from allomorph.version import (
 
 def test_resolve_tri_part_version():
     """Verify default and custom tri-part semantic version strings."""
-    assert resolve_tri_part_version() == "v3.1.1"
+    assert resolve_tri_part_version() == "v4.1.1"
     assert resolve_tri_part_version(2, 1, 1) == "v2.1.1"
     assert resolve_tri_part_version(2, 2, 1) == "v2.2.1"
     assert resolve_tri_part_version(2, 1, 2) == "v2.1.2"
     assert resolve_tri_part_version(3, 1, 1) == "v3.1.1"
+    assert resolve_tri_part_version(4, 1, 1) == "v4.1.1"
     assert resolve_tri_part_version(1, 3, 5) == "v1.3.5"
 
 
 def test_get_version_info():
     """Verify provenance metadata dictionary structure and git commit detection."""
     info = get_version_info()
-    assert info["version"] == "v3.1.1"
+    assert info["version"] == "v4.1.1"
     assert info["dsp_version"] == DSP_GENERATION
     assert info["instrument_version"] == DEFAULT_INST_VERSION
     assert info["voice_version"] == DEFAULT_VOICE_VERSION
@@ -150,7 +151,7 @@ def test_write_manifest_and_sha256(tmp_path: Path):
 
     assert data["version"] == "v2.1.1"
     assert data["stage"] == "test_stage"
-    assert data["dsp_generation"] == 3
+    assert data["dsp_generation"] == 4
     assert data["file_count"] == 2
     assert "dummy.wav" in data["files"]
     assert "dummy.nam" in data["files"]
@@ -161,6 +162,8 @@ def test_write_manifest_and_sha256(tmp_path: Path):
     assert wav_entry["sample_rate"] == 48000
     assert "peak_dbfs" in wav_entry
     assert "rms_dbfs" in wav_entry
+    assert "true_peak_dbfs" in wav_entry
+    assert "lufs" in wav_entry
 
     nam_entry = data["files"]["dummy.nam"]
     assert nam_entry["sha256"] == compute_file_sha256(dummy_nam)
@@ -185,7 +188,7 @@ def test_export_instrument_pickup_wav_with_version_tag(tmp_path: Path):
     assert manifest_p.exists()
     with manifest_p.open("r", encoding="utf-8") as f:
         m = json.load(f)
-    assert m["version"] == "v3.1.1"
+    assert m["version"] == "v4.1.1"
     assert wet_p.name in m["files"]
     assert "base_dry_sha256" in m
     assert m["files"][wet_p.name]["base_dry_sha256"] == m["base_dry_sha256"]
@@ -219,8 +222,8 @@ def test_wet_stem_manifest_validation_and_invalidation(tmp_path: Path):
 
     # 5. Now it must be valid
     assert is_wet_stem_valid(wet_stem, base_dry_path=base_dry_file)
-    assert is_wet_stem_valid(wet_stem, base_dry_path=base_dry_file, expected_version="v3.1.1")
-    assert not is_wet_stem_valid(wet_stem, base_dry_path=base_dry_file, expected_version="v3.2.1")
+    assert is_wet_stem_valid(wet_stem, base_dry_path=base_dry_file, expected_version="v4.1.1")
+    assert not is_wet_stem_valid(wet_stem, base_dry_path=base_dry_file, expected_version="v4.2.1")
 
     # 6. Mutate base dry file (simulating re-generated / updated optimal_bass_dry)
     base_dry_file.write_bytes(b"UPDATED_MUTATED_BASE_DRY_EXCITATION_99999")
@@ -331,8 +334,8 @@ def test_resolve_tri_part_version_flexible_none():
     assert resolve_tri_part_version(2, 1, 1) == "v2.1.1"
     assert resolve_tri_part_version(2, 1, None) == "v2.1"
     assert resolve_tri_part_version(2, None, None) == "v2"
-    assert resolve_tri_part_version(inst_version=None, voice_version=None) == "v3"
-    assert resolve_tri_part_version(inst_version=2, voice_version=None) == "v3.2"
+    assert resolve_tri_part_version(inst_version=None, voice_version=None) == "v4"
+    assert resolve_tri_part_version(inst_version=2, voice_version=None) == "v4.2"
 
 
 def test_input_audio_naming_helpers():

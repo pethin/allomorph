@@ -266,5 +266,3 @@ def test_complex_magnetic_permeability_dispersion():
         assert np.allclose(curve, 1.0, atol=1e-4), (
             "Matching complex permeability models must yield exact 0.00 dB identity"
         )
-
-

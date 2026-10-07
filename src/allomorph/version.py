@@ -11,6 +11,7 @@ import contextlib
 import functools
 import hashlib
 import json
+import math
 import subprocess
 import threading
 import wave
@@ -19,8 +20,8 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-ALLOMORPH_VERSION: str = "0.3.0"
-DSP_GENERATION: int = 3
+ALLOMORPH_VERSION: str = "0.4.0"
+DSP_GENERATION: int = 4
 DEFAULT_INST_VERSION: int = 1
 DEFAULT_VOICE_VERSION: int = 1
 
@@ -178,7 +179,11 @@ def write_manifest(
                         ):
                             import numpy as np
 
-                            from allomorph.dsp import read_wav
+                            from allomorph.dsp import (
+                                compute_lufs,
+                                compute_true_peak_dbfs,
+                                read_wav,
+                            )
 
                             audio, sr = read_wav(f_path)
                             peak = float(np.max(np.abs(audio)))
@@ -186,6 +191,13 @@ def write_manifest(
                             entry["sample_rate"] = sr
                             entry["peak_dbfs"] = round(20.0 * np.log10(max(peak, 1e-9)), 2)
                             entry["rms_dbfs"] = round(20.0 * np.log10(max(rms, 1e-9)), 2)
+                            entry["true_peak_dbfs"] = round(compute_true_peak_dbfs(audio), 2)
+                            lufs_val = compute_lufs(audio, sample_rate=sr)
+                            entry["lufs"] = (
+                                round(lufs_val, 2)
+                                if not (math.isinf(lufs_val) or math.isnan(lufs_val))
+                                else None
+                            )
                     file_entries[f_path.name] = entry
 
         manifest_data: dict[str, Any] = {

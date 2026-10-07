@@ -6,6 +6,12 @@ Analytical closed-form nodal RLC solver and state-space non-linear saturation.
 from allomorph.circuit.audio import (
     find_default_input_audio,
 )
+from allomorph.circuit.audit import (
+    AudioAuditRecord,
+    AudioAuditReport,
+    audit_audio_file,
+    audit_wet_audio_catalog,
+)
 from allomorph.circuit.forward import (
     AUDIO_DIR,
     CALIBRATION_PEAK_CEILING,
@@ -65,6 +71,8 @@ __all__ = [
     "MAGNET_PROPERTIES",
     "REPO_ROOT",
     "_HAS_NUMBA",
+    "AudioAuditRecord",
+    "AudioAuditReport",
     "CircuitModel",
     "ParametricSweepResult",
     "_dahl_core",
@@ -76,6 +84,8 @@ __all__ = [
     "apply_elliptical_orbit_projection",
     "apply_magnet_properties_to_model",
     "apply_oversampled_saturation",
+    "audit_audio_file",
+    "audit_wet_audio_catalog",
     "compute_active_preamp_eq",
     "compute_circuit_transfer_functions",
     "compute_core_impedance",

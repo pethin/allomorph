@@ -80,9 +80,16 @@ def main(argv: Sequence[str] | None = None):
             "sim",
             "pack",
             "train",
+            "audit",
         ],
         default="all",
-        help="Pipeline stage to execute: 'viz' (interactive frequency charts & portal), 'sim' (direct forward simulation of instrument voicings), 'pack' (Tone3000 upload pack bundles), 'train' (train NAM neural models), or 'all' (sim + pack + viz; default: 'all').",
+        help="Pipeline stage to execute: 'viz' (interactive frequency charts & portal), 'sim' (direct forward simulation of instrument voicings), 'pack' (Tone3000 upload pack bundles), 'train' (train NAM neural models), 'audit' (QA telemetry & loudness audit), or 'all' (sim + pack + viz; default: 'all').",
+    )
+    parser.add_argument(
+        "--force",
+        "-f",
+        action="store_true",
+        help="Force re-simulation of audio files bypassing cryptographic bit-provenance cache",
     )
     parser.add_argument(
         "--normalize",
@@ -300,7 +307,39 @@ def main(argv: Sequence[str] | None = None):
     else:
         actual_path = Path(input_wav) if Path(input_wav).exists() else (REPO_ROOT / input_wav)
         input_wav = str(actual_path)
-        print(f"  Dry Source:  {actual_path.name}")
+    force_exec = args.force or args.overwrite
+
+    if args.stage == "audit":
+        from allomorph.circuit.audit import audit_wet_audio_catalog
+
+        print("\n[QA Telemetry Audit] Scanning wet audio digital twins...")
+        report = audit_wet_audio_catalog()
+        print("\n=================== AUDIO TELEMETRY REPORT ===================")
+        print(f"  Total Files:        {report.total_files}")
+        print(f"  Valid Files:        {report.valid_files}")
+        print(f"  Clipped Files:      {report.clipped_files}")
+        mean_lufs_str = f"{report.mean_lufs:.2f} LUFS" if report.mean_lufs is not None else "N/A"
+        min_lufs_str = f"{report.min_lufs:.2f}" if report.min_lufs is not None else "N/A"
+        max_lufs_str = f"{report.max_lufs:.2f}" if report.max_lufs is not None else "N/A"
+        print(
+            f"  Integrated LUFS:    Mean = {mean_lufs_str} (Min = {min_lufs_str}, Max = {max_lufs_str})"
+        )
+        print(
+            f"  True Peak (dBFS):   Mean = {report.mean_true_peak_dbfs:.2f} dBFS, Max = {report.max_true_peak_dbfs:.2f} dBFS"
+        )
+        print("==============================================================")
+        if report.clipped_files > 0:
+            print(
+                f"\n[WARNING] {report.clipped_files} file(s) exceed the true-peak ceiling (-0.09 dBFS / 0.9900):"
+            )
+            for r in report.records:
+                if r.has_clipping:
+                    print(
+                        f"  - {r.file_name}: True Peak = {r.true_peak_dbfs:.2f} dBFS ({r.true_peak_linear:.4f})"
+                    )
+        else:
+            print("\n[PASS] 100% of audited stems satisfy true-peak and loudness invariants.")
+        return
 
     if args.stage == "sim":
         from allomorph.circuit.forward import simulate_all_instrument_voicings
@@ -312,6 +351,7 @@ def main(argv: Sequence[str] | None = None):
                 input_wav=input_wav,
                 max_samples=args.max_samples,
                 jobs=effective_jobs,
+                force=force_exec,
             )
         return
 
@@ -324,7 +364,7 @@ def main(argv: Sequence[str] | None = None):
                 inst,
                 max_samples=args.max_samples,
                 jobs=effective_jobs,
-                overwrite=args.overwrite,
+                overwrite=force_exec,
             )
         return
 
@@ -363,6 +403,7 @@ def main(argv: Sequence[str] | None = None):
                 input_wav=input_wav,
                 max_samples=args.max_samples,
                 jobs=effective_jobs,
+                force=force_exec,
             )
 
         print("\n--- Step 2: Tone Pack Bundles Export ---")
@@ -372,7 +413,8 @@ def main(argv: Sequence[str] | None = None):
             export_tone_pack(
                 inst,
                 max_samples=args.max_samples,
-                jobs=args.jobs,
+                jobs=effective_jobs,
+                overwrite=force_exec,
             )
 
         print("\n--- Step 3: Interactive Altair Frequency Visualization ---")

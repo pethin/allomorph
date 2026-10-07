@@ -128,9 +128,6 @@ def test_build_voicings_comparison_dataframe():
     assert s3[-1] <= 0.0
 
 
-
-
-
 def test_compute_fir_csd():
     sr = 48000
     t = np.arange(2048) / sr

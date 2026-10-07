@@ -46,6 +46,7 @@ MAGNET_PROPERTIES: dict[str, MagnetPropertiesConfig] = {
         k_dist=0.18,
         kappa_geom=0.20,
         k_stein=0.030,
+        kappa_ap=0.035,
     ),
     "alnico_ii": MagnetPropertiesConfig(
         k_core=0.10,
@@ -69,6 +70,7 @@ MAGNET_PROPERTIES: dict[str, MagnetPropertiesConfig] = {
         k_dist=0.22,
         kappa_geom=0.24,
         k_stein=0.040,
+        kappa_ap=0.045,
     ),
     "alnico_iii": MagnetPropertiesConfig(
         k_core=0.09,
@@ -92,6 +94,7 @@ MAGNET_PROPERTIES: dict[str, MagnetPropertiesConfig] = {
         k_dist=0.20,
         kappa_geom=0.22,
         k_stein=0.035,
+        kappa_ap=0.040,
     ),
     "ceramic": MagnetPropertiesConfig(
         k_core=0.02,
@@ -115,6 +118,7 @@ MAGNET_PROPERTIES: dict[str, MagnetPropertiesConfig] = {
         k_dist=0.12,
         kappa_geom=0.15,
         k_stein=0.015,
+        kappa_ap=0.020,
     ),
     "ceramic_alnico_hybrid": MagnetPropertiesConfig(
         k_core=0.05,
@@ -138,6 +142,7 @@ MAGNET_PROPERTIES: dict[str, MagnetPropertiesConfig] = {
         k_dist=0.15,
         kappa_geom=0.18,
         k_stein=0.025,
+        kappa_ap=0.030,
     ),
     "neodymium": MagnetPropertiesConfig(
         k_core=0.01,
@@ -161,6 +166,7 @@ MAGNET_PROPERTIES: dict[str, MagnetPropertiesConfig] = {
         k_dist=0.10,
         kappa_geom=0.10,
         k_stein=0.008,
+        kappa_ap=0.010,
     ),
     "piezo": MagnetPropertiesConfig(
         k_core=0.00,
@@ -184,6 +190,7 @@ MAGNET_PROPERTIES: dict[str, MagnetPropertiesConfig] = {
         k_dist=0.00,
         kappa_geom=0.00,
         k_stein=0.000,
+        kappa_ap=0.000,
     ),
     "active": MagnetPropertiesConfig(
         k_core=0.00,
@@ -207,6 +214,7 @@ MAGNET_PROPERTIES: dict[str, MagnetPropertiesConfig] = {
         k_dist=0.00,
         kappa_geom=0.00,
         k_stein=0.000,
+        kappa_ap=0.010,
     ),
     "ideal": MagnetPropertiesConfig(
         k_core=0.00,
@@ -230,6 +238,7 @@ MAGNET_PROPERTIES: dict[str, MagnetPropertiesConfig] = {
         k_dist=0.00,
         kappa_geom=0.00,
         k_stein=0.000,
+        kappa_ap=0.000,
     ),
 }
 MAGNET_PROPERTIES["hybrid"] = MAGNET_PROPERTIES["ceramic_alnico_hybrid"]

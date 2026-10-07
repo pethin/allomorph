@@ -47,4 +47,3 @@ def test_voices_have_no_hardcoded_source_datums():
     for vid, cfg in VOICES.items():
         assert not hasattr(cfg, "src_32"), f"{vid} contains deprecated hardcoded 'src_32' datum"
         assert not hasattr(cfg, "src_30"), f"{vid} contains deprecated hardcoded 'src_30' datum"
-

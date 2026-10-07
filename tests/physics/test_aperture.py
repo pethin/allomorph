@@ -531,4 +531,3 @@ def test_pickup_isolation_leveling():
         0.0100, scale_m=0.8636, ref_pos_m=0.3000, max_boost_db=6.0
     )
     assert 20.0 * math.log10(k_extreme) <= 6.0
-

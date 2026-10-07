@@ -46,7 +46,7 @@ NYQ = FS / 2.0
 FREQS = [i * (NYQ / (NUM_TAPS - 1)) for i in range(NUM_TAPS)]
 
 
-@njit(fastmath=True)
+@njit(fastmath=True, nogil=True)
 def _cinf_smoothstep_kernel(t: np.ndarray, out: np.ndarray) -> None:
     n = len(t)
     for i in range(n):
@@ -400,6 +400,168 @@ def calibrate_nam_v3_latency(y: np.ndarray) -> tuple[int, bool, bool]:
     return recommended, matches_lookahead, False
 
 
+@njit(fastmath=True, nogil=True)
+def _biquad_filter_kernel(
+    x: np.ndarray,
+    b0: float,
+    b1: float,
+    b2: float,
+    a1: float,
+    a2: float,
+    y: np.ndarray,
+) -> None:
+    """Direct Form II Transposed biquad filter implementation:
+    y[n] = b0 * x[n] + s1
+    s1   = b1 * x[n] - a1 * y[n] + s2
+    s2   = b2 * x[n] - a2 * y[n]
+    """
+    s1 = 0.0
+    s2 = 0.0
+    n = len(x)
+    for i in range(n):
+        xi = x[i]
+        yi = b0 * xi + s1
+        s1 = b1 * xi - a1 * yi + s2
+        s2 = b2 * xi - a2 * yi
+        y[i] = yi
+
+
+def apply_biquad(
+    x: np.ndarray,
+    b: tuple[float, float, float] | list[float] | np.ndarray,
+    a: tuple[float, float, float] | list[float] | np.ndarray,
+) -> np.ndarray:
+    """Applies a 2nd-order IIR biquad filter using Transposed Direct Form II."""
+    x_arr = np.asarray(x, dtype=np.float64)
+    y = np.empty_like(x_arr)
+    a0 = float(a[0])
+    b0 = float(b[0]) / a0
+    b1 = float(b[1]) / a0
+    b2 = float(b[2]) / a0
+    a1 = float(a[1]) / a0
+    a2 = float(a[2]) / a0
+    _biquad_filter_kernel(x_arr, b0, b1, b2, a1, a2, y)
+    return y
+
+
+def compute_lufs(
+    audio: np.ndarray,
+    sample_rate: int = FS,
+) -> float:
+    """Computes integrated loudness in LUFS according to ITU-R BS.1770-4 / EBU R128.
+
+    Implements:
+      1. Stage 1 High Shelf Pre-filter (f0 ~ 1.5 kHz, +4 dB boost)
+      2. Stage 2 RLB High-Pass Filter (2nd-order Butterworth f0 ~ 38 Hz)
+      3. Gated mean-square integration (400 ms blocks, 75% overlap, -70 LKFS / -10 LU relative gating)
+    """
+    mono = audio[0] if audio.ndim > 1 else audio
+    mono = np.asarray(mono, dtype=np.float64)
+    n = len(mono)
+    if n == 0:
+        return -100.0
+
+    # BS.1770-4 coefficients at 48 kHz
+    if sample_rate == 48000:
+        b_pre = (1.53512485958697, -2.69169618940638, 1.19839281085285)
+        a_pre = (1.0, -1.69065929318241, 0.73248077421585)
+        b_rlb = (1.0, -2.0, 1.0)
+        a_rlb = (1.0, -1.99004745483398, 0.99007225036621)
+    else:
+        fs_ratio = 48000.0 / sample_rate
+        b_pre = (1.53512485958697, -2.69169618940638 * fs_ratio, 1.19839281085285)
+        a_pre = (1.0, -1.69065929318241 * fs_ratio, 0.73248077421585)
+        b_rlb = (1.0, -2.0, 1.0)
+        a_rlb = (1.0, -1.99004745483398 * fs_ratio, 0.99007225036621)
+
+    # 1. Filter signal through pre-filter then RLB filter
+    y_pre = apply_biquad(mono, b_pre, a_pre)
+    y_k = apply_biquad(y_pre, b_rlb, a_rlb)
+
+    # 2. Block integration: 400 ms blocks, 75% overlap (step = 100 ms)
+    block_samples = int(0.400 * sample_rate)
+    step_samples = int(0.100 * sample_rate)
+
+    if n < block_samples:
+        z = float(np.mean(y_k**2))
+        return float(-0.691 + 10.0 * math.log10(max(z, 1e-12)))
+
+    num_blocks = (n - block_samples) // step_samples + 1
+    shape = (num_blocks, block_samples)
+    strides = (step_samples * y_k.strides[0], y_k.strides[0])
+    blocks = np.lib.stride_tricks.as_strided(y_k, shape=shape, strides=strides)
+    z_blocks = np.mean(blocks**2, axis=-1)
+
+    # Gating Step 1: Absolute threshold (-70 LKFS)
+    gamma_a = 10.0 ** ((-70.0 + 0.691) / 10.0)
+    valid_a = z_blocks > gamma_a
+    if not np.any(valid_a):
+        return -100.0
+
+    z_valid_a = z_blocks[valid_a]
+    z_avg_a = float(np.mean(z_valid_a))
+    gamma_r = z_avg_a * 0.1  # -10 LU relative threshold
+
+    # Gating Step 2: Relative threshold
+    valid_r = z_valid_a > gamma_r
+    if not np.any(valid_r):
+        return -100.0
+
+    z_final = float(np.mean(z_valid_a[valid_r]))
+    lufs = -0.691 + 10.0 * math.log10(max(z_final, 1e-12))
+    return float(lufs)
+
+
+def compute_true_peak(
+    audio: np.ndarray,
+    sample_rate: int = FS,
+    oversample: int = 4,
+) -> float:
+    """Computes inter-sample true-peak amplitude using 4x sinc/FFT interpolation (ITU-R BS.1770-4)."""
+    mono = audio[0] if audio.ndim > 1 else audio
+    mono = np.asarray(mono, dtype=np.float64)
+    n = len(mono)
+    if n == 0:
+        return 0.0
+
+    chunk_size = 65536
+    overlap = 1024
+    step = chunk_size - overlap
+    max_peak = 0.0
+
+    for start in range(0, n, step):
+        chunk = mono[start : start + chunk_size]
+        c_len = len(chunk)
+        if c_len < 32:
+            max_peak = max(max_peak, float(np.max(np.abs(chunk))))
+            continue
+
+        n_up = c_len * oversample
+        X = np.fft.rfft(chunk)
+        n_bins = len(X)
+        X_padded = np.zeros(n_up // 2 + 1, dtype=np.complex128)
+        X_padded[:n_bins] = X
+        X_padded[n_bins - 1] *= 0.5
+        interpolated = np.fft.irfft(X_padded, n=n_up) * oversample
+
+        valid_start = overlap * oversample // 2 if start > 0 else 0
+        valid_end = n_up - (overlap * oversample // 2) if (start + chunk_size < n) else n_up
+        chunk_peak = float(np.max(np.abs(interpolated[valid_start:valid_end])))
+        max_peak = max(max_peak, chunk_peak)
+
+    return float(max_peak)
+
+
+def compute_true_peak_dbfs(
+    audio: np.ndarray,
+    sample_rate: int = FS,
+    oversample: int = 4,
+) -> float:
+    """Computes inter-sample true-peak in dBFS."""
+    tp = compute_true_peak(audio, sample_rate=sample_rate, oversample=oversample)
+    return float(20.0 * math.log10(max(tp, 1e-12)))
+
+
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 AUDIO_DIR = REPO_ROOT / "audio"
 DEFAULT_INPUT_PATH = AUDIO_DIR / "input.wav"
@@ -543,15 +705,22 @@ def _synth_log_chirp(
     f_end: float,
     amp: float,
     sample_rate: int = FS,
+    string_tilt: bool = True,
+    f_corner: float = 1200.0,
 ) -> np.ndarray:
-    """Synthesizes a full-range logarithmic frequency chirp with 5ms micro-fades."""
+    """Synthesizes a full-range logarithmic frequency chirp with 5ms micro-fades and physical string harmonic tilt."""
     n = int(dur * sample_rate)
     if n <= 0:
         return np.empty(0, dtype=np.float64)
     t = np.linspace(0.0, dur, n, endpoint=False)
     gamma = np.log(f_end / f_start)
     phase = 2.0 * np.pi * f_start * (dur / gamma) * ((f_end / f_start) ** (t / dur) - 1.0)
-    sig = amp * np.sin(phase)
+    if string_tilt and f_corner > 0.0:
+        inst_freq = f_start * ((f_end / f_start) ** (t / dur))
+        tilt = 1.0 / np.sqrt(1.0 + (inst_freq / f_corner) ** 2)
+        sig = amp * tilt * np.sin(phase)
+    else:
+        sig = amp * np.sin(phase)
     sig -= np.mean(sig)
     return _apply_hann_fades(sig, min(n // 4, int(0.005 * sample_rate)))
 
@@ -1075,7 +1244,7 @@ def generate_optimal_bass_dry(
         p_samples = max(50, int(pause_dur * sample_rate * scale))
         cur = min(end_idx + p_samples, limit)
 
-    # 2. Multi-tier full sweeps (15 Hz -> 22 kHz) with Slew-Rate Diversity
+    # 2. Multi-tier full sweeps (15 Hz -> 22 kHz) with Slew-Rate Diversity and String Harmonic Tilt
     chirp_tiers = [
         (
             15.0,
@@ -1083,16 +1252,16 @@ def generate_optimal_bass_dry(
             0.050,
             12.0,
         ),  # Slow precision sweep (-24 dBFS linear baseline, spans 10-12s V3 window)
-        (15.0, 22000.0, 0.220, 1.8),  # Fast dynamic sweep (-13 dBFS eddy onset)
-        (15.0, 22000.0, 0.500, 7.0),  # Slow high-res sweep (-6 dBFS Lenz drag)
-        (15.0, 22000.0, 0.890, 1.8),  # Fast extreme slew sweep (-1 dBFS 16 kHz limit)
-        (22000.0, 15.0, 0.650, 5.0),  # Inverted down-sweep (-3.7 dBFS)
+        (15.0, 22000.0, 0.200, 1.8),  # Fast dynamic sweep (-14 dBFS eddy onset)
+        (15.0, 22000.0, 0.400, 7.0),  # Slow high-res sweep (-8 dBFS Lenz drag)
+        (15.0, 22000.0, 0.650, 1.8),  # Fast extreme slew sweep (-3.7 dBFS limit)
+        (22000.0, 15.0, 0.500, 5.0),  # Inverted down-sweep (-6.0 dBFS)
     ]
     for f_s, f_e, amp, dur_base in chirp_tiers:
         if cur >= total_samples - trail_silence:
             break
         dur_c = max(0.6, dur_base * scale)
-        c = _synth_log_chirp(dur_c, f_s, f_e, amp, sample_rate)
+        c = _synth_log_chirp(dur_c, f_s, f_e, amp, sample_rate, string_tilt=True, f_corner=1200.0)
         append_segment(c, 0.4)
 
     # 3. 7-Step Dynamic Velocity Ladder on open E1 (pp -> fff)
@@ -1219,7 +1388,7 @@ def generate_optimal_bass_dry(
     for f1, f2 in ccif_probes:
         if cur >= total_samples - trail_silence:
             break
-        pr = _synth_two_tone_probe(f1, f2, 0.65, probe_dur, sample_rate)
+        pr = _synth_two_tone_probe(f1, f2, 0.15, probe_dur, sample_rate)
         append_segment(pr, 0.4)
     # Schroeder-phase multitone complex with 800 Hz roll-off corner
     m_rem = max(0, total_samples - trail_silence - cur)
@@ -1276,33 +1445,46 @@ def generate_optimal_bass_dry(
         gl = _synth_glissando(fs, fe, 0.80, gl_dur, sample_rate)
         append_segment(gl, 0.4)
 
-    # 9. Shaped Pink Noise Bursts adaptively filling to exact duration
+    # 9. Multi-Technique Bass Performance Suite (Authentic String Mechanics)
+    # A. Low-B0 and Drop-A0 extended sustained ring-outs (6.0s deep decay testing Lenz sag & RLC recovery)
+    for f_deep in [30.87, 27.50]:
+        if cur >= total_samples - trail_silence:
+            break
+        r_deep = _synth_long_ringout(f_deep, 0.85, max(1.5, 6.0 * scale), sample_rate)
+        append_segment(r_deep, 0.5)
+
+    # B. High-tempo alternate pick tremolo runs at 140 BPM on E1 and A1 (testing touch filter & slew limits)
+    for f_trem in [41.20, 55.00]:
+        if cur >= total_samples - trail_silence:
+            break
+        trem = _synth_groove_burst(
+            f_trem, 0.80, bpm=140.0, count=12, sample_rate=sample_rate, technique="pick"
+        )
+        append_segment(trem, 0.4)
+
+    # C. Multi-string slap-and-pop octave cascades (testing dynamic aperture bloom & core saturation)
+    slap_cascades = [
+        (41.20, 82.41),  # E1 -> E2
+        (55.00, 110.00),  # A1 -> A2
+        (73.42, 146.83),  # D2 -> D3
+        (98.00, 196.00),  # G2 -> G3
+    ]
+    for f_s, f_p in slap_cascades:
+        if cur >= total_samples - trail_silence:
+            break
+        sp_pair = _synth_slap_pop_pair(
+            f_s, f_p, 0.88, gap_ms=65.0, dur=max(0.4, 1.4 * scale), sample_rate=sample_rate
+        )
+        append_segment(sp_pair, 0.4)
+
+    # D. String-tilted logarithmic harmonic sweep filling cleanly to exact duration
     rem_samples = max(0, total_samples - trail_silence - cur)
     if rem_samples > int(0.5 * sample_rate):
-        rng = np.random.default_rng(seed)
-        white = rng.standard_normal(rem_samples)
-        n_fft = 1 << (rem_samples - 1).bit_length()
-        w_spec = np.fft.rfft(white, n_fft)
-        freqs = np.fft.rfftfreq(n_fft, 1.0 / sample_rate)
-        freqs[0] = 1.0
-        pink = np.fft.irfft(w_spec * (1.0 / np.sqrt(freqs)), n_fft)[:rem_samples]
-        pink -= np.mean(pink)
-        pink_max = np.max(np.abs(pink))
-        if pink_max > 0:
-            pink = (pink / pink_max) * 0.75
-        period = int(0.25 * sample_rate)
-        on_len = int(0.15 * sample_rate)
-        burst_gate = ((np.arange(rem_samples) % period) < on_len).astype(np.float64)
-        hw = np.hanning(max(16, int(0.01 * sample_rate)))
-        hw /= np.sum(hw)
-        burst_gate = np.convolve(burst_gate, hw, mode="same")
-        b_max = np.max(burst_gate)
-        if b_max > 0:
-            burst_gate /= b_max
-        append_segment(
-            _apply_hann_fades(pink * burst_gate, min(rem_samples // 4, int(0.01 * sample_rate))),
-            0.0,
+        dur_fill = rem_samples / sample_rate
+        c_fill = _synth_log_chirp(
+            dur_fill, 15.0, 22000.0, 0.35, sample_rate, string_tilt=True, f_corner=1200.0
         )
+        append_segment(c_fill, 0.0)
 
     # Zero-DC centering on active regions (preserves pure zero digital silence in rests)
     active_mask = audio != 0.0

@@ -30,6 +30,9 @@ from allomorph.config.strings import STRINGS, get_instrument_string
 from allomorph.dsp import (
     FREQS,
     NUM_TAPS,
+    compute_lufs,
+    compute_true_peak,
+    compute_true_peak_dbfs,
     fft_convolve,
     read_wav,
     synthesize_minimum_phase_fir,
@@ -50,6 +53,7 @@ from allomorph.physics.strings import (
 from allomorph.version import (
     DSP_GENERATION,
     compute_file_sha256,
+    is_wet_stem_valid,
     resolve_tri_part_version,
     write_manifest,
 )
@@ -149,6 +153,7 @@ def simulate_instrument_voicing(
     dc_block: bool = True,
     normalize: str = "auto",
     target_dbfs: float | None = None,
+    force: bool = False,
 ) -> Path:
     """
     Simulates a physical instrument voicing digital twin directly from dry string excitation.
@@ -158,10 +163,10 @@ def simulate_instrument_voicing(
       3. Scale-length tension snap H_tension(f) and longitudinal clank resonance H_long(f)
       4. String damping and tension compliance differential mechanics H_string(f)
       5. Onboard active preamp EQ contour H_preamp(f)
-      6. Oversampled non-linear magnetic saturation across all 15 physical parameters
+      6. Oversampled non-linear magnetic saturation across all 16 physical parameters
       7. Sub-audible 8 Hz DC blocking and passive RLC-colored Johnson noise dither
     Synthesizes a causal minimum-phase FIR starting at sample 0 (zero latency).
-    Exports 24-bit 48 kHz PCM audio with calibrated RMS volume matching and peak ceiling protection.
+    Exports 24-bit 48 kHz PCM audio with calibrated LUFS volume matching and 4x true-peak ceiling protection.
     """
     inst, voicing_cfg = resolve_target_voicing(voicing, instrument=instrument)
     voicing_id = (
@@ -187,6 +192,14 @@ def simulate_instrument_voicing(
     else:
         out_path = WET_AUDIO_DIR / inst.id / f"{voicing_id}.wav"
     out_path.parent.mkdir(parents=True, exist_ok=True)
+
+    # Cryptographic Bit-Provenance Cache Check
+    inst_ver = getattr(inst, "version", 1)
+    voice_ver = getattr(voicing_cfg, "version", 1)
+    v_tag = resolve_tri_part_version(DSP_GENERATION, inst_ver, voice_ver)
+    if not force and is_wet_stem_valid(out_path, base_dry_path=in_path, expected_version=v_tag):
+        print(f"[Forward Sim] Cached {inst.id}:{voicing_id} ({v_tag}) -> {out_path.name}")
+        return out_path
 
     # Lookup physical pickup
     pickup_key = voicing_cfg.pickup
@@ -214,6 +227,11 @@ def simulate_instrument_voicing(
     scale_m = (scale_range[0] + scale_range[1]) / 2.0
     scale_in = inst.scale_length_in or (scale_m / 0.0254)
 
+    # Audio Loading
+    raw_audio, sr = read_wav(in_path, max_samples=max_samples, dtype=np.float64)
+    input_mono = raw_audio[0] if raw_audio.ndim > 1 else raw_audio
+    n_samples = len(input_mono)
+
     # 1. Sensor Aperture Acoustics & Loaded RLC Circuit Transfer
     circ_model = None
     curves = None
@@ -234,143 +252,6 @@ def simulate_instrument_voicing(
         apply_magnet_properties_to_model(circ_model, pickup_cfg, eddy_diffusion=True)
         curves = compute_circuit_transfer_functions(circ_model, freqs=f, return_numpy=True)
 
-    if voicing_cfg.sensor_type == "direct":
-        if curves is not None:
-            h_base = np.asarray(curves[0], dtype=np.float64)
-        else:
-            h_base = np.ones_like(f, dtype=np.float64)
-    elif voicing_cfg.sensor_type == "bridge_force":
-        f_damp = 3800.0
-        h_ac = 1.0 / np.sqrt(1.0 + (f / f_damp) ** 4)
-        f_sub = 10.0
-        h_sub = np.sqrt(f**2 / (f_sub**2 + f**2))
-        h_ac = h_ac * h_sub
-        if curves is not None:
-            h_elec = np.asarray(curves[0], dtype=np.float64)
-            h_base = h_ac * h_elec
-        else:
-            h_base = h_ac
-    else:
-        # Magnetic sensor: determine single pickup vs multi-pickup composite
-        is_composite = (
-            pickup_cfg.type == "composite"
-            or bool(pickup_cfg.components)
-            or (curves is not None and len(curves) > 1)
-        )
-
-        # Determine reference pickup position for luthier pickup isolation leveling
-        single_positions = [
-            float(p.position_from_bridge_m)
-            for p in inst.pickups.values()
-            if not p.components and p.position_from_bridge_m is not None
-        ]
-        max_p_pos = max(single_positions, default=UNIVERSAL_DATUM_POS_M)
-        ref_pos = max(max_p_pos, UNIVERSAL_DATUM_POS_M)
-
-        if is_composite and pickup_cfg.components:
-            N = 8192
-            f_bins = np.fft.rfftfreq(N, 1.0 / 48000.0)
-            c_mean = 2.0 * scale_m * MEAN_BASS_F0
-
-            # Resolve branch components
-            branch_sub_pickups = []
-            for comp in pickup_cfg.components:
-                if comp.pickup and comp.pickup in inst.pickups:
-                    branch_sub_pickups.append(
-                        (inst.pickups[comp.pickup], float(comp.weight), float(comp.polarity))
-                    )
-
-            branch_coils_list = []
-            branch_positions = []
-            for sp, w_comp, pol_comp in branch_sub_pickups:
-                b_coils = resolve_pickup_coils(sp, inst)
-                branch_coils_list.append((b_coils, w_comp, pol_comp))
-                branch_positions.append(compute_effective_position(b_coils))
-
-            pos_max = max(branch_positions) if branch_positions else 0.0
-            H_channels = []
-            peaks = []
-
-            for i, (b_coils, w_comp, pol_comp) in enumerate(branch_coils_list):
-                c_curve_raw = (
-                    curves[i]
-                    if (curves is not None and i < len(curves))
-                    else (curves[0] if curves is not None else np.ones_like(FREQS))
-                )
-                c_curve = np.interp(f_bins, FREQS, np.asarray(c_curve_raw, dtype=np.float64))
-
-                weight_fac = 1.0 if (curves is not None and len(curves) > 1) else w_comp
-                ac_raw = numpy_pickup_acoustic_response(
-                    f_bins, b_coils, scale_length_m=scale_range
-                ) * (weight_fac * pol_comp)
-
-                b_pos = branch_positions[i]
-                h_pos = compute_displacement_proximity_shelf(f_bins, b_pos, scale_m=scale_m)
-                k_iso = compute_pickup_isolation_leveling(
-                    b_pos, scale_m=scale_m, ref_pos_m=ref_pos
-                )
-                ac = ac_raw * h_pos * k_iso
-
-                min_pos = min((c.position_from_bridge_m for c in b_coils), default=0.10)
-                if min_pos < 0.075:
-                    h_saddle = compute_saddle_boundary_coupling(f_bins, min_pos)
-                    ac = ac * np.asarray(h_saddle, dtype=np.float64)
-
-                fir_ac = synthesize_minimum_phase_fir(ac, num_taps=2048, normalize=False)
-                tau_i = (pos_max - b_pos) / c_mean if len(branch_coils_list) > 1 else 0.0
-                delay_samples = round(tau_i * 48000.0)
-                if 0 < delay_samples < 2048:
-                    fir_ac = [0.0] * delay_samples + fir_ac[: 2048 - delay_samples]
-                peaks.append(int(np.argmax(np.abs(fir_ac))))
-
-                fir_circ = synthesize_minimum_phase_fir(c_curve, num_taps=2048, normalize=False)
-                H_channels.append(np.fft.rfft(fir_ac, N) * np.fft.rfft(fir_circ, N))
-
-            H_channels_arr = np.array(H_channels)
-            delta_samples = max(peaks) - min(peaks) if len(peaks) > 1 else 0
-
-            if len(H_channels_arr) > 1 and delta_samples > 0:
-                P_coh = np.abs(np.sum(H_channels_arr, axis=0)) ** 2
-                P_incoh = np.sum(np.abs(H_channels_arr) ** 2, axis=0)
-                delta_tau = delta_samples / 48000.0
-                f_notch = 1.0 / (2.0 * delta_tau)
-                f_mid = 1.35 * f_notch
-                f_sigma = max(0.35 * f_notch, 1.0)
-                gamma = 0.5 * (1.0 - np.tanh((f_bins - f_mid) / f_sigma))
-                mag_spectrum = np.sqrt(gamma * P_coh + (1.0 - gamma) * P_incoh)
-            elif len(H_channels_arr) > 1:
-                mag_spectrum = np.abs(np.sum(H_channels_arr, axis=0))
-            else:
-                mag_spectrum = np.abs(H_channels_arr[0])
-
-            h_base = np.interp(f, f_bins, mag_spectrum)
-        else:
-            # Single pickup or unified coil aperture
-            coils = resolve_pickup_coils(pickup_cfg, inst)
-            eff_pos = compute_effective_position(coils)
-            h_ac_raw = numpy_pickup_acoustic_response(f, coils, scale_length_m=scale_range)
-            h_ac = np.asarray(h_ac_raw, dtype=np.float64)
-
-            # Spatial bridge proximity displacement excursion relative to universal datum
-            h_pos = compute_displacement_proximity_shelf(f, eff_pos, scale_m=scale_m)
-            k_iso = compute_pickup_isolation_leveling(
-                eff_pos, scale_m=scale_m, ref_pos_m=ref_pos
-            )
-            h_ac = h_ac * h_pos * k_iso
-
-            # Saddle boundary coupling for close bridge pickups
-            min_pos = min((c.position_from_bridge_m for c in coils), default=0.10)
-            if min_pos < 0.075:
-                h_saddle = compute_saddle_boundary_coupling(f, min_pos)
-                h_ac = h_ac * np.asarray(h_saddle, dtype=np.float64)
-
-            if curves is not None:
-                h_elec = np.asarray(curves[0], dtype=np.float64)
-            else:
-                h_elec = np.ones_like(f, dtype=np.float64)
-
-            h_base = np.abs(h_ac) * np.abs(h_elec)
-
     # 2. Active Preamp EQ Contour H_preamp(f)
     circ_preamp = getattr(circ_model, "preamp", None) if circ_model is not None else None
     circ_has_preamp = circ_preamp not in (None, "", "none")
@@ -384,9 +265,6 @@ def simulate_instrument_voicing(
         h_preamp = np.ones_like(f, dtype=np.float64)
 
     # 3. Scale-Length Tension Dynamics H_tension(f)
-    # Determined directly from mechanical scale ratio r_L = L / L_0 (L_0 = 34.0"):
-    # - Low-frequency fundamental compliance excursion: g_excursion = L_0 / L (magnetic sensors only)
-    # - High-frequency transverse release power: g_snap = (L / L_0)^1.5
     r_L = scale_in / 34.0
     if voicing_cfg.sensor_type == "direct":
         h_tension = np.ones_like(f, dtype=np.float64)
@@ -418,74 +296,291 @@ def simulate_instrument_voicing(
         h_string = np.ones_like(f, dtype=np.float64)
         h_long = np.ones_like(f, dtype=np.float64)
 
-    # 5. Composite Magnitude Transfer Function
+    is_composite_sim = False
+    composite_audio = np.zeros(n_samples, dtype=np.float64)
+
+    if voicing_cfg.sensor_type == "direct":
+        if curves is not None:
+            h_base = np.asarray(curves[0], dtype=np.float64)
+        else:
+            h_base = np.ones_like(f, dtype=np.float64)
+    elif voicing_cfg.sensor_type == "bridge_force":
+        f_damp = 3800.0
+        h_ac = 1.0 / np.sqrt(1.0 + (f / f_damp) ** 4)
+        f_sub = 10.0
+        h_sub = np.sqrt(f**2 / (f_sub**2 + f**2))
+        h_ac = h_ac * h_sub
+        if curves is not None:
+            h_elec = np.asarray(curves[0], dtype=np.float64)
+            h_base = h_ac * h_elec
+        else:
+            h_base = h_ac
+    else:
+        # Magnetic sensor: determine single pickup vs multi-pickup composite
+        is_composite = (
+            pickup_cfg.type == "composite"
+            or bool(pickup_cfg.components)
+            or (curves is not None and len(curves) > 1)
+        )
+
+        single_positions = [
+            float(p.position_from_bridge_m)
+            for p in inst.pickups.values()
+            if not p.components and p.position_from_bridge_m is not None
+        ]
+        max_p_pos = max(single_positions, default=UNIVERSAL_DATUM_POS_M)
+        ref_pos = max(max_p_pos, UNIVERSAL_DATUM_POS_M)
+
+        if is_composite and pickup_cfg.components:
+            is_composite_sim = True
+            N = 8192
+            f_bins = np.fft.rfftfreq(N, 1.0 / 48000.0)
+            c_mean = 2.0 * scale_m * MEAN_BASS_F0
+
+            # Resolve branch components
+            branch_sub_pickups = []
+            for comp in pickup_cfg.components:
+                if comp.pickup and comp.pickup in inst.pickups:
+                    branch_sub_pickups.append(
+                        (inst.pickups[comp.pickup], float(comp.weight), float(comp.polarity))
+                    )
+
+            branch_coils_list = []
+            branch_positions = []
+            for sp, w_comp, pol_comp in branch_sub_pickups:
+                b_coils = resolve_pickup_coils(sp, inst)
+                branch_coils_list.append((b_coils, w_comp, pol_comp))
+                branch_positions.append(compute_effective_position(b_coils))
+
+            pos_max = max(branch_positions) if branch_positions else 0.0
+            H_channels = []
+            peaks = []
+            branch_audios = []
+
+            for i, (b_coils, w_comp, pol_comp) in enumerate(branch_coils_list):
+                c_curve_raw = (
+                    curves[i]
+                    if (curves is not None and i < len(curves))
+                    else (curves[0] if curves is not None else np.ones_like(FREQS))
+                )
+                c_curve = np.interp(f_bins, FREQS, np.asarray(c_curve_raw, dtype=np.float64))
+
+                weight_fac = 1.0 if (curves is not None and len(curves) > 1) else w_comp
+                ac_raw = numpy_pickup_acoustic_response(
+                    f_bins, b_coils, scale_length_m=scale_range
+                ) * (weight_fac * pol_comp)
+
+                b_pos = branch_positions[i]
+                h_pos = compute_displacement_proximity_shelf(f_bins, b_pos, scale_m=scale_m)
+                k_iso = compute_pickup_isolation_leveling(b_pos, scale_m=scale_m, ref_pos_m=ref_pos)
+                ac = ac_raw * h_pos * k_iso
+
+                min_pos = min((c.position_from_bridge_m for c in b_coils), default=0.10)
+                if min_pos < 0.075:
+                    h_saddle = compute_saddle_boundary_coupling(f_bins, min_pos)
+                    ac = ac * np.asarray(h_saddle, dtype=np.float64)
+
+                fir_ac = synthesize_minimum_phase_fir(ac, num_taps=2048, normalize=False)
+                tau_i = (pos_max - b_pos) / c_mean if len(branch_coils_list) > 1 else 0.0
+                delay_samples = round(tau_i * 48000.0)
+                if 0 < delay_samples < 2048:
+                    fir_ac = [0.0] * delay_samples + fir_ac[: 2048 - delay_samples]
+                peaks.append(int(np.argmax(np.abs(fir_ac))))
+
+                fir_circ = synthesize_minimum_phase_fir(c_curve, num_taps=2048, normalize=False)
+                H_ac_fft = np.fft.rfft(fir_ac, N)
+                H_circ_fft = np.fft.rfft(fir_circ, N)
+                H_channels.append(H_ac_fft * H_circ_fft)
+
+                fir_branch = fft_convolve(
+                    np.asarray(fir_ac, dtype=np.float64),
+                    np.asarray(fir_circ, dtype=np.float64),
+                    mode="causal",
+                )
+                b_audio = fft_convolve(input_mono, fir_branch, mode="causal")[:n_samples]
+
+                # Branch-wise magnetic saturation
+                if apply_saturation:
+                    sp = branch_sub_pickups[i][0]
+                    sp_mag = sp.magnet_type or (
+                        "active" if getattr(inst, "electronics", "") == "active" else "alnico_v"
+                    )
+                    sp_props = MAGNET_PROPERTIES.get(sp_mag, MAGNET_PROPERTIES["alnico_v"])
+                    sp_vsat = (
+                        float(voicing_cfg.vsat)
+                        if voicing_cfg.vsat is not None
+                        else (
+                            float(circ_model.vsat)
+                            if (circ_model is not None and circ_model.vsat is not None)
+                            else float(sp_props.vsat)
+                        )
+                    )
+                    sp_alpha = (
+                        float(voicing_cfg.alpha)
+                        if voicing_cfg.alpha is not None
+                        else (float(sp.alpha) if sp.alpha is not None else float(sp_props.alpha))
+                    )
+                    drive_db = float(getattr(voicing_cfg, "gain_db", 0.0) or 0.0)
+                    drive_in = b_audio if drive_db == 0.0 else b_audio * (10.0 ** (drive_db / 20.0))
+                    b_audio = apply_oversampled_saturation(
+                        drive_in.astype(np.float32),
+                        vsat=sp_vsat,
+                        alpha=sp_alpha,
+                        alpha3=float(sp_props.alpha3),
+                        eta_hyst=float(sp_props.eta_hyst),
+                        k_sag=float(sp_props.k_sag),
+                        k_eddy=float(sp_props.k_eddy),
+                        kappa_orbit=float(sp_props.kappa_orbit),
+                        beta_curv=float(sp_props.beta_curv),
+                        k_pull=float(sp_props.k_pull),
+                        tau_touch=float(sp_props.tau_touch),
+                        kappa_geom=float(sp_props.kappa_geom),
+                        k_stein=float(sp_props.k_stein),
+                        k_emf=float(sp_props.k_emf),
+                        lambda_L=float(sp_props.lambda_L),
+                        kappa_ap=float(sp_props.kappa_ap),
+                        slew_limit=True,
+                        f_slew=16000.0,
+                        oversample=2,
+                        displacement_weighting=True,
+                        magnet_drag=True,
+                    ).astype(np.float64)
+
+                branch_audios.append(b_audio)
+
+            raw_sum = np.sum(branch_audios, axis=0)
+            H_channels_arr = np.array(H_channels)
+            delta_samples = max(peaks) - min(peaks) if len(peaks) > 1 else 0
+
+            if len(H_channels_arr) > 1 and delta_samples > 0:
+                P_coh = np.abs(np.sum(H_channels_arr, axis=0)) ** 2
+                P_incoh = np.sum(np.abs(H_channels_arr) ** 2, axis=0)
+                delta_tau = delta_samples / 48000.0
+                f_notch = 1.0 / (2.0 * delta_tau)
+                f_mid = 1.35 * f_notch
+                f_sigma = max(0.35 * f_notch, 1.0)
+                gamma = 0.5 * (1.0 - np.tanh((f_bins - f_mid) / f_sigma))
+                M_blend = np.sqrt(gamma * P_coh + (1.0 - gamma) * P_incoh)
+                H_coh = np.sum(H_channels_arr, axis=0)
+                mag_coh = np.abs(H_coh)
+                H_spatial = M_blend / np.maximum(mag_coh, 1e-4)
+                fir_spatial = synthesize_minimum_phase_fir(
+                    H_spatial, num_taps=1024, normalize=False
+                )
+                composite_audio = fft_convolve(
+                    raw_sum, np.asarray(fir_spatial, dtype=np.float64), mode="causal"
+                )[:n_samples]
+                mag_spectrum = M_blend
+            elif len(H_channels_arr) > 1:
+                composite_audio = raw_sum
+                mag_spectrum = np.abs(np.sum(H_channels_arr, axis=0))
+            else:
+                composite_audio = raw_sum
+                mag_spectrum = np.abs(H_channels_arr[0])
+
+            h_base = np.interp(f, f_bins, mag_spectrum)
+        else:
+            # Single pickup or unified coil aperture
+            coils = resolve_pickup_coils(pickup_cfg, inst)
+            eff_pos = compute_effective_position(coils)
+            h_ac_raw = numpy_pickup_acoustic_response(f, coils, scale_length_m=scale_range)
+            h_ac = np.asarray(h_ac_raw, dtype=np.float64)
+
+            # Spatial bridge proximity displacement excursion relative to universal datum
+            h_pos = compute_displacement_proximity_shelf(f, eff_pos, scale_m=scale_m)
+            k_iso = compute_pickup_isolation_leveling(eff_pos, scale_m=scale_m, ref_pos_m=ref_pos)
+            h_ac = h_ac * h_pos * k_iso
+
+            # Saddle boundary coupling for close bridge pickups
+            min_pos = min((c.position_from_bridge_m for c in coils), default=0.10)
+            if min_pos < 0.075:
+                h_saddle = compute_saddle_boundary_coupling(f, min_pos)
+                h_ac = h_ac * np.asarray(h_saddle, dtype=np.float64)
+
+            if curves is not None:
+                h_elec = np.asarray(curves[0], dtype=np.float64)
+            else:
+                h_elec = np.ones_like(f, dtype=np.float64)
+
+            h_base = np.abs(h_ac) * np.abs(h_elec)
+
+    # 5. Composite Magnitude Transfer Function & Convolutions
+    H_downstream = np.maximum(
+        h_preamp * h_tension * h_long * h_string,
+        1e-6,
+    )
     h_total = np.maximum(
-        h_base * h_preamp * h_tension * h_long * h_string,
+        h_base * H_downstream,
         1e-6,
     )
 
-    # 6. Minimum-Phase FIR Synthesis (Zero-Latency Causal Alignment)
-    fir = synthesize_minimum_phase_fir(h_total, num_taps=num_taps, normalize=False)
-    fir_np = np.asarray(fir, dtype=np.float64)
+    if is_composite_sim:
+        if not np.allclose(H_downstream, 1.0, atol=1e-4):
+            fir_down = synthesize_minimum_phase_fir(
+                H_downstream, num_taps=num_taps, normalize=False
+            )
+            filtered = fft_convolve(
+                composite_audio, np.asarray(fir_down, dtype=np.float64), mode="causal"
+            )[:n_samples]
+        else:
+            filtered = composite_audio
+    else:
+        fir = synthesize_minimum_phase_fir(h_total, num_taps=num_taps, normalize=False)
+        fir_np = np.asarray(fir, dtype=np.float64)
+        filtered = fft_convolve(input_mono, fir_np, mode="causal")[:n_samples]
 
-    # 7. Audio Convolution
-    raw_audio, sr = read_wav(in_path, max_samples=max_samples, dtype=np.float64)
-    input_mono = raw_audio[0] if raw_audio.ndim > 1 else raw_audio
-    n_samples = len(input_mono)
-
-    filtered = fft_convolve(input_mono, fir_np, mode="causal")[:n_samples]
-
-    # 8. Oversampled Magnetic Saturation & Core Dynamics (All 15 Parameters)
-    has_direct_dynamics = (
-        voicing_cfg.sensor_type == "direct"
-        and circ_model is not None
-        and not getattr(circ_model, "no_eq", False)
-    )
-    if apply_saturation and (voicing_cfg.sensor_type == "magnetic" or has_direct_dynamics):
-        mag_type = pickup_cfg.magnet_type or (
-            "active" if getattr(inst, "electronics", "") == "active" else "alnico_v"
+        # Single-pickup Oversampled Magnetic Saturation & Core Dynamics (All 16 Parameters)
+        has_direct_dynamics = (
+            voicing_cfg.sensor_type == "direct"
+            and circ_model is not None
+            and not getattr(circ_model, "no_eq", False)
         )
-        props = MAGNET_PROPERTIES.get(mag_type, MAGNET_PROPERTIES["alnico_v"])
+        if apply_saturation and (voicing_cfg.sensor_type == "magnetic" or has_direct_dynamics):
+            mag_type = pickup_cfg.magnet_type or (
+                "active" if getattr(inst, "electronics", "") == "active" else "alnico_v"
+            )
+            props = MAGNET_PROPERTIES.get(mag_type, MAGNET_PROPERTIES["alnico_v"])
 
-        if voicing_cfg.vsat is not None:
-            vsat_eff = float(voicing_cfg.vsat)
-        elif circ_model is not None and circ_model.vsat is not None:
-            vsat_eff = float(circ_model.vsat)
-        else:
-            vsat_eff = float(props.vsat)
+            if voicing_cfg.vsat is not None:
+                vsat_eff = float(voicing_cfg.vsat)
+            elif circ_model is not None and circ_model.vsat is not None:
+                vsat_eff = float(circ_model.vsat)
+            else:
+                vsat_eff = float(props.vsat)
 
-        if voicing_cfg.alpha is not None:
-            alpha_eff = float(voicing_cfg.alpha)
-        elif pickup_cfg.alpha is not None:
-            alpha_eff = float(pickup_cfg.alpha)
-        else:
-            alpha_eff = float(props.alpha)
+            if voicing_cfg.alpha is not None:
+                alpha_eff = float(voicing_cfg.alpha)
+            elif pickup_cfg.alpha is not None:
+                alpha_eff = float(pickup_cfg.alpha)
+            else:
+                alpha_eff = float(props.alpha)
 
-        drive_db = float(getattr(voicing_cfg, "gain_db", 0.0) or 0.0)
-        drive_in = filtered if drive_db == 0.0 else filtered * (10.0 ** (drive_db / 20.0))
+            drive_db = float(getattr(voicing_cfg, "gain_db", 0.0) or 0.0)
+            drive_in = filtered if drive_db == 0.0 else filtered * (10.0 ** (drive_db / 20.0))
 
-        filtered = apply_oversampled_saturation(
-            drive_in.astype(np.float32),
-            vsat=vsat_eff,
-            alpha=alpha_eff,
-            alpha3=float(props.alpha3),
-            eta_hyst=float(props.eta_hyst),
-            k_sag=float(props.k_sag),
-            k_eddy=float(props.k_eddy),
-            kappa_orbit=float(props.kappa_orbit),
-            beta_curv=float(props.beta_curv),
-            k_pull=float(props.k_pull),
-            tau_touch=float(props.tau_touch),
-            kappa_geom=float(props.kappa_geom),
-            k_stein=float(props.k_stein),
-            k_emf=float(props.k_emf),
-            lambda_L=float(props.lambda_L),
-            slew_limit=True,
-            f_slew=16000.0,
-            oversample=2,
-            displacement_weighting=True,
-            magnet_drag=True,
-        ).astype(np.float64)
+            filtered = apply_oversampled_saturation(
+                drive_in.astype(np.float32),
+                vsat=vsat_eff,
+                alpha=alpha_eff,
+                alpha3=float(props.alpha3),
+                eta_hyst=float(props.eta_hyst),
+                k_sag=float(props.k_sag),
+                k_eddy=float(props.k_eddy),
+                kappa_orbit=float(props.kappa_orbit),
+                beta_curv=float(props.beta_curv),
+                k_pull=float(props.k_pull),
+                tau_touch=float(props.tau_touch),
+                kappa_geom=float(props.kappa_geom),
+                k_stein=float(props.k_stein),
+                k_emf=float(props.k_emf),
+                lambda_L=float(props.lambda_L),
+                kappa_ap=float(props.kappa_ap),
+                slew_limit=True,
+                f_slew=16000.0,
+                oversample=2,
+                displacement_weighting=True,
+                magnet_drag=True,
+            ).astype(np.float64)
 
     # 9. Sub-Audible DC-Blocking Filter (8 Hz)
     if dc_block:
@@ -507,34 +602,63 @@ def simulate_instrument_voicing(
         filtered = filtered + dither
 
     # 11. Calibrated Level Normalization & Headroom Ceiling
-    if normalize == "rms" and target_dbfs is not None:
-        target_rms = 10.0 ** (target_dbfs / 20.0)
+    if normalize in ("auto", "lufs"):
+        in_lufs = compute_lufs(input_mono, sample_rate=sr)
+        cur_lufs = compute_lufs(filtered, sample_rate=sr)
+        if not (
+            math.isinf(cur_lufs)
+            or math.isnan(cur_lufs)
+            or math.isinf(in_lufs)
+            or math.isnan(in_lufs)
+        ):
+            target_lufs = float(target_dbfs) if target_dbfs is not None else in_lufs
+            gain_db = target_lufs - cur_lufs
+            filtered = filtered * (10.0 ** (gain_db / 20.0))
+        else:
+            in_rms = float(np.sqrt(np.mean(input_mono**2)))
+            out_rms = float(np.sqrt(np.mean(filtered**2)))
+            if in_rms > 1e-9 and out_rms > 1e-9:
+                filtered = filtered * (in_rms / out_rms)
+    elif normalize == "rms":
+        target_rms = (
+            10.0 ** (target_dbfs / 20.0)
+            if target_dbfs is not None
+            else float(np.sqrt(np.mean(input_mono**2)))
+        )
         cur_rms = float(np.sqrt(np.mean(filtered**2)))
         if cur_rms > 1e-9:
             filtered = filtered * (target_rms / cur_rms)
-    elif normalize == "peak" and target_dbfs is not None:
-        target_peak = 10.0 ** (target_dbfs / 20.0)
+    elif normalize == "peak":
+        target_peak = (
+            10.0 ** (target_dbfs / 20.0)
+            if target_dbfs is not None
+            else float(np.max(np.abs(input_mono)))
+        )
         cur_peak = float(np.max(np.abs(filtered)))
         if cur_peak > 1e-9:
             filtered = filtered * (target_peak / cur_peak)
-    elif normalize not in ("none", "raw"):
-        in_rms = float(np.sqrt(np.mean(input_mono**2)))
-        out_rms = float(np.sqrt(np.mean(filtered**2)))
-        if in_rms > 1e-9 and out_rms > 1e-9:
-            filtered = filtered * (in_rms / out_rms)
 
-    max_peak = float(np.max(np.abs(filtered)))
-    if normalize not in ("none", "raw") and max_peak > CALIBRATION_PEAK_CEILING:
-        filtered = filtered * (CALIBRATION_PEAK_CEILING / max_peak)
+    if normalize not in ("none", "raw"):
+        tp = compute_true_peak(filtered)
+        if tp > CALIBRATION_PEAK_CEILING:
+            filtered = filtered * (CALIBRATION_PEAK_CEILING / tp)
 
     # 12. 24-bit PCM Export
     write_wav_24bit(out_path, filtered.astype(np.float32), sample_rate=sr)
 
-    final_peak_db = 20.0 * math.log10(max(float(np.max(np.abs(filtered))), 1e-9))
+    final_tp_db = compute_true_peak_dbfs(filtered)
+    final_tp_lin = compute_true_peak(filtered)
     final_rms_db = 20.0 * math.log10(max(float(np.sqrt(np.mean(filtered**2))), 1e-9))
+    final_lufs = compute_lufs(filtered, sample_rate=sr)
+    lufs_str = (
+        f"{final_lufs:.2f} LUFS"
+        if not (math.isinf(final_lufs) or math.isnan(final_lufs))
+        else "-inf LUFS"
+    )
     print(
         f"[Forward Sim] {inst.id}:{voicing_id} -> {out_path.name}: "
-        f"Peak = {final_peak_db:.2f} dBFS, RMS = {final_rms_db:.2f} dBFS"
+        f"True Peak = {final_tp_db:.2f} dBFS (lin={final_tp_lin:.4f}), "
+        f"RMS = {final_rms_db:.2f} dBFS, Loudness = {lufs_str}"
     )
 
     # 13. Manifest Provenance Tracking (base dry SHA256)
@@ -568,6 +692,7 @@ def simulate_all_instrument_voicings(
     input_wav: Path | str | None = None,
     max_samples: int | None = None,
     jobs: int | None = None,
+    force: bool = False,
 ) -> list[Path]:
     """
     Simulates all native voicings for a specified instrument (or all instruments in catalog).
@@ -594,6 +719,7 @@ def simulate_all_instrument_voicings(
             voicing=v,
             input_wav=input_wav,
             max_samples=max_samples,
+            force=force,
         )
 
     eff_jobs = jobs if jobs is not None and jobs > 0 else 1
@@ -647,6 +773,8 @@ def simulate_circuit_audio(
     k_emfs: Sequence[float] | None = None,
     lambda_L: float = 0.0,
     lambda_Ls: Sequence[float] | None = None,
+    kappa_ap: float = 0.0,
+    kappa_aps: Sequence[float] | None = None,
     vol_pos: float | None = None,
     tone_pos: float | None = None,
     blend_pos: float | None = None,
@@ -785,6 +913,7 @@ def simulate_circuit_audio(
             k_stein = getattr(saturation_config, "k_stein", k_stein)
             k_emf = getattr(saturation_config, "k_emf", k_emf)
             lambda_L = getattr(saturation_config, "lambda_L", lambda_L)
+            kappa_ap = getattr(saturation_config, "kappa_ap", kappa_ap)
         vsat_val = vsat if vsat is not None else 0.45
         filtered = apply_oversampled_saturation(
             filtered.astype(np.float32),
@@ -802,6 +931,7 @@ def simulate_circuit_audio(
             k_stein=k_stein,
             k_emf=k_emf,
             lambda_L=lambda_L,
+            kappa_ap=kappa_ap,
             slew_limit=slew_limit,
             f_slew=f_slew,
             oversample=oversample,
@@ -872,6 +1002,7 @@ def simulate_voice(
     max_samples: int | None = None,
     config: Any = None,
     pickup: str | None = None,
+    force: bool = False,
     **kwargs: Any,
 ) -> bool:
     """
@@ -886,6 +1017,7 @@ def simulate_voice(
         skip_id = getattr(config, "skip_identity", False)
         norm = getattr(config, "normalize", normalize)
         tgt_db = getattr(config, "target_dbfs", target_dbfs)
+        force_val = getattr(config, "force", force)
     else:
         inst_target = instrument
         out_target = output_wav
@@ -894,6 +1026,7 @@ def simulate_voice(
         skip_id = kwargs.get("skip_identity", False)
         norm = normalize
         tgt_db = target_dbfs
+        force_val = force
 
     if inst_target is not None:
         inst_obj = (
@@ -960,6 +1093,7 @@ def simulate_voice(
             apply_saturation=apply_sat,
             normalize=norm,
             target_dbfs=tgt_db,
+            force=force_val,
         )
         return out.exists()
     except KeyError:

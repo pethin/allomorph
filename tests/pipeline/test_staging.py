@@ -119,11 +119,11 @@ def test_tone_pack_exporter(tmp_path: Path):
         dry_files = list(bdir.glob("dry*.wav"))
         assert len(dry_files) == 1, f"Bundle {bdir.name} missing dry file: found {dry_files}"
         dry_file = dry_files[0]
-        assert dry_file.name.startswith("dry v3.1.")
+        assert dry_file.name.startswith("dry v4.1.")
         wet_files = [f for f in bdir.glob("*.wav") if not f.name.startswith("dry")]
         assert len(wet_files) > 0, f"Bundle {bdir.name} has no wet stems"
         for wf in wet_files:
-            assert "v3.1." in wf.name
+            assert "v4.1." in wf.name
         instructions = bdir / "upload_instructions.txt"
         assert instructions.exists()
         assert dry_file.name in instructions.read_text(encoding="utf-8")
@@ -137,7 +137,7 @@ def test_tone_pack_exporter(tmp_path: Path):
         for stem in mdata["stems"]:
             assert "target_instrument_version" in stem
             assert "target_voicing_version" in stem
-            assert stem["version"].startswith("v3.1.")
+            assert stem["version"].startswith("v4.1.")
 
 
 def test_concise_naming_invariants():

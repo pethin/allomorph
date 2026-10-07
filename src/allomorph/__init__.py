@@ -2,10 +2,12 @@
 Allomorph - Universal Pickup & Transducer Analog Modeling Engine
 """
 
-__version__ = "0.2.0"
+__version__ = "0.4.0"
 
 from allomorph.circuit import (
     CALIBRATION_PEAK_CEILING,
+    audit_audio_file,
+    audit_wet_audio_catalog,
     export_instrument_pickup_wav,
     find_default_input_audio,
     resolve_target_voicing,
@@ -45,6 +47,9 @@ from allomorph.dsp import (
     NYQ,
     calibrate_nam_v3_latency,
     cinf_smoothstep,
+    compute_lufs,
+    compute_true_peak,
+    compute_true_peak_dbfs,
     ensure_input_audio_wav,
     fft_convolve,
     generate_input_audio,
@@ -93,11 +98,16 @@ __all__ = [
     "STRINGS",
     "VOICES",
     "VOICE_CONCISE_SLUGS",
+    "audit_audio_file",
+    "audit_wet_audio_catalog",
     "calibrate_nam_v3_latency",
     "cinf_smoothstep",
     "compute_coil_aperture",
     "compute_effective_position",
     "compute_file_sha256",
+    "compute_lufs",
+    "compute_true_peak",
+    "compute_true_peak_dbfs",
     "compute_voice_prefilter_firs",
     "ensure_input_audio_wav",
     "export_instrument_pickup_wav",
