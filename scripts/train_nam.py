@@ -349,12 +349,17 @@ def train_voice(
             input_path = candidate_source
         else:
             try:
-                from allomorph.circuit import export_instrument_pickup_wav
+                from allomorph.circuit.forward import simulate_instrument_voicing
 
                 print(
                     f"[NAM Trainer] Dedicated source stem missing or stale, auto-generating: {candidate_source.name}"
                 )
-                input_path = export_instrument_pickup_wav(inst_id=inst_id, pickup_key=src_pk)
+                input_path = simulate_instrument_voicing(
+                    instrument=inst_id,
+                    voicing=src_pk,
+                    output_wav=candidate_source,
+                    input_wav=input_wav,
+                )
             except (FileNotFoundError, ValueError, RuntimeError, KeyError, OSError) as e:
                 print(
                     f"[NAM Trainer] Warning: Failed to auto-generate source pickup stem: {e}. Falling back to default sweep."

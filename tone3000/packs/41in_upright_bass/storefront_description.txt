@@ -1,7 +1,7 @@
 ALLOMORPH: 41.25" ACOUSTIC DOUBLE BASS EDITION
 ==============================================
 
-Transform your 41.25" Acoustic Double Bass into 25 legendary active, vintage, modern, and acoustic pickup configurations.
+Transform your 41.25" Acoustic Double Bass into 24 legendary active, vintage, modern, and acoustic pickup configurations.
 
 OVERVIEW
 --------
@@ -23,10 +23,10 @@ QUICK INSTRUMENT SETUP
 • Master Tone Knob: 100% (Wide Open across all models)
 • Single-Pickup Bass: Plug straight in. All pickup placement and pot loading are modeled.
 
-INCLUDED VOICINGS (25 MODELS)
+INCLUDED VOICINGS (24 MODELS)
 -----------------------------------------
 
-### Bundle: Bridge (25 Voicings)
+### Bundle: Bridge (24 Voicings)
 • Precision Vintage v4.1.1: Vintage 1962 Open (34" Standard P-Bass)
 • Precision Mids v4.1.1: Vintage 1962 Vocal Mids (34" Standard P-Bass)
 • Precision Warm v4.1.1: Vintage Motown Flatwound Warmth (34" Standard P-Bass)
@@ -51,7 +51,6 @@ INCLUDED VOICINGS (25 MODELS)
 • P∕MM Parallel v4.1.1: Modern Active P/MM Bass (Parallel) (34" Modern Active P/MM Bass)
 • P∕MM Series v4.1.1: P/MM Hybrid Series Bass (34" Modern Active P/MM Bass)
 • Mudbucker Deep v4.1.1: Massive 14.4H Sidewinder Sub-Bass (30.5" Gibson EB-0 Mudbucker)
-• Upright Acoustic v4.1.1: Acoustic Double Bass Bridge Force (41.25" Acoustic Double Bass)
 
 TECHNICAL SPECIFICATIONS
 ------------------------

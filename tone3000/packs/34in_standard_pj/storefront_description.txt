@@ -1,7 +1,7 @@
 ALLOMORPH: 34" STANDARD P/J BASS EDITION
 ========================================
 
-Transform your 34" Standard P/J Bass into 25 legendary active, vintage, modern, and acoustic pickup configurations.
+Transform your 34" Standard P/J Bass into 24 legendary active, vintage, modern, and acoustic pickup configurations.
 
 OVERVIEW
 --------
@@ -29,7 +29,7 @@ QUICK INSTRUMENT SETUP
    - [Bridge]: Select Modern Ceramic Single-Coil (Bridge)
    - [Parallel]: Select Modern Active P/J (Split P + J Bridge)
 
-INCLUDED VOICINGS (25 MODELS)
+INCLUDED VOICINGS (24 MODELS)
 -----------------------------------------
 
 ### Bundle: Neck (9 Voicings)
@@ -53,12 +53,11 @@ INCLUDED VOICINGS (25 MODELS)
 • Rickenbacker Clank [Bridge] v4.1.1: Vintage 4003 Bridge Clank (4.7nF HPF) (33.25" Rickenbacker 4003)
 • Rickenbacker Open [Bridge] v4.1.1: Modern 4003 Bridge Open Bypass (33.25" Rickenbacker 4003)
 
-### Bundle: Parallel (8 Voicings)
+### Bundle: Parallel (7 Voicings)
 • Jazz Pair Open [Parallel] v4.1.1: 60s Dual Single-Coils Open (34" Standard Jazz Bass)
 • Jazz Pair Mids [Parallel] v4.1.1: 60s Dual Single-Coils Vocal Mids (34" Standard Jazz Bass)
 • Jazz Pair Active [Parallel] v4.1.1: Modern Active 2-Band Slap Scoop (34" Standard Jazz Bass)
 • Dingwall Parallel [Parallel] v4.1.1: FD3 Bridge + Middle Parallel (37" Multi-Scale Dingwall 5-String (FD3n))
-• PJ Passive [Parallel] v4.1.1: Vintage Alnico P/J Parallel (34" Standard P/J Bass)
 • PJ Active [Parallel] v4.1.1: Modern Active P/J Preamp Boost (34" Standard P/J Bass)
 • P∕MM Parallel [Parallel] v4.1.1: Modern Active P/MM Bass (Parallel) (34" Modern Active P/MM Bass)
 • P∕MM Series [Parallel] v4.1.1: P/MM Hybrid Series Bass (34" Modern Active P/MM Bass)

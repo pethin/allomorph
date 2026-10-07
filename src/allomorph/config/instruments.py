@@ -313,6 +313,72 @@ class PickupBundle:
     targets: list[TargetVoicingRef] = field(default_factory=list)
 
 
+def is_identity_voicing(
+    source_inst: InstrumentConfig,
+    source_pickup_key: str,
+    target_inst: InstrumentConfig,
+    target_voicing: VoicingConfig,
+) -> bool:
+    """Determines if a target voicing is an exact identity mapping of a source pickup."""
+    if source_inst.id != target_inst.id:
+        return False
+    if target_voicing.pickup != source_pickup_key:
+        return False
+
+    # Check if target voicing is the exact voicing resolved for the pickup
+    try:
+        from allomorph.circuit.forward import resolve_target_voicing
+
+        _, dry_v = resolve_target_voicing(source_pickup_key, instrument=source_inst)
+        if target_voicing.id == dry_v.id:
+            return True
+    except (KeyError, ValueError, ImportError):
+        pass
+
+    p_cfg = source_inst.pickups.get(source_pickup_key)
+    p_circuit = p_cfg.circuit if p_cfg else None
+
+    # Check volume & tone controls are nominal wide-open
+    if target_voicing.vol_pos != 1.0 or target_voicing.tone_pos != 1.0:
+        return False
+    if target_voicing.blend_pos is not None and target_voicing.blend_pos != 0.5:
+        return False
+    if target_voicing.gain_db != 0.0 and target_voicing.gain_db is not None:
+        return False
+    if target_voicing.hpf is not None or target_voicing.circuit is not None:
+        return False
+    if target_voicing.alpha is not None or target_voicing.vsat is not None:
+        return False
+    if len(target_voicing.preamp_bands) > 0:
+        return False
+
+    # Normalize and compare preamps ('none', '', None are equivalent)
+    inst_preamp = getattr(p_circuit, "preamp", None) if p_circuit else None
+    if inst_preamp in ("none", ""):
+        inst_preamp = None
+    tgt_preamp = target_voicing.preamp_preset
+    if tgt_preamp in ("none", ""):
+        tgt_preamp = None
+    if tgt_preamp != inst_preamp:
+        return False
+
+    # String preset check
+    inst_str = getattr(source_inst.strings, "preset", "roundwound_nickel_standard")
+    if (
+        target_voicing.string_preset_override is not None
+        and target_voicing.string_preset_override != inst_str
+    ):
+        return False
+
+    # Tone cap check
+    return not (
+        target_voicing.tone_cap_f is not None
+        and p_circuit
+        and p_circuit.Ctone is not None
+        and abs(target_voicing.tone_cap_f - p_circuit.Ctone) > 1e-12
+    )
+
+
 def partition_instrument_bundles(
     source_inst: InstrumentConfig | str | Path,
     catalog_targets: Sequence[tuple[str, str]] | None = None,
@@ -355,6 +421,10 @@ def partition_instrument_bundles(
         src_pickup = get_source_pickup(inst, target_voicing)
         src_pickup_key = src_pickup.id or "default"
         b_name = src_pickup.bundle_name or src_pickup_key
+
+        # Omit identity target to prevent Tone3000 dry/wet collisions (X == Y)
+        if is_identity_voicing(inst, src_pickup_key, target_inst, target_voicing):
+            continue
 
         if b_name not in bundles:
             bundles[b_name] = PickupBundle(

@@ -13,11 +13,11 @@
       "base_dry_sha256": "2b8ce2cd2aa1a321df6c6ccca0384ab6efc7e005029c129fdd29e6f9d3d9999c",
       "dry_file": "dry v4.1.1.wav",
       "dry_version": "v4.1.1",
-      "dry_sha256": "60e9a70751c80b25dd71ec00e0258a657b495bc1a78ef817abf4a89769285c80",
+      "dry_sha256": "5100bcce8d22017467e796c0cd4e3df5323bd6dd41c3735c3c3ec31e8ad8faaa",
       "instrument_id": "30in_gibson_eb0",
       "instrument_version": 1,
       "source_voicing_version": 1,
-      "stem_count": 25,
+      "stem_count": 24,
       "stems": [
         {
           "filename": "Precision Vintage v4.1.1.wav",
@@ -248,16 +248,6 @@
           "version": "v4.1.1",
           "tone_name": "P\u2215MM Series",
           "sha256": "34fc7993868fd4a5669684f93bca1260176dab08861f1420a78da7ba1b17431b"
-        },
-        {
-          "filename": "Mudbucker Deep v4.1.1.wav",
-          "target_instrument": "30in_gibson_eb0",
-          "target_instrument_version": 1,
-          "target_voicing": "neck_deep",
-          "target_voicing_version": 1,
-          "version": "v4.1.1",
-          "tone_name": "Mudbucker Deep",
-          "sha256": "5100bcce8d22017467e796c0cd4e3df5323bd6dd41c3735c3c3ec31e8ad8faaa"
         },
         {
           "filename": "Upright Acoustic v4.1.1.wav",

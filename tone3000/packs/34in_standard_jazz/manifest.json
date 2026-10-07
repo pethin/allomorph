@@ -13,11 +13,11 @@
       "base_dry_sha256": "2b8ce2cd2aa1a321df6c6ccca0384ab6efc7e005029c129fdd29e6f9d3d9999c",
       "dry_file": "dry v4.1.1.wav",
       "dry_version": "v4.1.1",
-      "dry_sha256": "1a2b7254367eda40b9edc6679e5e2aee7c2d84ed18c24b543cf53225bd5a071b",
+      "dry_sha256": "c25e873c5ee44b4b3946f30e85f884a824e25c2c03da83d46c607f9d43abe9da",
       "instrument_id": "34in_standard_jazz",
       "instrument_version": 1,
       "source_voicing_version": 1,
-      "stem_count": 9,
+      "stem_count": 8,
       "stems": [
         {
           "filename": "Precision Vintage [Neck] v4.1.1.wav",
@@ -70,16 +70,6 @@
           "sha256": "8cb964f304709fa9954c8bedcf3d5fec4c02d1bb191657b31523f01c7ef683ac"
         },
         {
-          "filename": "Jazz Neck Warm [Neck] v4.1.1.wav",
-          "target_instrument": "34in_standard_jazz",
-          "target_instrument_version": 1,
-          "target_voicing": "neck_warm",
-          "target_voicing_version": 1,
-          "version": "v4.1.1",
-          "tone_name": "Jazz Neck Warm",
-          "sha256": "c25e873c5ee44b4b3946f30e85f884a824e25c2c03da83d46c607f9d43abe9da"
-        },
-        {
           "filename": "Dingwall Middle [Neck] v4.1.1.wav",
           "target_instrument": "37in_multiscale_dingwall",
           "target_instrument_version": 1,
@@ -118,11 +108,11 @@
       "base_dry_sha256": "2b8ce2cd2aa1a321df6c6ccca0384ab6efc7e005029c129fdd29e6f9d3d9999c",
       "dry_file": "dry v4.1.1.wav",
       "dry_version": "v4.1.1",
-      "dry_sha256": "ffd2aea0c2161ac086ae1bddfac7b7f516468fa5ba2fcac02a2ee7c8ba233ba3",
+      "dry_sha256": "bd7129672eb0fdcfcac95c0e51472a24e2fe9fd2e8970d4704869e65e9868e6c",
       "instrument_id": "34in_standard_jazz",
       "instrument_version": 1,
       "source_voicing_version": 1,
-      "stem_count": 8,
+      "stem_count": 7,
       "stems": [
         {
           "filename": "Jazz Bridge Growl [Bridge] v4.1.1.wav",
@@ -133,16 +123,6 @@
           "version": "v4.1.1",
           "tone_name": "Jazz Bridge Growl",
           "sha256": "cd9d5d7e01bcb10b4c0757cc35f9adb65c59a0f1cc4f5d53f4051a26550c6e82"
-        },
-        {
-          "filename": "Jazz Bridge Open [Bridge] v4.1.1.wav",
-          "target_instrument": "34in_standard_jazz",
-          "target_instrument_version": 1,
-          "target_voicing": "bridge_open",
-          "target_voicing_version": 1,
-          "version": "v4.1.1",
-          "tone_name": "Jazz Bridge Open",
-          "sha256": "bd7129672eb0fdcfcac95c0e51472a24e2fe9fd2e8970d4704869e65e9868e6c"
         },
         {
           "filename": "StingRay Parallel [Bridge] v4.1.1.wav",
@@ -213,22 +193,12 @@
       "base_dry_sha256": "2b8ce2cd2aa1a321df6c6ccca0384ab6efc7e005029c129fdd29e6f9d3d9999c",
       "dry_file": "dry v4.1.1.wav",
       "dry_version": "v4.1.1",
-      "dry_sha256": "0001578588d2d82af2a770194fae5bb336f1bd62f45e3181b859d2a2cb155b8b",
+      "dry_sha256": "b5b2dae566b725d52f1e4849169b3c40a58c94fd017dc205c604cea8026f7ed5",
       "instrument_id": "34in_standard_jazz",
       "instrument_version": 1,
       "source_voicing_version": 1,
-      "stem_count": 8,
+      "stem_count": 7,
       "stems": [
-        {
-          "filename": "Jazz Pair Open [Parallel] v4.1.1.wav",
-          "target_instrument": "34in_standard_jazz",
-          "target_instrument_version": 1,
-          "target_voicing": "pair_open",
-          "target_voicing_version": 1,
-          "version": "v4.1.1",
-          "tone_name": "Jazz Pair Open",
-          "sha256": "b5b2dae566b725d52f1e4849169b3c40a58c94fd017dc205c604cea8026f7ed5"
-        },
         {
           "filename": "Jazz Pair Mids [Parallel] v4.1.1.wav",
           "target_instrument": "34in_standard_jazz",
@@ -308,7 +278,7 @@
       "base_dry_sha256": "2b8ce2cd2aa1a321df6c6ccca0384ab6efc7e005029c129fdd29e6f9d3d9999c",
       "dry_file": "dry v4.1.1.wav",
       "dry_version": "v4.1.1",
-      "dry_sha256": "235219ccfb80e764c8699612e15ab1243ac4cbc6e2d8551e336c89e85ec598f9",
+      "dry_sha256": "3fd0f75e30c2a10d29fd38b199e3d0925bc8e0e7814606ed068ed01bbc6c6ab2",
       "instrument_id": "34in_standard_jazz",
       "instrument_version": 1,
       "source_voicing_version": 1,
@@ -322,7 +292,7 @@
       "base_dry_sha256": "2b8ce2cd2aa1a321df6c6ccca0384ab6efc7e005029c129fdd29e6f9d3d9999c",
       "dry_file": "dry v4.1.1.wav",
       "dry_version": "v4.1.1",
-      "dry_sha256": "ca228a3a8b74c03cd9b5e1f0169a66ac49cd033ba4f9a4047b9ccc0a6aed7216",
+      "dry_sha256": "0903af8535c0735f62f7c3269277019a8e04bd75a8c36ca1706daea40e0be243",
       "instrument_id": "34in_standard_jazz",
       "instrument_version": 1,
       "source_voicing_version": 1,
@@ -336,7 +306,7 @@
       "base_dry_sha256": "2b8ce2cd2aa1a321df6c6ccca0384ab6efc7e005029c129fdd29e6f9d3d9999c",
       "dry_file": "dry v4.1.1.wav",
       "dry_version": "v4.1.1",
-      "dry_sha256": "91ea44716c4572ad676373114338ab567fc3745d9384874420b12b352e8f56d4",
+      "dry_sha256": "2bdce0f490fe3c283aac9cf43bb0071d9137466d5e0320f7f3f06c2c506b0d53",
       "instrument_id": "34in_standard_jazz",
       "instrument_version": 1,
       "source_voicing_version": 1,
@@ -350,7 +320,7 @@
       "base_dry_sha256": "2b8ce2cd2aa1a321df6c6ccca0384ab6efc7e005029c129fdd29e6f9d3d9999c",
       "dry_file": "dry v4.1.1.wav",
       "dry_version": "v4.1.1",
-      "dry_sha256": "60a110e683c1b37a209e70b36369d184ea511b4e6289525303462f05f261a484",
+      "dry_sha256": "cd9d5d7e01bcb10b4c0757cc35f9adb65c59a0f1cc4f5d53f4051a26550c6e82",
       "instrument_id": "34in_standard_jazz",
       "instrument_version": 1,
       "source_voicing_version": 1,

@@ -105,6 +105,59 @@ def resolve_target_voicing(
             if clean_voicing in (v.id, slug):
                 return inst, v
 
+        # Check if voicing matches a declared pickup on the instrument
+        if clean_voicing in inst.pickups or str(voicing) in inst.pickups:
+            p_key = clean_voicing if clean_voicing in inst.pickups else str(voicing)
+            p_cfg = inst.pickups[p_key]
+
+            # 1. Search for a native nominal voicing on that pickup
+            best_match: VoicingConfig | None = None
+            for v in inst.voicings.values():
+                if v.pickup == p_key:
+                    if v.id == p_key:
+                        best_match = v
+                        break
+                    if (
+                        v.vol_pos == 1.0
+                        and v.tone_pos == 1.0
+                        and (v.gain_db == 0.0 or v.gain_db is None)
+                        and len(v.preamp_bands) == 0
+                        and v.hpf is None
+                        and v.circuit is None
+                    ):
+                        best_match = v
+                        break
+                    if best_match is None:
+                        best_match = v
+
+            if best_match is not None:
+                return inst, best_match
+
+            # 2. If no identity voicing, construct a clean nominal VoicingConfig
+            sensor = (
+                "bridge_force"
+                if ("piezo" in getattr(p_cfg, "type", "") or p_key.endswith("piezo"))
+                else ("direct" if getattr(p_cfg, "type", "") == "direct" else "magnetic")
+            )
+            str_preset = (
+                getattr(getattr(inst, "strings", None), "preset", None)
+                or "roundwound_nickel_standard"
+            )
+            p_preamp = getattr(p_cfg.circuit, "preamp", None) if p_cfg.circuit else None
+            if p_preamp in ("none", ""):
+                p_preamp = None
+            dyn_v = VoicingConfig(
+                id=p_key,
+                name=p_cfg.name or p_key,
+                pickup=p_key,
+                vol_pos=1.0,
+                tone_pos=1.0,
+                sensor_type=sensor,
+                string_preset_override=str_preset,
+                preamp_preset=p_preamp,
+            )
+            return inst, dyn_v
+
     # Search STANDARD_CATALOG_TARGETS across all instruments
     from allomorph.config.instruments import STANDARD_CATALOG_TARGETS
 
@@ -128,8 +181,8 @@ def resolve_target_voicing(
             else instrument
         )
         raise KeyError(
-            f"Voicing '{voicing}' not found on instrument '{inst.id}'. "
-            f"Available voicings: {list(inst.voicings.keys())}"
+            f"Voicing or pickup '{voicing}' not found on instrument '{inst.id}'. "
+            f"Available voicings: {list(inst.voicings.keys())}, pickups: {list(inst.pickups.keys())}"
         )
 
     raise KeyError(
@@ -189,6 +242,11 @@ def simulate_instrument_voicing(
     # Resolve output path
     if output_wav is not None:
         out_path = Path(output_wav)
+    elif isinstance(voicing, str) and (
+        voicing in inst.pickups or str(voicing).lower() in inst.pickups
+    ):
+        p_key = voicing if voicing in inst.pickups else str(voicing).lower()
+        out_path = WET_AUDIO_DIR / inst.id / f"{p_key}.wav"
     else:
         out_path = WET_AUDIO_DIR / inst.id / f"{voicing_id}.wav"
     out_path.parent.mkdir(parents=True, exist_ok=True)
@@ -708,11 +766,14 @@ def simulate_all_instrument_voicings(
         target_insts = list(INSTRUMENTS.values())
 
     exported_paths: list[Path] = []
-    tasks: list[tuple[InstrumentConfig, VoicingConfig]] = [
-        (inst, voicing) for inst in target_insts for voicing in inst.voicings.values()
-    ]
+    tasks: list[tuple[InstrumentConfig, VoicingConfig | str]] = []
+    for inst in target_insts:
+        for voicing in inst.voicings.values():
+            tasks.append((inst, voicing))
+        for p_key in inst.pickups:
+            tasks.append((inst, p_key))
 
-    def _sim(item: tuple[InstrumentConfig, VoicingConfig]) -> Path:
+    def _sim(item: tuple[InstrumentConfig, VoicingConfig | str]) -> Path:
         i, v = item
         return simulate_instrument_voicing(
             instrument=i,

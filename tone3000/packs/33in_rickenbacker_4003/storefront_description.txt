@@ -1,7 +1,7 @@
 ALLOMORPH: 33.25" RICKENBACKER 4003 EDITION
 ===========================================
 
-Transform your 33.25" Rickenbacker 4003 into 25 legendary active, vintage, modern, and acoustic pickup configurations.
+Transform your 33.25" Rickenbacker 4003 into 24 legendary active, vintage, modern, and acoustic pickup configurations.
 
 OVERVIEW
 --------
@@ -26,10 +26,10 @@ QUICK INSTRUMENT SETUP
    - [Neck]: Select Rickenbacker Hi-Gain Neck Single-Coil
    - [Parallel]: Select Rickenbacker Dual Pickups Parallel (Rick-O-Sound)
 
-INCLUDED VOICINGS (25 MODELS)
+INCLUDED VOICINGS (24 MODELS)
 -----------------------------------------
 
-### Bundle: Bridge (8 Voicings)
+### Bundle: Bridge (7 Voicings)
 • Jazz Bridge Growl [Bridge] v4.1.1: Singing Jaco Bridge Growl (34" Standard Jazz Bass)
 • Jazz Bridge Open [Bridge] v4.1.1: 60s Solo Bridge Single-Coil Open (34" Standard Jazz Bass)
 • StingRay Parallel [Bridge] v4.1.1: Classic 1979 2-Band Parallel Authority (34" Active StingRay (Music Man MM))
@@ -37,7 +37,6 @@ INCLUDED VOICINGS (25 MODELS)
 • StingRay Active [Bridge] v4.1.1: Modern Slap Bass Mid-Scoop (34" Active StingRay (Music Man MM))
 • Dingwall Bridge [Bridge] v4.1.1: FD3 Solo Bridge Multiscale Clarity (37" Multi-Scale Dingwall 5-String (FD3n))
 • Rickenbacker Clank [Bridge] v4.1.1: Vintage 4003 Bridge Clank (4.7nF HPF) (33.25" Rickenbacker 4003)
-• Rickenbacker Open [Bridge] v4.1.1: Modern 4003 Bridge Open Bypass (33.25" Rickenbacker 4003)
 
 ### Bundle: Neck (9 Voicings)
 • Precision Vintage [Neck] v4.1.1: Vintage 1962 Open (34" Standard P-Bass)

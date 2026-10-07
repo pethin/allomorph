@@ -14,7 +14,6 @@ import pytest
 
 from allomorph.circuit import (
     CALIBRATION_PEAK_CEILING,
-    export_instrument_pickup_wav,
     simulate_instrument_voicing,
 )
 from allomorph.config import (
@@ -34,6 +33,7 @@ from allomorph.physics import compute_voice_prefilter_firs
 def test_direct_instrument_voicings_and_bundles():
     """Validates that all physical instruments define valid native voicings and affinity-based pickup bundles."""
     from allomorph.config.instruments import (
+        is_identity_voicing,
         load_all_instruments,
         partition_instrument_bundles,
     )
@@ -55,9 +55,19 @@ def test_direct_instrument_voicings_and_bundles():
 
         bundles = partition_instrument_bundles(inst)
         assert len(bundles) > 0, f"Instrument '{iid}' produced no bundles"
+
+        identities_count = 0
+        for t_iid, t_vid in STANDARD_CATALOG_TARGETS:
+            t_inst = load_instrument(t_iid)
+            t_v = t_inst.voicings[t_vid]
+            src_p = get_source_pickup(inst, t_v)
+            src_p_key = src_p.id or "default"
+            if is_identity_voicing(inst, src_p_key, t_inst, t_v):
+                identities_count += 1
+
         total_targets = sum(len(b.targets) for b in bundles.values())
-        assert total_targets == len(STANDARD_CATALOG_TARGETS), (
-            f"Instrument '{iid}' partitioned {total_targets} targets (expected {len(STANDARD_CATALOG_TARGETS)})"
+        assert total_targets == len(STANDARD_CATALOG_TARGETS) - identities_count, (
+            f"Instrument '{iid}' partitioned {total_targets} targets (expected {len(STANDARD_CATALOG_TARGETS) - identities_count})"
         )
 
 
@@ -287,8 +297,8 @@ def test_dynamic_feel_and_auto_pickup():
             assert wf.getsampwidth() == 3
 
 
-def test_export_instrument_pickup_wav(tmp_path: Path):
-    """Verify export_instrument_pickup_wav creates valid 24-bit WAVs directly in destination directory."""
+def test_simulate_instrument_pickup(tmp_path: Path):
+    """Verify simulate_instrument_voicing creates valid 24-bit WAVs for pickup keys."""
     from allomorph.dsp import write_wav_24bit
 
     # Create a calibrated 1-second excitation signal to test the full pipeline fast
@@ -302,16 +312,22 @@ def test_export_instrument_pickup_wav(tmp_path: Path):
     out_dir = tmp_path / "34in_standard_jazz"
 
     # Export bridge pickup wet stem
-    wet_bridge = export_instrument_pickup_wav(
-        "34in_standard_jazz", pickup_key="bridge", input_wav=test_in, output_dir=out_dir
+    wet_bridge = simulate_instrument_voicing(
+        "34in_standard_jazz",
+        voicing="bridge",
+        input_wav=test_in,
+        output_wav=out_dir / "bridge.wav",
     )
     assert wet_bridge.exists()
     assert wet_bridge.name == "bridge.wav"
     assert wet_bridge.parent == out_dir
 
     # Export neck pickup wet stem
-    wet_neck = export_instrument_pickup_wav(
-        "34in_standard_jazz", pickup_key="neck", input_wav=test_in, output_dir=out_dir
+    wet_neck = simulate_instrument_voicing(
+        "34in_standard_jazz",
+        voicing="neck",
+        input_wav=test_in,
+        output_wav=out_dir / "neck.wav",
     )
     assert wet_neck.exists()
     assert wet_neck.name == "neck.wav"
@@ -335,6 +351,76 @@ def test_export_instrument_pickup_wav(tmp_path: Path):
     assert peak <= CALIBRATION_PEAK_CEILING + 1e-6
     assert -15.0 <= peak_db <= 0.0
     assert -18.0 <= rms_db <= -14.0
+
+
+def test_native_pickup_and_voicing_bit_identity(tmp_path: Path):
+    """Verify that simulating a source pickup and its nominal native voicing produces bit-exact 0.00 dB identical audio."""
+    out_pk = tmp_path / "split_p.wav"
+    out_v = tmp_path / "precision_vintage.wav"
+
+    simulate_instrument_voicing("34in_standard_p", "split_p", output_wav=out_pk, max_samples=48000)
+    simulate_instrument_voicing(
+        "34in_standard_p", "vintage_open", output_wav=out_v, max_samples=48000
+    )
+
+    audio_pk, _ = read_wav(out_pk)
+    audio_v, _ = read_wav(out_v)
+    diff = float(np.max(np.abs(audio_pk - audio_v)))
+    assert diff == 0.0, f"Expected bit-exact identical audio (0.00 dB diff), got max diff {diff}"
+
+
+def test_identity_voicings_excluded_from_bundles():
+    """Verify that identity voicings (e.g. Precision Vintage on 34in_standard_p) are excluded from bundles."""
+    from allomorph.config.instruments import partition_instrument_bundles
+
+    bundles = partition_instrument_bundles("34in_standard_p")
+    assert "split_p" in bundles
+    b = bundles["split_p"]
+    target_names = [t.voicing.tone_name for t in b.targets]
+    assert "Precision Vintage" not in target_names
+    assert "Precision Mids" in target_names
+    assert "Precision Warm" in target_names
+    assert "Precision Dub" in target_names
+
+
+def test_pack_export_identity_collision_guardrail(tmp_path: Path):
+    """Verify that pack exporter raises ValueError if an identical dry/wet pair is passed."""
+    from unittest.mock import patch
+
+    from allomorph.config.instruments import PickupBundle, TargetVoicingRef, load_instrument
+    from allomorph.pipeline.pack import export_tone_pack
+
+    inst = load_instrument("34in_standard_p")
+    p_cfg = inst.pickups["split_p"]
+    vintage_open = inst.voicings["vintage_open"]
+
+    # Mock partition_instrument_bundles to include the identity target to trigger guardrail
+    mock_bundles = {
+        "split_p": PickupBundle(
+            bundle_name="split_p",
+            pickup_key="split_p",
+            pickup=p_cfg,
+            targets=[
+                TargetVoicingRef(
+                    instrument_id="34in_standard_p",
+                    voicing_id="vintage_open",
+                    instrument=inst,
+                    voicing=vintage_open,
+                    source_pickup_key="split_p",
+                )
+            ],
+        )
+    }
+
+    with (
+        patch("allomorph.pipeline.pack.partition_instrument_bundles", return_value=mock_bundles),
+        pytest.raises(ValueError, match="Identity stem collision detected"),
+    ):
+        export_tone_pack(
+            "34in_standard_p",
+            output_dir=tmp_path / "packs",
+            max_samples=2048,
+        )
 
 
 def test_precision_warm_tone_cap_no_artificial_spike():

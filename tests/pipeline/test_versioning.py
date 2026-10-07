@@ -170,15 +170,14 @@ def test_write_manifest_and_sha256(tmp_path: Path):
     assert nam_entry["size_bytes"] == dummy_nam.stat().st_size
 
 
-def test_export_instrument_pickup_wav_with_version_tag(tmp_path: Path):
-    """Verify export_instrument_pickup_wav embeds version tag and creates manifest when requested."""
-    from allomorph.circuit.staging import export_instrument_pickup_wav
+def test_simulate_instrument_pickup_with_version_tag(tmp_path: Path):
+    """Verify simulate_instrument_voicing creates wet pickup stem and records manifest when requested."""
+    from allomorph.circuit.forward import simulate_instrument_voicing
 
-    wet_p = export_instrument_pickup_wav(
-        inst_id="30in_emg_mmtw",
-        pickup_key="mmtw_dual",
-        output_dir=tmp_path,
-        version_tag="auto",
+    wet_p = simulate_instrument_voicing(
+        instrument="30in_emg_mmtw",
+        voicing="mmtw_dual",
+        output_wav=tmp_path / "mmtw_dual.wav",
         max_samples=2048,
     )
     assert wet_p.exists()

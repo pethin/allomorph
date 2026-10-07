@@ -11,8 +11,9 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
 
+import numpy as np
+
 from allomorph.circuit.forward import simulate_instrument_voicing
-from allomorph.circuit.staging import export_instrument_pickup_wav
 from allomorph.config.instruments import (
     PickupBundle,
     load_instrument,
@@ -20,6 +21,7 @@ from allomorph.config.instruments import (
 )
 from allomorph.config.scales import REPO_ROOT
 from allomorph.config.schema import InstrumentConfig
+from allomorph.dsp import read_wav
 from allomorph.naming import get_default_input_path, get_t3k_basename
 from allomorph.version import (
     ALLOMORPH_VERSION,
@@ -202,29 +204,25 @@ def export_tone_pack(
         ):
             shutil.copyfile(source_wet_path, dry_dest)
         elif max_samples is None:
-            raw_source_path = export_instrument_pickup_wav(
-                inst_id=inst.id,
-                pickup_key=bundle.pickup_key,
+            source_wet_path.parent.mkdir(parents=True, exist_ok=True)
+            simulate_instrument_voicing(
+                instrument=inst,
+                voicing=bundle.pickup_key,
                 input_wav=input_wav,
-                output_dir=WET_AUDIO_DIR / inst.id,
-                version_tag=dry_v_tag,
-                no_manifest=False,
+                output_wav=source_wet_path,
                 max_samples=None,
+                force=overwrite,
             )
-            shutil.copyfile(raw_source_path, dry_dest)
+            shutil.copyfile(source_wet_path, dry_dest)
         else:
-            source_tmp_dir = b_dir / "_source_tmp"
-            raw_source_path = export_instrument_pickup_wav(
-                inst_id=inst.id,
-                pickup_key=bundle.pickup_key,
+            simulate_instrument_voicing(
+                instrument=inst,
+                voicing=bundle.pickup_key,
                 input_wav=input_wav,
-                output_dir=source_tmp_dir,
-                version_tag=dry_v_tag,
-                no_manifest=True,
+                output_wav=dry_dest,
                 max_samples=max_samples,
+                force=True,
             )
-            shutil.copyfile(raw_source_path, dry_dest)
-            shutil.rmtree(source_tmp_dir, ignore_errors=True)
 
         dry_sha256 = _sha256_file(dry_dest)
 
@@ -280,6 +278,18 @@ def export_tone_pack(
                     input_wav=input_wav,
                     output_wav=stem_path,
                     max_samples=max_samples,
+                )
+
+            # Tone3000 Zero-Collision Guardrail: verify wet stem is not bit-exact identical to dry file
+            dry_audio, _ = read_wav(dry_dest)
+            wet_audio, _ = read_wav(stem_path)
+            min_len = min(len(dry_audio), len(wet_audio))
+            max_diff = float(np.max(np.abs(wet_audio[:min_len] - dry_audio[:min_len])))
+            if np.array_equal(wet_audio[:min_len], dry_audio[:min_len]) or max_diff < 1e-10:
+                raise ValueError(
+                    f"Identity stem collision detected: target '{target_ref.voicing_id}' on '{target_ref.instrument_id}' "
+                    f"is bit-exact identical to dry stem in bundle '{b_name}' on '{inst.id}' (max_diff={max_diff:.8f}). "
+                    "Tone3000 will reject training on identical dry/wet stems."
                 )
 
             stem_sha256 = _sha256_file(stem_path)

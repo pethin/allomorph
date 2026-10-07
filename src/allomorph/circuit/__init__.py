@@ -43,6 +43,7 @@ from allomorph.circuit.saturation import (
 from allomorph.config.scales import REPO_ROOT
 
 MODELS_DIR = REPO_ROOT / "models"
+from allomorph.circuit.cli import main
 from allomorph.circuit.solver import (
     apply_magnet_properties_to_model,
     compute_active_preamp_eq,
@@ -50,10 +51,6 @@ from allomorph.circuit.solver import (
     compute_core_impedance,
     compute_differential_circuit_transfer_functions,
     smooth_soft_knee_db,
-)
-from allomorph.circuit.staging import (
-    export_instrument_pickup_wav,
-    main,
 )
 from allomorph.circuit.sweeps import (
     ParametricSweepResult,
@@ -93,7 +90,6 @@ __all__ = [
     "compute_parametric_sweep",
     "ensure_input_audio_wav",
     "eval_pot_taper",
-    "export_instrument_pickup_wav",
     "find_default_input_audio",
     "load_circuit",
     "main",

@@ -6,11 +6,11 @@
   "base_dry_sha256": "2b8ce2cd2aa1a321df6c6ccca0384ab6efc7e005029c129fdd29e6f9d3d9999c",
   "dry_file": "dry v4.1.1.wav",
   "dry_version": "v4.1.1",
-  "dry_sha256": "9284a9e2df8cde745cd6fc990092707d2fb7b7bab0312829e4f260fd9c3d4a82",
+  "dry_sha256": "b24d600ae893aae8c745f58d91b5e293d373c046dfa3531bb25670514f7ec7d2",
   "instrument_id": "33in_rickenbacker_4003",
   "instrument_version": 1,
   "source_voicing_version": 1,
-  "stem_count": 8,
+  "stem_count": 7,
   "stems": [
     {
       "filename": "Jazz Bridge Growl [Bridge] v4.1.1.wav",
@@ -81,16 +81,6 @@
       "version": "v4.1.1",
       "tone_name": "Rickenbacker Clank",
       "sha256": "b9e01188e7e686284b34fd62c1bd346363495207ea1f79dd4836ba99d0a97a0c"
-    },
-    {
-      "filename": "Rickenbacker Open [Bridge] v4.1.1.wav",
-      "target_instrument": "33in_rickenbacker_4003",
-      "target_instrument_version": 1,
-      "target_voicing": "bridge_open",
-      "target_voicing_version": 1,
-      "version": "v4.1.1",
-      "tone_name": "Rickenbacker Open",
-      "sha256": "b24d600ae893aae8c745f58d91b5e293d373c046dfa3531bb25670514f7ec7d2"
     }
   ]
 }

@@ -1,7 +1,7 @@
 ALLOMORPH: 37" MULTI-SCALE DINGWALL 5-STRING (FD3N) EDITION
 ===========================================================
 
-Transform your 37" Multi-Scale Dingwall 5-String (FD3n) into 25 legendary active, vintage, modern, and acoustic pickup configurations.
+Transform your 37" Multi-Scale Dingwall 5-String (FD3n) into 22 legendary active, vintage, modern, and acoustic pickup configurations.
 
 OVERVIEW
 --------
@@ -27,35 +27,32 @@ QUICK INSTRUMENT SETUP
    - [Parallel]: Select Dingwall Bridge + Middle Parallel
    - [Series]: Select Dingwall Bridge + Middle Series
 
-INCLUDED VOICINGS (25 MODELS)
+INCLUDED VOICINGS (22 MODELS)
 -----------------------------------------
 
-### Bundle: Bridge (8 Voicings)
+### Bundle: Bridge (7 Voicings)
 • Jazz Bridge Growl [Bridge] v4.1.1: Singing Jaco Bridge Growl (34" Standard Jazz Bass)
 • Jazz Bridge Open [Bridge] v4.1.1: 60s Solo Bridge Single-Coil Open (34" Standard Jazz Bass)
 • StingRay Parallel [Bridge] v4.1.1: Classic 1979 2-Band Parallel Authority (34" Active StingRay (Music Man MM))
 • StingRay Series [Bridge] v4.1.1: High-Output Muscular Series Punch (34" Active StingRay (Music Man MM))
 • StingRay Active [Bridge] v4.1.1: Modern Slap Bass Mid-Scoop (34" Active StingRay (Music Man MM))
-• Dingwall Bridge [Bridge] v4.1.1: FD3 Solo Bridge Multiscale Clarity (37" Multi-Scale Dingwall 5-String (FD3n))
 • Rickenbacker Clank [Bridge] v4.1.1: Vintage 4003 Bridge Clank (4.7nF HPF) (33.25" Rickenbacker 4003)
 • Rickenbacker Open [Bridge] v4.1.1: Modern 4003 Bridge Open Bypass (33.25" Rickenbacker 4003)
 
-### Bundle: Middle (9 Voicings)
+### Bundle: Middle (8 Voicings)
 • Precision Vintage [Middle] v4.1.1: Vintage 1962 Open (34" Standard P-Bass)
 • Precision Mids [Middle] v4.1.1: Vintage 1962 Vocal Mids (34" Standard P-Bass)
 • Precision Warm [Middle] v4.1.1: Vintage Motown Flatwound Warmth (34" Standard P-Bass)
 • Precision Active [Middle] v4.1.1: Solo Modern Active Split P (34" Standard P/J Bass)
 • Precision Dub [Middle] v4.1.1: 1951 Slab Sub-Bass Dub (34" Standard P-Bass)
 • Jazz Neck Warm [Middle] v4.1.1: 60s Solo Neck Single-Coil Warm (34" Standard Jazz Bass)
-• Dingwall Middle [Middle] v4.1.1: FD3 Solo Middle Punch (37" Multi-Scale Dingwall 5-String (FD3n))
 • Mudbucker Deep [Middle] v4.1.1: Massive 14.4H Sidewinder Sub-Bass (30.5" Gibson EB-0 Mudbucker)
 • Upright Acoustic [Middle] v4.1.1: Acoustic Double Bass Bridge Force (41.25" Acoustic Double Bass)
 
-### Bundle: Parallel (8 Voicings)
+### Bundle: Parallel (7 Voicings)
 • Jazz Pair Open [Parallel] v4.1.1: 60s Dual Single-Coils Open (34" Standard Jazz Bass)
 • Jazz Pair Mids [Parallel] v4.1.1: 60s Dual Single-Coils Vocal Mids (34" Standard Jazz Bass)
 • Jazz Pair Active [Parallel] v4.1.1: Modern Active 2-Band Slap Scoop (34" Standard Jazz Bass)
-• Dingwall Parallel [Parallel] v4.1.1: FD3 Bridge + Middle Parallel (37" Multi-Scale Dingwall 5-String (FD3n))
 • PJ Passive [Parallel] v4.1.1: Vintage Alnico P/J Parallel (34" Standard P/J Bass)
 • PJ Active [Parallel] v4.1.1: Modern Active P/J Preamp Boost (34" Standard P/J Bass)
 • P∕MM Parallel [Parallel] v4.1.1: Modern Active P/MM Bass (Parallel) (34" Modern Active P/MM Bass)

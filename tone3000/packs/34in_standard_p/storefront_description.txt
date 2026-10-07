@@ -1,7 +1,7 @@
 ALLOMORPH: 34" STANDARD P-BASS EDITION
 ======================================
 
-Transform your 34" Standard P-Bass into 25 legendary active, vintage, modern, and acoustic pickup configurations.
+Transform your 34" Standard P-Bass into 24 legendary active, vintage, modern, and acoustic pickup configurations.
 
 OVERVIEW
 --------
@@ -23,11 +23,10 @@ QUICK INSTRUMENT SETUP
 • Master Tone Knob: 100% (Wide Open across all models)
 • Single-Pickup Bass: Plug straight in. All pickup placement and pot loading are modeled.
 
-INCLUDED VOICINGS (25 MODELS)
+INCLUDED VOICINGS (24 MODELS)
 -----------------------------------------
 
-### Bundle: Split (25 Voicings)
-• Precision Vintage v4.1.1: Vintage 1962 Open (34" Standard P-Bass)
+### Bundle: Split (24 Voicings)
 • Precision Mids v4.1.1: Vintage 1962 Vocal Mids (34" Standard P-Bass)
 • Precision Warm v4.1.1: Vintage Motown Flatwound Warmth (34" Standard P-Bass)
 • Precision Active v4.1.1: Solo Modern Active Split P (34" Standard P/J Bass)

@@ -41,7 +41,7 @@ build-backend = "hatchling.build"
 
 [project.scripts]
 allomorph = "allomorph.cli:main"
-allomorph-sim = "allomorph.circuit:main"
+allomorph-sim = "allomorph.circuit.cli:main"
 
 [tool.pytest.ini_options]
 pythonpath = ["src", "."]

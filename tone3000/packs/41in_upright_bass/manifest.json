@@ -13,11 +13,11 @@
       "base_dry_sha256": "2b8ce2cd2aa1a321df6c6ccca0384ab6efc7e005029c129fdd29e6f9d3d9999c",
       "dry_file": "dry v4.1.1.wav",
       "dry_version": "v4.1.1",
-      "dry_sha256": "c92884b487859908095e306cc2411710c92a148c62f1a89650f11035ff4046cf",
+      "dry_sha256": "e72efab7adb42a1e88169ad3823ff7ca5a6eccb73de0f836f829f49a2e5c6a89",
       "instrument_id": "41in_upright_bass",
       "instrument_version": 1,
       "source_voicing_version": 1,
-      "stem_count": 25,
+      "stem_count": 24,
       "stems": [
         {
           "filename": "Precision Vintage v4.1.1.wav",
@@ -258,16 +258,6 @@
           "version": "v4.1.1",
           "tone_name": "Mudbucker Deep",
           "sha256": "5100bcce8d22017467e796c0cd4e3df5323bd6dd41c3735c3c3ec31e8ad8faaa"
-        },
-        {
-          "filename": "Upright Acoustic v4.1.1.wav",
-          "target_instrument": "41in_upright_bass",
-          "target_instrument_version": 1,
-          "target_voicing": "bridge_piezo_acoustic",
-          "target_voicing_version": 1,
-          "version": "v4.1.1",
-          "tone_name": "Upright Acoustic",
-          "sha256": "e72efab7adb42a1e88169ad3823ff7ca5a6eccb73de0f836f829f49a2e5c6a89"
         }
       ]
     }

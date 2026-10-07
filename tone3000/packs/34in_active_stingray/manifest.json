@@ -13,11 +13,11 @@
       "base_dry_sha256": "2b8ce2cd2aa1a321df6c6ccca0384ab6efc7e005029c129fdd29e6f9d3d9999c",
       "dry_file": "dry v4.1.1.wav",
       "dry_version": "v4.1.1",
-      "dry_sha256": "6bd8db3fb7404e8745e6d0616976cd3ce826b89fb731af34e267ecc1b80acd0c",
+      "dry_sha256": "1297c2004b6e7b5847ebefca0249314cdfd6e4f406db0749dd4decf7e8ac4d52",
       "instrument_id": "34in_active_stingray",
       "instrument_version": 1,
       "source_voicing_version": 1,
-      "stem_count": 25,
+      "stem_count": 23,
       "stems": [
         {
           "filename": "Precision Vintage v4.1.1.wav",
@@ -130,16 +130,6 @@
           "sha256": "c25e873c5ee44b4b3946f30e85f884a824e25c2c03da83d46c607f9d43abe9da"
         },
         {
-          "filename": "StingRay Parallel v4.1.1.wav",
-          "target_instrument": "34in_active_stingray",
-          "target_instrument_version": 1,
-          "target_voicing": "parallel_classic",
-          "target_voicing_version": 1,
-          "version": "v4.1.1",
-          "tone_name": "StingRay Parallel",
-          "sha256": "1297c2004b6e7b5847ebefca0249314cdfd6e4f406db0749dd4decf7e8ac4d52"
-        },
-        {
           "filename": "StingRay Series v4.1.1.wav",
           "target_instrument": "34in_active_stingray",
           "target_instrument_version": 1,
@@ -148,16 +138,6 @@
           "version": "v4.1.1",
           "tone_name": "StingRay Series",
           "sha256": "b06c6954ca3e8e739a0695ef0efd5598f32bb2297a690ba3bef8a5462912eb86"
-        },
-        {
-          "filename": "StingRay Active v4.1.1.wav",
-          "target_instrument": "34in_active_stingray",
-          "target_instrument_version": 1,
-          "target_voicing": "active_slap",
-          "target_voicing_version": 1,
-          "version": "v4.1.1",
-          "tone_name": "StingRay Active",
-          "sha256": "1297c2004b6e7b5847ebefca0249314cdfd6e4f406db0749dd4decf7e8ac4d52"
         },
         {
           "filename": "Dingwall Bridge v4.1.1.wav",
