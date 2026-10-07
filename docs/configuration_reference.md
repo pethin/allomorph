@@ -221,7 +221,7 @@ $$v_s = 2 \cdot L \cdot f_{0,s}$$
 
 ## 4. Target Voice Definitions (Native Instrument Voicings & Global VOICES Registry)
 
-In modern Allomorph (v0.3.0 / DSP Gen 3), target voices are defined directly within the Unified Instrument Catalog (`config/instruments/*.toml`) under `[voicings.<id>]`. The `allomorph.config.voices` registry dynamically resolves these into validated `VoiceConfig` models. This ensures every target voice is rooted in an authentic, physically verified instrument with declarative SPICE circuits, precise coil apertures, and string setups:
+In modern Allomorph (v0.4.0 / DSP Gen 4), target voices are defined directly within the Unified Instrument Catalog (`config/instruments/*.toml`) under `[voicings.<id>]`. The `allomorph.config.voices` registry dynamically resolves these into validated `VoiceConfig` models. This ensures every target voice is rooted in an authentic, physically verified instrument with declarative SPICE circuits, precise coil apertures, and string setups:
 
 | Field | Type | Units | Description |
 | :--- | :--- | :--- | :--- |

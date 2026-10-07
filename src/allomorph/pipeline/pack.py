@@ -1,5 +1,5 @@
 """
-Allomorph - Tone3000 Tone Pack Pipeline (DSP Gen 3 / v0.3.0)
+Allomorph - Tone3000 Tone Pack Pipeline (DSP Gen 4 / v0.4.0)
 Automates creation, partitioning, packaging, and local training of Tone3000 upload bundles
 respecting Tone3000's strict '1 Dry File + Multiple Wet Stems' batch upload constraint.
 """
