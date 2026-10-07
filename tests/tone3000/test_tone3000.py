@@ -235,3 +235,63 @@ def test_tone3000_t3k_pack_basename_alignment():
             assert len(basename) <= 34, (
                 f"{pack}.txt basename '{basename}' exceeds 34 characters: {len(basename)}"
             )
+
+
+def test_generated_pack_storefront_descriptions():
+    """Verify that all generated pack storefront descriptions strictly conform to:
+    1. Raw text (no markdown underlines === or ---, no markdown headings ###).
+    2. No Technical Specifications section.
+    3. Essential sections present: OVERVIEW, RECOMMENDED SIGNAL CHAIN, QUICK INSTRUMENT SETUP,
+       THE {N} DIGITAL TWIN VOICINGS, LICENSE & DISCLAIMER.
+    4. Exact License and Trademark Disclaimer text.
+    5. Word-wrap friendliness: descriptions and paragraphs are single continuous lines.
+    6. Tone3000 character limit (<= 10,000 chars).
+    """
+    packs_dir = TONE3000_DIR / "packs"
+    assert packs_dir.exists(), f"Packs directory missing: {packs_dir}"
+
+    desc_files = list(packs_dir.glob("*/storefront_description.txt"))
+    assert len(desc_files) >= 16, f"Expected at least 16 pack descriptions, found {len(desc_files)}"
+
+    for desc_file in desc_files:
+        content = desc_file.read_text(encoding="utf-8")
+        pack_id = desc_file.parent.name
+
+        # 1. No Technical Specifications
+        assert "TECHNICAL SPECIFICATIONS" not in content, (
+            f"Pack {pack_id} contains forbidden TECHNICAL SPECIFICATIONS section."
+        )
+
+        # 2. No markdown underlines or headings
+        for line in content.splitlines():
+            assert not re.match(r"^={3,}$", line), (
+                f"Pack {pack_id} contains markdown underline: '{line}'"
+            )
+            assert not re.match(r"^-{3,}$", line), (
+                f"Pack {pack_id} contains markdown underline: '{line}'"
+            )
+            assert not line.startswith("###"), (
+                f"Pack {pack_id} contains markdown heading: '{line}'"
+            )
+
+        # 3. Essential sections
+        assert "OVERVIEW" in content, f"Pack {pack_id} missing OVERVIEW"
+        assert "RECOMMENDED SIGNAL CHAIN" in content, f"Pack {pack_id} missing RECOMMENDED SIGNAL CHAIN"
+        assert "QUICK INSTRUMENT SETUP" in content, f"Pack {pack_id} missing QUICK INSTRUMENT SETUP"
+        assert "DIGITAL TWIN VOICINGS" in content, f"Pack {pack_id} missing DIGITAL TWIN VOICINGS"
+        assert "LICENSE & DISCLAIMER" in content, f"Pack {pack_id} missing LICENSE & DISCLAIMER"
+
+        # 4. License & Trademark Disclaimer
+        assert "License:" in content, f"Pack {pack_id} missing 'License:'"
+        assert "Licensed for personal and commercial musical performances" in content, (
+            f"Pack {pack_id} missing standard License text"
+        )
+        assert "Trademark Disclaimer:" in content, f"Pack {pack_id} missing 'Trademark Disclaimer:'"
+        assert "Allomorph is an independent project and is not affiliated with or endorsed" in content, (
+            f"Pack {pack_id} missing standard Trademark Disclaimer text"
+        )
+
+        # 5. Character limit
+        assert len(content) <= 10000, (
+            f"Pack {pack_id} exceeds 10,000 characters: {len(content)}"
+        )

@@ -1,60 +1,138 @@
 ALLOMORPH: 34" ACTIVE STINGRAY (MUSIC MAN MM) EDITION
-=====================================================
 
 Transform your 34" Active StingRay (Music Man MM) into 23 legendary active, vintage, modern, and acoustic pickup configurations.
 
+
 OVERVIEW
---------
-Allomorph turns your 34" Active StingRay (Music Man MM) into a versatile tonal chameleon.
-Instead of modeling an amplifier or speaker cabinet, Allomorph sits at the very beginning
-of your signal chain (Block 1 on the Darkglass Anagram) to reshape the actual sound,
-pickup response, and feel of your instrument.
+
+Allomorph turns your 34" Active StingRay (Music Man MM) into a versatile tonal chameleon. Instead of modeling an amplifier or speaker cabinet, Allomorph sits at the very beginning of your signal chain (Block 1 on the Darkglass Anagram) to reshape the actual sound, pickup response, and feel of your instrument.
+
+With this pack, your 34" Active StingRay (Music Man MM) can instantly deliver:
+• The iconic scoop of vintage '60s Jazz Basses and aggressive punch of Music Man StingRays
+• Modern active slap preamps, boutique P/MM hybrids, and cutting progressive rock clank
+• Warm Motown flatwound thump, deep reggae dub sub-bass, and pristine modern ceramic punch
+• Acoustic upright double bass resonance for jazz and acoustic sessions
+• Pure studio buffer clarity or organic vintage tube-friendly passive warmth
+
+Calibrated specifically for the 34" Active StingRay (Music Man MM) with Music Man Dual-Coil Humbucker (Parallel). Plug in, select a model, and hear your 34" Active StingRay (Music Man MM) transform into a completely different instrument in real time with zero latency.
+
 
 RECOMMENDED SIGNAL CHAIN
-------------------------
+
 [34" Active StingRay (Music Man MM)]
-  -> [Block 1: Allomorph NAM Preamp]  (High-Impedance Pickup Front-End)
-  -> [Block 2: Amp / Drive / Preamp]   (Darkglass B7K, SVT, B-15, etc.)
-  -> [Block 3: Speaker Cabinet IR]     (8x10, 4x10, 1x15, etc.)
+  -> [Block 1: Allomorph Pickup Twin] (Input / Pickup Front-End)
+  -> [Block 2: Amp / Drive / Preamp]  (Darkglass B7K, SVT, B-15, etc.)
+  -> [Block 3: Speaker Cabinet IR]    (8x10, 4x10, 1x15, etc.)
   -> [FOH / Audio Interface / DAW]
 
+Why Block 1? Overdrive pedals and amps react directly to the resonant character of your pickups. Putting Allomorph first ensures downstream pedals and amp models distort the authentic growl of a Jazz bridge pickup, the clank of a StingRay, or the scoop of dual single-coils, rather than a generic DI signal.
+
+
 QUICK INSTRUMENT SETUP
-----------------------
-• Master Tone Knob: 100% (Wide Open across all models)
-• Single-Pickup Bass: Plug straight in. All pickup placement and pot loading are modeled.
 
-INCLUDED VOICINGS (23 MODELS)
------------------------------------------
+• Physical Volume Knob: 100% (Wide Open)
+• Onboard Active EQ (Bass, Mid, Treble): Set to Center Detents (Flat / 0 dB)
 
-### Bundle: Parallel (23 Voicings)
-• Precision Vintage v4.1.1: Vintage 1962 Open (34" Standard P-Bass)
-• Precision Mids v4.1.1: Vintage 1962 Vocal Mids (34" Standard P-Bass)
-• Precision Warm v4.1.1: Vintage Motown Flatwound Warmth (34" Standard P-Bass)
-• Precision Active v4.1.1: Solo Modern Active Split P (34" Standard P/J Bass)
-• Precision Dub v4.1.1: 1951 Slab Sub-Bass Dub (34" Standard P-Bass)
-• Jazz Pair Open v4.1.1: 60s Dual Single-Coils Open (34" Standard Jazz Bass)
-• Jazz Pair Mids v4.1.1: 60s Dual Single-Coils Vocal Mids (34" Standard Jazz Bass)
-• Jazz Pair Active v4.1.1: Modern Active 2-Band Slap Scoop (34" Standard Jazz Bass)
-• Jazz Bridge Growl v4.1.1: Singing Jaco Bridge Growl (34" Standard Jazz Bass)
-• Jazz Bridge Open v4.1.1: 60s Solo Bridge Single-Coil Open (34" Standard Jazz Bass)
-• Jazz Neck Warm v4.1.1: 60s Solo Neck Single-Coil Warm (34" Standard Jazz Bass)
-• StingRay Series v4.1.1: High-Output Muscular Series Punch (34" Active StingRay (Music Man MM))
-• Dingwall Bridge v4.1.1: FD3 Solo Bridge Multiscale Clarity (37" Multi-Scale Dingwall 5-String (FD3n))
-• Dingwall Middle v4.1.1: FD3 Solo Middle Punch (37" Multi-Scale Dingwall 5-String (FD3n))
-• Dingwall Parallel v4.1.1: FD3 Bridge + Middle Parallel (37" Multi-Scale Dingwall 5-String (FD3n))
-• Rickenbacker Clank v4.1.1: Vintage 4003 Bridge Clank (4.7nF HPF) (33.25" Rickenbacker 4003)
-• Rickenbacker Open v4.1.1: Modern 4003 Bridge Open Bypass (33.25" Rickenbacker 4003)
-• PJ Passive v4.1.1: Vintage Alnico P/J Parallel (34" Standard P/J Bass)
-• PJ Active v4.1.1: Modern Active P/J Preamp Boost (34" Standard P/J Bass)
-• P∕MM Parallel v4.1.1: Modern Active P/MM Bass (Parallel) (34" Modern Active P/MM Bass)
-• P∕MM Series v4.1.1: P/MM Hybrid Series Bass (34" Modern Active P/MM Bass)
-• Mudbucker Deep v4.1.1: Massive 14.4H Sidewinder Sub-Bass (30.5" Gibson EB-0 Mudbucker)
-• Upright Acoustic v4.1.1: Acoustic Double Bass Bridge Force (41.25" Acoustic Double Bass)
+Plug straight in. All pickup positioning, pot loading, tone capacitor shaping, and active preamp EQs are handled automatically by the models.
 
-TECHNICAL SPECIFICATIONS
-------------------------
-• DSP Generation: 4 (v0.4.0)
-• Sample Rate: 48 kHz / 24-bit PCM
-• Latency: 0 samples (Pure causal minimum-phase FIR)
-• Headroom: Calibrated to -0.09 dBFS ceiling
-• Host Compatibility: Darkglass Anagram Block 1, Neural Amp Modeler (NAM), DAW Plugin Hosts
+
+THE 23 DIGITAL TWIN VOICINGS
+
+
+Precision Bass & Tone Shaper Family
+
+01. Precision Vintage
+The gold standard: a vintage 1962 Precision Bass with tone wide open. Warm, woody low-mids, open harmonic bloom, and organic touch sensitivity that sits perfectly in any mix.
+
+02. Precision Active
+Modern active ceramic split-coil P-bass tone with 2-band preamp. Punchy, articulate, and wideband with authoritative low-end weight and bright transient clarity—built for modern rock, gospel, and mix cutting authority.
+
+03. Precision Mids
+Vintage P-bass with a modern vocal low-mid punch. Cuts finger clatter and high-end sizzle while keeping a muscular, forward presence in a busy mix.
+
+04. Precision Warm
+The legendary Motown flatwound sound (James Jamerson / Pino Palladino). Fat, pillowy sub-bass thump with rolled-off highs that glues the groove together.
+
+05. Precision Dub
+Ultra-deep vintage '50s dub spec. Pure, earth-shaking sub-bass thump with zero top-end click—perfect for reggae, dub, hip-hop, and classic R&B.
+
+
+Jazz Bass Family
+
+06. Jazz Pair Active
+The quintessential NYC active slap tone: tight, massive sub-bass and crisp, glassy highs with a scooped midrange that pops right out of a dense mix.
+
+07. Jazz Pair Open
+The golden-era '60s Jazz Bass sound. Both pickups wide open deliver that iconic hollow midrange scoop, warm low-mids, and smooth, singing top-end.
+
+08. Jazz Pair Mids
+Jazz Bass pair with a vocal midrange punch. Thickens up your fingerstyle attack and smooths out harsh fret clank while keeping every note articulate.
+
+09. Jazz Bridge Growl
+The unmistakable Jaco Pastorius tone: rolling the neck volume back just a touch unlocks that singing, vocal, honky bridge growl without losing low-end body.
+
+10. Jazz Bridge Open
+Solo '60s bridge single-coil. Tight, laser-focused midrange bite and percussive attack, perfect for 16th-note funk and fast staccato fingerstyle.
+
+11. Jazz Neck Warm
+Solo '60s neck single-coil. Deep, warm, and round with a woody low-end bloom that rivals a P-bass while retaining single-coil openness.
+
+
+P/J Bass Family
+
+12. PJ Active
+Modern active P/J punch (Sadowsky/Spector style). Combines thick split-coil body with bridge single-coil cut, boosted by a powerful active 2-band EQ.
+
+13. PJ Passive
+Classic '80s rock P/J tone (Fender Precision Special / Yamaha BB). Thick hard-rock punch with aggressive midrange bite and authoritative low-end grunt.
+
+
+P/MM Modern Hybrids
+
+14. P∕MM Parallel
+Modern boutique session hybrid (Sandberg California / Lakland style). Blends the warm body of a P-bass neck with the punchy slap bite of a Music Man bridge humbucker.
+
+15. P∕MM Series
+P-bass neck and Music Man bridge wired in series for a massive wall of sound with immense low-mid thrust and heavy overdrive sustain.
+
+
+Progressive & Classic Rock Legends
+
+16. Rickenbacker Clank
+The quintessential prog-rock clank (Chris Squire / Geddy Lee). Tight, lean low end with biting, aggressive pick attack and cutting upper-mid grit.
+
+17. Rickenbacker Open
+Modern 4003 bridge tone with the vintage capacitor bypassed. Fuller low-end body and punch while retaining that signature biting Rickenbacker top-end cut.
+
+18. Dingwall Bridge
+Modern progressive metal tone: razor-sharp pick clank, extreme note clarity, and piano-like low-B definition tailored for drop tunings and heavy distortion.
+
+19. Dingwall Middle
+FD3 middle pickup solo: focused, aggressive low-mid grunt and punchy growl with exceptional articulation across all registers.
+
+20. Dingwall Parallel
+FD3 bridge and middle coils in parallel: modern scooped aggression with ultra-fast transient attack, tight sub-bass, and pristine harmonic sparkle.
+
+21. Mudbucker Deep
+The legendary Gibson "Mudbucker": a dark, colossal wall of pure vintage bass rumble with zero top-end harshness—pure '60s and '70s British blues-rock.
+
+
+Acoustic Transducers
+
+22. Upright Acoustic
+Acoustic upright double bass: transforms your electric bass into a woody, resonant acoustic upright with natural body thump and organic finger feel. Pair with 3 Sigma Audio "Acoustic Upright Standard" AST IRs in your cabinet loader for authentic soundboard acoustic bloom.
+
+
+Music Man StingRay Family
+
+23. StingRay Series
+StingRay wired in series for a hotter, thicker signal with punchy low-mids and an aggressive, in-your-face rock bark.
+
+
+LICENSE & DISCLAIMER
+
+License:
+Licensed for personal and commercial musical performances, recording, and production. Redistribution, sublicensing, or resale of raw model files or derived profiles without permission is strictly prohibited.
+
+Trademark Disclaimer:
+All product names, trademarks, and registered trademarks (such as Fender, Precision Bass, P-Bass, Jazz Bass, J-Bass, Music Man, StingRay, Sterling, Rickenbacker, Gibson, Dingwall, Bartolini, Sadowsky, Spector, ToneStyler, EMG, and Darkglass) are the property of their respective owners. Used solely to identify historical instruments and analog circuits analyzed in this project. Allomorph is an independent project and is not affiliated with or endorsed by any of these manufacturers.
