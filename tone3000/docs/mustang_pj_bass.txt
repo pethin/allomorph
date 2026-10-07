@@ -41,7 +41,7 @@ For each voicing, set your Mustang's 3-way toggle switch to the recommended brac
 Plug straight in. All scale length scaling, aperture repositioning, pot loading, and active preamp EQs are handled automatically by the models.
 
 
-THE 22 DIGITAL TWIN VOICINGS
+THE 20 DIGITAL TWIN VOICINGS
 
 
 Jazz Bass Family
@@ -125,13 +125,6 @@ Modern active P/J punch (Sadowsky/Spector style). Combines thick split-coil body
 Classic '80s rock P/J tone (Duff McKagan / Yamaha BB3000). Thick hard-rock punch with aggressive midrange bite and authoritative low-end grunt.
 
 
-Studio Buffers & Dynamics
-
-21. Studio Active
-Studio Active Buffer: removes cable drag and pot loading, opening up pristine hi-fi clarity, ultra-fast transient attack, and airy top-end sparkle.
-
-22. Studio Passive
-Studio Passive: stacks organic vintage tube-amp warmth, tactile touch sensitivity, and woody harmonic bloom onto your signal chain.
 
 
 LICENSE & DISCLAIMER

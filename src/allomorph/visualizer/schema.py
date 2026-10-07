@@ -33,8 +33,6 @@ class VisualizerCliConfig(AllomorphBaseModel):
     instrument: str = "all"
     mode: Literal[
         "voicings",
-        "voicing_ir_3d",
-        "waterfall3d",
         "unified",
         "output",
         "difference",

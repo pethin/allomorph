@@ -2,7 +2,7 @@
 
 This directory contains the standardized storefront product descriptions for **Allomorph Tone Packs** on [Tone3000](https://tone3000.com), engineered for Neural Amp Modeler (NAM) and the Darkglass Anagram pedalboard.
 
-Each pack contains up to 22 precision digital twin voicings calibrated via true differential circuit deconvolution ($H_{\text{diff}} = H_{\text{tgt}} / H_{\text{src}}$) to transform a specific physical bass guitar into iconic vintage, modern active, heavy multi-scale, and acoustic bass topologies.
+Each pack contains up to 20 precision digital twin voicings calibrated via true differential circuit deconvolution ($H_{\text{diff}} = H_{\text{tgt}} / H_{\text{src}}$) to transform a specific physical bass guitar into iconic vintage, modern active, heavy multi-scale, and acoustic bass topologies.
 
 ---
 
@@ -10,13 +10,13 @@ Each pack contains up to 22 precision digital twin voicings calibrated via true 
 
 | Pack Edition | Source Instrument Calibration | Recommended Knobs / Switches | Profile Document | Production Artwork (SVG / JPG) |
 | :--- | :--- | :--- | :--- | :--- |
-| **Standard Precision Bass Edition** | 34" Standard Fender P-Bass (Passive Split-P, 21 Voicings) | Vol 100%, Tone 100% | [`standard_precision_bass.txt`](standard_precision_bass.txt) | [`allomorph_standard_precision_bass.svg`](../assets/allomorph_standard_precision_bass.svg) &bull; [JPG](../assets/allomorph_standard_precision_bass.jpg) |
-| **Standard Jazz Bass Edition** | 34" Standard Fender Jazz Bass (Passive Single-Coil Pair, 20 Voicings) | Vol 100%, Tone 100%, Pickup configs: `[Parallel]`, `[Neck]`, `[Bridge]` | [`standard_jazz_bass.txt`](standard_jazz_bass.txt) | [`allomorph_standard_jazz_bass.svg`](../assets/allomorph_standard_jazz_bass.svg) &bull; [JPG](../assets/allomorph_standard_jazz_bass.jpg) |
-| **Standard P/J Bass Edition** | 34" Standard Fender P/J Bass (Split-P Neck + J Bridge, 19 Voicings) | Vol 100%, Tone 100%, Pickup configs: `[Parallel]`, `[Neck]`, `[Bridge]` | [`standard_pj_bass.txt`](standard_pj_bass.txt) | [`allomorph_standard_pj_bass.svg`](../assets/allomorph_standard_pj_bass.svg) &bull; [JPG](../assets/allomorph_standard_pj_bass.jpg) |
-| **Mustang P/J Bass Edition** | 30" Short-Scale Fender Mustang P/J Bass (22 Voicings) | Vol 100%, Tone 100%, Pickup configs: `[Parallel]`, `[Neck]`, `[Bridge]` | [`mustang_pj_bass.txt`](mustang_pj_bass.txt) | [`allomorph_mustang_pj_bass.svg`](../assets/allomorph_mustang_pj_bass.svg) &bull; [JPG](../assets/allomorph_mustang_pj_bass.jpg) |
-| **Preamp Soapbar Bass Edition** | 34" Preamp Dual-Soapbar Bass (Passive Alnico Coils + Active EQ, 22 Voicings) | Active EQ Flat (Center Detents), Blend configs: `[Parallel]`, `[Neck]`, `[Bridge]` | [`preamp_soapbar_bass.txt`](preamp_soapbar_bass.txt) | [`allomorph_preamp_soapbar_bass.svg`](../assets/allomorph_preamp_soapbar_bass.svg) &bull; [JPG](../assets/allomorph_preamp_soapbar_bass.jpg) |
-| **Active StingRay Bass Edition** | 34" Active Music Man StingRay / Sterling Ray34/Ray35 (4/5-String, 21 Voicings) | Active EQ Flat (Center Detents), Switch in Parallel (if 3-way) | [`active_stingray_bass.txt`](active_stingray_bass.txt) | [`allomorph_active_stingray_bass.svg`](../assets/allomorph_active_stingray_bass.svg) &bull; [JPG](../assets/allomorph_active_stingray_bass.jpg) |
-| **Active EMG Bass Edition** | 34" Active EMG Soapbar Bass (Option C Baseline, 22 Voicings) | Active EQ Flat (Center Detents), Blend configs: `[Parallel]`, `[Neck]`, `[Bridge]` | [`active_emg_bass.txt`](active_emg_bass.txt) | [`allomorph_active_emg_bass.svg`](../assets/allomorph_active_emg_bass.svg) &bull; [JPG](../assets/allomorph_active_emg_bass.jpg) |
+| **Standard Precision Bass Edition** | 34" Standard Fender P-Bass (Passive Split-P, 19 Voicings) | Vol 100%, Tone 100% | [`standard_precision_bass.txt`](standard_precision_bass.txt) | [`allomorph_standard_precision_bass.svg`](../assets/allomorph_standard_precision_bass.svg) &bull; [JPG](../assets/allomorph_standard_precision_bass.jpg) |
+| **Standard Jazz Bass Edition** | 34" Standard Fender Jazz Bass (Passive Single-Coil Pair, 18 Voicings) | Vol 100%, Tone 100%, Pickup configs: `[Parallel]`, `[Neck]`, `[Bridge]` | [`standard_jazz_bass.txt`](standard_jazz_bass.txt) | [`allomorph_standard_jazz_bass.svg`](../assets/allomorph_standard_jazz_bass.svg) &bull; [JPG](../assets/allomorph_standard_jazz_bass.jpg) |
+| **Standard P/J Bass Edition** | 34" Standard Fender P/J Bass (Split-P Neck + J Bridge, 17 Voicings) | Vol 100%, Tone 100%, Pickup configs: `[Parallel]`, `[Neck]`, `[Bridge]` | [`standard_pj_bass.txt`](standard_pj_bass.txt) | [`allomorph_standard_pj_bass.svg`](../assets/allomorph_standard_pj_bass.svg) &bull; [JPG](../assets/allomorph_standard_pj_bass.jpg) |
+| **Mustang P/J Bass Edition** | 30" Short-Scale Fender Mustang P/J Bass (20 Voicings) | Vol 100%, Tone 100%, Pickup configs: `[Parallel]`, `[Neck]`, `[Bridge]` | [`mustang_pj_bass.txt`](mustang_pj_bass.txt) | [`allomorph_mustang_pj_bass.svg`](../assets/allomorph_mustang_pj_bass.svg) &bull; [JPG](../assets/allomorph_mustang_pj_bass.jpg) |
+| **Preamp Soapbar Bass Edition** | 34" Preamp Dual-Soapbar Bass (Passive Alnico Coils + Active EQ, 20 Voicings) | Active EQ Flat (Center Detents), Blend configs: `[Parallel]`, `[Neck]`, `[Bridge]` | [`preamp_soapbar_bass.txt`](preamp_soapbar_bass.txt) | [`allomorph_preamp_soapbar_bass.svg`](../assets/allomorph_preamp_soapbar_bass.svg) &bull; [JPG](../assets/allomorph_preamp_soapbar_bass.jpg) |
+| **Active StingRay Bass Edition** | 34" Active Music Man StingRay / Sterling Ray34/Ray35 (4/5-String, 19 Voicings) | Active EQ Flat (Center Detents), Switch in Parallel (if 3-way) | [`active_stingray_bass.txt`](active_stingray_bass.txt) | [`allomorph_active_stingray_bass.svg`](../assets/allomorph_active_stingray_bass.svg) &bull; [JPG](../assets/allomorph_active_stingray_bass.jpg) |
+| **Active EMG Bass Edition** | 34" Active EMG Soapbar Bass (Option C Baseline, 20 Voicings) | Active EQ Flat (Center Detents), Blend configs: `[Parallel]`, `[Neck]`, `[Bridge]` | [`active_emg_bass.txt`](active_emg_bass.txt) | [`allomorph_active_emg_bass.svg`](../assets/allomorph_active_emg_bass.svg) &bull; [JPG](../assets/allomorph_active_emg_bass.jpg) |
 
 ---
 
@@ -61,8 +61,6 @@ Bassists browse Tone3000 to find sounds that inspire them, solve gigging problem
 | *FD3 34"–37" multi-scale fanned fret active sparkle* | Modern progressive metal tone: razor-sharp pick attack and piano-like low-B clarity |
 | *14.4H overwound neck-heel sidewinder Mudbucker* | The Gibson Mudbucker: dark, colossal vintage bass wall of sound |
 | *Bridge piezo force sensor with leaky integration* | Acoustic upright double bass: woody resonance, body thump, and organic acoustic feel |
-| *Studio 1MΩ active buffer (750 pF cable deconvolution)* | Studio Active Buffer: opens up wide-open hi-fi highs, fast transients, and airy attack |
-| *4.2H RLC high-Z network replacing active buffering* | Studio Passive: turns an active bass into a warm, organic vintage passive instrument |
 
 ---
 
@@ -97,9 +95,6 @@ Every pack provides comprehensive coverage across eight modular sonic families, 
 7. **P/J Bass Family:**
    - **Modern PJ Active** (Modern Active P/J Bass, Active 2-Band Boost @ 40 Hz & 4 kHz)
    - **Vintage PJ Passive** (Vintage '80s Passive P/J Bass, Duff McKagan / BB3000 Parallel Sum)
-8. **Studio Buffers & Dynamics:**
-   - **Studio Active** (Modern Studio Active Buffer, Zero Cable Loading / 1M Impedance Twin @ 7.5–9.0 kHz)
-   - **Studio Passive** (High-Impedance Passive Pickup & Cable Loading: 4.2H RLC, 750pF Cable, 250k Pots)
 
 ---
 

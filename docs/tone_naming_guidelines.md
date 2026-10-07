@@ -67,7 +67,6 @@ Identifies the bass instrument/pickup archetype:
 | `Mudbucker` | Gibson EB-0 sidewinder neck humbucker | Iconic bassist term for the 14.4H neck pickup |
 | `Dingwall` | Multiscale fanned-fret angled dual-coil bridge | Represents progressive multiscale clarity |
 | `Upright` | Double bass acoustic bridge piezo force transducer | Replaces generic `Piezo` |
-| `Studio` | Aperture-preserving DI / impedance character presets | Replaces generic `Character` |
 
 ### 3.2 Configuration Tokens (`[Configuration]`)
 Specifies the active coil topology or pickup selection on the modeled target instrument:
@@ -79,7 +78,7 @@ Specifies the active coil topology or pickup selection on the modeled target ins
 | `Neck` | Solo neck pickup | Used when isolating the neck coil (`Mudbucker Neck`) |
 | `Parallel` | Dual-coil humbucker wired in parallel | Used for dual-coil models (`StingRay Parallel`, `P∕MM Parallel`) |
 | `Series` | Dual-coil humbucker wired in series | Used for high-output series models (`StingRay Series`, `P∕MM Series`) |
-| *(Omitted)* | Inherent single-pickup architecture | Inherent for `Precision` (always split-coil), `Upright` (always bridge piezo), and `Studio` |
+| *(Omitted)* | Inherent single-pickup architecture | Inherent for `Precision` (always split-coil) and `Upright` (always bridge piezo) |
 
 ### 3.3 Voicing Modifier Tokens (`[Voicing Modifier]`)
 Describes the musical tone contour or circuit state. Replaces all raw electronic component values (`22nF`, `47nF`, `100nF`) and artist nicknames with musician terms:
@@ -144,9 +143,6 @@ Below is the definitive catalog of all 24 Allomorph target voices under the syst
 | `mudbucker_deep` | `Mudbucker Deep` | `[Neck]` | `Mudbucker Deep [Neck] v2.1.1` | 29 | **Zero-Scroll** | Massive 14.4H sidewinder neck sub-bass rumble |
 | `dingwall_bridge` | `Dingwall Bridge` | `[Bridge]` | `Dingwall Bridge [Bridge] v2.1.1` | 32 | **Zero-Scroll** | High-tension fanned-fret progressive clarity |
 | `upright_acoustic` | `Upright Acoustic` | — | `Upright Acoustic v2.1.1` | 23 | **Zero-Scroll** | Woody double-bass piezo bridge transducer |
-| `studio_direct` | `Studio Direct` | — | `Studio Direct v2.1.1` | 20 | **Zero-Scroll** | Pure acoustic aperture; transparent studio DI |
-| `studio_active` | `Studio Active` | — | `Studio Active v2.1.1` | 20 | **Zero-Scroll** | 1MΩ wideband active buffer (restores sparkle) |
-| `studio_passive` | `Studio Passive` | — | `Studio Passive v2.1.1` | 21 | **Zero-Scroll** | Organic high-Z passive pickup and cable load |
 
 ---
 

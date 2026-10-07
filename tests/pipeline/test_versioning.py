@@ -271,7 +271,7 @@ def test_all_catalog_instruments_and_voicings_declare_version():
     from allomorph.config.instruments import load_all_instruments
 
     instruments = load_all_instruments()
-    assert len(instruments) >= 17
+    assert len(instruments) >= 16
     for iid, inst in instruments.items():
         assert inst.version >= 1, f"Instrument {iid} has invalid version {inst.version}"
         for vid, v in inst.voicings.items():
@@ -335,29 +335,20 @@ def test_resolve_tri_part_version_flexible_none():
     assert resolve_tri_part_version(inst_version=2, voice_version=None) == "v3.2"
 
 
-def test_dry_naming_helpers():
-    """Verify naming helpers for optimal dry file."""
-    from allomorph.naming import (
-        get_optimal_dry_basename,
-        get_optimal_dry_path,
-    )
+def test_input_audio_naming_helpers():
+    """Verify naming helpers for input audio file."""
+    from allomorph.naming import get_default_input_path
 
-    assert get_optimal_dry_basename() == f"optimal_bass_dry_v{DSP_GENERATION}"
-    assert get_optimal_dry_basename("v2") == "optimal_bass_dry_v2"
-    assert get_optimal_dry_basename("auto") == f"optimal_bass_dry_v{DSP_GENERATION}"
-    assert get_optimal_dry_basename("v3.1.1") == f"optimal_bass_dry_v{DSP_GENERATION}"
-    assert get_optimal_dry_basename("none") == f"optimal_bass_dry_v{DSP_GENERATION}"
-
-    dry_p = get_optimal_dry_path(audio_dir="/tmp/test_allomorph")
-    assert dry_p == Path(f"/tmp/test_allomorph/canonical/optimal_bass_dry_v{DSP_GENERATION}.wav")
+    input_p = get_default_input_path(audio_dir="/tmp/test_allomorph")
+    assert input_p == Path("/tmp/test_allomorph/input.wav")
 
 
-def test_ensure_optimal_dry_wav_versioning(tmp_path: Path):
-    """Verify ensure_optimal_dry_wav synthesizes to versioned output path."""
-    from allomorph.dsp import FS, ensure_optimal_dry_wav, read_wav
+def test_ensure_input_audio_wav(tmp_path: Path):
+    """Verify ensure_input_audio_wav synthesizes to output path."""
+    from allomorph.dsp import FS, ensure_input_audio_wav, read_wav
 
-    out_file = tmp_path / "canonical" / "optimal_bass_dry_v2.wav"
-    res = ensure_optimal_dry_wav(output_path=out_file, duration_sec=1.0)
+    out_file = tmp_path / "input.wav"
+    res = ensure_input_audio_wav(output_path=out_file, duration_sec=1.0)
     assert res == out_file
     assert out_file.exists()
 

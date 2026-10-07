@@ -1,0 +1,15 @@
+{
+  "bundle": "series",
+  "pickup_key": "pair_series",
+  "position_name": "Series",
+  "base_dry_file": "input.wav",
+  "base_dry_sha256": "77fcdecbe8c6a35c62780e58f3c975e49fc134efa2df102572cdba824ec4ccf0",
+  "dry_file": "dry v3.1.1.wav",
+  "dry_version": "v3.1.1",
+  "dry_sha256": "a55bfcce36148ad2404b71d22376e814a1acb34d3763fc306a81f839de8b89e7",
+  "instrument_id": "37in_multiscale_dingwall",
+  "instrument_version": 1,
+  "source_voicing_version": 1,
+  "stem_count": 0,
+  "stems": []
+}

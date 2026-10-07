@@ -1,0 +1,23 @@
+==============================================================================
+TONE3000 UPLOAD BUNDLE: BLEND_PARALLEL
+==============================================================================
+Source Instrument: 32" Fretless Custom (EMG PCSX + MMTWX)
+Pickup Position: P/MM
+Physical Switch Setting on Bass: P/MM
+Tone Knob Setting: 100% (Wide Open)
+
+STEP-BY-STEP UPLOAD INSTRUCTIONS (Tone3000 Studio Trainer):
+1. Open Tone3000 Trainer in your browser or local batch tool.
+2. DRAG DRY FILE: Drag 'dry v3.1.1.wav' from this directory into the '1 Dry File' slot.
+3. DRAG WET STEMS: Select and drag the following 8 .wav files into the 'Wet Stems' slot:
+   • Jazz Pair Open [P∕MM] v3.1.1.wav
+   • Jazz Pair Mids [P∕MM] v3.1.1.wav
+   • Jazz Pair Active [P∕MM] v3.1.1.wav
+   • Dingwall Parallel [P∕MM] v3.1.1.wav
+   • PJ Passive [P∕MM] v3.1.1.wav
+   • PJ Active [P∕MM] v3.1.1.wav
+   • P∕MM Parallel [P∕MM] v3.1.1.wav
+   • P∕MM Series [P∕MM] v3.1.1.wav
+
+4. START TRAINING: Tone3000 will batch-train all models against this single dry baseline.
+==============================================================================

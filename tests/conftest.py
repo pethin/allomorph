@@ -26,7 +26,7 @@ def guard_no_audio_pollution() -> Generator[None]:
     new_items = sorted(
         str(p.relative_to(REPO_ROOT))
         for p in (after_items - before_items)
-        if not (p == audio_dir / "canonical" or p.is_relative_to(audio_dir / "canonical"))
+        if p != audio_dir / "input.wav"
     )
     assert not new_items, (
         f"Test suite polluted the audio directory with {len(new_items)} item(s):\n"

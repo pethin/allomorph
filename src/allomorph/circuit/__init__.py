@@ -54,16 +54,15 @@ from allomorph.circuit.sweeps import (
     compute_parametric_sweep,
 )
 from allomorph.dsp import (
-    OPTIMAL_DRY_PATH,
-    ensure_optimal_dry_wav,
+    DEFAULT_INPUT_PATH,
+    ensure_input_audio_wav,
 )
 
 __all__ = [
     "AUDIO_DIR",
     "CALIBRATION_PEAK_CEILING",
+    "DEFAULT_INPUT_PATH",
     "MAGNET_PROPERTIES",
-    "MODELS_DIR",
-    "OPTIMAL_DRY_PATH",
     "REPO_ROOT",
     "_HAS_NUMBA",
     "CircuitModel",
@@ -82,7 +81,7 @@ __all__ = [
     "compute_core_impedance",
     "compute_differential_circuit_transfer_functions",
     "compute_parametric_sweep",
-    "ensure_optimal_dry_wav",
+    "ensure_input_audio_wav",
     "eval_pot_taper",
     "export_instrument_pickup_wav",
     "find_default_input_audio",

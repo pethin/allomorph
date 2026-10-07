@@ -13,9 +13,8 @@ from allomorph.circuit import (
     compute_differential_circuit_transfer_functions,
     load_circuit,
 )
-from allomorph.config import INSTRUMENTS, VOICES
-from allomorph.dsp import FREQS, NUM_TAPS
-from allomorph.physics import compute_voice_prefilter_firs
+from allomorph.config import INSTRUMENTS
+from allomorph.dsp import FREQS
 
 
 def test_passive_identity_differential_flatness():
@@ -269,61 +268,3 @@ def test_complex_magnetic_permeability_dispersion():
         )
 
 
-def test_neutral_character_simulation():
-    """Verify studio_direct preserves aperture and provides dynamic feel."""
-    vcfg = VOICES["studio_direct"]
-    assert vcfg.sensor_type == "direct"
-    assert vcfg.preserve_aperture is True
-    assert vcfg.alpha == 0.26
-    assert vcfg.vsat == 0.50
-
-    # Netlist must be a no_eq flat studio buffer
-    model = load_circuit(vcfg.circuit)
-    assert getattr(model, "no_eq", False) is True
-
-    # Evaluated on an instrument, prefilter FIR preserves physical aperture (unit impulse)
-    firs = compute_voice_prefilter_firs("studio_direct", instrument="34in_standard_p")
-    assert len(firs) == 1
-    fir = np.array(firs[0])
-    assert len(fir) == NUM_TAPS
-    assert fir[0] == 1.0
-    assert np.all(fir[1:] == 0.0)
-
-
-def test_active_character_differential_cable_isolation():
-    """Verify studio_active deconvolves passive cable loading when evaluating from a passive bass."""
-    tgt_model = load_circuit("studio_active")
-    p_circ = INSTRUMENTS["34in_standard_p"].pickups["split_p"].circuit
-    assert p_circ is not None
-    src_model = load_circuit(p_circ)
-
-    diff_curves = compute_differential_circuit_transfer_functions(tgt_model, src_model, freqs=FREQS)
-    assert len(diff_curves) == 1
-    h_diff = np.array(diff_curves[0])
-
-    # At 100 Hz, both circuits have flat DC/low-frequency transmission
-    idx_100 = np.argmin(np.abs(np.array(FREQS) - 100.0))
-    assert 0.90 <= h_diff[idx_100] <= 1.15
-
-    # At 8 kHz, passive circuit has heavy cable loading, active buffer is isolated
-    idx_8k = np.argmin(np.abs(np.array(FREQS) - 8000.0))
-    assert h_diff[idx_8k] > 1.0, "Active buffer must deconvolve passive cable loading at 8 kHz"
-
-
-def test_passive_character_circuit_properties():
-    """Verify studio_passive preserves aperture and models passive cable loading."""
-    vcfg = VOICES["studio_passive"]
-    assert vcfg.preserve_aperture is True
-    assert vcfg.alpha == 0.28
-    assert vcfg.vsat == 0.50
-
-    model = load_circuit(vcfg.circuit)
-    assert model.has_active_buffer is False
-    assert model.L == 4.2
-    assert model.Rdc == 8500.0
-
-    firs = compute_voice_prefilter_firs("studio_passive", instrument="34in_standard_p")
-    assert len(firs) == 1
-    fir = np.array(firs[0])
-    assert fir[0] == 1.0
-    assert np.all(fir[1:] == 0.0)

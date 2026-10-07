@@ -149,6 +149,11 @@ def main(argv: Sequence[str] | None = None):
         help="Maximum audio sample frames to simulate (default: None for full file)",
     )
     parser.add_argument(
+        "--clean-audio",
+        action="store_true",
+        help="Clear existing files and subdirectories in the audio/ directory before running",
+    )
+    parser.add_argument(
         "--overwrite",
         action="store_true",
         help="Force recompilation of cached dry and wet audio stems even if they already exist",
@@ -156,7 +161,7 @@ def main(argv: Sequence[str] | None = None):
     parser.add_argument(
         "--input-wav",
         default=None,
-        help="Path to dry calibration audio file (default: auto-generates audio/canonical/optimal_bass_dry.wav)",
+        help="Path to dry excitation audio file (default: auto-generates audio/input.wav)",
     )
     parser.add_argument(
         "--epochs",
@@ -228,6 +233,7 @@ def main(argv: Sequence[str] | None = None):
             "input_wav": args.input_wav,
             "version_tag": args.version_tag,
             "no_manifest": args.no_manifest,
+            "clean_audio": args.clean_audio,
         }
     )
 
@@ -244,6 +250,10 @@ def main(argv: Sequence[str] | None = None):
 
     if args.max_samples is not None and args.max_samples < 1:
         parser.error("--max-samples must be a positive integer >= 1")
+
+    import os
+
+    effective_jobs = args.jobs if args.jobs is not None else min(4, os.cpu_count() or 1)
 
     effective_goal_esr = (
         None
@@ -262,6 +272,22 @@ def main(argv: Sequence[str] | None = None):
     print(f"  Max Samples: {samples_str}")
     print(f"  Voices ({len(voices_to_run)}): {', '.join(voices_to_run)}")
     print("========================================")
+
+    if args.clean_audio:
+        import shutil
+
+        from allomorph.circuit.forward import AUDIO_DIR
+
+        print(f"  Action:      Clearing {AUDIO_DIR}...")
+        if AUDIO_DIR.exists():
+            for item in AUDIO_DIR.iterdir():
+                if item.name.startswith("."):
+                    continue
+                if item.is_dir():
+                    shutil.rmtree(item)
+                else:
+                    item.unlink()
+        print("  Cleaned:     audio/ cleared cleanly.")
 
     input_wav = args.input_wav
     if not input_wav or not (Path(input_wav).exists() or (REPO_ROOT / input_wav).exists()):
@@ -283,8 +309,9 @@ def main(argv: Sequence[str] | None = None):
             print(f"\n[Simulation] Simulating all voicings for {inst}...")
             simulate_all_instrument_voicings(
                 inst,
+                input_wav=input_wav,
                 max_samples=args.max_samples,
-                jobs=args.jobs,
+                jobs=effective_jobs,
             )
         return
 
@@ -296,7 +323,7 @@ def main(argv: Sequence[str] | None = None):
             export_tone_pack(
                 inst,
                 max_samples=args.max_samples,
-                jobs=args.jobs,
+                jobs=effective_jobs,
                 overwrite=args.overwrite,
             )
         return
@@ -333,8 +360,9 @@ def main(argv: Sequence[str] | None = None):
         for inst in instruments_to_run:
             simulate_all_instrument_voicings(
                 inst,
+                input_wav=input_wav,
                 max_samples=args.max_samples,
-                jobs=args.jobs,
+                jobs=effective_jobs,
             )
 
         print("\n--- Step 2: Tone Pack Bundles Export ---")

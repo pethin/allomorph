@@ -45,7 +45,6 @@ def test_load_all_default_instruments():
         "33in_rickenbacker_4003",
         "30in_gibson_eb0",
         "41in_upright_bass",
-        "studio_direct",
     ]
     for iid in expected_ids:
         assert iid in instruments, f"Default instrument '{iid}' not found"
@@ -236,10 +235,10 @@ def test_small_sample_delay_inter_pickup_coherence_decay():
 
 def test_resolve_instruments():
     """Verify resolve_instruments handles 'all', defaults, comma lists, aliases, and unknown tokens."""
-    # 1. 'all' returns all 17 playable instruments
+    # 1. 'all' returns all 16 playable instruments
     all_insts = resolve_instruments("all")
-    assert len(all_insts) == 17
-    expected_17 = {
+    assert len(all_insts) == 16
+    expected_16 = {
         "30in_emg_mmtw",
         "30in_mustang_pj",
         "32in_custom_pmm",
@@ -256,9 +255,8 @@ def test_resolve_instruments():
         "33in_rickenbacker_4003",
         "30in_gibson_eb0",
         "41in_upright_bass",
-        "studio_direct",
     }
-    assert set(all_insts) == expected_17
+    assert set(all_insts) == expected_16
 
     # 2. None, empty string, or whitespace defaults to all playable
     assert resolve_instruments(None) == all_insts
@@ -325,12 +323,6 @@ def test_resolve_voices():
     assert resolve_voices("upright") == ["upright_acoustic"]
     assert resolve_voices("mudbucker") == ["mudbucker_deep"]
     assert resolve_voices("jazz_pair_mids") == ["jazz_pair_mids"]
-    assert resolve_voices("studio_act") == ["studio_active"]
-    assert resolve_voices("studio") == [
-        "studio_direct",
-        "studio_active",
-        "studio_passive",
-    ]
     assert resolve_voices("precision") == [
         "precision_vintage",
         "precision_mids",

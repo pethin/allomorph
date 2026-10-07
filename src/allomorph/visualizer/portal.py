@@ -59,7 +59,7 @@ def build_portal_html(
     default_id: str = "voicings",
     base_url_prefix: str = "./",
 ) -> str:
-    """Constructs a responsive, dark-mode portal HTML string with interactive Voicing Comparisons and 3D IR Difference Waterfall navigation."""
+    """Constructs a responsive, dark-mode portal HTML string with interactive Voicing Comparisons and frequency response navigation."""
     html = f"""<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -264,7 +264,7 @@ def build_portal_html(
   <div class="container">
     <div class="header">
       <h1>Allomorph Frequency Response Suite <span class="badge">Universal Voicings</span> <span class="badge">Direct Forward Simulation</span></h1>
-      <div class="subtitle">Interactive Source vs Target Voicing Comparisons & 3D Differential IR Waterfalls.</div>
+      <div class="subtitle">Interactive Source vs Target Voicing Comparisons & Analytical Differential Transformations.</div>
     </div>
 
     <div class="flow-pipeline-card">
@@ -298,10 +298,6 @@ def build_portal_html(
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="6"></circle><circle cx="12" cy="12" r="2"></circle></svg>
         <span>Voicing Comparisons (3-Line Response)</span>
       </button>
-      <button class="primary-nav-btn" id="pnav-waterfall3d" onclick="selectPrimaryView('waterfall3d')">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline></svg>
-        <span>Voicing IR 3D Difference Waterfall</span>
-      </button>
     </div>
 
     <div class="meta-panel">
@@ -311,7 +307,7 @@ def build_portal_html(
       </div>
       <div class="meta-item">
         <div class="label" id="meta-label-secondary">Voicing Matrix</div>
-        <div class="value" id="meta-scale">28 Catalog Voicings: Select Any Source and Target</div>
+        <div class="value" id="meta-scale">25 Catalog Voicings: Select Any Source and Target</div>
       </div>
       <div class="meta-item">
         <div class="label" id="meta-label-tertiary">Response Overlay</div>
@@ -335,11 +331,10 @@ def build_portal_html(
 
   <script>
     const baseUrlPrefix = "{base_url_prefix}";
-    let currentPrimaryView = "{default_id}" === "waterfall3d" ? "waterfall3d" : "voicings";
+    let currentPrimaryView = "voicings";
 
     function updateView() {{
       const pnavVoicings = document.getElementById('pnav-voicings');
-      const pnavWaterfall3d = document.getElementById('pnav-waterfall3d');
       const frame = document.getElementById('chart-frame');
       const standaloneLink = document.getElementById('standalone-link');
       const metaName = document.getElementById('meta-name');
@@ -348,31 +343,15 @@ def build_portal_html(
       const metaViewMode = document.getElementById('meta-view-mode');
 
       pnavVoicings.classList.toggle('active', currentPrimaryView === 'voicings');
-      if (pnavWaterfall3d) pnavWaterfall3d.classList.toggle('active', currentPrimaryView === 'waterfall3d');
 
-      if (currentPrimaryView === 'voicings') {{
-        const url = `${{baseUrlPrefix}}voicings.html`;
-        frame.src = url;
-        standaloneLink.href = url;
-        metaName.textContent = 'Voicing Comparisons (3-Line Response)';
-        metaScale.textContent = '28 Catalog Voicings: Select Any Source and Target Voicing';
-        metaPickups.textContent = 'H_src (Cyan) | H_tgt (Orange) | H_diff (Purple) with Identity (0.00 dB)';
-        metaViewMode.textContent = 'Interactive 3-Line Voicings';
-        if (window.history.replaceState) window.history.replaceState(null, null, '#voicings');
-        return;
-      }}
-
-      if (currentPrimaryView === 'waterfall3d') {{
-        const url = `${{baseUrlPrefix}}voicing_ir_3d.html`;
-        frame.src = url;
-        standaloneLink.href = url;
-        metaName.textContent = 'Voicing IR Difference 3D Waterfall & Waveform';
-        metaScale.textContent = 'Cumulative Spectral Decay (CSD) & Difference Impulse Response (h_diff)';
-        metaPickups.textContent = 'Interactive 3D WebGL Surface: Time Decay (0-10ms) x Frequency x dB with FIR Waveform';
-        metaViewMode.textContent = '3D Impulse Response Analysis';
-        if (window.history.replaceState) window.history.replaceState(null, null, '#waterfall3d');
-        return;
-      }}
+      const url = `${{baseUrlPrefix}}voicings.html`;
+      frame.src = url;
+      standaloneLink.href = url;
+      metaName.textContent = 'Voicing Comparisons (3-Line Response)';
+      metaScale.textContent = '25 Catalog Voicings: Select Any Source and Target Voicing';
+      metaPickups.textContent = 'H_src (Cyan) | H_tgt (Orange) | H_diff (Purple) with Identity (0.00 dB)';
+      metaViewMode.textContent = 'Interactive 3-Line Voicings';
+      if (window.history.replaceState) window.history.replaceState(null, null, '#voicings');
     }}
 
     function resizeIframe() {{
@@ -405,12 +384,7 @@ def build_portal_html(
       }}
       window.addEventListener('resize', resizeIframe);
 
-      const hash = window.location.hash.replace('#', '');
-      if (hash === 'waterfall3d' || hash === '3d') {{
-        currentPrimaryView = 'waterfall3d';
-      }} else {{
-        currentPrimaryView = 'voicings';
-      }}
+      currentPrimaryView = 'voicings';
       updateView();
     }});
   </script>

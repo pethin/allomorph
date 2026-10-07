@@ -190,44 +190,6 @@ def test_identity_acoustic_transfer_preserves_flat_bass():
     assert not is_voice_matching_source(inst_p, "jazz_pair_open", VOICES["jazz_pair_open"])
 
 
-def test_character_voicings_aperture_and_identity_behavior():
-    """Verify aperture preservation and identity matching invariants for character voicings.
-    studio_direct is an acoustic identity (preserve_aperture=True, no_eq=True).
-    studio_active and studio_passive preserve physical aperture but apply
-    transformative circuit EQ, so is_voice_matching_source must strictly return False.
-    """
-    test_instruments = [
-        "34in_standard_p",
-        "30in_emg_mmtw",
-        "34in_active_stingray",
-        "37in_multiscale_dingwall",
-        "34in_standard_jazz",
-    ]
-
-    for inst_id in test_instruments:
-        inst = load_instrument(inst_id)
-
-        # studio_direct is an identity spatial match across all basses
-        assert is_voice_matching_source(inst, "studio_direct", VOICES["studio_direct"]), (
-            f"studio_direct must match source aperture on {inst_id}"
-        )
-
-        # 15b and 15c are transformative circuits and must NEVER match source circuit
-        assert not is_voice_matching_source(inst, "studio_active", VOICES["studio_active"]), (
-            f"studio_active must NOT be an identity match on {inst_id}"
-        )
-        assert not is_voice_matching_source(inst, "studio_passive", VOICES["studio_passive"]), (
-            f"studio_passive must NOT be an identity match on {inst_id}"
-        )
-
-        # Prefilter FIRs must be unity impulses (preserve_aperture=True)
-        for char_vid in ["studio_direct", "studio_active", "studio_passive"]:
-            firs = compute_voice_prefilter_firs(char_vid, instrument=inst, num_taps=64)
-            assert len(firs) == 1
-            assert firs[0][0] == 1.0
-            assert all(x == 0.0 for x in firs[0][1:])
-
-
 def test_numpy_pickup_macro_aperture_properties():
     """Verify that macro aperture computes a smooth, comb-free sensing envelope."""
     inst = load_instrument("30in_emg_mmtw")
@@ -473,7 +435,7 @@ def test_body_microphonic_coupling():
 
     # 3. Active-to-active: exact identity
     src_active = PickupConfig(name="EMG Active", magnet_type="active")
-    tgt_active = VOICES["studio_active"]
+    tgt_active = tgt_voice_alnico5.model_copy(update={"magnet_type": "active"})
     h_body_active = compute_body_microphonic_coupling(freqs, src_active, tgt_active)
     assert np.allclose(h_body_active, 1.0, atol=1e-12)
 

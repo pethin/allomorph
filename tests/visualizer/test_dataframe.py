@@ -8,7 +8,6 @@ import polars as pl
 from allomorph.config import VOICES
 from allomorph.visualizer import (
     build_voice_dataframe,
-    build_voicing_ir_diff_3d_data,
     build_voicings_comparison_data,
     build_voicings_comparison_dataframe,
     compute_curve_rms_db,
@@ -129,21 +128,7 @@ def test_build_voicings_comparison_dataframe():
     assert s3[-1] <= 0.0
 
 
-def test_build_voicing_ir_diff_3d_data():
-    data = build_voicing_ir_diff_3d_data(num_freqs=50, num_slices=24, max_time_ms=10.0)
-    assert "frequencies" in data
-    assert "time_ms" in data
-    assert "voices" in data
-    assert "responses" in data
-    assert len(data["frequencies"]) == 50
-    assert len(data["time_ms"]) == 24
 
-    # Check identity pair in 3D data: precision_vintage -> precision_vintage
-    id_entry = data["responses"]["precision_vintage"]["precision_vintage"]
-    assert id_entry["fir_waveform"][0] == 1.0
-    assert all(val == 0.0 for val in id_entry["fir_waveform"][1:])
-    # Initial CSD slice is flat 0.00 dB
-    assert all(val == 0.0 for val in id_entry["csd_matrix"][0])
 
 
 def test_compute_fir_csd():

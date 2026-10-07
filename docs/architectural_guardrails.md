@@ -191,7 +191,7 @@ This eliminates boundary discontinuity kinks and Gibbs truncation leakage across
    - `bridge_force`: Direct piezo force sensing at the bridge witness point with velocity-to-force leaky integration ($+6\text{ dB/oct}$ from $70\text{--}250\text{ Hz}$) and spruce acoustic damping.
    - `direct`: Pure studio DI or dry string vibration baseline with an acoustic transfer function identically flat across all audible frequencies ($H_{\text{tgt, acoustic}}(f) \equiv 1.0$) and flat active buffer circuitry ($H_{\text{circuit}}(f) \equiv 1.0$).
 2. **Prohibition of Procedural Deconvolution Bypasses:**
-   Never short-circuit physical deconvolution using hardcoded voice ID branches (e.g. `if voice_id == "studio_direct": return [impulse]`). All acoustic transformations must flow through the universal regularized quotient:
+   Never short-circuit physical deconvolution using hardcoded voice ID branches (e.g. `if sensor_type == "direct": return [impulse]`). All acoustic transformations must flow through the universal regularized quotient:
    $$H_{\text{quotient}}(f) = \frac{H_{\text{tgt, acoustic}}(f) \cdot H_{\text{src, macro}}(f)}{H_{\text{src, macro}}(f)^2 + \epsilon^2}$$
    When $H_{\text{tgt, acoustic}}(f) = 1.0$, this equation naturally and stably evaluates the inverse macro-aperture ($1 / H_{\text{src}}$) of the source instrument without special-case logic.
 3. **Direct Output Invariant:**
@@ -210,15 +210,15 @@ This eliminates boundary discontinuity kinks and Gibbs truncation leakage across
 
 ### 3.7 Visualizer-Pipeline DSP Staging & Voicing Comparator Invariants
 
-#### 3.7.1 Voicing Comparator & 3D IR Difference Visualizer
+#### 3.7.1 Voicing Comparator & Interactive Voicings Explorer
 The interactive Voicing Comparator visualizer (`docs/frequency_responses/voicings_explorer.html` and master portal `docs/frequency_responses.html`):
 1. **Three-Line Analytical Graph:** For any selected source voicing and target voicing, evaluates a 3-line frequency response:
    - Line 1: Source Voicing Response ($H_{\text{src}}(f)$)
    - Line 2: Target Voicing Response ($H_{\text{tgt}}(f)$)
    - Line 3: Differential Transformation ($H_{\text{diff}}(f) = H_{\text{tgt}}(f) / H_{\text{src}}(f)$)
 2. **Identity Evaluation:** When source and target voicings are identical, Line 3 evaluates to bit-exact $0.00\text{ dB}$ across all frequency bins.
-3. **3D Differential IR Surface:** The interactive 3D visualization models the temporal and spatial difference between the minimum-phase impulse responses ($h_{\text{tgt}}[n] - h_{\text{src}}[n]$), providing intuitive visual inspection of aperture comb filtering, transient arrival shifts, and resonant ringing.
-4. **Catalog Completeness:** Encompasses all 24 target voices with first-principles physical and electrical parameters, providing complete pair-wise differential modeling across all playable pickup positions.
+3. **Interactive Differential Analysis:** The interactive Voicings Explorer models the analytical magnitude and phase relationship across the audible spectrum ($20\text{ Hz to } 20\text{ kHz}$), providing intuitive visual inspection of aperture comb filtering, low-mid boundary proximity, and RLC resonant peaks.
+4. **Catalog Completeness:** Encompasses all 25 target voices with first-principles physical and electrical parameters, providing complete pair-wise differential modeling across all playable pickup positions.
 5. **Physical Electroacoustic Boundedness:** Decibels must be finite and non-null (zero NaNs, zero Infs), with peak resonant boost $< +25.0\text{ dB}$ and deep tone-cap roll-off attenuation bounded cleanly.
 
 #### 3.7.2 Performance & Vectorization Mandate

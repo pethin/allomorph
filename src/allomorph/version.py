@@ -12,6 +12,7 @@ import functools
 import hashlib
 import json
 import subprocess
+import threading
 import wave
 from collections.abc import Sequence
 from datetime import UTC, datetime
@@ -22,6 +23,8 @@ ALLOMORPH_VERSION: str = "0.3.0"
 DSP_GENERATION: int = 3
 DEFAULT_INST_VERSION: int = 1
 DEFAULT_VOICE_VERSION: int = 1
+
+_MANIFEST_LOCK = threading.Lock()
 
 
 @functools.lru_cache(maxsize=1)
@@ -119,93 +122,94 @@ def write_manifest(
 
     tag = version_tag or resolve_tri_part_version()
 
-    existing_manifest: dict[str, Any] = {}
-    if manifest_path.exists():
-        try:
-            with manifest_path.open("r", encoding="utf-8") as f:
-                existing_manifest = json.load(f)
-        except json.JSONDecodeError, OSError:
-            existing_manifest = {}
+    with _MANIFEST_LOCK:
+        existing_manifest: dict[str, Any] = {}
+        if manifest_path.exists():
+            try:
+                with manifest_path.open("r", encoding="utf-8") as f:
+                    existing_manifest = json.load(f)
+            except json.JSONDecodeError, OSError:
+                existing_manifest = {}
 
-    file_entries: dict[str, Any] = existing_manifest.get("files", {})
+        file_entries: dict[str, Any] = existing_manifest.get("files", {})
 
-    eff_base_dry_sha = base_dry_sha256 or existing_manifest.get("base_dry_sha256")
-    eff_base_dry_file = base_dry_file or existing_manifest.get("base_dry_file")
+        eff_base_dry_sha = base_dry_sha256 or existing_manifest.get("base_dry_sha256")
+        eff_base_dry_file = base_dry_file or existing_manifest.get("base_dry_file")
 
-    if isinstance(files, dict):
-        for fname, meta in files.items():
-            f_path = out_p / fname if not Path(fname).is_absolute() else Path(fname)
-            entry: dict[str, Any] = dict(meta)
-            if f_path.exists():
-                entry.setdefault("size_bytes", f_path.stat().st_size)
-                entry.setdefault("sha256", compute_file_sha256(f_path))
-            if eff_base_dry_sha is not None:
-                entry.setdefault("base_dry_sha256", eff_base_dry_sha)
-            if eff_base_dry_file is not None:
-                entry.setdefault("base_dry_file", eff_base_dry_file)
-            if tag is not None:
-                entry.setdefault("version", tag)
-            if instrument_version is not None:
-                entry.setdefault("instrument_version", instrument_version)
-            if voicing_version is not None:
-                entry.setdefault("voicing_version", voicing_version)
-            file_entries[f_path.name] = entry
-    else:
-        for f_item in files:
-            f_path = out_p / f_item if not Path(f_item).is_absolute() else Path(f_item)
-            if f_path.exists() and f_path.name != "manifest.json":
-                entry = {
-                    "size_bytes": f_path.stat().st_size,
-                    "sha256": compute_file_sha256(f_path),
-                }
+        if isinstance(files, dict):
+            for fname, meta in files.items():
+                f_path = out_p / fname if not Path(fname).is_absolute() else Path(fname)
+                entry: dict[str, Any] = dict(meta)
+                if f_path.exists():
+                    entry.setdefault("size_bytes", f_path.stat().st_size)
+                    entry.setdefault("sha256", compute_file_sha256(f_path))
                 if eff_base_dry_sha is not None:
-                    entry["base_dry_sha256"] = eff_base_dry_sha
+                    entry.setdefault("base_dry_sha256", eff_base_dry_sha)
                 if eff_base_dry_file is not None:
-                    entry["base_dry_file"] = eff_base_dry_file
+                    entry.setdefault("base_dry_file", eff_base_dry_file)
                 if tag is not None:
-                    entry["version"] = tag
+                    entry.setdefault("version", tag)
                 if instrument_version is not None:
-                    entry["instrument_version"] = instrument_version
+                    entry.setdefault("instrument_version", instrument_version)
                 if voicing_version is not None:
-                    entry["voicing_version"] = voicing_version
-                if f_path.suffix.lower() == ".wav":
-                    with contextlib.suppress(
-                        wave.Error, OSError, ValueError, RuntimeError, EOFError
-                    ):
-                        import numpy as np
-
-                        from allomorph.dsp import read_wav
-
-                        audio, sr = read_wav(f_path)
-                        peak = float(np.max(np.abs(audio)))
-                        rms = float(np.sqrt(np.mean(audio**2)))
-                        entry["sample_rate"] = sr
-                        entry["peak_dbfs"] = round(20.0 * np.log10(max(peak, 1e-9)), 2)
-                        entry["rms_dbfs"] = round(20.0 * np.log10(max(rms, 1e-9)), 2)
+                    entry.setdefault("voicing_version", voicing_version)
                 file_entries[f_path.name] = entry
+        else:
+            for f_item in files:
+                f_path = out_p / f_item if not Path(f_item).is_absolute() else Path(f_item)
+                if f_path.exists() and f_path.name != "manifest.json":
+                    entry = {
+                        "size_bytes": f_path.stat().st_size,
+                        "sha256": compute_file_sha256(f_path),
+                    }
+                    if eff_base_dry_sha is not None:
+                        entry["base_dry_sha256"] = eff_base_dry_sha
+                    if eff_base_dry_file is not None:
+                        entry["base_dry_file"] = eff_base_dry_file
+                    if tag is not None:
+                        entry["version"] = tag
+                    if instrument_version is not None:
+                        entry["instrument_version"] = instrument_version
+                    if voicing_version is not None:
+                        entry["voicing_version"] = voicing_version
+                    if f_path.suffix.lower() == ".wav":
+                        with contextlib.suppress(
+                            wave.Error, OSError, ValueError, RuntimeError, EOFError
+                        ):
+                            import numpy as np
 
-    manifest_data: dict[str, Any] = {
-        "version": tag,
-        "stage": stage,
-        "allomorph_version": ALLOMORPH_VERSION,
-        "dsp_generation": DSP_GENERATION,
-        "git_commit": get_git_commit(),
-        "updated_at": datetime.now(UTC).isoformat(),
-        "file_count": len(file_entries),
-    }
-    if eff_base_dry_sha is not None:
-        manifest_data["base_dry_sha256"] = eff_base_dry_sha
-    if eff_base_dry_file is not None:
-        manifest_data["base_dry_file"] = eff_base_dry_file
-    if instrument_version is not None:
-        manifest_data["instrument_version"] = instrument_version
-    if voicing_version is not None:
-        manifest_data["voicing_version"] = voicing_version
+                            from allomorph.dsp import read_wav
 
-    manifest_data["files"] = dict(sorted(file_entries.items()))
+                            audio, sr = read_wav(f_path)
+                            peak = float(np.max(np.abs(audio)))
+                            rms = float(np.sqrt(np.mean(audio**2)))
+                            entry["sample_rate"] = sr
+                            entry["peak_dbfs"] = round(20.0 * np.log10(max(peak, 1e-9)), 2)
+                            entry["rms_dbfs"] = round(20.0 * np.log10(max(rms, 1e-9)), 2)
+                    file_entries[f_path.name] = entry
 
-    with manifest_path.open("w", encoding="utf-8") as f:
-        json.dump(manifest_data, f, indent=2)
+        manifest_data: dict[str, Any] = {
+            "version": tag,
+            "stage": stage,
+            "allomorph_version": ALLOMORPH_VERSION,
+            "dsp_generation": DSP_GENERATION,
+            "git_commit": get_git_commit(),
+            "updated_at": datetime.now(UTC).isoformat(),
+            "file_count": len(file_entries),
+        }
+        if eff_base_dry_sha is not None:
+            manifest_data["base_dry_sha256"] = eff_base_dry_sha
+        if eff_base_dry_file is not None:
+            manifest_data["base_dry_file"] = eff_base_dry_file
+        if instrument_version is not None:
+            manifest_data["instrument_version"] = instrument_version
+        if voicing_version is not None:
+            manifest_data["voicing_version"] = voicing_version
+
+        manifest_data["files"] = dict(sorted(file_entries.items()))
+
+        with manifest_path.open("w", encoding="utf-8") as f:
+            json.dump(manifest_data, f, indent=2)
 
     return manifest_path
 
@@ -256,9 +260,9 @@ def is_wet_stem_valid(
     if base_dry_path is not None:
         base_p = Path(base_dry_path)
     else:
-        from allomorph.naming import get_optimal_dry_path
+        from allomorph.naming import get_default_input_path
 
-        base_p = get_optimal_dry_path()
+        base_p = get_default_input_path()
 
     if not base_p.exists():
         return False

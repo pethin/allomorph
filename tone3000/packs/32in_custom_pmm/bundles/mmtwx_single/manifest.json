@@ -1,0 +1,96 @@
+{
+  "bundle": "mmtwx_single",
+  "pickup_key": "mmtwx_single",
+  "position_name": "Single",
+  "base_dry_file": "input.wav",
+  "base_dry_sha256": "77fcdecbe8c6a35c62780e58f3c975e49fc134efa2df102572cdba824ec4ccf0",
+  "dry_file": "dry v3.1.1.wav",
+  "dry_version": "v3.1.1",
+  "dry_sha256": "9fc5383a8c2437cf56f41093f3972748d3ca95ad8bd3a8f4cfa33c3397806e7b",
+  "instrument_id": "32in_custom_pmm",
+  "instrument_version": 1,
+  "source_voicing_version": 1,
+  "stem_count": 8,
+  "stems": [
+    {
+      "filename": "Jazz Bridge Growl [Single] v3.1.1.wav",
+      "target_instrument": "34in_standard_jazz",
+      "target_instrument_version": 1,
+      "target_voicing": "bridge_growl",
+      "target_voicing_version": 1,
+      "version": "v3.1.1",
+      "tone_name": "Jazz Bridge Growl",
+      "sha256": "f46879d770faa603aee1c3c6b29d8071743fc4107364199246ddb758f8ea604c"
+    },
+    {
+      "filename": "Jazz Bridge Open [Single] v3.1.1.wav",
+      "target_instrument": "34in_standard_jazz",
+      "target_instrument_version": 1,
+      "target_voicing": "bridge_open",
+      "target_voicing_version": 1,
+      "version": "v3.1.1",
+      "tone_name": "Jazz Bridge Open",
+      "sha256": "8f679adffcffb3403f13e41b8784f011717230bbf02a2e508681e0cab7b9cad2"
+    },
+    {
+      "filename": "StingRay Parallel [Single] v3.1.1.wav",
+      "target_instrument": "34in_active_stingray",
+      "target_instrument_version": 1,
+      "target_voicing": "parallel_classic",
+      "target_voicing_version": 1,
+      "version": "v3.1.1",
+      "tone_name": "StingRay Parallel",
+      "sha256": "9e3097d398e7961e66a10dd8a379463917902d9418dbfaa2febb9ac4a6c1bba3"
+    },
+    {
+      "filename": "StingRay Series [Single] v3.1.1.wav",
+      "target_instrument": "34in_active_stingray",
+      "target_instrument_version": 1,
+      "target_voicing": "series_punch",
+      "target_voicing_version": 1,
+      "version": "v3.1.1",
+      "tone_name": "StingRay Series",
+      "sha256": "8a4c3147cb707fc8bb612c7cedbfd13e6a88ad5c41a4edef163d041d63bc6d81"
+    },
+    {
+      "filename": "StingRay Active [Single] v3.1.1.wav",
+      "target_instrument": "34in_active_stingray",
+      "target_instrument_version": 1,
+      "target_voicing": "active_slap",
+      "target_voicing_version": 1,
+      "version": "v3.1.1",
+      "tone_name": "StingRay Active",
+      "sha256": "9e3097d398e7961e66a10dd8a379463917902d9418dbfaa2febb9ac4a6c1bba3"
+    },
+    {
+      "filename": "Dingwall Bridge [Single] v3.1.1.wav",
+      "target_instrument": "37in_multiscale_dingwall",
+      "target_instrument_version": 1,
+      "target_voicing": "bridge_clank",
+      "target_voicing_version": 1,
+      "version": "v3.1.1",
+      "tone_name": "Dingwall Bridge",
+      "sha256": "28e8d9293368aa58508472496f1e05405b2104bd45db619b7b371ef316497332"
+    },
+    {
+      "filename": "Rickenbacker Clank [Single] v3.1.1.wav",
+      "target_instrument": "33in_rickenbacker_4003",
+      "target_instrument_version": 1,
+      "target_voicing": "bridge_clank",
+      "target_voicing_version": 1,
+      "version": "v3.1.1",
+      "tone_name": "Rickenbacker Clank",
+      "sha256": "18d445784b56cb9968889acba4eb133e46e1a5d464d1032f7f17af2638b7e66a"
+    },
+    {
+      "filename": "Rickenbacker Open [Single] v3.1.1.wav",
+      "target_instrument": "33in_rickenbacker_4003",
+      "target_instrument_version": 1,
+      "target_voicing": "bridge_open",
+      "target_voicing_version": 1,
+      "version": "v3.1.1",
+      "tone_name": "Rickenbacker Open",
+      "sha256": "e691534441e1ecfbba06cf0214778517cd161a0d1d1567bf01b1a6cb4ae7d057"
+    }
+  ]
+}

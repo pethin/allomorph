@@ -41,7 +41,7 @@ For each voicing, set your bass's physical pickup blend knob to the recommended 
 Plug straight in. All pickup positioning, pot loading, tone capacitor shaping, and active preamp EQs are handled automatically by the models.
 
 
-THE 22 DIGITAL TWIN VOICINGS
+THE 20 DIGITAL TWIN VOICINGS
 
 
 Precision Bass & Tone Shaper Family
@@ -125,13 +125,6 @@ Modern active P/J punch (Sadowsky/Spector style). Combines thick split-coil body
 Classic '80s rock P/J tone (Fender Precision Special / Yamaha BB). Thick hard-rock punch with aggressive midrange bite and authoritative low-end grunt.
 
 
-Studio Buffers & Dynamics
-
-21. Studio Passive
-Studio Passive: turns your active bass into a warm, organic passive instrument with natural vintage tube-amp dynamics, woody low-mid body, and smooth, rolled-off highs.
-
-22. Studio Active
-Studio Active Buffer: removes cable drag and pot loading, opening up pristine hi-fi clarity, ultra-fast transient attack, and airy top-end sparkle.
 
 
 LICENSE & DISCLAIMER

@@ -117,7 +117,7 @@ def build_voice_dataframe(
     else:
         is_spatial_match = (mode != "output") and is_voice_matching_source(inst, voice_id, cfg)
 
-    is_pure_di = voice_id == "studio_direct" or (
+    is_pure_di = (
         tgt_circuit is not None and getattr(load_circuit(tgt_circuit), "no_eq", False)
     )
     if is_pure_di and mode == "output":
@@ -426,16 +426,13 @@ VOICE_FAMILIES: dict[str, str] = {
     "p_mm_series": "P∕MM",
     "mudbucker_deep": "Mudbucker",
     "upright_acoustic": "Upright",
-    "studio_direct": "Studio",
-    "studio_active": "Studio",
-    "studio_passive": "Studio",
 }
 
 
 def build_voicings_comparison_data(step: int = 3) -> dict[str, Any]:
     """
     Builds the compact data structure containing frequency responses and metadata
-    for all 28 target voicings in VOICES.
+    for all 25 target voicings in VOICES.
     Used by voicings.html to display the 3-line graph:
       - Line 1: Source Voicing (H_src)
       - Line 2: Target Voicing (H_tgt)
@@ -656,100 +653,4 @@ def compute_fir_csd(
     return time_ms, csd_matrix
 
 
-_VOICING_3D_CACHE: dict[tuple[int, int, float], dict[str, Any]] = {}
 
-
-def build_voicing_ir_diff_3d_data(
-    num_freqs: int = 50,
-    num_slices: int = 24,
-    max_time_ms: float = 3.0,
-) -> dict[str, Any]:
-    """
-    Builds the 3D data structure for voicing IR difference visualization across all voicing pairs.
-    For each (source, target) pair:
-      - Evaluates the difference frequency response H_diff = H_tgt - H_src in dB
-      - Synthesizes the minimum-phase difference impulse response h_diff(t) using a linear frequency grid
-      - Computes the Cumulative Spectral Decay (CSD) waterfall matrix and FIR waveform
-    """
-    cache_key = (num_freqs, num_slices, float(max_time_ms))
-    if cache_key in _VOICING_3D_CACHE:
-        return _VOICING_3D_CACHE[cache_key]
-
-    f_eval = [round(float(f), 1) for f in np.geomspace(20.0, 20000.0, num_freqs)]
-    f_lin = np.linspace(0.0, 24000.0, 2049)
-
-    # Compute time_ms using dummy impulse
-    dummy_impulse = np.zeros(2048, dtype=np.float64)
-    dummy_impulse[0] = 1.0
-    time_ms, _ = compute_fir_csd(
-        dummy_impulse, f_eval, num_slices=num_slices, max_time_ms=max_time_ms
-    )
-
-    # 1. Precompute magnitude response for each voice (both 50-pt display and linear synthesis grid)
-    voice_mags_50: dict[str, np.ndarray] = {}
-    voice_mags_lin: dict[str, np.ndarray] = {}
-    voices_meta: dict[str, dict[str, Any]] = {}
-    f_orig = np.asarray(log_freqs, dtype=np.float64)
-
-    for vid, cfg in sorted(VOICES.items()):
-        vdf = build_voice_dataframe(vid, cfg, mode="output")
-        mag_full = vdf["magnitude_db"].to_numpy()
-        mag_50 = np.interp(f_eval, f_orig, mag_full)
-        mag_lin = np.interp(f_lin, f_orig, mag_full)
-        voice_mags_50[vid] = mag_50
-        voice_mags_lin[vid] = mag_lin
-        voices_meta[vid] = {
-            "id": vid,
-            "name": cfg.name,
-            "tone_name": cfg.tone_name or cfg.name,
-            "family": VOICE_FAMILIES.get(vid, "Specialty"),
-            "magnitude_db": [round(float(v), 1) for v in mag_50],
-        }
-
-    # 2. Build difference IR matrix
-    responses: dict[str, dict[str, dict[str, Any]]] = {}
-    n_rise = max(min(round((max_time_ms / 1000.0 * 48000) / num_slices), 8), 4)
-
-    for s_vid in sorted(VOICES.keys()):
-        responses[s_vid] = {}
-        for t_vid in sorted(VOICES.keys()):
-            db_diff_50 = voice_mags_50[t_vid] - voice_mags_50[s_vid]
-            if s_vid == t_vid:
-                # Identity pair: unit impulse at t=0, -60 dB floor elsewhere
-                csd_matrix = [
-                    [0.0 if m == 0 else -60.0 for _ in range(num_freqs)] for m in range(num_slices)
-                ]
-                fir_head = [1.0] + [0.0] * 127
-            else:
-                db_diff_lin = voice_mags_lin[t_vid] - voice_mags_lin[s_vid]
-                mag_lin_grid = 10.0 ** (db_diff_lin / 20.0)
-                fir = np.array(
-                    synthesize_minimum_phase_fir(mag_lin_grid, num_taps=1024, normalize=False),
-                    dtype=np.float64,
-                )
-                _, csd_matrix = compute_fir_csd(
-                    fir,
-                    f_eval,
-                    num_slices=num_slices,
-                    max_time_ms=max_time_ms,
-                    n_rise=n_rise,
-                )
-                fir_head = [round(float(x), 4) for x in fir[:128]]
-
-            responses[s_vid][t_vid] = {
-                "magnitude_db": [round(float(x), 1) for x in db_diff_50],
-                "csd_matrix": csd_matrix,
-                "fir_waveform": fir_head,
-            }
-
-    data: dict[str, Any] = {
-        "frequencies": f_eval,
-        "time_ms": time_ms,
-        "voices": voices_meta,
-        "responses": responses,
-        "default_source": "precision_vintage",
-        "default_target": "jazz_bridge_growl",
-    }
-
-    _VOICING_3D_CACHE[cache_key] = data
-    return data

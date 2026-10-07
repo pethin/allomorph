@@ -234,11 +234,9 @@ def test_t3k_pack_naming_invariants():
     )
     assert get_t3k_basename("StingRay Parallel", pos_ray) == "StingRay Parallel"
 
-    # 7. Preserve aperture Studio tones omit pickup name suffix
-    assert get_t3k_basename("Studio Active", "Parallel") == "Studio Active"
-    assert get_t3k_basename("Studio Direct", "Neck") == "Studio Direct"
-    assert get_t3k_basename("Studio Passive", "Bridge") == "Studio Passive"
-    assert get_t3k_basename("Custom Tone", "Parallel", preserve_aperture=True) == "Custom Tone"
+    # 7. Preserve aperture tones omit pickup name suffix when preserve_aperture=True
+    assert get_t3k_basename("Direct Input", "Parallel", preserve_aperture=True) == "Direct Input"
+    assert get_t3k_basename("Custom Tone", "Bridge", preserve_aperture=True) == "Custom Tone"
 
 
 def test_dynamic_feel_and_auto_pickup():

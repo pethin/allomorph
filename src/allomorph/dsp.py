@@ -402,9 +402,7 @@ def calibrate_nam_v3_latency(y: np.ndarray) -> tuple[int, bool, bool]:
 
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 AUDIO_DIR = REPO_ROOT / "audio"
-from allomorph.version import DSP_GENERATION
-
-OPTIMAL_DRY_PATH = AUDIO_DIR / "canonical" / f"optimal_bass_dry_v{DSP_GENERATION}.wav"
+DEFAULT_INPUT_PATH = AUDIO_DIR / "input.wav"
 
 
 @njit(fastmath=True, parallel=True)
@@ -1332,7 +1330,10 @@ def generate_optimal_bass_dry(
     return audio.astype(np.float32)
 
 
-def ensure_optimal_dry_wav(
+generate_input_audio = generate_optimal_bass_dry
+
+
+def ensure_input_audio_wav(
     output_path: Path | str | None = None,
     duration_sec: float = 240.0,
     sample_rate: int = FS,
@@ -1342,17 +1343,16 @@ def ensure_optimal_dry_wav(
     version_tag: str | None = None,
     no_manifest: bool = False,
 ) -> Path:
-    """Ensures that the synthesized optimal bass dry signal exists on disk.
+    """Ensures that the synthesized dry input string excitation signal exists on disk.
 
-    If output_path is None, writes the versioned optimal bass dry file to audio/canonical/
-    (e.g., optimal_bass_dry_v3.wav) and records entries in manifest.json.
+    If output_path is None, writes to audio/input.wav.
     """
     if output_path is not None:
         p = Path(output_path)
     else:
-        from allomorph.naming import get_optimal_dry_path
+        from allomorph.naming import get_default_input_path
 
-        p = get_optimal_dry_path(version_tag=version_tag)
+        p = get_default_input_path()
 
     if p.exists() and not overwrite:
         return p
@@ -1365,17 +1365,4 @@ def ensure_optimal_dry_wav(
         target_rms_dbfs=target_rms_dbfs,
     )
     write_wav_24bit(p, audio, sample_rate)
-
-    if output_path is None and not no_manifest:
-        from allomorph.naming import get_optimal_dry_basename
-        from allomorph.version import write_manifest
-
-        v_tag = get_optimal_dry_basename(version_tag).replace("optimal_bass_dry_", "")
-        write_manifest(
-            output_dir=p.parent,
-            stage="canonical",
-            files=[p],
-            version_tag=v_tag,
-        )
-
     return p

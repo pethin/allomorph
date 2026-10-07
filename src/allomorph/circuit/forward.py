@@ -175,7 +175,7 @@ def simulate_instrument_voicing(
         found = find_default_input_audio()
         if not found:
             raise FileNotFoundError(
-                f"Input audio '{input_wav}' not found, and no standard calibration audio (optimal_bass_dry.wav) was detected."
+                f"Input audio '{input_wav}' not found, and no standard excitation audio (input.wav) was detected."
             )
         in_path = Path(found)
     else:
@@ -583,15 +583,27 @@ def simulate_all_instrument_voicings(
         target_insts = list(INSTRUMENTS.values())
 
     exported_paths: list[Path] = []
-    for inst in target_insts:
-        for voicing in inst.voicings.values():
-            path = simulate_instrument_voicing(
-                instrument=inst,
-                voicing=voicing,
-                input_wav=input_wav,
-                max_samples=max_samples,
-            )
-            exported_paths.append(path)
+    tasks: list[tuple[InstrumentConfig, VoicingConfig]] = [
+        (inst, voicing) for inst in target_insts for voicing in inst.voicings.values()
+    ]
+
+    def _sim(item: tuple[InstrumentConfig, VoicingConfig]) -> Path:
+        i, v = item
+        return simulate_instrument_voicing(
+            instrument=i,
+            voicing=v,
+            input_wav=input_wav,
+            max_samples=max_samples,
+        )
+
+    eff_jobs = jobs if jobs is not None and jobs > 0 else 1
+    if eff_jobs > 1 and len(tasks) > 1:
+        from concurrent.futures import ThreadPoolExecutor
+
+        with ThreadPoolExecutor(max_workers=eff_jobs) as executor:
+            exported_paths = list(executor.map(_sim, tasks))
+    else:
+        exported_paths = [_sim(t) for t in tasks]
 
     return exported_paths
 

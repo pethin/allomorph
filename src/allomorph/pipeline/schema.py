@@ -51,6 +51,7 @@ class PipelineCliConfig(AllomorphBaseModel):
     backend: str = "native"
     version_tag: str | None = "auto"
     no_manifest: bool = False
+    clean_audio: bool = False
 
 
 class Tone3000PackListing(AllomorphBaseModel):
@@ -59,7 +60,7 @@ class Tone3000PackListing(AllomorphBaseModel):
     edition: str
     description: str = Field(..., max_length=10000)
     pickup_tags: list[str] = Field(default_factory=list)
-    voicings: list[str] = Field(..., min_length=18, max_length=32)
+    voicings: list[str] = Field(..., min_length=15, max_length=32)
 
 
 class NamSourcePickupMeta(AllomorphBaseModel):
@@ -164,6 +165,7 @@ class NamTrainingConfig(AllomorphBaseModel):
     )
     version_tag: str | None = "auto"
     no_manifest: bool = False
+    include_identity: bool = False
 
 
 class ArtworkPackConfig(AllomorphBaseModel):

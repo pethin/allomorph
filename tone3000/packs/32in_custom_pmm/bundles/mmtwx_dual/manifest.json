@@ -1,0 +1,15 @@
+{
+  "bundle": "mmtwx_dual",
+  "pickup_key": "mmtwx_dual",
+  "position_name": "Dual",
+  "base_dry_file": "input.wav",
+  "base_dry_sha256": "77fcdecbe8c6a35c62780e58f3c975e49fc134efa2df102572cdba824ec4ccf0",
+  "dry_file": "dry v3.1.1.wav",
+  "dry_version": "v3.1.1",
+  "dry_sha256": "6ed81931879e6b2b0ff258044e595586ef151c7ad6b6d4a5c1f6816f4bba23d6",
+  "instrument_id": "32in_custom_pmm",
+  "instrument_version": 1,
+  "source_voicing_version": 1,
+  "stem_count": 0,
+  "stems": []
+}

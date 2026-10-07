@@ -206,9 +206,6 @@ Allomorph includes pre-configured physical and electrical parameters for **24 di
 | `p_mm_series` | P/MM Series | Modern Active P/MM (Series) | Active Series Buffer | Studio Active Buffer ($R_{\text{in}}=1\text{M}\Omega, R_{\text{out}}=100\,\Omega$) | $8.40\text{ H}$ | $3.2\text{ kHz}$ | Split P and MM parallel humbucker wired in series before active buffer; $+5.8\text{ dB}$ inductive boost. |
 | `mudbucker_deep` | Mudbucker Deep | Heavy Series MM | Ultra Series | Gibson $500\text{k}\Omega$ Vol/Tone, $22\text{nF}$ Cap | $14.40\text{ H}$| $1.2\text{ kHz}$ | Overwound dual-coil series humbucker; subterranean low end with natural high-frequency rolloff. |
 | `upright_acoustic` | Upright Acoustic | Upright Transducer | Bridge Force | Direct $100\text{ M}\Omega$ Buffer, $15\text{ nF}$ Subsonic Cap | — | $4.5\text{ kHz}$ | Direct bridge force sensor (Underwood / Realist style); leaky integration, 32 Hz rumble cut, bridge compliance. |
-| `studio_direct` | Studio Direct | Dynamic DI | Studio (Direct) | Transparent Studio Buffer ($10\text{ M}\Omega \to 50\,\Omega$) | $0.00\text{ H}$ | Wideband | Preserves physical aperture and imparts organic dynamic DI feel and non-linear Alnico compliance. |
-| `studio_active` | Studio Active | Active Buffer | Studio (Active) | Studio Ultra-High-Z Buffer ($10\text{ M}\Omega \to 50\,\Omega$) | $3.20\text{ H}$ | $5.2\text{ kHz}$ | Removes passive cable loading ($750\text{ pF}$) and pot damping to restore wideband hi-fi sparkle and headroom. |
-| `studio_passive` | Studio Passive | Passive Loading | Studio (Passive) | Standard Passive Harness ($250\text{k}\Omega\text{ Vol/Tone}, 47\text{nF}, 750\text{pF}$) | $4.20\text{ H}$ | $2.8\text{ kHz}$ | Adds high-impedance passive dynamics, resonant peak ($2.8\text{ kHz}$), $750\text{ pF}$ cable loading, and $250\text{k}\Omega$ pot damping. |
 
 ---
 
@@ -217,7 +214,7 @@ Allomorph includes pre-configured physical and electrical parameters for **24 di
 Allomorph models acoustic aperture and scale tension in Python, executes the passive circuit digital twin directly using its native WAV SPICE simulator, and trains lightweight NAM (`.nam`) neural captures for Block 1 of the Darkglass Anagram:
 
 ### 1. Interactive Acoustic & Electrical Visualizer (`scripts/analyze_voices.py`)
-Renders interactive frequency response curves in Altair (Vega-Lite), comparing all 24 target configurations against any source instrument. Outputs are organized into per-instrument standalone charts and a unified interactive portal:
+Renders interactive frequency response curves in Altair (Vega-Lite), comparing all 25 target configurations against any source instrument. Outputs are organized into per-instrument standalone charts and a unified interactive portal:
 
 ```bash
 # Generate interactive charts for all configured source instruments and refresh master portal:
@@ -230,7 +227,7 @@ uv run python scripts/analyze_voices.py --instrument 30in
 *Outputs: Master interactive portal at `docs/frequency_responses.html` (and `docs/frequency_responses/index.html`) with embedded tabbed navigation and spec breakdown, and per-instrument standalone visualizations in `docs/frequency_responses/<instrument_id>.html`.*
 
 ### 2. Native WAV SPICE Circuit Simulation (`allomorph-sim`)
-Directly streams raw bass calibration audio (`audio/canonical/optimal_bass_dry_v3.wav`) through the entire physical digital twin in a single in-memory pass:
+Directly streams raw bass string excitation audio (`audio/input.wav`) through the entire physical digital twin in a single in-memory pass:
 1. **Acoustic Aperture & Placement:** De-humbucking sinc aperture filtering, spatial standing-wave comb filtering, displacement tilt ($\Delta x$), and string tension filtering.
 2. **Dynamic Non-Linear Compliance:** Soft-knee saturation ($V_{\text{sat}} \cdot \tanh(v / V_{\text{sat}})$), Lenz flux sag, Dahl hysteresis, back-EMF, and dynamic reluctance quack.
 3. **Passive Pickup Circuit Twin:** Exact closed-form nodal AC transfer functions, eddy-current damping, authentic volume/tone pot dividers, active preamp buffers, hybrid treble bleed, cable capacitance ($750\text{ pF}$), and pedalboard load ($1\text{ M}\Omega \parallel 30\text{ pF}$).
@@ -252,12 +249,12 @@ uv run allomorph --stage sim --voice precision_active
 ```
 
 ### 3. NAM Neural Model Training (Architecture 2 / A2)
-Trains a high-efficiency **NAM Architecture 2 (A2)** neural model on the input/output audio pair. A2 replaces legacy A1 models (nano/feather/standard) with a "slimmable" neural architecture designed specifically for low-power hardware like the Darkglass Anagram:
+Trains a high-efficiency **NAM Architecture 2 (A2)** neural model directly pairing the source instrument wet stem ($X_{\text{src}}$) to the target voice wet stem ($Y_{\text{tgt}}$). A2 replaces legacy A1 models (nano/feather/standard) with a "slimmable" neural architecture designed specifically for low-power hardware like the Darkglass Anagram:
 
 ```bash
 # Train NAM Architecture 2 (A2) model for Darkglass Anagram Block 1:
-# The input is the raw bass calibration signal (audio/canonical/optimal_bass_dry_v3.wav) and the target is the simulated output:
-nam train audio/canonical/optimal_bass_dry_v3.wav audio/wet/30in_emg_mmtw/precision_active.wav ./models/30in_emg_mmtw/precision_active.nam --architecture "A2"
+# Both input (X_src) and target (Y_tgt) are synthesized wet audio files:
+nam train audio/wet/30in_emg_mmtw/mmtw_dual.wav audio/wet/34in_standard_p/precision_vintage.wav ./models/30in_emg_mmtw/precision_vintage.nam --architecture "A2"
 
 # Run via the automated Allomorph trainer (defaults to Architecture 2 slimmable container with goal ESR <= 0.0080):
 uv run allomorph --stage train --instrument 30in --voice precision_active
@@ -282,8 +279,11 @@ Execute the entire pipeline or specific stages with a single command:
 # Run complete pipeline for 30" source instrument (sim -> pack -> train -> viz):
 uv run allomorph --instrument 30in
 
-# Direct forward simulation of wet audio stems:
-uv run allomorph --stage sim --instrument 30in --voice precision_active
+# Direct forward simulation of wet audio stems (with multi-core parallel jobs):
+uv run allomorph --stage sim --instrument 30in --jobs 4
+
+# Clear audio/ directory and regenerate wet stems across all instruments:
+uv run allomorph --clean-audio --stage sim --jobs 4
 
 # Export Tone3000 upload bundles:
 uv run allomorph --stage pack --instrument 30in

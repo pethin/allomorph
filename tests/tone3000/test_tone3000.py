@@ -28,13 +28,13 @@ PACK_EDITIONS: list[str] = [
 ]
 
 PACK_VOICING_COUNTS: dict[str, int] = {
-    "standard_precision_bass": 21,
-    "standard_jazz_bass": 20,
-    "standard_pj_bass": 19,
-    "mustang_pj_bass": 22,
-    "preamp_soapbar_bass": 22,
-    "active_stingray_bass": 21,
-    "active_emg_bass": 22,
+    "standard_precision_bass": 19,
+    "standard_jazz_bass": 18,
+    "standard_pj_bass": 17,
+    "mustang_pj_bass": 20,
+    "preamp_soapbar_bass": 20,
+    "active_stingray_bass": 19,
+    "active_emg_bass": 20,
 }
 
 MULTI_PICKUP_PACKS: dict[str, list[str]] = {
@@ -135,19 +135,6 @@ def test_tone3000_multi_pickup_tags():
         )
 
         for line in voicing_lines:
-            # Studio tones (Studio Active / Passive / Direct) preserve aperture and omit selector tags
-            if any(
-                studio_tone in line
-                for studio_tone in [
-                    "Studio Active",
-                    "Studio Passive",
-                    "Studio Direct",
-                ]
-            ):
-                assert not any(tag in line for tag in tags), (
-                    f"Studio tone should not have selector tag: '{line}'"
-                )
-                continue
             has_tag = any(tag in line for tag in tags)
             assert has_tag, f"{pack}.txt voicing line missing selector tag {tags}: '{line}'"
 
@@ -161,32 +148,6 @@ def test_tone3000_active_instrument_guidance():
         assert "flat" in content.lower() or "center" in content.lower(), (
             f"Active instrument pack {pack}.txt lacks explicit flat/center-detent EQ setup guidance."
         )
-
-
-def test_tone3000_character_voicing_ranking_order():
-    """Verify that active bass packs rank Studio Passive before Studio Active,
-    while passive bass packs rank Studio Active before Studio Passive.
-
-    Under the Inverse-Availability Principle, active instruments already possess onboard active
-    buffering, so an authentic high-impedance passive RLC network provides the primary transformative
-    value ("Passivizer") and must appear earlier in the storefront listing.
-    """
-    for pack in PACK_EDITIONS:
-        txt_path = DOCS_DIR / f"{pack}.txt"
-        content = txt_path.read_text(encoding="utf-8")
-        pos_p = content.find("Studio Passive")
-        pos_a = content.find("Studio Active")
-        assert pos_p != -1, f"Studio Passive missing in {pack}.txt"
-        assert pos_a != -1, f"Studio Active missing in {pack}.txt"
-
-        if pack in ACTIVE_PACKS:
-            assert pos_p < pos_a, (
-                f"Active pack {pack}.txt must rank Studio Passive before Studio Active"
-            )
-        else:
-            assert pos_a < pos_p, (
-                f"Passive pack {pack}.txt must rank Studio Active before Studio Passive"
-            )
 
 
 def test_tone3000_artwork_files_exist():

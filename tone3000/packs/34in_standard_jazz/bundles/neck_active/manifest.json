@@ -1,0 +1,15 @@
+{
+  "bundle": "neck_active",
+  "pickup_key": "neck_active",
+  "position_name": "Neck",
+  "base_dry_file": "input.wav",
+  "base_dry_sha256": "77fcdecbe8c6a35c62780e58f3c975e49fc134efa2df102572cdba824ec4ccf0",
+  "dry_file": "dry v3.1.1.wav",
+  "dry_version": "v3.1.1",
+  "dry_sha256": "ee4b9ad3af2a83c56d35fac7c49ac080ed1e61721ed606cecde8c6b27ba6b820",
+  "instrument_id": "34in_standard_jazz",
+  "instrument_version": 1,
+  "source_voicing_version": 1,
+  "stem_count": 0,
+  "stems": []
+}

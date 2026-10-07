@@ -1,0 +1,15 @@
+{
+  "bundle": "pj_blend_parallel",
+  "pickup_key": "pj_blend_parallel",
+  "position_name": "P/J",
+  "base_dry_file": "input.wav",
+  "base_dry_sha256": "77fcdecbe8c6a35c62780e58f3c975e49fc134efa2df102572cdba824ec4ccf0",
+  "dry_file": "dry v3.1.1.wav",
+  "dry_version": "v3.1.1",
+  "dry_sha256": "2e078b18d59b44c566993332ca09b62f4a8d8a7412a3f7590c5767ebb7cae663",
+  "instrument_id": "32in_custom_pmm",
+  "instrument_version": 1,
+  "source_voicing_version": 1,
+  "stem_count": 0,
+  "stems": []
+}

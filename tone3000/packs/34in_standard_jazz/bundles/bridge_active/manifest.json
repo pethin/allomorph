@@ -1,0 +1,15 @@
+{
+  "bundle": "bridge_active",
+  "pickup_key": "bridge_active",
+  "position_name": "Bridge",
+  "base_dry_file": "input.wav",
+  "base_dry_sha256": "77fcdecbe8c6a35c62780e58f3c975e49fc134efa2df102572cdba824ec4ccf0",
+  "dry_file": "dry v3.1.1.wav",
+  "dry_version": "v3.1.1",
+  "dry_sha256": "65bf4c1ba2e39425d93850449321bbeb0361cb18e70cdbd9c67a704d5f18225c",
+  "instrument_id": "34in_standard_jazz",
+  "instrument_version": 1,
+  "source_voicing_version": 1,
+  "stem_count": 0,
+  "stems": []
+}

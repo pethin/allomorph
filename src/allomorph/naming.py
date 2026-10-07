@@ -37,9 +37,6 @@ VOICE_CONCISE_SLUGS: dict[str, str] = {
     "p_mm_series": "pmm_series",
     "mudbucker_deep": "mudbucker",
     "upright_acoustic": "upright",
-    "studio_direct": "studio_di",
-    "studio_active": "studio_act",
-    "studio_passive": "studio_pas",
 }
 
 
@@ -63,11 +60,7 @@ def get_t3k_basename(
     to maintain a flat directory structure.
     """
     clean_tone = tone_name.strip()
-    is_character_tone = preserve_aperture or clean_tone in (
-        "Studio Active",
-        "Studio Direct",
-        "Studio Passive",
-    )
+    is_character_tone = preserve_aperture
     if position_name and position_name.strip() and not is_character_tone:
         clean_pos = position_name.strip()
         name = f"{clean_tone} [{clean_pos}]"
@@ -173,44 +166,12 @@ def resolve_instruments(instrument_arg: str | Sequence[str] | None) -> list[str]
     return resolved
 
 
-def get_optimal_dry_basename(version_tag: str | None = None) -> str:
-    """Generates the filename basename for the synthetic optimal bass dry calibration file.
-
-    The unvoiced synthetic excitation signal depends strictly on the core DSP physics generation
-    (e.g. 'optimal_bass_dry_v3.wav'). Instrument- or voicing-level version tokens (like 'v3.1.1')
-    and 'auto' are mapped strictly to the DSP generation prefix ('v{DSP_GENERATION}').
-    Example: 'optimal_bass_dry_v3'
-    """
-    from allomorph.version import DSP_GENERATION
-
-    if not version_tag or version_tag in ("auto", "none"):
-        v_tag = f"v{DSP_GENERATION}"
-    elif "." in version_tag:
-        dsp_part = version_tag.split(".")[0]
-        v_tag = (
-            dsp_part
-            if (dsp_part.startswith("v") and dsp_part[1:].isdigit())
-            else f"v{DSP_GENERATION}"
-        )
-    elif version_tag.startswith("v") and version_tag[1:].isdigit():
-        v_tag = version_tag
-    else:
-        v_tag = f"v{DSP_GENERATION}"
-
-    return f"optimal_bass_dry_{v_tag}"
-
-
-def get_optimal_dry_path(
-    version_tag: str | None = None, audio_dir: Path | str | None = None
-) -> Path:
-    """Returns the absolute or relative Path to the versioned optimal bass dry WAV.
-
-    Example: audio/canonical/optimal_bass_dry_v2.wav
-    """
+def get_default_input_path(audio_dir: Path | str | None = None) -> Path:
+    """Returns the Path to the default dry string excitation audio file (audio/input.wav)."""
     from allomorph.config.scales import REPO_ROOT
 
     base_dir = Path(audio_dir) if audio_dir is not None else REPO_ROOT / "audio"
-    return base_dir / "canonical" / f"{get_optimal_dry_basename(version_tag)}.wav"
+    return base_dir / "input.wav"
 
 
 def get_instrument_pickup_basename(inst_id: str, pickup: str | None = None) -> str:

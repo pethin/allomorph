@@ -1,7 +1,7 @@
 ALLOMORPH: 30" SHORT SCALE MM (EMG MMTW) EDITION
 ================================================
 
-Transform your 30" Short Scale MM (EMG MMTW) into 28 legendary active, vintage, modern, and acoustic pickup configurations.
+Transform your 30" Short Scale MM (EMG MMTW) into 25 legendary active, vintage, modern, and acoustic pickup configurations.
 
 OVERVIEW
 --------
@@ -25,10 +25,10 @@ QUICK INSTRUMENT SETUP
    - [Dual]: Select EMG MMTW Dual-Coil (Centerline)
    - [Single]: Select EMG MMTW Single-Coil (Bridge Coil)
 
-INCLUDED VOICINGS (28 MODELS)
+INCLUDED VOICINGS (25 MODELS)
 -----------------------------------------
 
-### Bundle: Dual (20 Voicings)
+### Bundle: Dual (17 Voicings)
 • Precision Vintage [Dual] v3.1.1: Vintage 1962 Open (34" Standard P-Bass)
 • Precision Mids [Dual] v3.1.1: Vintage 1962 Vocal Mids (34" Standard P-Bass)
 • Precision Warm [Dual] v3.1.1: Vintage Motown Flatwound Warmth (34" Standard P-Bass)
@@ -46,9 +46,6 @@ INCLUDED VOICINGS (28 MODELS)
 • P∕MM Series [Dual] v3.1.1: P/MM Hybrid Series Bass (34" Modern Active P/MM Bass)
 • Mudbucker Deep [Dual] v3.1.1: Massive 14.4H Sidewinder Sub-Bass (30.5" Gibson EB-0 Mudbucker)
 • Upright Acoustic [Dual] v3.1.1: Acoustic Double Bass Bridge Force (41.25" Acoustic Double Bass)
-• Studio Direct [Dual] v3.1.1: Pure Transparent Studio DI (Studio Direct Box / Interface)
-• Studio Active [Dual] v3.1.1: 1M-Ohm Active Buffer Studio DI (Studio Direct Box / Interface)
-• Studio Passive [Dual] v3.1.1: Passive High-Z Cable Load Studio DI (Studio Direct Box / Interface)
 
 ### Bundle: Single (8 Voicings)
 • Jazz Bridge Growl [Single] v3.1.1: Singing Jaco Bridge Growl (34" Standard Jazz Bass)

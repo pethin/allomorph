@@ -11,7 +11,6 @@ from allomorph.config.instruments import load_instrument
 from allomorph.visualizer.charts import (
     generate_all_charts,
     generate_interactive_chart,
-    generate_voicing_ir_3d_page,
     generate_voicings_page,
     render_chart_to_file,
 )
@@ -20,7 +19,6 @@ from allomorph.visualizer.dataframe import (
     F_MIN,
     NUM_POINTS,
     build_voice_dataframe,
-    build_voicing_ir_diff_3d_data,
     build_voicings_comparison_data,
     build_voicings_comparison_dataframe,
     compute_curve_rms_db,
@@ -46,7 +44,6 @@ __all__ = [
     "append_spec_panel",
     "build_portal_html",
     "build_voice_dataframe",
-    "build_voicing_ir_diff_3d_data",
     "build_voicings_comparison_data",
     "build_voicings_comparison_dataframe",
     "compute_curve_rms_db",
@@ -55,7 +52,6 @@ __all__ = [
     "generate_all_charts",
     "generate_interactive_chart",
     "generate_portal_pages",
-    "generate_voicing_ir_3d_page",
     "generate_voicings_page",
     "log_freqs",
     "main",
@@ -79,14 +75,12 @@ def main(argv: Sequence[str] | None = None) -> None:
         "-m",
         choices=[
             "voicings",
-            "voicing_ir_3d",
-            "waterfall3d",
             "unified",
             "output",
             "difference",
         ],
         default="voicings",
-        help="Chart mode: 'voicings' (interactive 3-line voicing comparison), 'voicing_ir_3d' (3D difference IR waterfall), 'unified', 'output', or 'difference'",
+        help="Chart mode: 'voicings' (interactive 3-line voicing comparison), 'unified', 'output', or 'difference'",
     )
     parser.add_argument(
         "--all",
@@ -108,7 +102,7 @@ def main(argv: Sequence[str] | None = None) -> None:
 
     if cli_cfg.all or (isinstance(cli_cfg.instrument, str) and cli_cfg.instrument.lower() == "all"):
         generate_all_charts(output_dir=cli_cfg.out)
-    elif cli_cfg.mode in ("voicings", "voicing_ir_3d", "waterfall3d"):
+    elif cli_cfg.mode == "voicings":
         generate_interactive_chart(mode=cli_cfg.mode, out_html=cli_cfg.out)
     else:
         inst = load_instrument(cli_cfg.instrument)

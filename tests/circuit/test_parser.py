@@ -147,7 +147,7 @@ def test_sweep_audio_auto_detection():
     sweep = find_default_input_audio()
     assert sweep is not None
     assert sweep.exists()
-    assert sweep.name.startswith("optimal_bass_dry") and sweep.suffix == ".wav"
+    assert sweep.name == "input.wav" and sweep.suffix == ".wav"
 
     with tempfile.TemporaryDirectory() as tmpdir:
         out_wav = Path(tmpdir) / "auto_sweep_out.wav"
@@ -162,7 +162,7 @@ def test_sweep_audio_auto_detection():
         assert res is True
         assert out_wav.exists() and out_wav.stat().st_size > 1000
 
-        # Test with input_wav pointing to missing file (fallback behavior to optimal_bass_dry.wav)
+        # Test with input_wav pointing to missing file (fallback behavior to input.wav)
         out_wav_fallback = Path(tmpdir) / "fallback_sweep_out.wav"
         res_fallback = simulate_voice(
             "precision_active",
@@ -189,7 +189,6 @@ def test_magnet_properties_configuration():
         "active",
         "ideal",
         "ideal_passive",
-        "canonical_ideal",
         "linear",
     ]
     for mag in required_types:

@@ -10,7 +10,6 @@ from allomorph.config import load_all_instruments
 from allomorph.visualizer import (
     generate_all_charts,
     generate_interactive_chart,
-    generate_voicing_ir_3d_page,
     generate_voicings_page,
 )
 
@@ -20,11 +19,11 @@ def test_generate_all_charts():
         out_dir = Path(tmpdir)
         generated = generate_all_charts(output_dir=out_dir)
 
-        # 1. Check Voicings comparison and 3D Waterfall pages
+        # 1. Check Voicings comparison page exists and obsolete 3D IR is not generated
         assert "voicings" in generated
-        assert "voicing_ir_3d" in generated
+        assert "voicing_ir_3d" not in generated
         assert (out_dir / "voicings.html").exists()
-        assert (out_dir / "voicing_ir_3d.html").exists()
+        assert not (out_dir / "voicing_ir_3d.html").exists()
 
         # 2. Verify legacy per-instrument forward signal flow charts are NOT generated
         all_insts = load_all_instruments()
@@ -45,7 +44,7 @@ def test_generate_all_charts():
         assert "Allomorph Frequency Response Suite" in portal_content
         assert "iframe" in portal_content
         assert "pnav-voicings" in portal_content
-        assert "pnav-waterfall3d" in portal_content
+        assert "pnav-waterfall3d" not in portal_content
         assert "pnav-inspector" not in portal_content
         assert "tab-btn" not in portal_content
 
@@ -76,12 +75,6 @@ def test_generate_interactive_chart_modes():
         assert p_v.exists()
         assert "Voicing Comparisons" in p_v.read_text(encoding="utf-8")
 
-        # 5. Waterfall 3D mode
-        p_3d = Path(tmpdir) / "3d.html"
-        generate_interactive_chart(out_html=str(p_3d), mode="voicing_ir_3d")
-        assert p_3d.exists()
-        assert "Voicing IR Difference 3D" in p_3d.read_text(encoding="utf-8")
-
 
 def test_generate_voicings_page():
     with tempfile.TemporaryDirectory() as tmpdir:
@@ -96,19 +89,6 @@ def test_generate_voicings_page():
         assert "plot-div" in content
 
 
-def test_generate_voicing_ir_3d_page():
-    with tempfile.TemporaryDirectory() as tmpdir:
-        target_html = Path(tmpdir) / "voicing_ir_3d.html"
-        res = generate_voicing_ir_3d_page(target_html)
-        assert res.exists()
-        content = res.read_text(encoding="utf-8")
-        assert "plotly" in content.lower()
-        assert "source-select" in content
-        assert "target-select" in content
-        assert "plot-div" in content
-        assert "fir-canvas" in content
-
-
 def test_portal_html_scripts_valid():
     """Verify that all script tags in generated portals have balanced braces and valid syntax."""
     with tempfile.TemporaryDirectory() as tmpdir:
@@ -118,7 +98,6 @@ def test_portal_html_scripts_valid():
         portal_files = [
             out_dir / "index.html",
             out_dir / "voicings.html",
-            out_dir / "voicing_ir_3d.html",
         ]
         for p in portal_files:
             assert p.exists()

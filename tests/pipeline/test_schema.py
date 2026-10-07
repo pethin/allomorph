@@ -48,12 +48,12 @@ def test_tone3000_listing_validation():
             voicings=valid_voicings,
         )
 
-    # Incorrect number of voicings (< 18 or > 32)
+    # Incorrect number of voicings (< 15 or > 32)
     with pytest.raises(ValidationError):
         Tone3000PackListing(
             edition="test",
             description=valid_desc,
-            voicings=valid_voicings[:15],
+            voicings=valid_voicings[:14],
         )
     with pytest.raises(ValidationError):
         Tone3000PackListing(

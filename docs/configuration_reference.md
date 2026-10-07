@@ -24,8 +24,7 @@ config/
 │   ├── 34in_active_emg.toml      # 34" Standard Active EMG Bass (Option C Baseline)
 │   ├── 34in_dingwall_sp1.toml    # 32"-35" Dingwall SP1 5-String (Dual-P + FD3n)
 │   ├── 37in_multiscale_dingwall.toml # 34"-37" Multi-Scale Dingwall 5-String Combustion / NG (FD3n)
-│   ├── 41in_upright_bass.toml    # 41.5" Orchestral 3/4 Double Bass (Piezo Bridge Transducer)
-│   └── studio_direct.toml        # Studio Direct / Active Buffer / Passive RLC baseline
+│   └── 41in_upright_bass.toml    # 41.5" Orchestral 3/4 Double Bass (Piezo Bridge Transducer)
 ├── preamps.toml              # Reusable active preamp catalog (Sadowsky, StingRay, Aguilar, Dingwall)
 ├── scales.toml               # Physical scale lengths, wave speeds, and string dispersion
 └── strings.toml              # Physical string core/wrap presets

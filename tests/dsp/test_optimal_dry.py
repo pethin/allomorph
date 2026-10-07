@@ -7,10 +7,10 @@ from pathlib import Path
 import numpy as np
 
 from allomorph.dsp import (
+    DEFAULT_INPUT_PATH,
     FS,
-    OPTIMAL_DRY_PATH,
     calibrate_nam_v3_latency,
-    ensure_optimal_dry_wav,
+    ensure_input_audio_wav,
     fft_convolve,
     generate_optimal_bass_dry,
     read_wav,
@@ -67,12 +67,12 @@ def test_generate_optimal_bass_dry_spectral_content():
     assert treble_energy > 0.0, "Treble spectrum must contain positive excitation energy"
 
 
-def test_ensure_optimal_dry_wav(tmp_path: Path):
-    """Verify ensure_optimal_dry_wav synthesizes and writes a valid 24-bit PCM WAV file."""
+def test_ensure_input_audio_wav(tmp_path: Path):
+    """Verify ensure_input_audio_wav synthesizes and writes a valid 24-bit PCM WAV file."""
     test_file = tmp_path / "test_synth_dry.wav"
     assert not test_file.exists()
 
-    result = ensure_optimal_dry_wav(output_path=test_file, duration_sec=2.0)
+    result = ensure_input_audio_wav(output_path=test_file, duration_sec=2.0)
     assert result == test_file
     assert test_file.exists()
 
@@ -84,7 +84,7 @@ def test_ensure_optimal_dry_wav(tmp_path: Path):
 
     # Ensure calling without overwrite reuses existing file without modifying mtime
     mtime_before = test_file.stat().st_mtime_ns
-    result2 = ensure_optimal_dry_wav(output_path=test_file, duration_sec=2.0, overwrite=False)
+    result2 = ensure_input_audio_wav(output_path=test_file, duration_sec=2.0, overwrite=False)
     assert result2 == test_file
     assert test_file.stat().st_mtime_ns == mtime_before
 
@@ -93,7 +93,8 @@ def test_optimal_bass_dry_zero_artificial_dither_and_silence_bounding():
     """Validates that optimal_bass_dry strictly preserves pure digital silence (0.0),
     contains zero artificial dither/noise floor, and bounds leading/trailing boundaries.
     """
-    audio, sr = read_wav(OPTIMAL_DRY_PATH)
+    path = ensure_input_audio_wav()
+    audio, sr = read_wav(path)
     assert sr == FS
     assert len(audio) == 240 * FS
 
@@ -124,8 +125,9 @@ def test_optimal_bass_dry_drop_a_sub_bass_and_determinism():
     a2 = generate_optimal_bass_dry(duration_sec=5.0, sample_rate=FS, seed=42)
     assert np.array_equal(a1, a2), "Generation must be 100% bit-exact deterministic"
 
-    # Drop A0 (27.5 Hz) sub-bass energy in canonical track
-    audio_full, _ = read_wav(OPTIMAL_DRY_PATH)
+    # Drop A0 (27.5 Hz) sub-bass energy in input track
+    path = ensure_input_audio_wav()
+    audio_full, _ = read_wav(path)
     n_fft = len(audio_full)
     spec = np.abs(np.fft.rfft(audio_full))
     freqs = np.fft.rfftfreq(n_fft, 1.0 / FS)
@@ -139,7 +141,8 @@ def test_optimal_bass_dry_non_v3_prelude_latency_zero():
     '[t3k] Dry-wet input is not V3 prelude (too_short); defaulting latency to 0.'
     guaranteeing zero latency offset without false blip triggering.
     """
-    audio, _ = read_wav(OPTIMAL_DRY_PATH)
+    path = ensure_input_audio_wav()
+    audio, _ = read_wav(path)
     rec_delay, lookahead_warn, not_detected = calibrate_nam_v3_latency(audio)
     assert not_detected is True, (
         f"Expected not_detected=True, got {not_detected} (delay={rec_delay})"
@@ -152,7 +155,8 @@ def test_optimal_bass_dry_non_zero_dry_wet_delta():
     """Validates that filtering the dry file yields a non-zero dry/wet delta,
     guaranteeing Tone3000's identity-bypass rejection check passes cleanly.
     """
-    audio, _ = read_wav(OPTIMAL_DRY_PATH)
+    path = ensure_input_audio_wav()
+    audio, _ = read_wav(path)
     fir = np.zeros(1024, dtype=np.float32)
     fir[0] = 0.85
     fir[8] = -0.35
@@ -166,7 +170,8 @@ def test_optimal_bass_dry_15_vector_physical_features():
     full-fretboard glissandi (up to 392 Hz), CCIF resonant probes (3-4.25 kHz),
     and exact 240.0s duration.
     """
-    audio, _ = read_wav(OPTIMAL_DRY_PATH)
+    path = ensure_input_audio_wav()
+    audio, _ = read_wav(path)
     assert len(audio) == 240 * FS, f"Expected 240s ({240 * FS} samples), got {len(audio)}"
 
     n_fft = len(audio)
@@ -185,9 +190,9 @@ def test_optimal_bass_dry_15_vector_physical_features():
     assert np.sum(spec[probe2_mask] ** 2) > 0.0, "Must contain 4.0-4.25 kHz CCIF probe energy"
 
 
-def test_optimal_dry_canonical_path():
-    """Verify canonical optimal dry path points to audio/canonical/optimal_bass_dry_v2.wav."""
-    from allomorph.version import DSP_GENERATION
+def test_default_input_path():
+    """Verify default input path points to audio/input.wav."""
+    from allomorph.naming import get_default_input_path
 
-    assert OPTIMAL_DRY_PATH.name == f"optimal_bass_dry_v{DSP_GENERATION}.wav"
-    assert OPTIMAL_DRY_PATH.parent.name == "canonical"
+    assert DEFAULT_INPUT_PATH.name == "input.wav"
+    assert DEFAULT_INPUT_PATH == get_default_input_path()

@@ -1,0 +1,15 @@
+{
+  "bundle": "j_active",
+  "pickup_key": "j_active",
+  "position_name": "Bridge",
+  "base_dry_file": "input.wav",
+  "base_dry_sha256": "77fcdecbe8c6a35c62780e58f3c975e49fc134efa2df102572cdba824ec4ccf0",
+  "dry_file": "dry v3.1.1.wav",
+  "dry_version": "v3.1.1",
+  "dry_sha256": "3d8d769c09eec5c482048cecd73e59ad1a6dc5dabb364ce4634469b7bbd341d6",
+  "instrument_id": "34in_standard_pj",
+  "instrument_version": 1,
+  "source_voicing_version": 1,
+  "stem_count": 0,
+  "stems": []
+}

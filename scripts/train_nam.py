@@ -90,9 +90,9 @@ DEFAULT_GOAL_ESR = (
 )
 DEFAULT_MAX_EPOCHS = 400  # Architecture 2 studio reference epoch safety ceiling
 DEFAULT_BATCH_SIZE = 32  # Standard batch size for high GPU core utilization
-from allomorph.naming import get_optimal_dry_path
+from allomorph.naming import get_default_input_path
 
-OPTIMAL_DRY_PATH = get_optimal_dry_path()
+DEFAULT_INPUT_PATH = get_default_input_path()
 
 
 def configure_a2_architecture(nam_core: Any, a2_lite_only: bool = False) -> None:
@@ -273,6 +273,7 @@ def train_voice(
     a2_lite_only: bool = False,
     version_tag: str | None = "auto",
     no_manifest: bool = False,
+    include_identity: bool = False,
 ) -> bool:
     try:
         import nam.train.core as nam_core
@@ -361,7 +362,15 @@ def train_voice(
                 input_path = find_sweep_input()
 
     if not output_wav:
-        target_wet = AUDIO_DIR / "wet" / inst_id / f"{voice}.wav"
+        from allomorph.circuit.forward import resolve_target_voicing
+
+        tgt_inst, tgt_v = resolve_target_voicing(voice, instrument=inst_cfg)
+        target_slug = (
+            tgt_v.tone_name.lower().replace(" ", "_").replace("∕", "_").replace("/", "_")
+            if tgt_v.tone_name
+            else (tgt_v.id or voice)
+        )
+        target_wet = AUDIO_DIR / "wet" / tgt_inst.id / f"{target_slug}.wav"
         if not (target_wet.exists() and is_wet_stem_valid(target_wet, base_dry_path=input_wav)):
             try:
                 from allomorph.circuit import simulate_instrument_voicing
@@ -369,26 +378,19 @@ def train_voice(
                 print(
                     f"[NAM Trainer] Target wet stem missing or stale, auto-simulating: {target_wet.name}"
                 )
-                output_path = simulate_instrument_voicing(instrument=inst_cfg, voicing=voice)
+                output_path = simulate_instrument_voicing(
+                    instrument=tgt_inst, voicing=tgt_v, output_wav=target_wet
+                )
             except (FileNotFoundError, ValueError, RuntimeError, KeyError, OSError) as e:
                 print(f"[NAM Trainer] Warning: Failed to auto-simulate {target_wet.name}: {e}")
-                candidates = [
-                    AUDIO_DIR / "wet" / inst_id / f"{voice}.wav",
-                    AUDIO_DIR / inst_id / f"out_{voice}_{actual_version_tag}.wav",
-                    AUDIO_DIR / inst_id / f"out_{voice}.wav",
-                    CIRCUITS_DIR / f"out_{voice}.wav",
-                ]
-                output_path = next(
-                    (c for c in candidates if c.exists()),
-                    candidates[0],
-                )
+                output_path = target_wet
         else:
             output_path = target_wet
     else:
         output_path = Path(output_wav)
 
     if not input_path or not input_path.exists():
-        print(f"Error: Could not find training sweep file '{input_path}'.")
+        print(f"Error: Could not find training input file '{input_path}'.")
         return False
 
     if not output_path.exists():
@@ -396,6 +398,14 @@ def train_voice(
         print("Please run the simulation stage first:")
         print(f"  uv run python -m allomorph.pipeline.cli --stage sim --voice {voice}")
         return False
+
+    if not include_identity and input_path.resolve() == output_path.resolve():
+        print(
+            f"[NAM Trainer] Skipping identity pair for '{voice}' on {inst_id}: "
+            f"source and target audio stems are identical ({input_path.name}). "
+            "Use --include-identity to force training."
+        )
+        return True
 
     train_work_dir = inst_models_dir / f".train_{model_basename}"
     train_work_dir.mkdir(parents=True, exist_ok=True)
@@ -651,6 +661,11 @@ def main():
         action="store_true",
         help="Disable generating sidecar manifest.json",
     )
+    parser.add_argument(
+        "--include-identity",
+        action="store_true",
+        help="Force training even if source and target stems are identical",
+    )
     parser.add_argument("--gui", action="store_true", help="Launch NAM training GUI")
     args = parser.parse_args()
 
@@ -673,6 +688,7 @@ def main():
             "a2_lite_only": args.a2_lite_only,
             "version_tag": args.version_tag,
             "no_manifest": args.no_manifest,
+            "include_identity": args.include_identity,
         }
     )
 
@@ -728,6 +744,7 @@ def main():
                 a2_lite_only=cli_cfg.a2_lite_only,
                 version_tag=cli_cfg.version_tag,
                 no_manifest=cli_cfg.no_manifest,
+                include_identity=cli_cfg.include_identity,
             )
             if not ok:
                 all_ok = False

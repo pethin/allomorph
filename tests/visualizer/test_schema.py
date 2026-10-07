@@ -33,8 +33,6 @@ def test_visualizer_cli_config_validation():
     # Valid custom modes
     for m in (
         "voicings",
-        "voicing_ir_3d",
-        "waterfall3d",
         "unified",
         "output",
         "difference",
@@ -43,9 +41,13 @@ def test_visualizer_cli_config_validation():
         assert cfg.mode == m
         assert cfg.all is True
 
-    # Invalid mode rejection (including obsolete composite mode)
+    # Invalid mode rejection (including obsolete composite and 3D IR modes)
     with pytest.raises(ValidationError):
         VisualizerCliConfig(mode="composite")  # type: ignore[arg-type]
+    with pytest.raises(ValidationError):
+        VisualizerCliConfig(mode="voicing_ir_3d")  # type: ignore[arg-type]
+    with pytest.raises(ValidationError):
+        VisualizerCliConfig(mode="waterfall3d")  # type: ignore[arg-type]
     with pytest.raises(ValidationError):
         VisualizerCliConfig(mode="bogus_mode")  # type: ignore[arg-type]
 

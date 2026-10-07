@@ -1,0 +1,15 @@
+{
+  "bundle": "series",
+  "pickup_key": "pair_series",
+  "position_name": "Series",
+  "base_dry_file": "input.wav",
+  "base_dry_sha256": "77fcdecbe8c6a35c62780e58f3c975e49fc134efa2df102572cdba824ec4ccf0",
+  "dry_file": "dry v3.1.1.wav",
+  "dry_version": "v3.1.1",
+  "dry_sha256": "9bdd59834189d5b9e4a8b9180351e484710c6ea3723e464edf78ab3279cb6d97",
+  "instrument_id": "34in_active_pmm",
+  "instrument_version": 1,
+  "source_voicing_version": 1,
+  "stem_count": 0,
+  "stems": []
+}

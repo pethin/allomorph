@@ -20,7 +20,7 @@ from allomorph.config.instruments import (
 )
 from allomorph.config.scales import REPO_ROOT
 from allomorph.config.schema import InstrumentConfig
-from allomorph.naming import get_optimal_dry_path, get_t3k_basename
+from allomorph.naming import get_default_input_path, get_t3k_basename
 from allomorph.version import (
     ALLOMORPH_VERSION,
     DSP_GENERATION,
@@ -167,7 +167,8 @@ def export_tone_pack(
 
     is_multi_pickup = len(bundles) > 1
 
-    for b_name, bundle in bundles.items():
+    def _process_bundle(item: tuple[str, PickupBundle]) -> tuple[str, dict[str, Any]]:
+        b_name, bundle = item
         b_dir = bundles_dir / b_name
         b_dir.mkdir(parents=True, exist_ok=True)
 
@@ -184,23 +185,22 @@ def export_tone_pack(
         dry_v_tag = resolve_tri_part_version(DSP_GENERATION, inst.version, source_voice_ver)
         dry_filename = f"dry {dry_v_tag}.wav"
         dry_dest = b_dir / dry_filename
-        canonical_source_path = WET_AUDIO_DIR / inst.id / f"{bundle.pickup_key}.wav"
+        source_wet_path = WET_AUDIO_DIR / inst.id / f"{bundle.pickup_key}.wav"
 
-        # If overwriting, clean up any previous wav files in bundle directory
-        if overwrite:
-            for old_wav in b_dir.glob("*.wav"):
-                old_wav.unlink(missing_ok=True)
+        # Clean up any previous wav files in bundle directory to avoid stale stems
+        for old_wav in b_dir.glob("*.wav"):
+            old_wav.unlink(missing_ok=True)
 
         if (
             max_samples is None
             and is_wet_stem_valid(
-                canonical_source_path,
+                source_wet_path,
                 base_dry_path=input_wav,
                 expected_version=dry_v_tag,
             )
             and not overwrite
         ):
-            shutil.copyfile(canonical_source_path, dry_dest)
+            shutil.copyfile(source_wet_path, dry_dest)
         elif max_samples is None:
             raw_source_path = export_instrument_pickup_wav(
                 inst_id=inst.id,
@@ -256,23 +256,23 @@ def export_tone_pack(
                 if target_ref.voicing.tone_name
                 else (target_ref.voicing.id or "default_voicing")
             )
-            canonical_wet_path = WET_AUDIO_DIR / target_ref.instrument_id / f"{target_slug}.wav"
+            target_wet_path = WET_AUDIO_DIR / target_ref.instrument_id / f"{target_slug}.wav"
 
             if max_samples is None:
-                if overwrite or not is_wet_stem_valid(
-                    canonical_wet_path,
+                if not is_wet_stem_valid(
+                    target_wet_path,
                     base_dry_path=input_wav,
                     expected_version=target_v_tag,
                 ):
-                    canonical_wet_path.parent.mkdir(parents=True, exist_ok=True)
+                    target_wet_path.parent.mkdir(parents=True, exist_ok=True)
                     simulate_instrument_voicing(
                         instrument=target_ref.instrument,
                         voicing=target_ref.voicing,
                         input_wav=input_wav,
-                        output_wav=canonical_wet_path,
+                        output_wav=target_wet_path,
                         max_samples=None,
                     )
-                shutil.copyfile(canonical_wet_path, stem_path)
+                shutil.copyfile(target_wet_path, stem_path)
             else:
                 simulate_instrument_voicing(
                     instrument=target_ref.instrument,
@@ -324,7 +324,7 @@ def export_tone_pack(
         )
         instructions_path.write_text("\n".join(instr_content) + "\n", encoding="utf-8")
 
-        base_dry_p = Path(input_wav) if input_wav else get_optimal_dry_path()
+        base_dry_p = Path(input_wav) if input_wav else get_default_input_path()
         base_dry_sha = compute_file_sha256(base_dry_p) if base_dry_p.exists() else None
 
         bundle_manifest = {
@@ -345,7 +345,7 @@ def export_tone_pack(
         with open(b_dir / "manifest.json", "w", encoding="utf-8") as bf:
             json.dump(bundle_manifest, bf, indent=2)
 
-        manifest_entries["bundles"][b_name] = {
+        bundle_entry = {
             "pickup_key": bundle.pickup_key,
             "position_name": pos_label,
             "base_dry_file": base_dry_p.name,
@@ -359,6 +359,19 @@ def export_tone_pack(
             "stem_count": len(bundle_stems),
             "stems": bundle_stems,
         }
+        return b_name, bundle_entry
+
+    eff_jobs = jobs if jobs is not None and jobs > 0 else 1
+    if eff_jobs > 1 and len(bundles) > 1:
+        from concurrent.futures import ThreadPoolExecutor
+
+        with ThreadPoolExecutor(max_workers=eff_jobs) as executor:
+            bundle_results = list(executor.map(_process_bundle, bundles.items()))
+    else:
+        bundle_results = [_process_bundle(item) for item in bundles.items()]
+
+    for b_name, b_meta in bundle_results:
+        manifest_entries["bundles"][b_name] = b_meta
 
     # 3. Storefront Description
     desc_path = pack_dir / "storefront_description.txt"

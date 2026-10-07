@@ -2,7 +2,7 @@
   "bundle": "split_p",
   "pickup_key": "split_p",
   "position_name": "Split",
-  "base_dry_file": "optimal_bass_dry_v3.wav",
+  "base_dry_file": "input.wav",
   "base_dry_sha256": "77fcdecbe8c6a35c62780e58f3c975e49fc134efa2df102572cdba824ec4ccf0",
   "dry_file": "dry v3.1.1.wav",
   "dry_version": "v3.1.1",
@@ -10,7 +10,7 @@
   "instrument_id": "34in_standard_p",
   "instrument_version": 1,
   "source_voicing_version": 1,
-  "stem_count": 28,
+  "stem_count": 25,
   "stems": [
     {
       "filename": "Precision Vintage v3.1.1.wav",
@@ -261,36 +261,6 @@
       "version": "v3.1.1",
       "tone_name": "Upright Acoustic",
       "sha256": "bbf439122e0e070ebdcf4da9b080ecef0eaf2e6724f6e24209fe07ef0a45fff4"
-    },
-    {
-      "filename": "Studio Direct v3.1.1.wav",
-      "target_instrument": "studio_direct",
-      "target_instrument_version": 1,
-      "target_voicing": "clean_di",
-      "target_voicing_version": 1,
-      "version": "v3.1.1",
-      "tone_name": "Studio Direct",
-      "sha256": "f45b9ae3708b5c1e9ef11d26dade87bf9ea7a7ece87d9b4d68f7bf5c99e99c86"
-    },
-    {
-      "filename": "Studio Active v3.1.1.wav",
-      "target_instrument": "studio_direct",
-      "target_instrument_version": 1,
-      "target_voicing": "active_di",
-      "target_voicing_version": 1,
-      "version": "v3.1.1",
-      "tone_name": "Studio Active",
-      "sha256": "45f0a4bca214b9515715ebfc89ad81d2fc877e3b7f9cd32c3285353fdfa0d0a1"
-    },
-    {
-      "filename": "Studio Passive v3.1.1.wav",
-      "target_instrument": "studio_direct",
-      "target_instrument_version": 1,
-      "target_voicing": "passive_load",
-      "target_voicing_version": 1,
-      "version": "v3.1.1",
-      "tone_name": "Studio Passive",
-      "sha256": "21c8f32a8ccd22907d3f4ee04beda9954e27d66161fba9453f169f3ab8aead5e"
     }
   ]
 }

@@ -75,7 +75,7 @@ def test_voicings_comparison_identity_and_differential_math():
         "precision_vintage",
         "jazz_bridge_growl",
         "stingray_parallel",
-        "studio_direct",
+        "upright_acoustic",
     ]
     for vid in test_identities:
         df_id = build_voicings_comparison_dataframe(vid, vid, step=1)

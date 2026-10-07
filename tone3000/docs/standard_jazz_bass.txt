@@ -40,7 +40,7 @@ For each voicing, set your bass's physical pickup controls to the recommended br
 Plug straight in. All pickup positioning, pot loading, tone capacitor shaping, and active preamp EQs are handled automatically by the models.
 
 
-THE 20 DIGITAL TWIN VOICINGS
+THE 18 DIGITAL TWIN VOICINGS
 
 
 Precision Bass & Tone Shaper Family
@@ -118,13 +118,6 @@ Jazz Bass pair with a vocal midrange punch. Thickens up your fingerstyle attack 
 The unmistakable Jaco Pastorius tone: solo your bridge pickup for that signature singing, vocal bridge growl and burp.
 
 
-Studio Buffers & Dynamics
-
-19. Studio Active
-Studio Active Buffer: removes cable drag and pot loading, opening up pristine hi-fi clarity, ultra-fast transient attack, and airy top-end sparkle.
-
-20. Studio Passive
-Studio Passive: stacks organic vintage tube-amp warmth, tactile touch sensitivity, and woody harmonic bloom onto your signal chain.
 
 
 LICENSE & DISCLAIMER

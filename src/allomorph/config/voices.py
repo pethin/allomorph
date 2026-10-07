@@ -142,12 +142,8 @@ def voicing_to_voice_config(
 
     circuit = CircuitConfig.model_validate(cdata) if cdata else None
 
-    fr = (
-        voicing.resonant_frequency_hz
-        or pickup.resonant_frequency_hz
-        or (20000.0 if voicing.sensor_type == "direct" else 3500.0)
-    )
-    Q = voicing.q_factor or pickup.q_factor or (0.707 if voicing.sensor_type == "direct" else 1.5)
+    fr = voicing.resonant_frequency_hz or pickup.resonant_frequency_hz or 3500.0
+    Q = voicing.q_factor or pickup.q_factor or 1.5
     magnet_type = voicing.magnet_type or pickup.magnet_type or "alnico_v"
     if instrument.is_multiscale:
         scale = (
@@ -207,7 +203,7 @@ def voicing_to_voice_config(
         gain_db=gain_db,
         scale=scale,
         target_string=target_string,
-        preserve_aperture=voicing.preserve_aperture or (voicing.sensor_type == "direct"),
+        preserve_aperture=voicing.preserve_aperture,
         sensor_type=voicing.sensor_type,
         coils=coils,
         pickups=voice_pickups if len(voice_pickups) >= 2 else [],

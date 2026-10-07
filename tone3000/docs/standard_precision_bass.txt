@@ -36,7 +36,7 @@ QUICK INSTRUMENT SETUP
 Plug straight in. All pickup positioning, pot loading, tone capacitor shaping, and active preamp EQs are handled automatically by the models.
 
 
-THE 21 DIGITAL TWIN VOICINGS
+THE 19 DIGITAL TWIN VOICINGS
 
 
 Jazz Bass Family
@@ -117,13 +117,6 @@ The legendary Motown flatwound sound (James Jamerson / Pino Palladino). Fat, pil
 Ultra-deep vintage '50s dub spec. Pure, earth-shaking sub-bass thump with zero top-end click—perfect for reggae, dub, hip-hop, and classic R&B.
 
 
-Studio Buffers & Dynamics
-
-20. Studio Active
-Studio Active Buffer: removes cable drag and pot loading, opening up pristine hi-fi clarity, ultra-fast transient attack, and airy top-end sparkle.
-
-21. Studio Passive
-Studio Passive: stacks organic vintage tube-amp warmth, tactile touch sensitivity, and woody harmonic bloom onto your signal chain.
 
 
 LICENSE & DISCLAIMER

@@ -100,9 +100,6 @@ Allomorph models are calibrated with RMS loudness matching, bounded by a $-0.09\
 | **`mudbucker_deep`** | Mudbucker Deep | $+6.2\text{ dB}$ | $-4.5\text{ dB}$ (Controls high-inductance surge) |
 | **`dingwall_bridge`** | Dingwall Bridge | $+1.0\text{ dB}$ | $+0.5\text{ dB}$ |
 | **`upright_acoustic`** | Upright Acoustic | $0.0\text{ dB}$ | $0.0\text{ dB}$ (Unity acoustic baseline; pair with 3 Sigma AST IRs) |
-| **`studio_direct`** | Studio Direct | $0.0\text{ dB}$ | $0.0\text{ dB}$ (Transparent unity gain / dynamic feel) |
-| **`studio_active`** | Studio Active | $+0.5\text{ dB}$ | $-0.5\text{ dB}$ (Unity gain active buffer) |
-| **`studio_passive`** | Studio Passive | $+0.5\text{ dB}$ | $-0.5\text{ dB}$ (High-Z passive loading) |
 
 ---
 

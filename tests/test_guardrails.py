@@ -231,26 +231,44 @@ def test_guardrail_transducer_taxonomy_and_zero_conditional_deconvolution():
                     )
 
     # 3. Direct sensor target output mode must evaluate to bit-exact 0.00 dB
-    vcfg = VOICES["studio_direct"]
-    df_out = build_voice_dataframe("studio_direct", vcfg, instrument="studio_direct", mode="output")
+    from allomorph.circuit.schema import CircuitConfig
+    from allomorph.config.schema import VoiceCoilConfig, VoiceConfig
+
+    direct_circuit = CircuitConfig(
+        no_eq=True,
+    )
+    vcfg = VoiceConfig(
+        id="test_direct",
+        name="Direct Sensor",
+        topology="direct",
+        description="Direct Sensor",
+        fr=20000.0,
+        Q=0.707,
+        sensor_type="direct",
+        preserve_aperture=True,
+        circuit=direct_circuit,
+        coils=[VoiceCoilConfig(position_from_bridge_m=0.1, aperture_width_in=0.75)],
+    )
+    df_out = build_voice_dataframe("test_direct", vcfg, instrument="34in_standard_p", mode="output")
     mags_out = df_out["magnitude_db"].to_numpy()
     assert np.all(mags_out == 0.0), (
-        f"studio_direct output mode was not bit-exact 0.00 dB (max error: {np.max(np.abs(mags_out))})"
+        f"direct sensor output mode was not bit-exact 0.00 dB (max error: {np.max(np.abs(mags_out))})"
     )
 
-    # 4. Studio Voicings preserve aperture (unit impulse)
+    # 4. Direct sensor with preserve_aperture=True preserves aperture (unit impulse)
     from allomorph.physics import compute_voice_prefilter_firs
 
-    firs = compute_voice_prefilter_firs("studio_direct", instrument="studio_direct")
-    assert len(firs) == 1
-    fir = np.array(firs[0])
-    assert fir[0] == 1.0
-    assert np.all(fir[1:] == 0.0)
-
-    # 5. Direct sensor deconvolution without preserve_aperture must smoothly invert aperture sinc
-    test_direct_cfg = vcfg.model_copy(update={"preserve_aperture": False})
-    VOICES["_test_direct_deconv"] = test_direct_cfg
+    VOICES["_test_direct"] = vcfg
     try:
+        firs = compute_voice_prefilter_firs("_test_direct", instrument="34in_standard_p")
+        assert len(firs) == 1
+        fir = np.array(firs[0])
+        assert fir[0] == 1.0
+        assert np.all(fir[1:] == 0.0)
+
+        # 5. Direct sensor deconvolution without preserve_aperture must smoothly invert aperture sinc
+        test_direct_cfg = vcfg.model_copy(update={"preserve_aperture": False})
+        VOICES["_test_direct_deconv"] = test_direct_cfg
         firs_dir = compute_voice_prefilter_firs("_test_direct_deconv", instrument="34in_standard_p")
         assert len(firs_dir) == 1
         fir_dir = np.array(firs_dir[0])
@@ -274,7 +292,8 @@ def test_guardrail_transducer_taxonomy_and_zero_conditional_deconvolution():
             f"Deconvolution curve had {sign_flips} sign flips in 20-5000 Hz band (must be smoothly monotonic)"
         )
     finally:
-        del VOICES["_test_direct_deconv"]
+        VOICES.pop("_test_direct", None)
+        VOICES.pop("_test_direct_deconv", None)
 
 
 def test_guardrail_fail_fast_zero_silent_fallbacks():
@@ -395,7 +414,7 @@ def test_guardrail_visualizer_voicings_comparison_fidelity():
         "precision_vintage",
         "jazz_bridge_growl",
         "stingray_parallel",
-        "studio_direct",
+        "dingwall_parallel",
     ]
     for vid in test_identities:
         df_id = build_voicings_comparison_dataframe(vid, vid, step=1)
@@ -422,31 +441,6 @@ def test_guardrail_visualizer_voicings_comparison_fidelity():
     assert np.max(s3) <= 7.05
     assert s3[-1] <= 0.0
 
-
-def test_guardrail_visualizer_voicing_ir_diff_3d_fidelity():
-    """Guardrail 3.7.3 & 5.3.6: Voicing IR Difference 3D Waterfall & Waveform
-    (build_voicing_ir_diff_3d_data) must generate Cumulative Spectral Decay (CSD)
-    surfaces of the difference impulse response (h_diff(t)), collapsing to an
-    ideal unit delta impulse and flat CSD on identity pairs."""
-    from allomorph.config import VOICES
-    from allomorph.visualizer import build_voicing_ir_diff_3d_data
-
-    data = build_voicing_ir_diff_3d_data(num_freqs=50, num_slices=24, max_time_ms=10.0)
-    assert set(data["voices"].keys()) == set(VOICES.keys())
-    assert set(data["responses"].keys()) == set(VOICES.keys())
-
-    # Identity pair: ideal unit delta impulse and flat 0.00 dB initial CSD
-    for vid in ["precision_vintage", "jazz_bridge_growl", "stingray_parallel"]:
-        entry = data["responses"][vid][vid]
-        fir = entry["fir_waveform"]
-        assert len(fir) == 128
-        assert fir[0] == 1.0
-        assert all(x == 0.0 for x in fir[1:])
-
-        csd = entry["csd_matrix"]
-        assert len(csd) == 24
-        assert all(val == 0.0 for val in csd[0])
-        assert all(val == -60.0 for val in csd[-1])
 
 
 def test_guardrail_c_infinity_algebraic_rail_limiter():
@@ -849,64 +843,49 @@ def test_guardrail_lossless_c_inf_optimizations():
         assert abs(eval_pot_taper(th, "audio") - expected) < 1e-14
 
 
-def test_guardrail_studio_voicings_and_identity_invariants():
-    """Guardrail 5.2.1 / 5.3.1 / 5.3.6: Studio voicings aperture preservation,
+def test_guardrail_identity_and_transformative_invariants():
+    """Guardrail 5.2.1 / 5.3.1 / 5.3.6: Target voicings aperture preservation,
     identity matching, and digital twin response invariants:
-      1. is_voice_matching_source evaluates strictly to True for studio_direct
-         across all 12 playable source instruments (preserving acoustic identity).
-      2. is_voice_matching_source evaluates strictly to False for studio_active
-         and studio_passive across all 12 playable source instruments (transformative
-         circuit models must never be flagged as identities).
-      3. build_voicings_comparison_dataframe(step=3) produces bit-exact 0.00 dB for studio_direct
-         self-comparison in Stage 3.
+      1. is_voice_matching_source evaluates strictly to True when source pickup
+         matches the target voicing (e.g. precision_vintage on 34in_standard_p).
+      2. is_voice_matching_source evaluates strictly to False when source pickup
+         does NOT match target voicing (e.g. precision_vintage on 30in_emg_mmtw).
+      3. build_voicings_comparison_dataframe(step=3) produces bit-exact 0.00 dB for identity
+         pairs (e.g. precision_vintage -> precision_vintage, stingray_parallel -> stingray_parallel).
       4. build_voicings_comparison_dataframe(step=3) produces non-flat transformative curves (dynamic
-         range > 1.0 dB) for studio_active and studio_passive.
-      5. simulate_voice(skip_identity=True) strictly skips studio_direct across active
-         and passive basses while producing valid output for 15b and 15c.
+         range > 5.0 dB) for distinct voicings (e.g. stingray_parallel -> stingray_series).
+      5. simulate_voice(skip_identity=True) strictly skips identical source/target pairs
+         while producing valid simulated output for transformative voicings.
     """
     import tempfile
     from pathlib import Path
 
     from allomorph.circuit import simulate_voice
     from allomorph.circuit.schema import SimulationConfig
-    from allomorph.config import load_all_instruments
+    from allomorph.config import load_instrument
     from allomorph.physics import is_voice_matching_source
     from allomorph.visualizer import build_voicings_comparison_dataframe
 
-    all_insts = load_all_instruments()
-    playable_insts = all_insts
+    # 1. Matching source is recognized as identity
+    inst_p = load_instrument("34in_standard_p")
+    assert is_voice_matching_source(inst_p, "precision_vintage", VOICES["precision_vintage"])
+    assert not is_voice_matching_source(inst_p, "jazz_bridge_growl", VOICES["jazz_bridge_growl"])
 
-    # 1 & 2. is_voice_matching_source invariants across all 12 playable instruments
-    for iid, inst in playable_insts.items():
-        assert is_voice_matching_source(inst, "studio_direct", VOICES["studio_direct"]), (
-            f"studio_direct must match source aperture on {iid}"
-        )
+    inst_mm = load_instrument("30in_emg_mmtw")
+    assert not is_voice_matching_source(inst_mm, "precision_vintage", VOICES["precision_vintage"])
 
-        assert not is_voice_matching_source(inst, "studio_active", VOICES["studio_active"]), (
-            f"studio_active must NOT be flagged as identity match on {iid}"
-        )
+    inst_ray = load_instrument("34in_active_stingray")
+    assert is_voice_matching_source(inst_ray, "stingray_parallel", VOICES["stingray_parallel"])
+    assert not is_voice_matching_source(inst_ray, "jazz_bridge_growl", VOICES["jazz_bridge_growl"])
 
-        assert not is_voice_matching_source(inst, "studio_passive", VOICES["studio_passive"]), (
-            f"studio_passive must NOT be flagged as identity match on {iid}"
-        )
-
-    # 3 & 4. build_voicings_comparison_dataframe identity and transformative invariants
-    df_direct = build_voicings_comparison_dataframe("studio_direct", "studio_direct", step=3)
-    s3_dir = df_direct.filter(df_direct["line_type"] == "3. Normalized Difference (Norm. Diff)")[
+    # 3. build_voicings_comparison_dataframe identity and transformative invariants
+    df_p_id = build_voicings_comparison_dataframe("precision_vintage", "precision_vintage", step=3)
+    s3_p = df_p_id.filter(df_p_id["line_type"] == "3. Normalized Difference (Norm. Diff)")[
         "magnitude_db"
     ]
-    assert (s3_dir == 0.0).all(), "studio_direct self-comparison must evaluate to bit-exact 0.00 dB"
+    assert (s3_p == 0.0).all(), "precision_vintage self-comparison must evaluate to bit-exact 0.00 dB"
 
-    for vid in ["studio_active", "studio_passive"]:
-        df_trans = build_voicings_comparison_dataframe("studio_direct", vid, step=3)
-        s3_trans = df_trans.filter(
-            df_trans["line_type"] == "3. Normalized Difference (Norm. Diff)"
-        )["magnitude_db"].to_list()
-        assert not all(m == 0.0 for m in s3_trans), f"{vid} comparison must NOT be flat 0.00 dB"
-        dr = max(s3_trans) - min(s3_trans)
-        assert dr > 0.5, f"{vid} comparison dynamic range was {dr:.2f} dB (expected > 0.5 dB)"
-
-    # 4b. StingRay identity discrimination: parallel is flat 0.0 dB, series is transformative
+    # 4. StingRay identity discrimination: parallel is flat 0.0 dB, series is transformative
     df_ray_par = build_voicings_comparison_dataframe(
         "stingray_parallel", "stingray_parallel", step=3
     )
@@ -924,30 +903,28 @@ def test_guardrail_studio_voicings_and_identity_invariants():
     # 5. simulate_voice identity skip invariants
     with tempfile.TemporaryDirectory() as tmpdir:
         tmp_p = Path(tmpdir)
-        for iid in ["34in_standard_p", "30in_emg_mmtw", "34in_active_stingray"]:
-            # Studio direct must be skipped
-            out_neutral = tmp_p / f"neutral_{iid}.wav"
-            cfg_neutral = SimulationConfig(
-                instrument=iid,
-                output_wav=out_neutral,
-                skip_identity=True,
-                max_samples=2400,
-            )
-            assert simulate_voice("studio_direct", config=cfg_neutral) is False
-            assert not out_neutral.exists()
+        # Identity match on 34in_standard_p should be skipped with skip_identity=True
+        out_p = tmp_p / "identity_p.wav"
+        cfg_id = SimulationConfig(
+            instrument="34in_standard_p",
+            output_wav=out_p,
+            skip_identity=True,
+            max_samples=2400,
+        )
+        assert simulate_voice("precision_vintage", config=cfg_id) is False
+        assert not out_p.exists()
 
-            # Studio active and studio passive must be produced
-            for char_vid in ["studio_active", "studio_passive"]:
-                out_char = tmp_p / f"{char_vid}_{iid}.wav"
-                cfg_char = SimulationConfig(
-                    instrument=iid,
-                    output_wav=out_char,
-                    skip_identity=True,
-                    max_samples=2400,
-                )
-                assert simulate_voice(char_vid, config=cfg_char) is True
-                assert out_char.exists()
-                assert out_char.stat().st_size > 0
+        # Transformative voicing on 34in_standard_p should be simulated
+        out_trans = tmp_p / "trans_p.wav"
+        cfg_trans = SimulationConfig(
+            instrument="34in_standard_p",
+            output_wav=out_trans,
+            skip_identity=True,
+            max_samples=2400,
+        )
+        assert simulate_voice("jazz_bridge_growl", config=cfg_trans) is True
+        assert out_trans.exists()
+        assert out_trans.stat().st_size > 0
 
 
 def test_guardrail_scale_tension_zero_center_and_circuit_headroom():

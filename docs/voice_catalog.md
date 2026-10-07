@@ -28,10 +28,6 @@ This catalog details the physical parameters, equivalent RLC circuit values, aco
 | **12** | `mudbucker_deep` | Overwound Series| Ultra Series | Gibson $500\text{k}\Omega$ Vol, $500\text{k}\Omega$ Tone, $22\text{nF}$ Cap | $14.40\text{ H}$| $27.90\text{ k}\Omega$ | $1.2\text{ kHz}$ | Extreme dual-coil series network; subterranean low-end focus, steep natural top-end rolloff. |
 | **13** | `dingwall_bridge` | Multi-Scale MM | Angled Parallel | Dingwall Active Onboard Buffer ($1\text{ M}\Omega \parallel 25\text{ pF}$, low-Z out) | $2.30\text{ H}$ (isolated)| $4.40\text{ k}\Omega$ | $7.3\text{ kHz}$ | 34"-37" fanned-fret bridge position ($48.0\text{ mm}$) with high-tension wave speeds and active buffered FD3 parallel dual-coil sparkle. |
 | **14** | `upright_acoustic` | Upright Bridge Piezo | Transducer | High-Z Piezo Buffer ($R_{\text{in}}=10\text{ M}\Omega$) | $0.00\text{ H}$ | $10.0\text{ M}\Omega$ | Woody Acoustic | Authentic double bass bridge-wing piezo sensor; captures body wood resonance, bow bite, and organic finger thump. |
-| **15** | `studio_direct` | Studio Direct (Dynamic DI) | Studio (Direct) | Transparent ($0.00\text{ dB}$ flat linear transfer) | $0.00\text{ H}$ | $50\,\Omega$ | Flat (0 dB) | Preserves physical pickup aperture and imparts organic dynamic DI feel and non-linear Alnico compliance. |
-| **15b**| `studio_active` | Studio Active (Modern Active Buffer) | Studio (Active) | Studio Active Buffer ($R_{\text{in}}=1\text{M}\Omega, R_{\text{out}}=100\,\Omega$) | $3.20\text{ H}$ (isolated) | $7.20\text{ k}\Omega$ | $5.2\text{ kHz}$ | Removes passive cable loading ($750\text{ pF}$) and pot damping to restore wideband hi-fi sparkle and headroom; preserves natural pickup aperture with clean active headroom. |
-| **15c**| `studio_passive` | Studio Passive (Passive Loading) | Studio (Passive) | Standard Passive Harness ($250\text{k}\Omega\text{ Vol/Tone}, 47\text{nF}, 750\text{pF}$) | $4.20\text{ H}$ | $8.50\text{ k}\Omega$ | $2.8\text{ kHz}$ | Adds high-impedance passive impedance dynamics, resonant peak ($2.8\text{ kHz}$), $750\text{ pF}$ cable loading, and $250\text{k}\Omega$ pot damping to active basses or stacks passive tone; preserves natural aperture. |
-
 
 ---
 
@@ -211,29 +207,6 @@ This catalog details the physical parameters, equivalent RLC circuit values, aco
 * **Downstream Acoustic Soundboard Radiation (Recommended AST IRs):** Upright Piezo synthesizes the authentic mechanical force directly at the bridge saddle. To radiate this raw transducer signal into realistic 3/4 double bass acoustic body and soundboard resonance, it is **strongly recommended to pair this model with 3 Sigma Audio Upright Bass AST (Acoustic Sound Technology) IRs** in Block 3 (Cab IR loader) or your DAW host. Specifically, select impulses from the **`Acoustic Upright Standard`** folder (identified by the **`AST`** file tag), which 3 Sigma Audio designed specifically for acoustic upright basses with a standard piezo pickup.
 * **32" Fretless Setting:** ABCX Blend to **Upright Blend** (85% PCSX + 15% MMTWX Single - Push/Pull Down: J Mode). Pair with **3 Sigma Upright Bass AST IR** in Anagram Block 3.
 
-### 15. `studio_direct` (Studio Direct - Dynamic Studio DI)
-* **Archetype:** Physical Aperture Preservation / Dynamic Studio DI
-* **Design Rationale:** For bass players who want to preserve their instrument's exact physical pickup aperture and add organic Alnico V dynamic feel.
-* **Signal Flow & Anagram Routing:**
-  Loaded into **Block 1 (NAM Preamp)**. Engages authentic Alnico V compliance ($V_{\text{sat}} = 0.50$), Dahl hysteresis ($\eta = 0.06$), Lenz velocity drag and attack pitch sag ($k_{\text{sag}} = 0.08, k_{\text{pull}} = 0.04$), dynamic eddy current de-Qing ($k_{\text{eddy}} = 0.16$), and back-EMF string braking ($k_{\text{emf}} = 0.04$).
-* **Pickup & Aperture Model:** Preserves the instrument's natural physical pickup placement and aperture ($H_{\text{prefilter}}(f) \equiv 1.0$).
-
-### 15b. `studio_active` (Studio Active - Modern Active Buffer)
-* **Archetype:** Studio Pure High-Impedance Active Buffer Twin (Cable Isolation & Wideband Sparkle)
-* **Design Rationale:** For passive bass players who want the crystalline sparkle, ultra-fast transient punch, and wideband extension of an active bass without synthetic shelving boosts. Can also be used on active basses to provide extra treble air.
-* **Signal Flow & Anagram Routing:**
-  Loaded into **Block 1 (NAM Preamp)**. Preserves physical pickup aperture ($H_{\text{prefilter}}(f) \equiv 1.0$) and applies the active buffer circuit ($L=3.2\text{ H}$, active buffer, zero cable capacitance) with wideband active headroom.
-* **Electrical Physics:** Simulates an onboard $1\text{ M}\Omega$ active buffer stage ($R_{\text{in}} = 1.0\text{ M}\Omega, C_{\text{in}} = 25\text{ pF}, R_{\text{out}} = 100\,\Omega$). Deconvolves heavy $750\text{ pF}$ instrument cable loading and $250\text{k}\Omega$ potentiometer damping, raising effective resonance into the air band ($5.2\text{ kHz}$) and restoring crystalline pick articulation.
-* **Dynamic Headroom:** Clean active headroom ($V_{\text{sat}} = 1.20$), fast uncompressed attack.
-
-### 15c. `studio_passive` (Studio Passive - High-Impedance Loading)
-* **Archetype:** High-Impedance Passive Pickup & Cable Loading Digital Twin
-* **Design Rationale:** Adds authentic high-impedance passive impedance dynamics (RLC resonant peak ~2.8 kHz, $750\text{ pF}$ cable capacitance loading, and $250\text{k}\Omega$ pot damping) to active basses. Can also be used on passive basses to stack vintage warmth and rolled-off highs.
-* **Signal Flow & Anagram Routing:**
-  Loaded into **Block 1 (NAM Preamp)**. Preserves physical pickup aperture ($H_{\text{prefilter}}(f) \equiv 1.0$) and applies the passive RLC harness ($L=4.2\text{ H}, R_{\text{dc}}=8.5\text{ k}\Omega, C_{\text{cable}}=750\text{ pF}, R_{\text{vol}}=250\text{ k}\Omega$) with passive dynamic loading.
-* **Electrical Physics:** Simulates classic passive pickup loading: introduces a warm mid-resonance peak at $2.8\text{ kHz}$ ($Q \approx 1.4$) followed by authentic high-frequency cable roll-off ($-15\text{ dB}$ at $10\text{ kHz}$).
-* **Dynamic Character:** Alnico V vintage compliance ($V_{\text{sat}} = 0.50$), magnetic hysteresis, and pick bloom.
-
 ---
 
 ## Geometry & Scale-Normalized Displacement Mapping (30" EMG MM $\to$ Target Datums)
@@ -279,9 +252,6 @@ $$\Delta x_{\text{norm\_in}} = \Delta\eta \times 34.0'', \quad \text{tilt}_{\tex
 | **`p_mm_series`** | P + MM Series Center| $95.5\text{ mm}$ | $34.0''$ | $11.06\%$ | $+0.30''$ | $+0.5\text{ dB}$ forward tilt, active series surge and buffer clarity |
 | **`mudbucker_deep`** | Sidewinder Center | $95.5\text{ mm}$ | $34.0''$ | $11.06\%$ | $+0.30''$ | Extreme $14.4\text{ H}$ series foundation, $1.25''$ aperture |
 | **`dingwall_bridge`** | Angled Sweet Spot | $48.0\text{ mm}$ | $37.0''$ | $5.11\%$ | $-1.72''$ | $-2.6\text{ dB}$ bite tilt, multiscale continuum clank |
-| **`studio_direct`** | Preserved Datum | Source $x$ | Source $L$ | Source $\eta$ | $0.00''$ | Bit-exact $0.00\text{ dB}$ linear transfer, preserves dynamic feel |
-| **`studio_active`** | Preserved Datum | Source $x$ | Source $L$ | Source $\eta$ | $0.00''$ | Preserved aperture, active buffer cable deconvolution |
-| **`studio_passive`** | Preserved Datum | Source $x$ | Source $L$ | Source $\eta$ | $0.00''$ | Preserved aperture, passive RLC cable loading ($750\text{ pF}$) |
 
 
 

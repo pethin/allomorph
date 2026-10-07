@@ -41,7 +41,7 @@ For each voicing, set your bass's physical pickup controls to the recommended br
 Plug straight in. All pickup positioning, pot loading, tone capacitor shaping, and active preamp EQs are handled automatically by the models.
 
 
-THE 19 DIGITAL TWIN VOICINGS
+THE 17 DIGITAL TWIN VOICINGS
 
 
 Jazz Bass Family
@@ -115,13 +115,6 @@ P/J Bass Family
 Modern active P/J punch (Sadowsky/Spector style). Combines thick split-coil body with bridge single-coil cut, boosted by a powerful active 2-band EQ.
 
 
-Studio Buffers & Dynamics
-
-18. Studio Active
-Studio Active Buffer: removes cable drag and pot loading, opening up pristine hi-fi clarity, ultra-fast transient attack, and airy top-end sparkle.
-
-19. Studio Passive
-Studio Passive: stacks organic vintage tube-amp warmth, tactile touch sensitivity, and woody harmonic bloom onto your signal chain.
 
 
 LICENSE & DISCLAIMER

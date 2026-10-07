@@ -8,18 +8,12 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[3]
 
 
-def find_default_input_audio(version_tag: str | None = None) -> Path | None:
-    """Finds or ensures the default input dry audio (optimal_bass_dry_v{dsp}.wav)."""
-    from allomorph.dsp import OPTIMAL_DRY_PATH, ensure_optimal_dry_wav
-    from allomorph.naming import get_optimal_dry_path
+def find_default_input_audio(version_tag: str | None = None) -> Path:
+    """Finds or ensures the default input dry string excitation audio (audio/input.wav)."""
+    from allomorph.dsp import DEFAULT_INPUT_PATH, ensure_input_audio_wav
+    from allomorph.naming import get_default_input_path
 
-    p_versioned = get_optimal_dry_path(version_tag=version_tag)
-    if p_versioned.exists():
-        return p_versioned
-    if OPTIMAL_DRY_PATH.exists():
-        return OPTIMAL_DRY_PATH
-    for candidate in ["input.wav"]:
-        p = REPO_ROOT / candidate
-        if p.exists():
-            return p
-    return ensure_optimal_dry_wav(version_tag=version_tag)
+    for candidate in [REPO_ROOT / "input.wav", DEFAULT_INPUT_PATH, get_default_input_path()]:
+        if candidate.exists():
+            return candidate
+    return ensure_input_audio_wav()

@@ -106,10 +106,6 @@ INSTRUMENT_ALIASES: dict[str, str] = {
     "double_bass": "41in_upright_bass",
     "acoustic_upright": "41in_upright_bass",
     "41in": "41in_upright_bass",
-    "studio_direct": "studio_direct",
-    "studio": "studio_direct",
-    "direct": "studio_direct",
-    "di": "studio_direct",
 }
 
 
@@ -189,9 +185,6 @@ VOICE_AFFINITIES: dict[str, str] = {
     "p_mm_series": "parallel",
     "mudbucker_deep": "neck",
     "upright_acoustic": "neck",
-    "studio_direct": "direct",
-    "studio_active": "direct",
-    "studio_passive": "direct",
 }
 
 
@@ -300,9 +293,6 @@ STANDARD_CATALOG_TARGETS: list[tuple[str, str]] = [
     ("34in_active_pmm", "pmm_series"),
     ("30in_gibson_eb0", "neck_deep"),
     ("41in_upright_bass", "bridge_piezo_acoustic"),
-    ("studio_direct", "clean_di"),
-    ("studio_direct", "active_di"),
-    ("studio_direct", "passive_load"),
 ]
 
 

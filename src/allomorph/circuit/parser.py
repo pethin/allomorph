@@ -234,7 +234,6 @@ MAGNET_PROPERTIES: dict[str, MagnetPropertiesConfig] = {
 }
 MAGNET_PROPERTIES["hybrid"] = MAGNET_PROPERTIES["ceramic_alnico_hybrid"]
 MAGNET_PROPERTIES["ideal_passive"] = MAGNET_PROPERTIES["ideal"]
-MAGNET_PROPERTIES["canonical_ideal"] = MAGNET_PROPERTIES["ideal"]
 MAGNET_PROPERTIES["linear"] = MAGNET_PROPERTIES["ideal"]
 
 

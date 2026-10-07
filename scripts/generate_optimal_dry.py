@@ -12,7 +12,7 @@ import numpy as np
 
 from allomorph.dsp import (
     FS,
-    ensure_optimal_dry_wav,
+    ensure_input_audio_wav,
 )
 
 
@@ -25,7 +25,7 @@ def main() -> None:
         "-o",
         type=Path,
         default=None,
-        help="Target output WAV filepath (default: versioned audio/canonical/optimal_bass_dry_<version>.wav)",
+        help="Target output WAV filepath (default: audio/input.wav)",
     )
     parser.add_argument(
         "--version-tag",
@@ -65,13 +65,9 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    from allomorph.naming import get_optimal_dry_path
+    from allomorph.naming import get_default_input_path
 
-    out_path = (
-        Path(args.out)
-        if args.out is not None
-        else get_optimal_dry_path(version_tag=args.version_tag)
-    )
+    out_path = Path(args.out) if args.out is not None else get_default_input_path()
     if out_path.exists() and not args.overwrite:
         print(f"[Optimal Dry] Output file already exists: {out_path}")
         print("Use --overwrite to regenerate.")
@@ -106,14 +102,12 @@ def main() -> None:
     print("  [8/9] Continuous glissandi across 24 frets up to G4 (392 Hz) traversing comb nulls...")
     print("  [9/9] Shaped wideband pink noise bursts & clean silence boundary termination...")
 
-    out_path = ensure_optimal_dry_wav(
+    out_path = ensure_input_audio_wav(
         output_path=args.out,
         duration_sec=args.duration,
         sample_rate=args.sample_rate,
         peak_dbfs=args.peak_dbfs,
         overwrite=args.overwrite,
-        version_tag=args.version_tag,
-        no_manifest=args.no_manifest,
     )
 
     from allomorph.dsp import read_wav

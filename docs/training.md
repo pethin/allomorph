@@ -8,7 +8,7 @@ This document details the audio excitation files, target wet sweeps, training pa
 
 | Modeling System | Stage / Role | Input Audio (Dry Excitation) | Target (Output Wet) Audio | Exported NAM Model | Learned Transformation |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| **Direct NAM Training** | **Direct Single-Block Digital Twin** | Dedicated dry stem or `optimal_bass_dry.wav` | `audio/wet/<inst_id>/<model_basename>.wav` | `models/<inst_id>/<model_basename>.nam` | $H_{\text{direct}} = \dfrac{H_{\text{tgt}}}{H_{\text{src}}}$ + non-linear magnetic feel, core hysteresis, & saturation |
+| **Direct NAM Training** | **Direct Single-Block Digital Twin** | Source wet stem `audio/wet/<src_inst>/<pickup>.wav` | Target wet stem `audio/wet/<tgt_inst>/<voice_slug>.wav` | `models/<src_inst>/<voice_slug>.nam` | Direct wet $\to$ wet neural modeling mapping source pickup to target voice |
 | **Tone3000 Upload Bundle** | **Single Dry + Multi Wet Stems** | `bundles/<pickup>/dry.wav` | `bundles/<pickup>/<target_name>.wav` | Trained via Tone3000 cloud trainer | $W = X_{\text{dry}} * h_{\text{aperture}} * h_{\text{circuit}}$ with $-0.09\text{ dBFS}$ true-peak ceiling |
 | **Custom Pair Training** | **Explicit Audio Files** | `--input <path_to_dry.wav>` | `--output <path_to_wet.wav>` | `models/<basename>.nam` | Direct mapping via user-specified excitation and response |
 
@@ -29,7 +29,7 @@ The output is the authentic physical **Target Voice** with full dynamic feel, ma
 
 ## 3. Excitation Sweeps & Level Calibration
 
-### 1. Master Base Excitation (`audio/canonical/optimal_bass_dry_v3.wav`)
+### 1. Master Base Excitation (`audio/input.wav`)
 - **Origin:** Synthesized by [`allomorph.dsp.generate_optimal_bass_dry`](file:///Users/peter/Projects/pethin/passivizer/src/allomorph/dsp.py).
 - **Contents:** The single unvoiced string vibration signal in the entire system. Contains multi-tier logarithmic sine chirps ($15\text{ Hz}$ to $22\text{ kHz}$), 5-step dynamic velocity ladder on open E1 ($pp$ to $ff$), modal plucks with attack pitch sag, plectrum pick strikes, slap thumb pops, palm-muted staccato, percussive ghost notes ($<40\text{ ms}$), natural harmonics, and shaped pink noise bursts.
 - **Leveling:** Calibrated to the official NAM training reference standard of **$-4.50\text{ dBFS}$ Peak** and **$-18.00\text{ dBFS}$ RMS**, providing $3.85\text{ dB}$ of clean digital headroom for natural high-resonance pickup peaks and scale snap without digital clipping or premature limiter engagement.

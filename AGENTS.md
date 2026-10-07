@@ -134,11 +134,11 @@ All code contributions must strictly satisfy the following normative invariants 
 ### 5.6 Tone Naming, Bassist Lexicon & Display Character Budgets
 All target voice naming, Tone3000 model exports (`.nam`), wet audio stems, and storefront listings must satisfy the normative guidelines in [`docs/tone_naming_guidelines.md`](file:///Users/peter/Projects/pethin/passivizer/docs/tone_naming_guidelines.md):
 1. **First-Principles Grammar:** Every tone name must follow the strict 2-to-3 token grammar: `[Family] [Configuration] [Voicing Modifier]`. Combined with physical switch positions and version tags, the full model name is: `[Tone Name] [Pickup Position] v[dsp].[inst].[voice]`.
-2. **Pedalboard Zero-Scroll Target ($\le 34$ chars):** The Darkglass Anagram screen displays 34 characters without scrolling. All 24 target voices must achieve 100% zero-scroll ($\le 34$ characters) on stage including pickup position and version tag.
+2. **Pedalboard Zero-Scroll Target ($\le 34$ chars):** The Darkglass Anagram screen displays 34 characters without scrolling. All 25 target voices must achieve 100% zero-scroll ($\le 34$ characters) on stage including pickup position and version tag.
 3. **Character Length Hard Limit ($\le 64$ chars):** The Tone3000 uploader enforces a strict 64-character ceiling on model filenames (excluding `.nam`). Filenames exceeding 64 characters raise diagnostic `ValueError` exceptions in `get_t3k_basename()`.
 4. **Permitted Taxonomy Vocabulary:** Draw tokens strictly from the approved taxonomy dictionary:
-   - Families: `Jazz`, `Precision`, `StingRay`, `PJ`, `P∕MM`, `Rickenbacker`, `Mudbucker`, `Dingwall`, `Upright`, `Studio`.
-   - Configurations: `Pair`, `Bridge`, `Neck`, `Parallel`, `Series` (omitted when inherent, as in `Precision`, `Upright`, `Studio`).
+   - Families: `Jazz`, `Precision`, `StingRay`, `PJ`, `P∕MM`, `Rickenbacker`, `Mudbucker`, `Dingwall`, `Upright`.
+   - Configurations: `Pair`, `Bridge`, `Neck`, `Parallel`, `Series` (omitted when inherent, as in `Precision`, `Upright`).
    - Modifiers: `Open`, `Mids`, `Warm`, `Dub`, `Vintage`, `Modern`, `Active`, `Passive`, `Growl`, `Clank`, `Deep`, `Acoustic`, `Direct`.
 5. **Musician-Facing Sonic Descriptors (No Component Values):** Strictly omit electrical component values (`22nF`, `47nF`, `100nF`) and ad-hoc artist nicknames. Replace them with functional musical descriptors (`Mids`, `Warm`, `Dub`, `Growl`).
 6. **No Redundant Source Instrument Names:** Omit the source bass name from the tone name (e.g. `Precision Vintage [Split] v2.1.1` instead of `34in Standard P Precision Vintage [Split] v2.1.1`). Tone packs are dedicated to a specific source edition; repeating the instrument name wastes 15-25 characters and triggers scrolling.
