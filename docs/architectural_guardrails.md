@@ -90,10 +90,10 @@ Evaluated differentially ($H_{\text{saddle,tgt}} / H_{\text{saddle,src}}$). Eval
 
 ### 1.11 Luthier Individual Pickup Isolation Leveling ($K_{\text{iso}}$)
 On physical multi-pickup instruments (Jazz Bass, PJ, P/MM, Dingwall), luthiers mount bridge pickups significantly closer to the vibrating strings ($\sim 2.0\text{--}2.5\text{ mm}$ vs $\sim 3.5\text{--}4.0\text{ mm}$ at neck) and wind them with higher impedance/turns to compensate for the smaller string displacement envelope ($\eta(x) = x / L$). In accordance with the principle that **each pickup is leveled independently in isolation**, each pickup branch on an instrument is compensated by an individual luthier height factor:
-$$\text{deficit\_db} = 20 \log_{10}\left(\frac{\eta_{\text{ref}}}{\eta_P}\right), \quad \eta_{\text{ref}} = \max\left(\max_{j} \frac{x_j}{L}, \eta_{\text{datum}}\right)$$
+$$\text{deficit\_db} = 20 \log_{10}\left(\frac{\eta_{\text{ref}}}{\eta_P}\right), \quad \eta_{\text{ref}} = \max_{j} \frac{x_j}{L}$$
 $$\text{excess\_db} = \frac{\ln\left(1 + e^{\alpha \cdot \text{deficit\_db}}\right) - \ln(2)}{\alpha}, \quad \alpha = 2.0$$
 $$K_{\text{iso}}(P) = 10^{\frac{M \cdot \tanh(\max(\text{excess\_db}, 0) / M)}{20}}, \quad M = 6.0\text{ dB}$$
-Evaluates to exact $1.0000$ ($0.00\text{ dB}$) when $x_P \ge x_{\text{ref}}$ (neck/middle pickups), $+5.26\text{ dB}$ on Jazz bridge, and $+4.51\text{ dB}$ on Dingwall bridge. Blended configurations (`pair_parallel`, `pair_active`, `p_mm_parallel`) sum these individually compensated pickup branch responses, preserving authentic comb-filtering notches and ensuring solo bridge voicings have full stage performance volume.
+Evaluates with 100% self-referential geometry: for multi-pickup instruments, bridge pickups are leveled against the instrument's own neck-most pickup ($x_{\text{ref}} = \max_j x_j$), evaluating to exact $1.0000$ ($0.00\text{ dB}$) when $x_P \ge x_{\text{ref}}$ (neck/middle pickups), $+5.26\text{ dB}$ on Jazz bridge, and $+4.51\text{ dB}$ on Dingwall bridge. For single-pickup configurations, $K_{\text{iso}} \equiv 1.0000$ ($0.00\text{ dB}$) identity. Blended configurations (`pair_parallel`, `pair_active`, `p_mm_parallel`) sum these individually compensated pickup branch responses, preserving authentic comb-filtering notches and ensuring solo bridge voicings have full stage performance volume.
 
 ---
 

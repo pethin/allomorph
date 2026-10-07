@@ -35,7 +35,6 @@ from allomorph.dsp import (
 )
 from allomorph.physics import (
     MEAN_BASS_F0,
-    UNIVERSAL_DATUM_POS_M,
     compute_differential_longitudinal_transfer,
     compute_differential_string_transfer,
     compute_displacement_proximity_shelf,
@@ -158,7 +157,7 @@ def build_voice_dataframe(
             tgt_scale_m = (tgt_scale_range[0] + tgt_scale_range[1]) / 2.0
             positions = [compute_effective_position(p.coils) for p in pickups]
             pos_max = max(positions) if positions else 0.0
-            ref_pos = cfg.ref_pos_m or max(pos_max, UNIVERSAL_DATUM_POS_M)
+            ref_pos = cfg.ref_pos_m or (pos_max if len(positions) > 1 else None)
             c_mean = 2.0 * tgt_scale_m * MEAN_BASS_F0
 
             N = 8192
@@ -343,7 +342,7 @@ def build_voice_dataframe(
         else:
             mag_norm = mag_raw
     else:
-        # Output voice magnitude: preserve absolute physical excursion relative to datum
+        # Output voice magnitude: preserve absolute physical excursion relative to calibration baseline
         hpf_val = cfg.hpf
         if hpf_val is not None and float(hpf_val) >= 80.0:
             ref_idx = np.argmin(np.abs(freqs - 1000.0))

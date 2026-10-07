@@ -531,3 +531,8 @@ def test_pickup_isolation_leveling():
         0.0100, scale_m=0.8636, ref_pos_m=0.3000, max_boost_db=6.0
     )
     assert 20.0 * math.log10(k_extreme) <= 6.0
+
+    # 5. Single-pickup bass (ref_pos_m is None) evaluates to bit-exact 1.0000 (0.00 dB)
+    k_single = compute_pickup_isolation_leveling(0.0635, scale_m=0.8636, ref_pos_m=None)
+    assert math.isclose(k_single, 1.0, abs_tol=1e-9)
+

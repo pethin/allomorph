@@ -4,9 +4,9 @@ Universal spatial acoustics, string dispersion, and transducer deconvolution.
 """
 
 from allomorph.physics.aperture import (
-    UNIVERSAL_DATUM_ETA,
-    UNIVERSAL_DATUM_POS_M,
-    UNIVERSAL_DATUM_SCALE_M,
+    CALIBRATION_EXCURSION_ETA,
+    CALIBRATION_EXCURSION_POS_M,
+    CALIBRATION_EXCURSION_SCALE_M,
     aperture_response,
     compute_body_microphonic_coupling,
     compute_coil_aperture,
@@ -45,14 +45,14 @@ from allomorph.physics.strings import (
 )
 
 __all__ = [
+    "CALIBRATION_EXCURSION_ETA",
+    "CALIBRATION_EXCURSION_POS_M",
+    "CALIBRATION_EXCURSION_SCALE_M",
     "INHARMONICITY_ANCHORS_BS",
     "INHARMONICITY_ANCHORS_F0",
     "MEAN_BASS_F0",
     "NOTE_NAMES",
     "STRING_FUNDAMENTALS",
-    "UNIVERSAL_DATUM_ETA",
-    "UNIVERSAL_DATUM_POS_M",
-    "UNIVERSAL_DATUM_SCALE_M",
     "aperture_response",
     "compute_body_microphonic_coupling",
     "compute_coil_aperture",

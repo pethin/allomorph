@@ -140,21 +140,25 @@ def soft_clamp_displacement_ratio(
     return soft
 
 
-UNIVERSAL_DATUM_POS_M: float = 0.0935  # 93.5mm datum
-UNIVERSAL_DATUM_SCALE_M: float = 0.8636  # 34.0" scale
-UNIVERSAL_DATUM_ETA: float = UNIVERSAL_DATUM_POS_M / UNIVERSAL_DATUM_SCALE_M  # 0.1082677...
+# Nominal string excursion calibration reference constants
+# Represents the nominal mechanical pickup displacement coordinate (~10.83% of vibrating scale length)
+# where standing-wave fundamental vibration amplitude is calibrated to 0.00 dB unity in forward simulation.
+CALIBRATION_EXCURSION_POS_M: float = 0.0935  # Nominal 93.5mm calibration coordinate on 34" scale
+CALIBRATION_EXCURSION_SCALE_M: float = 0.8636  # Standard 34.0" scale
+CALIBRATION_EXCURSION_ETA: float = (
+    CALIBRATION_EXCURSION_POS_M / CALIBRATION_EXCURSION_SCALE_M
+)  # 0.1082677...
 
 
 def compute_displacement_proximity_shelf(
     freqs: Sequence[float] | np.ndarray,
     pos_m: float,
-    scale_m: float = UNIVERSAL_DATUM_SCALE_M,
-    ref_eta: float = UNIVERSAL_DATUM_ETA,
+    scale_m: float = CALIBRATION_EXCURSION_SCALE_M,
+    ref_eta: float = CALIBRATION_EXCURSION_ETA,
 ) -> np.ndarray:
-    """
-    Computes the scale-normalized bridge proximity low-shelf filter H_pos(f)
+    """Computes the scale-normalized bridge proximity low-shelf filter H_pos(f)
     governed by the standing-wave fractional displacement ratio (eta = pos_m / scale_m)
-    relative to a reference fractional coordinate (default: universal datum eta_datum = 10.83%),
+    relative to a reference fractional coordinate (default: calibration excursion eta = 10.83%),
     bounded by the asymmetric C^inf order-4 algebraic limiter ('alg4').
     Corner frequency fc = 220.0 Hz.
     """
@@ -170,7 +174,7 @@ def compute_displacement_proximity_shelf(
 
 def compute_pickup_isolation_leveling(
     pos_m: float,
-    scale_m: float = UNIVERSAL_DATUM_SCALE_M,
+    scale_m: float = CALIBRATION_EXCURSION_SCALE_M,
     ref_pos_m: float | None = None,
     max_boost_db: float = 6.0,
     alpha: float = 2.0,
@@ -178,18 +182,17 @@ def compute_pickup_isolation_leveling(
     """Computes the luthier setup pickup height compensation factor in isolation.
 
     On physical instruments, bridge pickups are mounted closer to the strings
-    and wound hotter to compensate for the smaller string displacement envelope (eta = x / L).
+    and wound hotter to compensate for the smaller string displacement envelope (eta = x / L)
+    relative to the neck or forward pickup on the same instrument.
     Returns a C^inf smooth linear gain multiplier (1.0 for neck/middle pickups; up to +6.0 dB for bridge pickups).
-    Evaluates with exact 1.0000 (0.00 dB) identity when pos_m >= ref_pos_m.
+    Evaluates with exact 1.0000 (0.00 dB) identity when pos_m >= ref_pos_m or when no reference pickup is provided.
     """
     if pos_m <= 0.0 or scale_m <= 0.0:
         return 1.0
+    if ref_pos_m is None or ref_pos_m <= 0.0:
+        return 1.0
     eta = pos_m / scale_m
-    ref_eta = (
-        (ref_pos_m / scale_m)
-        if (ref_pos_m is not None and ref_pos_m > 0.0)
-        else UNIVERSAL_DATUM_ETA
-    )
+    ref_eta = ref_pos_m / scale_m
     deficit_db = 20.0 * math.log10(max(ref_eta / eta, 1e-4))
     if deficit_db <= 0.0:
         return 1.0

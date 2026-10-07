@@ -174,7 +174,7 @@ $$g_0 = 10^{\Delta G_{\text{soft}} / 20.0}$$
 $$H_{\text{pos}}(f) = \sqrt{\frac{g_0^2 + (f / 220\text{ Hz})^2}{1 + (f / 220\text{ Hz})^2}}$$
 
 * **Maximally Flat Passband ($O(x^5)$ non-linearity):** The Taylor expansion of $f(x) = x / (1 + (x/G)^4)^{1/4}$ has zero third-derivative curvature at zero ($f'(0)=1, f''(0)=0, f'''(0)=0$). Within the standard Fender/MM bass operating range ($|\Delta G| \le 6.0\text{ dB}$), excursion error is $< 0.10\text{ dB}$ (virtually bit-exact linear identity).
-* **Asymmetric Bound ($+12.0\text{ dB}$ Boost / $-16.0\text{ dB}$ Cut):** Allows the Gibson EB-0 Mudbucker ($+9.11\text{ dB}$ from datum) to output $+8.49\text{ dB}$ of authentic fundamental rumble while bounding digital headroom under Guardrail 5.3.6 ($H(0) \in [-12\text{ dB}, +12\text{ dB}]$ across all catalog pairs), while allowing Rickenbacker ($-7.25\text{ dB}$) and Dingwall bridge pickups full physical attenuation without artificial low-end mud.
+* **Asymmetric Bound ($+12.0\text{ dB}$ Boost / $-16.0\text{ dB}$ Cut):** Allows the Gibson EB-0 Mudbucker ($+9.11\text{ dB}$ from calibration baseline) to output $+8.49\text{ dB}$ of authentic fundamental rumble while bounding digital headroom under Guardrail 5.3.6 ($H(0) \in [-12\text{ dB}, +12\text{ dB}]$ across all catalog pairs), while allowing Rickenbacker ($-7.25\text{ dB}$) and Dingwall bridge pickups full physical attenuation without artificial low-end mud.
 * **DC Fundamental Excursion ($f \to 0$):** $H_{\text{pos}}(0) = g_0 = 10^{\Delta G_{\text{soft}} / 20.0}$, precisely matching the physical fundamental standing wave displacement ratio.
 * **High-Frequency Invariance ($f \gg 220\text{ Hz}$):** $H_{\text{pos}}(\infty) \equiv 1.0000$ ($0.00\text{ dB}$ identity). Zero artificial treble counter-tilt or harsh clank injection.
 * **Direct Spatial Scaling Invariance:** Because scale-normalized fractional positions satisfy logarithmic standing wave excursion ratios:
@@ -430,13 +430,12 @@ Because wave speed $v$ is an intrinsic physical property of each tuned string, *
 | :--- | :---: | :---: | :---: | :---: |
 | **Bridge Single-Coil ($54.6\text{ mm}$)** | **$651\text{ Hz}$** | $870\text{ Hz}$ | $1,161\text{ Hz}$ | $1,550\text{ Hz}$ |
 | **StingRay MM Center ($66.0\text{ mm}$)** | **$538\text{ Hz}$** | $720\text{ Hz}$ | $961\text{ Hz}$ | $1,283\text{ Hz}$ |
-| **Single Centroid Datum ($93.5\text{ mm}$)** | **$380\text{ Hz}$** | $508\text{ Hz}$ | $678\text{ Hz}$ | $905\text{ Hz}$ |
 | **Reverse-P: E/A Half ($115.6\text{ mm}$)** | **$307\text{ Hz}$** | $411\text{ Hz}$ | — | — |
 | **Standard P-Bass ($125.0\text{ mm}$)** | **$284\text{ Hz}$** | $380\text{ Hz}$ | $507\text{ Hz}$ | $677\text{ Hz}$ |
 | **Reverse-P: D/G Half ($145.4\text{ mm}$)** | — | — | $436\text{ Hz}$ | **$582\text{ Hz}$** |
 
-#### The Deconvolution Implication:
-If a physical bass possesses only a single pickup at the **$93.5\text{ mm}$ median**, the instrument has an acoustic null on the low E string at **$380\text{ Hz}$**. Recreating a StingRay tone (whose first null sits much higher at $538\text{ Hz}$ and has massive constructive energy at $380\text{ Hz}$) forces the deconvolution filter to boost the missing $380\text{ Hz}$ content. In Allomorph, Wiener noise regularization clamps maximum boost to $+8.0\text{ dB}$, meaning an inverted single pickup will always be an approximation of the physical comb spectrum.
+#### The Physical Spatial Implication:
+Because physical pickups possess fixed spatial comb nulls corresponding to their physical distance from the bridge, a neck-positioned transducer (e.g. Precision @ $125.0\text{ mm}$) and a bridge-positioned transducer (e.g. StingRay @ $66.0\text{ mm}$) capture fundamentally different harmonic spectra. Under DSP Generation 4, Allomorph's forward simulation models these spatial comb filters directly from unvoiced string excitation, allowing NAM neural models to train wet-to-wet against authentic harmonic ground truth without fragile deconvolution filters.
 
 ---
 
@@ -466,7 +465,7 @@ This excursion gradient creates fundamentally different magnetic flux compressio
   $$V_{\text{out}}(t) = V_{\text{sat}} \cdot \tanh\left(\frac{v(t)}{V_{\text{sat}}}\right)$$
   as well as displacement-modulated reluctance inductance shifts ($\lambda_L$ "dynamic quack"). When the bassist digs in aggressively ($ff$), the neck pickup physically compresses and blooms with tactile give.
 * **Bridge Transducer ($x = 54.6\text{--}66.0\text{ mm}$):** String displacement is physically constrained by bridge proximity, while transverse string acceleration and angular velocity are high. The pickup operates in an almost purely linear magnetic regime, producing sharp, uncompressed, metallic transient clank.
-* **Single Centroid Sensor ($x = 93.5\text{ mm}$):** Experiences only a static, intermediate excursion level, physically incapable of delivering the deep non-linear bloom of the neck position or the extreme linear transient spikes of the bridge position.
+* **Single-Pickup Basses:** A single pickup at a fixed coordinate experiences only its local excursion regime, whereas a dual-transducer instrument captures both dynamic non-linear bloom at the neck and sharp linear transient clank at the bridge.
 
 ---
 
@@ -480,18 +479,18 @@ A single straight pickup or soapbar senses all strings at an identical distance 
 
 ---
 
-### E. Architectural Synthesis: Real Harmonics Dual-Transducer vs. Single-Pickup Reference
+### E. Architectural Synthesis: Dual-Transducer vs. Single-Transducer Capture
 
-| Architectural Criterion | Architecture 1: Real Harmonic Dual-Transducer (Reverse PX + MMTWX) | Architecture 2: Single-Pickup Reference (Centroid @ $93.5\text{ mm}$) |
+| Architectural Criterion | Dual-Transducer Architecture (Reverse PX + MMTWX) | Single-Transducer Architecture (e.g. Solo P, Solo MM, or Soapbar) |
 | :--- | :--- | :--- |
-| **Spatial Comb Filtering** | **Physical Ground Truth:** Comb nulls physically located at $284\text{ Hz}$ (P) and $538\text{ Hz}$ (MM) | **DSP Synthesis:** Fixed null at $380\text{ Hz}$; requires Wiener deconvolution boost |
-| **Fundamental Energy** | **Authentic Physical $+7.5\text{ dB}$ Excursion** at neck pickup | **Synthesized Shelving Tilt** ($H_{\text{tilt}}$) |
-| **Non-Linear Core Saturation** | **Dynamic Physical Bloom** on neck pickup; linear velocity spikes on bridge | **Uniform Intermediate Compression** across all registers |
+| **Spatial Comb Filtering** | **Physical Ground Truth:** Comb nulls physically located at $284\text{ Hz}$ (P) and $538\text{ Hz}$ (MM) | **Single Comb Null Set:** Fixed by physical mounting location (e.g. $284\text{ Hz}$ on P, $538\text{ Hz}$ on MM) |
+| **Fundamental Energy** | **Authentic Physical $+7.5\text{ dB}$ Excursion** at neck pickup | **Fixed Local Excursion Envelope** |
+| **Non-Linear Core Saturation** | **Dynamic Physical Bloom** on neck pickup; linear velocity spikes on bridge | **Uniform Local Core Saturation** across all registers |
 | **Per-String Mechanical Balance** | **Reverse-P Physical Stagger** ($115.6\text{ mm}$ E/A vs $145.4\text{ mm}$ D/G) | **Flat Uniform Distance;** DSP continuum correction |
-| **Plucking Hand Feedback** | **Dual Physical Anchors** (pliable neck zone or stiff bridge recoil) | **Single Physical Anchor** ($93.5\text{ mm}$) |
+| **Plucking Hand Feedback** | **Dual Physical Anchors** (pliable neck zone or stiff bridge recoil) | **Single Physical Anchor** |
 | **Live Stage Operation** | Requires matching pickup switch to Anagram target preset | **100% Decoupled;** Zero switch-mismatch cognitive load |
 | **Secondary Magnetic Drag** | Minimal active drag (two low-flux active apertures) | **Absolute Zero Drag** (Single active pickup) |
-| **Standalone Analog Tone** | **4 Pro Iconic Sounds Natively** (P, MM, J-Bridge, P/MM) | **1 Neutral Intermediate Tone** without DSP |
+| **Standalone Analog Tone** | **4 Pro Iconic Sounds Natively** (P, MM, J-Bridge, P/MM) | **1 Iconic Sound Natively** (or Neutral Soapbar) |
 | **Optimal Use Case** | Pure tone recording, studio sessions, tactile players | Patch-heavy live touring, zero-distraction pedalboard setups |
 
 

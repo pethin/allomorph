@@ -2,9 +2,11 @@
 
 **Allomorph** is an analog modeling and digital twin pipeline that transforms bass pickup and transducer signals—across active, passive, and acoustic piezo topologies—into authentic digital twin voices of iconic high-impedance **passive pickup circuits, active preamps, and acoustic instruments**.
 
-Designed specifically for NAM-capable pedalboards like the **Darkglass Anagram**, HeadRush, hardware IR loaders, and DAW plugin hosts, Allomorph produces both:
-1. **Minimum-Phase Impulse Responses (IRs):** High-precision 48 kHz / 24-bit FIR filters for fast, zero-latency pickup re-voicing on standard IR loaders.
-2. **Neural Amp Modeler (NAM) Profiles:** Nano/Feather/A2 neural captures trained on native WAV SPICE circuit simulations to capture dynamic magnetic saturation, eddy-current damping, volume pot loading, and treble-bleed interactions.
+Designed specifically for neural-capable pedalboards like the **Darkglass Anagram**, Tone3000 web training, and DAW plugin hosts, Allomorph produces:
+1. **Direct Digital Twin Wet Audio Stems:** High-precision 48 kHz / 24-bit PCM wet stems synthesized via native WAV SPICE circuit simulation and non-linear magnetic dynamics with ITU-R BS.1770-4 gated loudness calibration ($-20.50\text{ LUFS}$) and true-peak safety.
+2. **Tone3000 Upload Bundles:** Turnkey training packs partitioned by pickup affinity (`neck`, `bridge`, `parallel`, `direct`) conforming to Tone3000 Studio Trainer specifications with zero-scroll display naming ($\le 34$ chars) and cryptographic SHA256 manifest provenance.
+3. **Neural Amp Modeler (NAM) Profiles:** High-efficiency Architecture 2 (A2) slimmable neural models (`channels_3` + `channels_8`) trained wet-to-wet ($X_{\text{src}} \to Y_{\text{tgt}}$) under the A2 Studio Reference standard ($\text{ESR} \le 0.0080$) for single-block front-end deployment in **Block 1** of the Darkglass Anagram.
+4. **Interactive Frequency Response Visualizations:** High-performance Polars + Altair Vega-Lite interactive documentation portal (`docs/frequency_responses.html`) modeling analytical transfer functions and differential curves.
 
 ---
 
@@ -13,8 +15,8 @@ Designed specifically for NAM-capable pedalboards like the **Darkglass Anagram**
 In modern bass signal chains, trying to convert a passive bass to sound active with digital EQ/IRs runs into fundamental mathematical limits: high-frequency content has already been attenuated by the passive coil's 12 dB/octave low-pass filter. Boosting those missing frequencies elevates noise and introduces comb-filtering artifacts.
 
 **Allomorph provides bidirectional, universal transformation:**
-* **Active Sources (e.g. EMG X-Series @ 18V):** Deliver a flat, wideband (20 Hz – 20+ kHz), high-headroom, low-noise signal with near-zero inductive peaking, allowing Allomorph to carve out the exact physical and electrical transfer function of any vintage passive pickup without boosting background hiss.
-* **Passive Sources (e.g. Precision, Jazz, Mustang):** Re-voiced through true differential circuit deconvolution ($H_{\text{diff}} = H_{\text{tgt}} / H_{\text{src}}$), morphing physical vintage coils into modern active buffers, hot overwound humbuckers, or alternate scale placements.
+* **Active Sources (e.g. EMG X-Series @ 18V):** Deliver a flat, wideband (20 Hz – 20+ kHz), high-headroom, low-noise signal with near-zero inductive peaking, allowing Allomorph to forward-simulate the exact physical and electrical transfer function of any vintage passive or active target voicing without boosting background hiss.
+* **Passive Sources (e.g. Precision, Jazz, Mustang):** Modeled via **direct forward digital twin simulation** rather than fragile linear deconvolution. Both the source passive pickup (with authentic RLC loading, pot damping, and magnetic core saturation) and the target voice are simulated forward from master unvoiced string excitation, enabling an Architecture 2 neural model to learn the direct wet-to-wet mapping ($X_{\text{src}} \to Y_{\text{tgt}}$). This eliminates the noise elevation and Gibbs truncation ringing inherent in attempting to invert a passive coil's steep 12 dB/octave low-pass filter, allowing vintage passive coils to morph seamlessly into modern active buffers, hot overwound humbuckers, or alternative scale lengths. (Analytical differential curves $H_{\text{diff}} = H_{\text{tgt}} / H_{\text{src}}$ remain available in the visualizer for frequency analysis).
 * **Acoustic & Piezo Transducers:** Bridge force transducers and body cavity resonances faithfully emulated without artificial magnetic assumptions.
 
 ---
@@ -39,13 +41,13 @@ While an Impulse Response (IR) or FIR filter can reproduce a static frequency cu
    * Instruments with multiple coils or pickups (Jazz Bass pairs, P/J, StingRay dual coils) feature complex spatial cancellation patterns that vary with string amplitude and string displacement. NAM neural models capture compound phase interactions and harmonic cancellation across the full frequency spectrum without comb-filtering artifacts or phase smearing.
 
 > [!NOTE]
-> Allomorph *can* synthesize zero-latency minimum-phase FIR impulse responses for ultra-lightweight linear filtering. However, its flagship pipeline trains lightweight **NAM neural models** (Architecture 2 / Nano/Feather) to preserve the full dynamic touch sensitivity, bloom, and analog feel of physical passive circuits.
+> Allomorph synthesizes zero-latency minimum-phase FIR filters **internally** (via its homomorphic real-cepstrum Hilbert transform engine) to model physical aperture sinc responses, saddle boundary stiffness, and linear circuit stages starting strictly at sample 0. However, Allomorph does not output static linear IRs for hardware IR loaders—because real pickups are dynamic, non-linear systems. Its flagship pipeline trains lightweight **NAM Architecture 2 (A2)** neural models and Tone3000 upload packs to preserve the full dynamic touch sensitivity, magnetic flux sag, core hysteresis, and analog bloom of physical passive circuits.
 
 ---
 
 ## Source Instrument Hardware Architectures (34" Standard Scale)
 
-While Allomorph supports any active, passive, or acoustic source bass, physical transducer hardware fundamentally determines the boundary conditions of deconvolution. On a standard **34.0" scale ($863.6\text{ mm}$)**, Allomorph establishes two reference hardware architectures depending on the engineering priority:
+While Allomorph supports any active, passive, or acoustic source bass, physical transducer hardware fundamentally determines the raw harmonic information and dynamic boundary conditions delivered to the digital twin modeling pipeline. On a standard **34.0" scale ($863.6\text{ mm}$)**, Allomorph establishes two reference hardware architectures depending on the engineering priority:
 
 1. **The Actual Ideal Bass: Real Harmonic Dual-Transducer Architecture (Reverse PX + MMTWX)** — Built for maximum acoustic realism, tactile dynamic feedback, reverse-split string balancing, and standalone analog versatility by sampling string standing-wave modes at their physical harmonic antinodes.
 2. **The Ideal Single-Pickup Bass: The Zero-Decoupling Reference Transducer** — Built for zero cognitive overhead, foolproof patch switching on stage, zero inter-pickup phase comb notches, and zero secondary magnetic string drag.
@@ -80,60 +82,14 @@ A single pickup at any fixed location $x$ enforces a single set of comb nulls. B
   * **Single-Coil Mode ($x = 54.6\text{ mm}$):** Pushes the first comb null to $651\text{ Hz}$. Senses high transverse velocity and saddle witness-point boundary stiffness ($H_{\text{saddle}}$), delivering biting 60s/70s Jazz bridge growl and percussive attack.
 
 #### 2. Physical & Dynamic Advantages Over a Single Point
-* **Minimal Deconvolution Effort ($H_{\text{diff}} \approx 0\text{ dB}$):** When targeting a Vintage P-Bass (Voice 05) or a StingRay (Voice 09), the pickup is *already in the physically authentic position*. Block 1 only applies passive RLC circuit modeling and magnetic feel—never fighting the $+8.0\text{ dB}$ Wiener soft-knee boost ceiling to reconstruct missing comb frequencies.
+* **Optimal Neural Convergence & Rapid Training ($\text{ESR} \le 0.0080$):** When targeting a Vintage P-Bass (`precision_vintage`) or a StingRay (`stingray_parallel`), the pickup is *already in the physically authentic harmonic position*. Because the source wet stem ($X_{\text{src}}$) already contains real standing-wave antinodes and genuine physical displacement, the NAM Architecture 2 neural network only needs to learn the passive RLC circuit impedance and magnetic core saturation dynamics—never having to synthesize missing harmonic content or un-notch spatial comb cancellations from an arbitrary pickup position.
+* **Tone3000 Affinity Bundling (`bundles/<pickup>/`):** Aligns seamlessly with Tone3000's strict 1 Dry + Multiple Wet Stems constraint. Target voicings partition naturally by physical position affinity:
+  - `bundles/px/` for Neck voicings (`precision_*`, `jazz_neck_*`, `mudbucker_deep`, `upright_acoustic`)
+  - `bundles/mmtwx_dual/` and `mmtwx_single/` for Bridge voicings (`stingray_*`, `jazz_bridge_*`, `rickenbacker_*`, `dingwall_bridge`)
+  - `bundles/blend_parallel/` for Parallel blends (`jazz_pair_*`, `pj_*`, `p_mm_*`, `dingwall_parallel`)
+  Each bundle maps a dedicated, physically authentic dry excitation stem to its affine target stems, maximizing training accuracy and preserving acoustic realism.
 * **Physical Dynamic Excursion & Soft-Knee Compression:** Large string displacement over the neck pickup drives the magnetic core into natural soft-knee flux compression ($V_{\text{sat}} \cdot \tanh(v/V_{\text{sat}})$) and dynamic inductance modulation ($\lambda_L$ "quack"), responding with tactile give when digging in hard.
-* **Dual Plucking Hand Anchors:** Anchoring over the PX naturally places the plucking hand in the warm, round mechanical attack zone; anchoring over the MMTWX puts the hand in the tight, fast transient recoil zone.
-* **Standalone Analog Fallback:** Without digital processing, the bass natively provides 4 distinct iconic sounds (Solo Reverse P, Solo StingRay Dual, Solo J-Bridge Single, and Blended P/MM).
-
----
-
-### Architecture 2: The Ideal Single-Pickup Bass — The Zero-Decoupling Reference Transducer (34" Scale)
-
-For players prioritizing **pure software decoupling with zero cognitive overhead on stage**, the single-pickup architecture eliminates all mechanical switching:
-
-```
-[12th Fret] ◄────────────── 338.3 mm ──────────────► [Pickup Center] ◄──── 93.5 mm ────► [Bridge Saddle]
-```
-
-#### 1. The Single-Pickup Philosophy: Total Decoupling & Zero Comb Nulls
-* **No Comb-Filtering Nulls to Invert:** Humbuckers with dual coils under the same string introduce physical phase cancellation notches ($f = v / 2d \approx 2.5\text{ kHz}$) that cannot be cleanly inverted in DSP without boosting noise. A single line of sensing per string provides a clean, notch-free transfer function that allows Allomorph to synthesize any target aperture or dual-coil comb filter effortlessly.
-* **Total Preset Decoupling:** Eliminates the "hand-foot desync" problem. You never have to adjust physical knobs or flip coil switches to match patch changes on your pedalboard; stepping on a Darkglass Anagram footswitch transforms the tone entirely in software.
-* **Zero Secondary Magnetic Drag:** With only one pickup mounted, there are no secondary magnets dampening string vibration, maximizing open-string sustain and harmonic bloom.
-
-#### 2. Recommended Pickup: EMG PX, EMG 35AX, or EMG 35P4X (18V)
-* **Narrow Aperture ($w \le 0.75''$) Stacked Coaxial or Split-Coil:** Single sensing line per string ($d = 0.0''$). The first aperture null sits above $3.7\text{ kHz}$ on low E and above $8.8\text{ kHz}$ on G.
-* **Hum-Canceling Common-Mode Rejection:** Stacked dummy coil or reverse split bobbins ensure 100% hum-free performance.
-* **Ceramic/Alnico X-Series Preamp @ 18V:** Ultra-wide linear bandwidth, near-zero core saturation, and $>8.5\text{V}_{\text{p-p}}$ dynamic headroom with low $2\text{ k}\Omega$ output impedance (immune to cable loading).
-
-#### 3. Lutherie Datums: The $93.5\text{ mm}$ ($3.68''$) Geometric Reference Datum
-On a 34.0" scale length ($863.6\text{ mm}$), **$93.5\text{ mm}$** is the exact mathematical median between a 60s Jazz Bridge ($63.5\text{ mm}$) and a standard Precision Bass ($125.0\text{ mm}$), and serves as Allomorph's **universal geometric reference datum** ($\eta_{\text{datum}} = 10.83\%$):
-
-$$\bar{x} = \frac{63.5\text{ mm} + 125.0\text{ mm}}{2} = 94.25\text{ mm} \approx \mathbf{93.5\text{ mm}}$$
-
-* **Exact Spatial Center:** Sits halfway between classic bridge growl and neck thump.
-* **Symmetric Filter Bounds:** Every voice in the target voice catalog is reachable within $\pm 3.7\text{ dB}$ of spatial shelving tilt, never exceeding the $+8.0\text{ dB}$ Wiener soft-knee boost ceiling.
-
-#### 4. Disadvantages & Trade-offs Relative to Real Harmonic Sampling
-While operationally foolproof, the single-pickup design introduces distinct acoustic and physical compromises:
-1. **Synthetic vs. Real Harmonics:** Bridge bite ($< 66\text{ mm}$) and neck warmth ($> 125\text{ mm}$) must be synthesized through DSP shelving filters ($H_{\text{tilt}}$), rather than captured from real standing-wave antinodes.
-2. **No Per-String Harmonic Stagger:** A straight pickup senses all strings at the same distance, lacking the mechanical bass-tightening and treble-warming of a reverse split.
-3. **Single Plucking Anchor:** Restricts physical thumb placement to a single position ($93.5\text{ mm}$).
-4. **Neutral Standalone Voicing:** Without Block 1 processing, the instrument outputs a sterile intermediate tone without iconic standalone character.
-
----
-
-### Head-to-Head Architectural Comparison (34" Scale)
-
-| Architectural Metric | Architecture 1: Real Harmonic Dual-Transducer (Reverse PX + MMTWX) | Architecture 2: Single-Pickup Reference (Centroid @ $93.5\text{ mm}$) |
-| :--- | :--- | :--- |
-| **Harmonic Mode Sampling** | **Physical Antinodes** (Low modes @ $130.5\text{ mm}$, High modes @ $66.0\text{ mm}$) | **Single Fixed Point** (Mode 9 node @ $96\text{ mm}$ suppressed) |
-| **Allomorph Filter Effort** | **Minimal** ($H_{\text{diff}} \approx 0\text{ dB}$ on P-Bass & MM targets) | **Moderate** ($\pm 3.7\text{ dB}$ synthetic shelving tilt required) |
-| **String Balance (E/A vs D/G)** | **Physically Optimized** via Reverse-P stagger ($115.6\text{ mm}$ vs $145.4\text{ mm}$) | **DSP Corrected** via 24-point wave-speed continuum |
-| **Right-Hand Thumb Rests** | **Dual Positions** (Deep neck warmth or tight bridge recoil) | **Single Position** ($93.5\text{ mm}$) |
-| **Pedalboard Decoupling** | Requires matching pickup switch to Anagram preset | **100% Decoupled** (Never touch switches on stage) |
-| **Secondary Magnetic Drag** | Slight (two active low-flux magnetic apertures) | **Absolute Zero** (Single active pickup) |
-| **Standalone / Direct Sound** | **4 Iconic Pro Tones** natively (P, MM, J-Bridge, P/MM) | **1 Neutral Intermediate Tone** |
-| **Ideal Player Use Case** | Pure tone aficionados, recording sessions, tactile players | Touring pedalboard players, patch-heavy live sets |
+* **Broad Production Bass Support:** While the dual-transducer Reverse PX + MMTWX configuration provides dedicated multi-position harmonic capture, Allomorph natively supports standard single-pickup and multi-pickup production instruments (e.g. 34" Precision Bass, 34" Jazz Bass, 34" StingRay, 30" Mustang P/J, Dingwall NG/Combustion) through their own physical configuration models and dedicated dry excitation bundles.
 
 ---
 
@@ -171,7 +127,7 @@ Allomorph models the complete electro-acoustic path in four distinct layers:
 Allomorph converts the lower tension and warm low-mid "bloom" of **30" short-scale** and **32" medium-scale** instruments into the focused, piano-like authority of full-scale and fanned-fret instruments:
 * **Wave-Speed Scaling ($\kappa_v$):** Up-shifts aperture and comb-filter null frequencies by $+13.3\%$ (for 34") and $+23.3\%$ (for 37" multi-scale).
 * **String Tension Filtering:** Tightens tubby $180\text{--}250\text{ Hz}$ boom while adding laser-tight sub-bass ($40\text{--}80\text{ Hz}$) and metallic Dingwall-style clank ($2.5\text{--}3.8\text{ kHz}$).
-* **Spatial Placement Tracking:** Relocates pickups from short-scale bridge datums to standard 34" and 37" sweet spots.
+* **Spatial Placement Tracking:** Relocates pickups from short-scale bridge positions to standard 34" and 37" sweet spots.
 
 ---
 
@@ -194,7 +150,6 @@ Allomorph includes pre-configured physical and electrical parameters for **24 di
 | `jazz_neck_warm` | Jazz Neck Warm | 60s J-Bass Neck | Single Coil | Vintage $250\text{k}\Omega$ Vol, $250\text{k}\Omega$ Tone, $47\text{nF}$ | $3.40\text{ H}$ | $2.9\text{ kHz}$ | 60s neck single-coil ($155.6\text{ mm}$ datum); warm, woody round fundamental with vintage clarity. |
 | `stingray_parallel`| StingRay Parallel | Music Man StingRay | Active MM Buffer | Music Man 2-Band ($R_{\text{in}}=1\text{M}\Omega, R_{\text{out}}=100\,\Omega$) | $1.20\text{ H}$ | $8.5\text{ kHz}$ | Authentic active 2-band MM humbucker; cable isolation, comb notch at $2.5\text{ kHz}$, metallic clank. |
 | `stingray_series` | StingRay Series | Music Man MM (Series) | Active Series Buffer | Music Man 2-Band Preamp Buffer | $4.80\text{ H}$ | $4.1\text{ kHz}$ | Dual-coil humbucker in series with active buffer; $+5.6\text{ dB}$ series EMF surge and focused active resonance. |
-| `stingray_active` | StingRay Active | Music Man MM (Active Slap) | Active Buffer | Studio Active Buffer ($R_{\text{in}}=1\text{M}\Omega, R_{\text{out}}=100\,\Omega$) | $1.20\text{ H}$ | $8.5\text{ kHz}$ | Wideband hi-fi StingRay buffer response; punchy slap transient attack with cable isolation. |
 | `dingwall_bridge` | Dingwall Bridge | Multi-Scale MM Bridge | Angled Parallel | Dingwall Active Onboard Buffer ($R_{\text{in}}=1\text{M}\Omega, R_{\text{out}}=100\,\Omega$) | $2.30\text{ H}$ | $7.3\text{ kHz}$ | 34"-37" fanned-fret angled bridge sweet spot ($48.0\text{ mm}$) with active buffer and stainless clank. |
 | `dingwall_middle` | Dingwall Middle | Multi-Scale MM Middle | Angled Parallel | Dingwall Active Onboard Buffer ($R_{\text{in}}=1\text{M}\Omega, R_{\text{out}}=100\,\Omega$) | $2.30\text{ H}$ | $6.8\text{ kHz}$ | 34"-37" fanned-fret angled middle sweet spot ($87.8\text{ mm}$); punchy low-mid bloom with high tension. |
 | `dingwall_parallel`| Dingwall Parallel | Multi-Scale Bridge/Middle | Dual Parallel | Dingwall Active Onboard Buffer ($R_{\text{in}}=1\text{M}\Omega, R_{\text{out}}=100\,\Omega$) | $1.15\text{ H}$ | $8.2\text{ kHz}$ | Dual angled FD3n coils in parallel; modern scooped slap tone with extended harmonic overtone series. |
@@ -214,7 +169,7 @@ Allomorph includes pre-configured physical and electrical parameters for **24 di
 Allomorph models acoustic aperture and scale tension in Python, executes the passive circuit digital twin directly using its native WAV SPICE simulator, and trains lightweight NAM (`.nam`) neural captures for Block 1 of the Darkglass Anagram:
 
 ### 1. Interactive Acoustic & Electrical Visualizer (`scripts/analyze_voices.py`)
-Renders interactive frequency response curves in Altair (Vega-Lite), comparing all 25 target configurations against any source instrument. Outputs are organized into per-instrument standalone charts and a unified interactive portal:
+Renders interactive frequency response curves in Altair (Vega-Lite), comparing all 24 target configurations against any source instrument. Outputs are organized into per-instrument standalone charts and a unified interactive portal:
 
 ```bash
 # Generate interactive charts for all configured source instruments and refresh master portal:
@@ -227,10 +182,11 @@ uv run python scripts/analyze_voices.py --instrument 30in
 *Outputs: Master interactive portal at `docs/frequency_responses.html` (and `docs/frequency_responses/index.html`) with embedded tabbed navigation and spec breakdown, and per-instrument standalone visualizations in `docs/frequency_responses/<instrument_id>.html`.*
 
 ### 2. Native WAV SPICE Circuit Simulation (`allomorph-sim`)
-Directly streams raw bass string excitation audio (`audio/input.wav`) through the entire physical digital twin in a single in-memory pass:
-1. **Acoustic Aperture & Placement:** De-humbucking sinc aperture filtering, spatial standing-wave comb filtering, displacement tilt ($\Delta x$), and string tension filtering.
-2. **Dynamic Non-Linear Compliance:** Soft-knee saturation ($V_{\text{sat}} \cdot \tanh(v / V_{\text{sat}})$), Lenz flux sag, Dahl hysteresis, back-EMF, and dynamic reluctance quack.
-3. **Passive Pickup Circuit Twin:** Exact closed-form nodal AC transfer functions, eddy-current damping, authentic volume/tone pot dividers, active preamp buffers, hybrid treble bleed, cable capacitance ($750\text{ pF}$), and pedalboard load ($1\text{ M}\Omega \parallel 30\text{ pF}$).
+Directly streams raw bass string excitation audio (`audio/input.wav`) through the entire physical digital twin in a single in-memory forward pass:
+1. **Acoustic Aperture & Placement:** De-humbucking sinc aperture filtering, spatial standing-wave comb filtering, displacement tilt ($\Delta x$), scale tension filtering, saddle boundary layer stiffness ($H_{\text{saddle}}$), and multi-pickup causal arrival delay ($\tau_i$).
+2. **Branch-Wise Dynamic Non-Linear Compliance:** Pre-summing magnetic saturation for composite pickups with soft-knee saturation ($V_{\text{sat}} \cdot \tanh(v / V_{\text{sat}})$), Lenz flux sag, Dahl hysteresis, back-EMF braking, dynamic reluctance quack, velocity-modulated aperture bloom ($\kappa_{\text{ap}}$), and GIL-free (`nogil=True`) state-space ODE kernels for full multi-core scalability.
+3. **Passive Pickup Circuit Twin:** Exact closed-form nodal AC transfer functions, Foster 2-stage eddy-current damping, solid Alnico pole skin dispersion, authentic volume/tone pot dividers, active preamp buffers (flat DC transmission, zero Gibbs ripples), hybrid treble bleed, cable capacitance ($750\text{ pF}$), and pedalboard load ($1\text{ M}\Omega \parallel 30\text{ pF}$).
+4. **Calibrated Loudness & True-Peak Safety:** ITU-R BS.1770-4 gated loudness normalization ($-20.50\text{ LUFS}$ / $-20.50\text{ dBFS}$ RMS) strictly bounded by a 4x oversampled true-peak safety ceiling ($\le 0.9900$ / $-0.09\text{ dBFS}$) via transparent linear peak scaling to avoid double compression.
 
 Allomorph features a built-in **WAV SPICE simulator** running natively on Apple Silicon (`arm64`). Accelerated by a master 21-point Lossless $C^\infty$ SIMD, Tensor & Real-FFT Optimization Suite (pure real-FFT homomorphic cepstrum synthesis, 2D continuum tensor broadcasting, branchless 3-stage `fsqrt` rail limiters, Horner dipole polynomials, and passband-constrained oversampling), the engine evaluates exact analytical nodal equations and vector non-linearities directly in memory on the audio waveform, eliminating external SPICE dependencies (such as LTspice or ngspice) and intermediate disk writes while executing in ~0.8s per voice (>1500x faster than traditional transient SPICE engines):
 
@@ -266,7 +222,7 @@ uv run allomorph --stage train --instrument 30in --voice precision_active --no-g
 # Train A2-Lite channels_8 only (instead of the default slimmable container):
 uv run allomorph --stage train --instrument 30in --voice precision_active --a2-lite-only
 ```
-*(In modern versions of `neural-amp-modeler` and the official Google Colab trainer, `--architecture A2` is the default. With the optimal bass dry excitation file, Allomorph trains the full slimmable Architecture 2 container (both `channels_3` and `channels_8`) by default under the **A2 Studio Reference** standard (`--goal-esr 0.0080`, `400` max epoch safety ceiling, `--batch-size 32`, monitoring `channels_8`). To isolate the 8-channel submodel only, supply `--a2-lite-only`).*
+*(In modern versions of `neural-amp-modeler` and the official Google Colab trainer, `--architecture A2` is the default. With the optimal bass dry excitation file featuring the Section 9E Dedicated Representative Bass Performance Suite, Allomorph trains the full slimmable Architecture 2 container (both `channels_3` and `channels_8`) by default under the **A2 Studio Reference** standard (`--goal-esr 0.0080`, `400` max epoch safety ceiling, `--batch-size 32`, monitoring `channels_8`). To isolate the 8-channel submodel only, supply `--a2-lite-only`).*
 
 > [!NOTE]
 > **Complete Training Guide & Audio Pairings:**
@@ -290,6 +246,10 @@ uv run allomorph --stage pack --instrument 30in
 
 # Train local NAM models:
 uv run allomorph --stage train --instrument 30in --voice precision_active
+
+# Audit catalog audio telemetry (loudness, true-peak, crest factor, DC offset):
+uv run allomorph --stage audit
+uv run allomorph --stage audit --verbose
 
 # Generate interactive Altair frequency visualizations:
 uv run allomorph --stage viz
@@ -336,7 +296,7 @@ allomorph/
 ├── config/                                # Modular TOML configuration files
 │   ├── instruments/                       # Source bass geometries, pickups & embedded circuits
 │   │   ├── 30in_emg_mmtw.toml             # 30" active EMG MMTW dual-mode bass
-│   │   ├── 32in_custom_pmm.toml           # 32" custom PX + MMTWX bass
+│   │   ├── 34in_active_stingray.toml      # 34" active Music Man StingRay bass
 │   │   ├── 34in_standard_p.toml           # 34" standard P-bass template
 │   │   └── 34in_standard_jazz.toml        # 34" standard Jazz bass template
 │   ├── preamps.toml                       # Reusable active preamp catalog (Sadowsky, StingRay, Aguilar, Dingwall)
@@ -390,7 +350,8 @@ allomorph/
 - [x] **Electro-Acoustic Physical Modeling:** Magnetic aperture sinc filtering, spatial comb nulls, scale-length wave-speed scaling ($30''/32'' \to 34''/37''$), 2D rod apertures, saddle boundary layer stiffness, longitudinal clank, and differential string tension modeling.
 - [x] **Native WAV SPICE Simulator:** High-performance Apple Silicon engine (`allomorph-sim`) solving analytical nodal RLC equations, Foster 2-stage core eddy diffusion, Dahl magnetic domain-wall pinning hysteresis, asymmetric magnet saturation compliance, sub-audible 8 Hz DC blocking, passive RLC Johnson noise dither, and automatic output level normalization based on input sweep dBFS at >1500x speed.
 - [x] **Lossless $C^\infty$ SIMD, Tensor & Real-FFT Optimization Suite:** Master 21-point mathematical vectorization accelerating FIR synthesis via pure real-FFT homomorphic cepstrum, 2D continuum tensor broadcasting, branchless 3-stage `fsqrt` rail limiting, passband-constrained oversampling, and analytical impedance Jacobians.
-- [x] **21 Voice Profiles & Transducers:** Modern active 2-band Jazz, vintage single-coil, split-coil, series/parallel dual-coils, active Music Man, fanned multi-scale, upright double-bass bridge piezo force transducers, and flat dynamic twins.
+- [x] **24 Master Voice Profiles & Transducers:** Modern active 2-band Jazz, vintage single-coil, split-coil, series/parallel dual-coils, active Music Man, fanned multi-scale, upright double-bass bridge piezo force transducers, and flat dynamic twins.
+- [x] **DSP Generation 4 Architecture & Audio QA Telemetry:** Direct unified forward digital twin simulation, Multi-Technique Bass Performance Suite excitation (`audio/input.wav`) with dedicated representative validation window, branch-wise pre-summing magnetic saturation with causal delay $\tau_i$, dynamic ITU-R BS.1770-4 gated loudness normalization (-20.50 LUFS), 4x oversampled true-peak safety ceiling ($\le 0.9900$), GIL-free ODE kernels, Tone3000 upload pack bundles (`bundles/<pickup>/`), and automated catalog audit (`allomorph --stage audit`).
 - [x] **Interactive Visualization Portal:** Polars + Altair frequency response portal with spec sheets and per-instrument interactive charts (`docs/frequency_responses.html`).
 - [x] **Automated NAM Training Pipeline:** End-to-end Architecture 2 (A2) neural model training targeting Darkglass Anagram Block 1.
 - [x] **Automated Test Suite:** Comprehensive 304-test pytest verification covering physical filters, nodal transfer functions, real-FFT homomorphic cepstrum DSP, 2D tensor continuum, ODE saturation, audio simulation, and architectural guardrails.
@@ -399,7 +360,7 @@ allomorph/
 - [ ] **Interactive A/B Audio Auditioning CLI:** Terminal and real-time audio auditioning tool (`scripts/preview_voices.py`) with seamless dry-to-wet switching, looping bass riffs, and instantaneous A/B comparison across pickup voices before neural training or pedalboard export.
 - [ ] **Hardware Reference Calibration:** Dry-DI spectral matching and A/B verification against physical vintage instruments (1962 P-Bass, 1975 Jazz Bass, 1979 StingRay).
 - [ ] **In-Browser Audio Player:** Interactive audio preview player embedded directly into the Altair documentation portal.
-- [ ] **Anagram Marketplace Native Block:** Develop a dedicated, all-in-one "Allomorph" custom block for the Darkglass Anagram Marketplace (`marketplace.anagram.shop`), featuring rotary voice switching across all 21 pickup configurations, automatic gain normalization, and interactive volume/cable load controls in a single native Block 1 module.
+- [ ] **Anagram Marketplace Native Block:** Develop a dedicated, all-in-one "Allomorph" custom block for the Darkglass Anagram Marketplace (`marketplace.anagram.shop`), featuring rotary voice switching across all 24 pickup configurations, automatic gain normalization, and interactive volume/cable load controls in a single native Block 1 module.
 
 ---
 
@@ -417,7 +378,7 @@ This project and its distributed assets are licensed under the [PolyForm Noncomm
 
 ### Scope & Permissions
 - **Permitted Uses:** Free to use, study, modify, and distribute for personal study, experimentation, sound design, and noncommercial music production.
-- **Coverage:** This license applies to all source code, SPICE netlists, configuration schemas, compiled/trained neural models (`.nam`), and synthesized impulse responses (`.wav`) generated by or distributed with Allomorph.
-- **Commercial Restrictions:** Commercial use, sale, bundling into commercial plugins/pedalboards, or monetization of the software, neural profiles, or impulse responses is strictly prohibited without prior written permission and a commercial license from the author.
+- **Coverage:** This license applies to all source code, SPICE netlists, configuration schemas, compiled/trained neural models (`.nam`), and synthesized audio stems (`.wav`) generated by or distributed with Allomorph.
+- **Commercial Restrictions:** Commercial use, sale, bundling into commercial plugins/pedalboards, or monetization of the software, neural profiles, or audio stems is strictly prohibited without prior written permission and a commercial license from the author.
 - **Commercial Licensing Inquiries:** Contact **Peter Nguyen** (<peter@phn.dev>).
 

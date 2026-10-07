@@ -40,7 +40,6 @@ from allomorph.dsp import (
 )
 from allomorph.physics import MEAN_BASS_F0
 from allomorph.physics.aperture import (
-    UNIVERSAL_DATUM_POS_M,
     compute_displacement_proximity_shelf,
     compute_pickup_isolation_leveling,
     compute_saddle_boundary_coupling,
@@ -386,8 +385,9 @@ def simulate_instrument_voicing(
             for p in inst.pickups.values()
             if not p.components and p.position_from_bridge_m is not None
         ]
-        max_p_pos = max(single_positions, default=UNIVERSAL_DATUM_POS_M)
-        ref_pos = max(max_p_pos, UNIVERSAL_DATUM_POS_M)
+        # Self-referential leveling: multi-pickup basses level bridge pickups relative to their own forward-most pickup.
+        # Single-pickup basses receive ref_pos = None and evaluate to exact 1.0000 (0.00 dB).
+        ref_pos = max(single_positions) if len(single_positions) > 1 else None
 
         if is_composite and pickup_cfg.components:
             is_composite_sim = True
@@ -544,7 +544,7 @@ def simulate_instrument_voicing(
             h_ac_raw = numpy_pickup_acoustic_response(f, coils, scale_length_m=scale_range)
             h_ac = np.asarray(h_ac_raw, dtype=np.float64)
 
-            # Spatial bridge proximity displacement excursion relative to universal datum
+            # Spatial bridge proximity displacement excursion relative to calibration baseline
             h_pos = compute_displacement_proximity_shelf(f, eff_pos, scale_m=scale_m)
             k_iso = compute_pickup_isolation_leveling(eff_pos, scale_m=scale_m, ref_pos_m=ref_pos)
             h_ac = h_ac * h_pos * k_iso
