@@ -105,15 +105,6 @@ preamp = "stingray_2band"
 preamp_gain = 1.9
 Rvol = 500000.0
 
-[voicings.active_slap]
-version = 1
-name = "Modern Slap Bass Mid-Scoop"
-tone_name = "StingRay Active"
-pickup = "mm_parallel"
-affinity = "bridge"
-vol_pos = 1.0
-preamp_preset = "stingray_2band"
-
 # ------------------------------------------------------------------------------
 # 3. PICKUP AFFINITY ROUTING
 # ------------------------------------------------------------------------------

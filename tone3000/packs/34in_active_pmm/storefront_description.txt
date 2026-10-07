@@ -1,7 +1,7 @@
 ALLOMORPH: 34" MODERN ACTIVE P/MM BASS EDITION
 ==============================================
 
-Transform your 34" Modern Active P/MM Bass into 24 legendary active, vintage, modern, and acoustic pickup configurations.
+Transform your 34" Modern Active P/MM Bass into 23 legendary active, vintage, modern, and acoustic pickup configurations.
 
 OVERVIEW
 --------
@@ -27,7 +27,7 @@ QUICK INSTRUMENT SETUP
    - [Parallel]: Select Active P/MM Parallel (Split-P + MM Bridge)
    - [Series]: Select P/MM Series Hybrid (Split-P + MM Bridge Series)
 
-INCLUDED VOICINGS (24 MODELS)
+INCLUDED VOICINGS (23 MODELS)
 -----------------------------------------
 
 ### Bundle: Neck (9 Voicings)
@@ -41,12 +41,11 @@ INCLUDED VOICINGS (24 MODELS)
 • Mudbucker Deep [Neck] v4.1.1: Massive 14.4H Sidewinder Sub-Bass (30.5" Gibson EB-0 Mudbucker)
 • Upright Acoustic [Neck] v4.1.1: Acoustic Double Bass Bridge Force (41.25" Acoustic Double Bass)
 
-### Bundle: Bridge (8 Voicings)
+### Bundle: Bridge (7 Voicings)
 • Jazz Bridge Growl [Bridge] v4.1.1: Singing Jaco Bridge Growl (34" Standard Jazz Bass)
 • Jazz Bridge Open [Bridge] v4.1.1: 60s Solo Bridge Single-Coil Open (34" Standard Jazz Bass)
 • StingRay Parallel [Bridge] v4.1.1: Classic 1979 2-Band Parallel Authority (34" Active StingRay (Music Man MM))
 • StingRay Series [Bridge] v4.1.1: High-Output Muscular Series Punch (34" Active StingRay (Music Man MM))
-• StingRay Active [Bridge] v4.1.1: Modern Slap Bass Mid-Scoop (34" Active StingRay (Music Man MM))
 • Dingwall Bridge [Bridge] v4.1.1: FD3 Solo Bridge Multiscale Clarity (37" Multi-Scale Dingwall 5-String (FD3n))
 • Rickenbacker Clank [Bridge] v4.1.1: Vintage 4003 Bridge Clank (4.7nF HPF) (33.25" Rickenbacker 4003)
 • Rickenbacker Open [Bridge] v4.1.1: Modern 4003 Bridge Open Bypass (33.25" Rickenbacker 4003)

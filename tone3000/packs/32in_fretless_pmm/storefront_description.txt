@@ -1,7 +1,7 @@
 ALLOMORPH: 32" FRETLESS CUSTOM (EMG PCSX + MMTWX) EDITION
 =========================================================
 
-Transform your 32" Fretless Custom (EMG PCSX + MMTWX) into 25 legendary active, vintage, modern, and acoustic pickup configurations.
+Transform your 32" Fretless Custom (EMG PCSX + MMTWX) into 24 legendary active, vintage, modern, and acoustic pickup configurations.
 
 OVERVIEW
 --------
@@ -28,7 +28,7 @@ QUICK INSTRUMENT SETUP
    - [P/MM]: Select EMG PCSX + MMTWX Parallel (P/MM Mode)
    - [P/J]: Select EMG PCSX + MMTWX Single Parallel (P/J Mode)
 
-INCLUDED VOICINGS (25 MODELS)
+INCLUDED VOICINGS (24 MODELS)
 -----------------------------------------
 
 ### Bundle: Neck (9 Voicings)
@@ -42,12 +42,11 @@ INCLUDED VOICINGS (25 MODELS)
 • Mudbucker Deep [Neck] v4.1.1: Massive 14.4H Sidewinder Sub-Bass (30.5" Gibson EB-0 Mudbucker)
 • Upright Acoustic [Neck] v4.1.1: Acoustic Double Bass Bridge Force (41.25" Acoustic Double Bass)
 
-### Bundle: Single (8 Voicings)
+### Bundle: Single (7 Voicings)
 • Jazz Bridge Growl [Single] v4.1.1: Singing Jaco Bridge Growl (34" Standard Jazz Bass)
 • Jazz Bridge Open [Single] v4.1.1: 60s Solo Bridge Single-Coil Open (34" Standard Jazz Bass)
 • StingRay Parallel [Single] v4.1.1: Classic 1979 2-Band Parallel Authority (34" Active StingRay (Music Man MM))
 • StingRay Series [Single] v4.1.1: High-Output Muscular Series Punch (34" Active StingRay (Music Man MM))
-• StingRay Active [Single] v4.1.1: Modern Slap Bass Mid-Scoop (34" Active StingRay (Music Man MM))
 • Dingwall Bridge [Single] v4.1.1: FD3 Solo Bridge Multiscale Clarity (37" Multi-Scale Dingwall 5-String (FD3n))
 • Rickenbacker Clank [Single] v4.1.1: Vintage 4003 Bridge Clank (4.7nF HPF) (33.25" Rickenbacker 4003)
 • Rickenbacker Open [Single] v4.1.1: Modern 4003 Bridge Open Bypass (33.25" Rickenbacker 4003)

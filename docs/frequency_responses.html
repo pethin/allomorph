@@ -202,7 +202,7 @@
   <div class="container">
     <div class="header">
       <h1>Allomorph Frequency Response Suite <span class="badge">Universal Voicings</span> <span class="badge">Direct Forward Simulation</span></h1>
-      <div class="subtitle">Interactive Source vs Target Voicing Comparisons & 3D Differential IR Waterfalls.</div>
+      <div class="subtitle">Interactive Source vs Target Voicing Comparisons & Analytical Differential Transformations.</div>
     </div>
 
     <div class="flow-pipeline-card">
@@ -245,7 +245,7 @@
       </div>
       <div class="meta-item">
         <div class="label" id="meta-label-secondary">Voicing Matrix</div>
-        <div class="value" id="meta-scale">25 Catalog Voicings: Select Any Source and Target</div>
+        <div class="value" id="meta-scale">24 Catalog Voicings: Select Any Source and Target</div>
       </div>
       <div class="meta-item">
         <div class="label" id="meta-label-tertiary">Response Overlay</div>
@@ -286,7 +286,7 @@
       frame.src = url;
       standaloneLink.href = url;
       metaName.textContent = 'Voicing Comparisons (3-Line Response)';
-      metaScale.textContent = '25 Catalog Voicings: Select Any Source and Target Voicing';
+      metaScale.textContent = '24 Catalog Voicings: Select Any Source and Target Voicing';
       metaPickups.textContent = 'H_src (Cyan) | H_tgt (Orange) | H_diff (Purple) with Identity (0.00 dB)';
       metaViewMode.textContent = 'Interactive 3-Line Voicings';
       if (window.history.replaceState) window.history.replaceState(null, null, '#voicings');

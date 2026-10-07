@@ -333,7 +333,6 @@ def test_resolve_voices():
     assert resolve_voices("stingray") == [
         "stingray_parallel",
         "stingray_series",
-        "stingray_active",
     ]
     assert resolve_voices("pj") == ["pj_passive", "pj_active"]
     assert resolve_voices("p_mm") == ["p_mm_parallel", "p_mm_series"]

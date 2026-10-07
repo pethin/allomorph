@@ -1,7 +1,7 @@
 ALLOMORPH: 37" MULTI-SCALE DINGWALL 5-STRING (FD3N) EDITION
 ===========================================================
 
-Transform your 37" Multi-Scale Dingwall 5-String (FD3n) into 22 legendary active, vintage, modern, and acoustic pickup configurations.
+Transform your 37" Multi-Scale Dingwall 5-String (FD3n) into 21 legendary active, vintage, modern, and acoustic pickup configurations.
 
 OVERVIEW
 --------
@@ -27,15 +27,14 @@ QUICK INSTRUMENT SETUP
    - [Parallel]: Select Dingwall Bridge + Middle Parallel
    - [Series]: Select Dingwall Bridge + Middle Series
 
-INCLUDED VOICINGS (22 MODELS)
+INCLUDED VOICINGS (21 MODELS)
 -----------------------------------------
 
-### Bundle: Bridge (7 Voicings)
+### Bundle: Bridge (6 Voicings)
 • Jazz Bridge Growl [Bridge] v4.1.1: Singing Jaco Bridge Growl (34" Standard Jazz Bass)
 • Jazz Bridge Open [Bridge] v4.1.1: 60s Solo Bridge Single-Coil Open (34" Standard Jazz Bass)
 • StingRay Parallel [Bridge] v4.1.1: Classic 1979 2-Band Parallel Authority (34" Active StingRay (Music Man MM))
 • StingRay Series [Bridge] v4.1.1: High-Output Muscular Series Punch (34" Active StingRay (Music Man MM))
-• StingRay Active [Bridge] v4.1.1: Modern Slap Bass Mid-Scoop (34" Active StingRay (Music Man MM))
 • Rickenbacker Clank [Bridge] v4.1.1: Vintage 4003 Bridge Clank (4.7nF HPF) (33.25" Rickenbacker 4003)
 • Rickenbacker Open [Bridge] v4.1.1: Modern 4003 Bridge Open Bypass (33.25" Rickenbacker 4003)
 

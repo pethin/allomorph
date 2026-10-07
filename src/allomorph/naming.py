@@ -25,7 +25,6 @@ VOICE_CONCISE_SLUGS: dict[str, str] = {
     "jazz_neck_warm": "jazz_neck",
     "stingray_parallel": "stingray_par",
     "stingray_series": "stingray_ser",
-    "stingray_active": "stingray_act",
     "dingwall_bridge": "dingwall_brg",
     "dingwall_middle": "dingwall_mid",
     "dingwall_parallel": "dingwall_par",

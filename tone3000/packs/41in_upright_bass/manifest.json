@@ -17,7 +17,7 @@
       "instrument_id": "41in_upright_bass",
       "instrument_version": 1,
       "source_voicing_version": 1,
-      "stem_count": 24,
+      "stem_count": 23,
       "stems": [
         {
           "filename": "Precision Vintage v4.1.1.wav",
@@ -148,16 +148,6 @@
           "version": "v4.1.1",
           "tone_name": "StingRay Series",
           "sha256": "b06c6954ca3e8e739a0695ef0efd5598f32bb2297a690ba3bef8a5462912eb86"
-        },
-        {
-          "filename": "StingRay Active v4.1.1.wav",
-          "target_instrument": "34in_active_stingray",
-          "target_instrument_version": 1,
-          "target_voicing": "active_slap",
-          "target_voicing_version": 1,
-          "version": "v4.1.1",
-          "tone_name": "StingRay Active",
-          "sha256": "1297c2004b6e7b5847ebefca0249314cdfd6e4f406db0749dd4decf7e8ac4d52"
         },
         {
           "filename": "Dingwall Bridge v4.1.1.wav",

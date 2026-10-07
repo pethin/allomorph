@@ -412,7 +412,6 @@ VOICE_FAMILIES: dict[str, str] = {
     "jazz_neck_warm": "Jazz",
     "stingray_parallel": "StingRay",
     "stingray_series": "StingRay",
-    "stingray_active": "StingRay",
     "dingwall_bridge": "Dingwall",
     "dingwall_middle": "Dingwall",
     "dingwall_parallel": "Dingwall",
@@ -430,7 +429,7 @@ VOICE_FAMILIES: dict[str, str] = {
 def build_voicings_comparison_data(step: int = 3) -> dict[str, Any]:
     """
     Builds the compact data structure containing frequency responses and metadata
-    for all 25 target voicings in VOICES.
+    for all 24 target voicings in VOICES.
     Used by voicings.html to display the 3-line graph:
       - Line 1: Source Voicing (H_src)
       - Line 2: Target Voicing (H_tgt)
