@@ -200,7 +200,6 @@ def export_tone_pack(
                 base_dry_path=input_wav,
                 expected_version=dry_v_tag,
             )
-            and not overwrite
         ):
             shutil.copyfile(source_wet_path, dry_dest)
         elif max_samples is None:
