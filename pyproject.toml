@@ -13,17 +13,17 @@ dependencies = [
     "numpy>=2.5.3",
     "pydantic>=2.13.5",
     "numba>=0.67.0",
-    "torch>=2.1.0",
+    "torch>=2.13.0",
 ]
 
 [project.optional-dependencies]
 rocm = [
-    "rocm; sys_platform == 'win32' or sys_platform == 'linux'",
-    "rocm-sdk-core; sys_platform == 'win32' or sys_platform == 'linux'",
-    "rocm-sdk-libraries; sys_platform == 'win32' or sys_platform == 'linux'",
-    "rocm-sdk-device-gfx1201; sys_platform == 'win32' or sys_platform == 'linux'",
-    "amd-torch-device-gfx12-0; sys_platform == 'win32' or sys_platform == 'linux'",
-    "amd-torch-device-gfx1201; sys_platform == 'win32' or sys_platform == 'linux'",
+    "rocm; sys_platform == 'linux'",
+    "rocm-sdk-core; sys_platform == 'linux'",
+    "rocm-sdk-libraries; sys_platform == 'linux'",
+    "rocm-sdk-device-gfx1201; sys_platform == 'linux'",
+    "amd-torch-device-gfx12-0; sys_platform == 'linux'",
+    "amd-torch-device-gfx1201; sys_platform == 'linux'",
     "triton; sys_platform == 'linux'",
 ]
 
@@ -72,28 +72,26 @@ explicit = true
 
 [tool.uv.sources]
 torch = [
-    { index = "amd-rocm", marker = "extra == 'rocm' and (sys_platform == 'win32' or sys_platform == 'linux')" },
+    { index = "amd-rocm", marker = "extra == 'rocm' and (sys_platform == 'linux')" },
 ]
 amd-torch-device-gfx12-0 = [
-    { index = "amd-rocm", marker = "sys_platform == 'win32' or sys_platform == 'linux'" },
+    { index = "amd-rocm", marker = "sys_platform == 'linux'" },
 ]
 amd-torch-device-gfx1201 = [
-    { index = "amd-rocm", marker = "sys_platform == 'win32' or sys_platform == 'linux'" },
+    { index = "amd-rocm", marker = "sys_platform == 'linux'" },
 ]
 rocm = [
-    { index = "amd-rocm", marker = "sys_platform == 'win32' or sys_platform == 'linux'" },
+    { index = "amd-rocm", marker = "sys_platform == 'linux'" },
 ]
 rocm-sdk-core = [
-    { index = "amd-rocm", marker = "sys_platform == 'win32' or sys_platform == 'linux'" },
+    { index = "amd-rocm", marker = "sys_platform == 'linux'" },
 ]
 rocm-sdk-libraries = [
-    { index = "amd-rocm", marker = "sys_platform == 'win32' or sys_platform == 'linux'" },
+    { index = "amd-rocm", marker = "sys_platform == 'linux'" },
 ]
 rocm-sdk-device-gfx1201 = [
-    { index = "amd-rocm", marker = "sys_platform == 'win32' or sys_platform == 'linux'" },
+    { index = "amd-rocm", marker = "sys_platform == 'linux'" },
 ]
 triton = [
     { index = "amd-rocm", marker = "sys_platform == 'linux'" },
 ]
-
-
