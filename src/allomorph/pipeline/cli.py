@@ -312,8 +312,11 @@ def main(argv: Sequence[str] | None = None):
     if args.stage == "audit":
         from allomorph.circuit.audit import audit_wet_audio_catalog
 
-        print("\n[QA Telemetry Audit] Scanning wet audio digital twins...")
-        report = audit_wet_audio_catalog()
+        if force_exec:
+            print("\n[QA Telemetry Audit] Performing deep audio signal verification across wet audio digital twins...")
+        else:
+            print("\n[QA Telemetry Audit] Scanning wet audio digital twins (manifest-accelerated)...")
+        report = audit_wet_audio_catalog(force=force_exec)
         print("\n=================== AUDIO TELEMETRY REPORT ===================")
         print(f"  Total Files:        {report.total_files}")
         print(f"  Valid Files:        {report.valid_files}")

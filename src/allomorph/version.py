@@ -188,6 +188,10 @@ def write_manifest(
                             audio, sr = read_wav(f_path)
                             peak = float(np.max(np.abs(audio)))
                             rms = float(np.sqrt(np.mean(audio**2)))
+                            mono = audio[0] if audio.ndim > 1 else audio
+                            entry["duration_s"] = (
+                                round(float(len(mono)) / float(sr), 3) if sr > 0 else 0.0
+                            )
                             entry["sample_rate"] = sr
                             entry["peak_dbfs"] = round(20.0 * np.log10(max(peak, 1e-9)), 2)
                             entry["rms_dbfs"] = round(20.0 * np.log10(max(rms, 1e-9)), 2)
@@ -198,6 +202,7 @@ def write_manifest(
                                 if not (math.isinf(lufs_val) or math.isnan(lufs_val))
                                 else None
                             )
+                            entry["dc_offset"] = round(float(np.mean(mono)), 6)
                     file_entries[f_path.name] = entry
 
         manifest_data: dict[str, Any] = {
