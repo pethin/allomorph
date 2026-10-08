@@ -153,6 +153,9 @@ VOICE_FAMILIES: dict[str, str] = {
     "soapbar_pair": "Soapbar",
     "soapbar_neck": "Soapbar",
     "soapbar_bridge": "Soapbar",
+    "active_emg_pair": "EMG",
+    "active_emg_neck": "EMG",
+    "active_emg_bridge": "EMG",
 }
 
 
@@ -200,6 +203,7 @@ def build_voicings_comparison_data(step: int = 3) -> dict[str, Any]:
         "Jazz",
         "StingRay",
         "Soapbar",
+        "EMG",
         "P∕MM",
         "Dingwall",
         "Rickenbacker",

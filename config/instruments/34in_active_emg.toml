@@ -150,7 +150,7 @@ vsat = 0.50
 
 [voicings.pair_parallel]
 version = 1
-name = "Active Dual EMG J Parallel"
+name = "Active Dual EMG Soapbars Parallel"
 tone_name = "Active EMG Pair"
 pickup = "pair_parallel"
 affinity = "parallel"
@@ -158,7 +158,7 @@ vol_pos = 1.0
 
 [voicings.neck_solo]
 version = 1
-name = "Active Solo EMG J Neck"
+name = "Active Solo EMG Soapbar Neck"
 tone_name = "Active EMG Neck"
 pickup = "neck"
 affinity = "neck"
@@ -166,7 +166,7 @@ vol_pos = 1.0
 
 [voicings.bridge_solo]
 version = 1
-name = "Active Solo EMG J Bridge"
+name = "Active Solo EMG Soapbar Bridge"
 tone_name = "Active EMG Bridge"
 pickup = "bridge"
 affinity = "bridge"

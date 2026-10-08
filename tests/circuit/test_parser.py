@@ -60,6 +60,7 @@ def test_load_all_voice_circuits():
             "p_mm_parallel",
             "dingwall_parallel",
             "soapbar_pair",
+            "active_emg_pair",
         ]:
             assert model.topology == "parallel"
             assert model.L_b > 0

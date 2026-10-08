@@ -187,6 +187,9 @@ VOICE_AFFINITIES: dict[str, str] = {
     "soapbar_pair": "parallel",
     "soapbar_neck": "neck",
     "soapbar_bridge": "bridge",
+    "active_emg_pair": "parallel",
+    "active_emg_neck": "neck",
+    "active_emg_bridge": "bridge",
 }
 
 
@@ -314,6 +317,9 @@ SOURCE_CATALOG_VOICINGS: list[tuple[str, str]] = [
     ("34in_preamp_soapbar", "pair_parallel"),
     ("34in_preamp_soapbar", "neck_solo"),
     ("34in_preamp_soapbar", "bridge_solo"),
+    ("34in_active_emg", "pair_parallel"),
+    ("34in_active_emg", "neck_solo"),
+    ("34in_active_emg", "bridge_solo"),
 ]
 
 

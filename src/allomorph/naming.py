@@ -39,6 +39,9 @@ VOICE_CONCISE_SLUGS: dict[str, str] = {
     "soapbar_pair": "soapbar_par",
     "soapbar_neck": "soapbar_neck",
     "soapbar_bridge": "soapbar_brg",
+    "active_emg_pair": "emg_par",
+    "active_emg_neck": "emg_neck",
+    "active_emg_bridge": "emg_brg",
 }
 
 
