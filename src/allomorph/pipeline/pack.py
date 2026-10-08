@@ -176,6 +176,29 @@ VOICE_CATALOG_DESCRIPTIONS: dict[str, dict[str, str]] = {
             "Thick hard-rock punch with aggressive midrange bite and authoritative low-end grunt."
         ),
     },
+    # Dual Soapbar Family
+    "soapbar_pair": {
+        "family": "Dual Soapbar Family",
+        "name": "Soapbar Pair",
+        "desc": (
+            "Dual passive soapbars in parallel with active 3-band buffer (Ibanez SR / Yamaha TRBX / Sire F10). "
+            "Modern articulate punch, wide dynamic range, and scooped slap clarity."
+        ),
+    },
+    "soapbar_neck": {
+        "family": "Dual Soapbar Family",
+        "name": "Soapbar Neck",
+        "desc": (
+            "Solo neck soapbar humbucker with active buffer. Warm, woody, and punchy with rich low-mids."
+        ),
+    },
+    "soapbar_bridge": {
+        "family": "Dual Soapbar Family",
+        "name": "Soapbar Bridge",
+        "desc": (
+            "Solo bridge soapbar humbucker with active buffer. Tight, articulate, mid-forward bite with fast attack."
+        ),
+    },
     # P/MM Modern Hybrids
     "p_mm_parallel": {
         "family": "P/MM Modern Hybrids",
@@ -274,12 +297,15 @@ VOICE_SLUG_ALIASES: dict[str, str] = {
     "pmm_series": "p_mm_series",
     "neck_deep": "mudbucker_deep",
     "bridge_piezo_acoustic": "upright_acoustic",
+    "neck_solo": "soapbar_neck",
+    "bridge_solo": "soapbar_bridge",
 }
 
 FAMILY_ORDER: list[str] = [
     "Precision Bass & Tone Shaper Family",
     "Jazz Bass Family",
     "Music Man StingRay Family",
+    "Dual Soapbar Family",
     "P/J Bass Family",
     "P/MM Modern Hybrids",
     "Progressive & Classic Rock Legends",
@@ -306,6 +332,11 @@ VOICE_ORDER_IN_FAMILY: dict[str, list[str]] = {
     "Music Man StingRay Family": [
         "stingray_parallel",
         "stingray_series",
+    ],
+    "Dual Soapbar Family": [
+        "soapbar_pair",
+        "soapbar_neck",
+        "soapbar_bridge",
     ],
     "P/J Bass Family": [
         "pj_active",
@@ -339,6 +370,7 @@ def _family_sort_key(fam: str, inst: InstrumentConfig) -> tuple[int, int]:
         or ("precision" in inst.id and "Precision" in fam)
         or ("standard_p" in inst.id and "Precision" in fam)
         or ("stingray" in inst.id and "StingRay" in fam)
+        or ("soapbar" in inst.id and "Soapbar" in fam)
     )
     order_idx = FAMILY_ORDER.index(fam) if fam in FAMILY_ORDER else 99
     return (1 if is_native else 0, order_idx)

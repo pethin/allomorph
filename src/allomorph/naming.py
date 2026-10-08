@@ -36,6 +36,9 @@ VOICE_CONCISE_SLUGS: dict[str, str] = {
     "p_mm_series": "pmm_series",
     "mudbucker_deep": "mudbucker",
     "upright_acoustic": "upright",
+    "soapbar_pair": "soapbar_par",
+    "soapbar_neck": "soapbar_neck",
+    "soapbar_bridge": "soapbar_brg",
 }
 
 

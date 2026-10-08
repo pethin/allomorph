@@ -137,7 +137,7 @@ All target voice naming, Tone3000 model exports (`.nam`), wet audio stems, and s
 2. **Pedalboard Zero-Scroll Target ($\le 34$ chars):** The Darkglass Anagram screen displays 34 characters without scrolling. All 24 target voices must achieve 100% zero-scroll ($\le 34$ characters) on stage including pickup position and version tag.
 3. **Character Length Hard Limit ($\le 64$ chars):** The Tone3000 uploader enforces a strict 64-character ceiling on model filenames (excluding `.nam`). Filenames exceeding 64 characters raise diagnostic `ValueError` exceptions in `get_t3k_basename()`.
 4. **Permitted Taxonomy Vocabulary:** Draw tokens strictly from the approved taxonomy dictionary:
-   - Families: `Jazz`, `Precision`, `StingRay`, `PJ`, `P∕MM`, `Rickenbacker`, `Mudbucker`, `Dingwall`, `Upright`.
+   - Families: `Jazz`, `Precision`, `StingRay`, `Soapbar`, `PJ`, `P∕MM`, `Rickenbacker`, `Mudbucker`, `Dingwall`, `Upright`.
    - Configurations: `Pair`, `Bridge`, `Neck`, `Parallel`, `Series` (omitted when inherent, as in `Precision`, `Upright`).
    - Modifiers: `Open`, `Mids`, `Warm`, `Dub`, `Vintage`, `Modern`, `Active`, `Passive`, `Growl`, `Clank`, `Deep`, `Acoustic`, `Direct`.
 5. **Musician-Facing Sonic Descriptors (No Component Values):** Strictly omit electrical component values (`22nF`, `47nF`, `100nF`) and ad-hoc artist nicknames. Replace them with functional musical descriptors (`Mids`, `Warm`, `Dub`, `Growl`).

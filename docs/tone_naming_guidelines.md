@@ -66,6 +66,7 @@ Identifies the bass instrument/pickup archetype:
 | `Rickenbacker` | Rickenbacker 4001/4003 bridge single-coil | Never abbreviate to `Rick` |
 | `Mudbucker` | Gibson EB-0 sidewinder neck humbucker | Iconic bassist term for the 14.4H neck pickup |
 | `Dingwall` | Multiscale fanned-fret angled dual-coil bridge | Represents progressive multiscale clarity |
+| `Soapbar` | Dual-coil soapbar humbuckers with exposed round poles | Active buffered dual humbuckers (Ibanez SR / Yamaha TRBX) |
 | `Upright` | Double bass acoustic bridge piezo force transducer | Replaces generic `Piezo` |
 
 ### 3.2 Configuration Tokens (`[Configuration]`)
@@ -137,6 +138,9 @@ Below is the definitive catalog of all 24 Allomorph target voices under the syst
 | `pj_passive` | `PJ Passive` | `[Parallel]` | `PJ Passive [Parallel] v2.1.1` | 29 | **Zero-Scroll** | Organic P-thump with J-bridge articulation |
 | `stingray_parallel` | `StingRay Parallel` | `[Bridge]` | `StingRay Parallel [Bridge] v2.1.1` | 33 | **Zero-Scroll** | Classic 2-band active Music Man authority |
 | `stingray_series` | `StingRay Series` | `[Bridge]` | `StingRay Series [Bridge] v2.1.1` | 31 | **Zero-Scroll** | Muscular, mid-forward high-output MM punch |
+| `soapbar_pair` | `Soapbar Pair` | `[Parallel]` | `Soapbar Pair [Parallel] v2.1.1` | 31 | **Zero-Scroll** | Dual soapbars parallel with active 3-band buffer |
+| `soapbar_neck` | `Soapbar Neck` | `[Neck]` | `Soapbar Neck [Neck] v2.1.1` | 27 | **Zero-Scroll** | Solo neck soapbar humbucker with active buffer |
+| `soapbar_bridge` | `Soapbar Bridge` | `[Bridge]` | `Soapbar Bridge [Bridge] v2.1.1` | 31 | **Zero-Scroll** | Solo bridge soapbar humbucker with active buffer |
 | `rickenbacker_clank` | `Rickenbacker Clank` | `[Bridge]` | `Rickenbacker Clank [Bridge] v2.1.1` | 34 | **Zero-Scroll** | Classic 4003 bridge coil with high-pass clank |
 | `p_mm_parallel` | `P∕MM Parallel` | `[Parallel]` | `P∕MM Parallel [Parallel] v2.1.1` | 31 | **Zero-Scroll** | Split-P + MM bridge in parallel with active buffer |
 | `p_mm_series` | `P∕MM Series` | `[Series]` | `P∕MM Series [Series] v2.1.1` | 27 | **Zero-Scroll** | Split-P + MM bridge in series with active buffer |

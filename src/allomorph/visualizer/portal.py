@@ -7,6 +7,7 @@ from pathlib import Path
 
 from allomorph.config.scales import REPO_ROOT
 from allomorph.config.schema import InstrumentConfig
+from allomorph.config.voices import VOICES
 from allomorph.visualizer.schema import PortalInstrumentMeta
 
 DOCS_DIR = REPO_ROOT / "docs"
@@ -307,7 +308,7 @@ def build_portal_html(
       </div>
       <div class="meta-item">
         <div class="label" id="meta-label-secondary">Voicing Matrix</div>
-        <div class="value" id="meta-scale">24 Catalog Voicings: Select Any Source and Target</div>
+        <div class="value" id="meta-scale">{len(VOICES)} Catalog Voicings: Select Any Source and Target</div>
       </div>
       <div class="meta-item">
         <div class="label" id="meta-label-tertiary">Response Overlay</div>
@@ -348,7 +349,7 @@ def build_portal_html(
       frame.src = url;
       standaloneLink.href = url;
       metaName.textContent = 'Voicing Comparisons (3-Line Response)';
-      metaScale.textContent = '24 Catalog Voicings: Select Any Source and Target Voicing';
+      metaScale.textContent = '{len(VOICES)} Catalog Voicings: Select Any Source and Target Voicing';
       metaPickups.textContent = 'H_src (Cyan) | H_tgt (Orange) | H_diff (Purple) with Identity (0.00 dB)';
       metaViewMode.textContent = 'Interactive 3-Line Voicings';
       if (window.history.replaceState) window.history.replaceState(null, null, '#voicings');

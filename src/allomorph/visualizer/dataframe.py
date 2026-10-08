@@ -422,13 +422,16 @@ VOICE_FAMILIES: dict[str, str] = {
     "p_mm_series": "P∕MM",
     "mudbucker_deep": "Mudbucker",
     "upright_acoustic": "Upright",
+    "soapbar_pair": "Soapbar",
+    "soapbar_neck": "Soapbar",
+    "soapbar_bridge": "Soapbar",
 }
 
 
 def build_voicings_comparison_data(step: int = 3) -> dict[str, Any]:
     """
     Builds the compact data structure containing frequency responses and metadata
-    for all 24 target voicings in VOICES.
+    for all target voicings in VOICES.
     Used by voicings.html to display the 3-line graph:
       - Line 1: Source Voicing (H_src)
       - Line 2: Target Voicing (H_tgt)
@@ -468,6 +471,7 @@ def build_voicings_comparison_data(step: int = 3) -> dict[str, Any]:
         "Precision",
         "Jazz",
         "StingRay",
+        "Soapbar",
         "P∕MM",
         "Dingwall",
         "Rickenbacker",

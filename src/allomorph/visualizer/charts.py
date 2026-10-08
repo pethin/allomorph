@@ -115,7 +115,7 @@ def render_chart_to_file(
 def generate_voicings_page(target_html: Path | str | None = None) -> Path:
     """
     Renders the interactive 2D Voicing Comparison page (voicings.html):
-    Allows selecting any Source Voicing and Target Voicing from the 28 standard catalog voicings in VOICES.
+    Allows selecting any Source Voicing and Target Voicing from the standard catalog voicings in VOICES.
     Displays an interactive 3-line graph:
       1. Source Voicing (H_src)
       2. Target Voicing (H_tgt)
@@ -446,6 +446,7 @@ def generate_voicings_page(target_html: Path | str | None = None) -> Path:
         <button class="preset-chip" onclick="applyPreset('stingray_parallel', 'jazz_bridge_growl')">StingRay vs J Bridge</button>
         <button class="preset-chip" onclick="applyPreset('pj_passive', 'pj_active')">Passive vs Active PJ</button>
         <button class="preset-chip" onclick="applyPreset('precision_vintage', 'upright_acoustic')">P vs Upright</button>
+        <button class="preset-chip" onclick="applyPreset('soapbar_pair', 'precision_vintage')">Soapbar vs P</button>
         <button class="preset-chip" onclick="applyPreset('precision_vintage', 'precision_vintage')">Identity (Reset)</button>
       </div>
 
