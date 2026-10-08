@@ -17,7 +17,7 @@
       "instrument_id": "34in_standard_jazz",
       "instrument_version": 1,
       "source_voicing_version": 1,
-      "stem_count": 9,
+      "stem_count": 8,
       "stems": [
         {
           "filename": "Precision Vintage [Neck] v5.1.1.wav",
@@ -57,7 +57,7 @@
           "target_voicing_version": 1,
           "version": "v5.1.1",
           "tone_name": "Precision Active",
-          "sha256": "7fe54915981b769fd13341af0c67a6e86becc713bfad35189e2c11d8619e430f"
+          "sha256": "7e315653403b7cd5172a0811f03656987f463f9a8a2eb34e5275553ffb5f7647"
         },
         {
           "filename": "Precision Dub [Neck] v5.1.1.wav",
@@ -68,16 +68,6 @@
           "version": "v5.1.1",
           "tone_name": "Precision Dub",
           "sha256": "bbbfce1a1f81319561fb9c74d4033c4d3202235f9ea4874bfd168c71239e7587"
-        },
-        {
-          "filename": "Soapbar Neck [Neck] v5.1.1.wav",
-          "target_instrument": "34in_preamp_soapbar",
-          "target_instrument_version": 1,
-          "target_voicing": "neck_solo",
-          "target_voicing_version": 1,
-          "version": "v5.1.1",
-          "tone_name": "Soapbar Neck",
-          "sha256": "564556ca90f0d06f5549921bfea6491a017c47d8af18158e2784c81ef0148709"
         },
         {
           "filename": "Dingwall Middle [Neck] v5.1.1.wav",
@@ -122,7 +112,7 @@
       "instrument_id": "34in_standard_jazz",
       "instrument_version": 1,
       "source_voicing_version": 1,
-      "stem_count": 7,
+      "stem_count": 6,
       "stems": [
         {
           "filename": "Jazz Bridge Growl [Bridge] v5.1.1.wav",
@@ -153,16 +143,6 @@
           "version": "v5.1.1",
           "tone_name": "StingRay Series",
           "sha256": "7a99e37e26e7bce12606065d3bc8491a64197d5589929c4c9e5f8c2c55ac37e9"
-        },
-        {
-          "filename": "Soapbar Bridge [Bridge] v5.1.1.wav",
-          "target_instrument": "34in_preamp_soapbar",
-          "target_instrument_version": 1,
-          "target_voicing": "bridge_solo",
-          "target_voicing_version": 1,
-          "version": "v5.1.1",
-          "tone_name": "Soapbar Bridge",
-          "sha256": "5881b26993cdf00b783777791730b012959b5bbe3dcc40e9054b1ab449174165"
         },
         {
           "filename": "Dingwall Bridge [Bridge] v5.1.1.wav",
@@ -207,7 +187,7 @@
       "instrument_id": "34in_standard_jazz",
       "instrument_version": 1,
       "source_voicing_version": 1,
-      "stem_count": 8,
+      "stem_count": 7,
       "stems": [
         {
           "filename": "Jazz Pair Mids [Parallel] v5.1.1.wav",
@@ -228,16 +208,6 @@
           "version": "v5.1.1",
           "tone_name": "Jazz Pair Active",
           "sha256": "f7d3caeaf89f29c393f28ac2a97cd367d7ae40e0b57ba6b23e2ffae65d3836ef"
-        },
-        {
-          "filename": "Soapbar Pair [Parallel] v5.1.1.wav",
-          "target_instrument": "34in_preamp_soapbar",
-          "target_instrument_version": 1,
-          "target_voicing": "pair_parallel",
-          "target_voicing_version": 1,
-          "version": "v5.1.1",
-          "tone_name": "Soapbar Pair",
-          "sha256": "b3c1607e0897a21effbcefd77d5d11cf53ea715a2e1c8e330d64ede7dfb743a8"
         },
         {
           "filename": "Dingwall Parallel [Parallel] v5.1.1.wav",
@@ -298,7 +268,7 @@
       "base_dry_sha256": "7b361f99d72cf978d39e28e5e8b461b168eaee31919f63e4153ba76ce0609401",
       "dry_file": "dry v5.1.1.wav",
       "dry_version": "v5.1.1",
-      "dry_sha256": "bf2bb862f3661fe9d449700983e0a35e1c3e15450473a0a24a2405345ec11164",
+      "dry_sha256": "90068d59ff27b22b13b292f18b9d67d091b8c2a1365c1dc1b6931c84c9ba32d5",
       "instrument_id": "34in_standard_jazz",
       "instrument_version": 1,
       "source_voicing_version": 1,
@@ -312,7 +282,7 @@
       "base_dry_sha256": "7b361f99d72cf978d39e28e5e8b461b168eaee31919f63e4153ba76ce0609401",
       "dry_file": "dry v5.1.1.wav",
       "dry_version": "v5.1.1",
-      "dry_sha256": "3a6be0ee735cf8e4a450a455de5e12c7632c8e3897dfe524b2b0707daaef0626",
+      "dry_sha256": "7092266cdff9a2a150eea04b61f8e2135b6a1fda751e866b35687e7ec5f288f5",
       "instrument_id": "34in_standard_jazz",
       "instrument_version": 1,
       "source_voicing_version": 1,

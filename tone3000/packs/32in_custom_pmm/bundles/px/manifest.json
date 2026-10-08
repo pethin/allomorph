@@ -10,7 +10,7 @@
   "instrument_id": "32in_custom_pmm",
   "instrument_version": 1,
   "source_voicing_version": 1,
-  "stem_count": 10,
+  "stem_count": 9,
   "stems": [
     {
       "filename": "Precision Vintage [Neck] v5.1.1.wav",
@@ -50,7 +50,7 @@
       "target_voicing_version": 1,
       "version": "v5.1.1",
       "tone_name": "Precision Active",
-      "sha256": "7fe54915981b769fd13341af0c67a6e86becc713bfad35189e2c11d8619e430f"
+      "sha256": "7e315653403b7cd5172a0811f03656987f463f9a8a2eb34e5275553ffb5f7647"
     },
     {
       "filename": "Precision Dub [Neck] v5.1.1.wav",
@@ -71,16 +71,6 @@
       "version": "v5.1.1",
       "tone_name": "Jazz Neck Warm",
       "sha256": "975c419ec0130aff4e0b0369663f55b6f679a6f943c1e15dc85e340969a3b59d"
-    },
-    {
-      "filename": "Soapbar Neck [Neck] v5.1.1.wav",
-      "target_instrument": "34in_preamp_soapbar",
-      "target_instrument_version": 1,
-      "target_voicing": "neck_solo",
-      "target_voicing_version": 1,
-      "version": "v5.1.1",
-      "tone_name": "Soapbar Neck",
-      "sha256": "564556ca90f0d06f5549921bfea6491a017c47d8af18158e2784c81ef0148709"
     },
     {
       "filename": "Dingwall Middle [Neck] v5.1.1.wav",

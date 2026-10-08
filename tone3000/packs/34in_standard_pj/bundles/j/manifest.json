@@ -10,7 +10,7 @@
   "instrument_id": "34in_standard_pj",
   "instrument_version": 1,
   "source_voicing_version": 1,
-  "stem_count": 8,
+  "stem_count": 7,
   "stems": [
     {
       "filename": "Jazz Bridge Growl [Bridge] v5.1.1.wav",
@@ -51,16 +51,6 @@
       "version": "v5.1.1",
       "tone_name": "StingRay Series",
       "sha256": "7a99e37e26e7bce12606065d3bc8491a64197d5589929c4c9e5f8c2c55ac37e9"
-    },
-    {
-      "filename": "Soapbar Bridge [Bridge] v5.1.1.wav",
-      "target_instrument": "34in_preamp_soapbar",
-      "target_instrument_version": 1,
-      "target_voicing": "bridge_solo",
-      "target_voicing_version": 1,
-      "version": "v5.1.1",
-      "tone_name": "Soapbar Bridge",
-      "sha256": "5881b26993cdf00b783777791730b012959b5bbe3dcc40e9054b1ab449174165"
     },
     {
       "filename": "Dingwall Bridge [Bridge] v5.1.1.wav",
