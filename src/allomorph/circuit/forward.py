@@ -73,28 +73,29 @@ def _stft(x: np.ndarray, n_fft: int, hop_length: int) -> np.ndarray:
     x_pad = np.pad(x, (n_fft // 2, n_fft // 2), mode="constant")
     n_frames = 1 + (len(x_pad) - n_fft) // hop_length
     frames = np.lib.stride_tricks.as_strided(
-        x_pad, shape=(n_frames, n_fft),
-        strides=(x_pad.strides[0] * hop_length, x_pad.strides[0])
+        x_pad, shape=(n_frames, n_fft), strides=(x_pad.strides[0] * hop_length, x_pad.strides[0])
     )
     window = np.hanning(n_fft)
     return np.fft.rfft(frames * window, axis=1)
+
 
 def _istft(X: np.ndarray, n_fft: int, hop_length: int, orig_len: int) -> np.ndarray:
     n_frames = X.shape[0]
     x_out = np.zeros(n_frames * hop_length + n_fft, dtype=np.float64)
     window_sq = np.zeros_like(x_out)
     win = np.hanning(n_fft)
-    
+
     frames = np.fft.irfft(X, n=n_fft, axis=1)
     for i in range(n_frames):
         start = i * hop_length
         x_out[start : start + n_fft] += frames[i] * win
         window_sq[start : start + n_fft] += win**2
-        
+
     mask = window_sq > 1e-10
     x_out[mask] /= window_sq[mask]
-    
+
     return x_out[n_fft // 2 : n_fft // 2 + orig_len]
+
 
 def resolve_target_voicing(
     voicing: VoicingConfig | str,
@@ -338,7 +339,7 @@ def simulate_instrument_voicing(
 
     # 2. Active Preamp EQ Contour H_preamp(f)
     circ_preamp = getattr(circ_model, "preamp", None) if circ_model is not None else None
-    
+
     if voicing_cfg.preamp_bands:
         h_pre_raw = compute_active_preamp_transfer(voicing_cfg.preamp_bands, s)
         h_preamp = np.abs(h_pre_raw).astype(np.float64)
@@ -545,45 +546,54 @@ def simulate_instrument_voicing(
             if len(H_channels_arr) > 1 and delta_samples > 0:
                 P_coh_raw = np.abs(np.sum(H_channels_arr, axis=0)) ** 2
                 P_incoh = np.sum(np.abs(H_channels_arr) ** 2, axis=0)
-                
+
                 eps_quad = 0.18
                 P_coh_reg = P_coh_raw + (eps_quad**2) * P_incoh
-                
+
                 H_dc = np.abs(H_channels_arr[:, 0])
                 total_w = np.sum(H_dc)
-                dc_incoh = np.sum(H_dc ** 2)
-                dc_norm = math.sqrt(total_w**2 + (eps_quad**2) * dc_incoh) / total_w if total_w > 0 else 1.0
+                dc_incoh = np.sum(H_dc**2)
+                dc_norm = (
+                    math.sqrt(total_w**2 + (eps_quad**2) * dc_incoh) / total_w
+                    if total_w > 0
+                    else 1.0
+                )
 
                 delta_tau = delta_samples / 48000.0
                 f_notch = 1.0 / (2.0 * delta_tau)
                 f_mid = 1.35 * f_notch
                 f_sigma = max(0.35 * f_notch, 1.0)
                 gamma = 0.5 * (1.0 - np.tanh((f_bins - f_mid) / f_sigma))
-                
+
                 M_blend = np.sqrt(gamma * P_coh_reg + (1.0 - gamma) * P_incoh) / dc_norm
-                
-                
+
                 n_fft = 4096
                 hop_length = 1024
-                
+
                 # STFT Magnitude Forcing (Perfect physical realization of spatial incoherence without FIR ringing)
                 X_branches = [_stft(b, n_fft, hop_length) for b in branch_audios]
                 X_coh = np.sum(X_branches, axis=0)
-                P_incoh_stft = np.sum([np.abs(X)**2 for X in X_branches], axis=0)
-                
-                f_stft = np.fft.rfftfreq(n_fft, d=1.0/48000.0)
+                P_incoh_stft = np.sum([np.abs(X) ** 2 for X in X_branches], axis=0)
+
+                f_stft = np.fft.rfftfreq(n_fft, d=1.0 / 48000.0)
                 gamma_stft = 0.5 * (1.0 - np.tanh((f_stft - f_mid) / f_sigma))
                 gamma_stft = gamma_stft[np.newaxis, :]
-                
-                M_target = np.sqrt(gamma_stft * (np.abs(X_coh)**2 + (eps_quad**2) * P_incoh_stft) + (1.0 - gamma_stft) * P_incoh_stft) / dc_norm
-                
+
+                M_target = (
+                    np.sqrt(
+                        gamma_stft * (np.abs(X_coh) ** 2 + (eps_quad**2) * P_incoh_stft)
+                        + (1.0 - gamma_stft) * P_incoh_stft
+                    )
+                    / dc_norm
+                )
+
                 phase_ref = X_branches[0].copy()
                 mask = np.abs(X_coh) < 1e-6
                 phase_ref[mask] = X_branches[0][mask] if len(X_branches) > 0 else 0.0
-                
+
                 X_out = M_target * np.exp(1j * np.angle(phase_ref))
                 composite_audio = _istft(X_out, n_fft, hop_length, n_samples)
-                
+
                 mag_spectrum = M_blend
             elif len(H_channels_arr) > 1:
                 composite_audio = raw_sum
@@ -650,7 +660,7 @@ def simulate_instrument_voicing(
             and not getattr(circ_model, "no_eq", False)
         )
         if apply_saturation and (voicing_cfg.sensor_type == "magnetic" or has_direct_dynamics):
-            sp = next(iter(inst.pickups.values()))
+            sp = pickup_cfg if pickup_cfg is not None else next(iter(inst.pickups.values()))
             sp_mag = sp.magnet_type or (
                 "active" if getattr(inst, "electronics", "") == "active" else "alnico_v"
             )
@@ -698,8 +708,12 @@ def simulate_instrument_voicing(
             ).astype(np.float64)
 
         if not np.allclose(H_downstream, 1.0, atol=1e-4):
-            fir_down = synthesize_minimum_phase_fir(H_downstream, num_taps=num_taps, normalize=False)
-            filtered = fft_convolve(filtered, np.asarray(fir_down, dtype=np.float64), mode="causal")[:n_samples]
+            fir_down = synthesize_minimum_phase_fir(
+                H_downstream, num_taps=num_taps, normalize=False
+            )
+            filtered = fft_convolve(
+                filtered, np.asarray(fir_down, dtype=np.float64), mode="causal"
+            )[:n_samples]
 
     # 9. Sub-Audible DC-Blocking Filter (8 Hz)
     if dc_block:
@@ -736,8 +750,9 @@ def simulate_instrument_voicing(
         else:
             in_rms = float(np.sqrt(np.mean(input_mono**2)))
             out_rms = float(np.sqrt(np.mean(filtered**2)))
-            if in_rms > 1e-9 and out_rms > 1e-9:
-                filtered = filtered * (in_rms / out_rms)
+            target_rms = 10.0 ** (float(target_dbfs) / 20.0) if target_dbfs is not None else in_rms
+            if out_rms > 1e-9:
+                filtered = filtered * (target_rms / out_rms)
     elif normalize == "rms":
         target_rms = (
             10.0 ** (target_dbfs / 20.0)
@@ -924,8 +939,18 @@ def simulate_circuit_audio(
         blend_pos = getattr(harness_controls, "blend_pos", blend_pos)
         pot_taper = getattr(harness_controls, "pot_taper", pot_taper)
 
-    if vol_pos is not None or tone_pos is not None or blend_pos is not None:
-        model.apply_pot_positions(vol_pos=vol_pos, tone_pos=tone_pos, blend_pos=blend_pos)
+    if (
+        vol_pos is not None
+        or tone_pos is not None
+        or blend_pos is not None
+        or pot_taper is not None
+    ):
+        model.apply_pot_positions(
+            vol_pos=vol_pos,
+            tone_pos=tone_pos,
+            blend_pos=blend_pos,
+            pot_taper=pot_taper,
+        )
 
     # 1. Audio Loading
     if isinstance(input_audio, np.ndarray):

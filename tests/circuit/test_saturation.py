@@ -990,3 +990,126 @@ def test_electromechanical_back_emf_braking():
     rms_no_emf = np.sqrt(np.mean(out_no_emf**2))
     rms_emf = np.sqrt(np.mean(out_emf**2))
     assert rms_emf <= rms_no_emf, "Back-EMF damping must reduce or maintain total energy"
+
+
+def test_apply_algebraic_rail_limiter_extreme_values():
+    """Verify Order-8 algebraic rail limiter avoids numerical overflow on extreme inputs (|u| >= 50)."""
+    from allomorph.circuit.saturation import apply_algebraic_rail_limiter
+
+    vsat = 0.99
+    # Scalar tests
+    assert math.isclose(apply_algebraic_rail_limiter(1e10, vsat=vsat), vsat)
+    assert math.isclose(apply_algebraic_rail_limiter(-1e10, vsat=vsat), -vsat)
+    assert math.isclose(apply_algebraic_rail_limiter(1e40, vsat=vsat), vsat)
+    assert math.isclose(apply_algebraic_rail_limiter(-1e40, vsat=vsat), -vsat)
+
+    # Array tests
+    arr = np.array([0.0, 0.5, 50.0, -50.0, 1e20, -1e20], dtype=np.float64)
+    res = apply_algebraic_rail_limiter(arr, vsat=vsat)
+    assert isinstance(res, np.ndarray)
+    assert np.all(np.abs(res) <= vsat)
+    assert math.isclose(res[4], vsat)
+    assert math.isclose(res[5], -vsat)
+
+
+def test_conformal_geometric_clearance_extreme_kappa_geom():
+    """Verify regularized denominator prevents division by zero when kappa_geom * tanh approaches 1.0."""
+    sr = 48000
+    vsat = 0.5
+    t = np.linspace(0, 0.05, int(sr * 0.05), endpoint=False)
+    # Strong positive signal where tanh(x / vsat) -> 1.0
+    sig = (5.0 * np.sin(2.0 * np.pi * 100.0 * t) + 5.0).astype(np.float32)
+
+    # With kappa_geom=1.0, unregularized denominator (1.0 - 1.0 * 1.0) would divide by zero
+    out = apply_oversampled_saturation(sig, vsat=vsat, kappa_geom=1.0, oversample=1)
+    assert np.all(np.isfinite(out)), (
+        "Output must remain strictly finite with regularized denominator"
+    )
+    assert np.max(np.abs(out)) <= 1.0, "Output must be bounded"
+
+
+def test_apply_algebraic_rail_limiter_edge_cases():
+    """Verify limiter edge cases: vsat <= 0 and empty input."""
+    from allomorph.circuit.saturation import apply_algebraic_rail_limiter
+
+    # Scalar vsat <= 0
+    assert apply_algebraic_rail_limiter(0.5, vsat=0.0) == 0.0
+    assert apply_algebraic_rail_limiter(0.5, vsat=-1.0) == 0.0
+
+    # Array vsat <= 0
+    arr = np.array([0.1, 0.5, -0.5])
+    assert np.array_equal(apply_algebraic_rail_limiter(arr, vsat=0.0), np.zeros(3))
+
+    # Empty array
+    empty = np.array([])
+    assert len(apply_algebraic_rail_limiter(empty, vsat=0.5)) == 0
+
+
+def test_apply_dahl_hysteresis_edge_cases():
+    """Verify Dahl hysteresis edge cases: eta <= 0 and empty input."""
+    from allomorph.circuit.saturation import apply_dahl_hysteresis
+
+    arr = np.array([0.1, 0.2, 0.3])
+    # eta <= 0 returns array unchanged
+    assert np.array_equal(apply_dahl_hysteresis(arr, eta=0.0), arr)
+    assert np.array_equal(apply_dahl_hysteresis(arr, eta=-0.5), arr)
+
+    # Empty array
+    empty = np.array([])
+    assert len(apply_dahl_hysteresis(empty, eta=0.05)) == 0
+
+
+def test_apply_elliptical_orbit_projection_chunked_and_edge_cases():
+    """Verify elliptical orbit edge cases and large signal chunked path (> 262144 samples)."""
+    from allomorph.circuit.saturation import apply_elliptical_orbit_projection
+
+    arr = np.array([0.1, 0.2, 0.3])
+    # Edge cases returning input unchanged
+    assert np.array_equal(apply_elliptical_orbit_projection(arr, vsat=0.5, kappa_orbit=0.0005), arr)
+    assert np.array_equal(apply_elliptical_orbit_projection(arr, vsat=0.0, kappa_orbit=0.05), arr)
+    assert len(apply_elliptical_orbit_projection(np.array([]), vsat=0.5, kappa_orbit=0.05)) == 0
+
+    # Large signal exceeding block_size = 262144
+    n_large = 300000
+    t = np.linspace(0, 1.0, n_large, endpoint=False)
+    large_sig = (0.5 * np.sin(2.0 * np.pi * 100.0 * t)).astype(np.float32)
+    out_large = apply_elliptical_orbit_projection(large_sig, vsat=0.5, kappa_orbit=0.05)
+    assert len(out_large) == n_large
+    assert np.all(np.isfinite(out_large))
+
+
+def test_apply_state_space_saturation_with_config_and_1x_oversample():
+    """Verify apply_oversampled_saturation with SaturationConfig, oversample=1, touch filter, and clearance."""
+    from allomorph.circuit.saturation import apply_oversampled_saturation
+    from allomorph.circuit.schema import SaturationConfig
+
+    sr = 48000
+    t = np.linspace(0, 0.05, int(sr * 0.05), endpoint=False)
+    # Excursion exceeding 0.10 threshold with both positive and negative values
+    sig = (0.6 * np.sin(2.0 * np.pi * 100.0 * t)).astype(np.float32)
+
+    config = SaturationConfig(
+        vsat=0.5,
+        alpha=0.1,
+        alpha3=0.05,
+        eta_hyst=0.04,
+        k_sag=0.05,
+        k_eddy=0.02,
+        kappa_orbit=0.04,
+        tau_touch=0.005,
+        kappa_geom=0.15,
+        oversample=1,
+        displacement_weighting=True,
+        magnet_drag=True,
+    )
+
+    out = apply_oversampled_saturation(sig, config=config)
+    assert len(out) == len(sig)
+    assert np.all(np.isfinite(out))
+    assert np.max(np.abs(out)) <= 1.0
+
+    # Test unipolar path (min >= 0.0)
+    unipolar_sig = (0.3 * np.sin(2.0 * np.pi * 100.0 * t) + 0.4).astype(np.float32)
+    out_uni = apply_oversampled_saturation(unipolar_sig, config=config)
+    assert len(out_uni) == len(unipolar_sig)
+    assert np.all(np.isfinite(out_uni))

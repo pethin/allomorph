@@ -219,6 +219,7 @@ def read_wav(
     else:
         audio = (np.frombuffer(raw, dtype=np.uint8).astype(target_dtype) - 128.0) / 128.0
 
+    audio = np.clip(audio, -1.0, 1.0)
     if n_ch > 1:
         audio = audio.reshape(-1, n_ch).T
     return audio, sr
@@ -269,7 +270,7 @@ def fft_convolve(
             block_size = 1 << (m + 1).bit_length()
 
         l = block_size - m + 1
-        num_blocks = (n + l - 1) // l
+        num_blocks = (out_len + l - 1) // l
         pad_end = num_blocks * l - n
         x_padded = np.pad(x, (m - 1, pad_end), mode="constant")
 
@@ -330,7 +331,8 @@ def fft_convolve_multi(
     if n > 32768 and m_max <= 32768:
         block_size = 65536
         l = block_size - m_max + 1
-        num_blocks = (n + l - 1) // l
+        out_len_max = n + m_max - 1
+        num_blocks = (out_len_max + l - 1) // l
         pad_end = num_blocks * l - n
         x_padded = np.pad(x_arr, (m_max - 1, pad_end), mode="constant")
         shape = (num_blocks, block_size)
@@ -468,11 +470,31 @@ def compute_lufs(
         b_rlb = (1.0, -2.0, 1.0)
         a_rlb = (1.0, -1.99004745483398, 0.99007225036621)
     else:
-        fs_ratio = 48000.0 / sample_rate
-        b_pre = (1.53512485958697, -2.69169618940638 * fs_ratio, 1.19839281085285)
-        a_pre = (1.0, -1.69065929318241 * fs_ratio, 0.73248077421585)
-        b_rlb = (1.0, -2.0, 1.0)
-        a_rlb = (1.0, -1.99004745483398 * fs_ratio, 0.99007225036621)
+        # Exact ITU-R BS.1770-4 bilinear transform for arbitrary sample rate
+        k_pre = math.tan(math.pi * 1681.9744509555319 / sample_rate)
+        vh = 10.0 ** (3.99984385397 / 20.0)
+        vb = vh**0.499666774155
+        a0_pre = 1.0 + k_pre / 0.7071752369554193 + k_pre * k_pre
+        b_pre = (
+            (vh + vb * k_pre / 0.7071752369554193 + k_pre * k_pre) / a0_pre,
+            2.0 * (k_pre * k_pre - vh) / a0_pre,
+            (vh - vb * k_pre / 0.7071752369554193 + k_pre * k_pre) / a0_pre,
+        )
+        a_pre = (
+            1.0,
+            2.0 * (k_pre * k_pre - 1.0) / a0_pre,
+            (1.0 - k_pre / 0.7071752369554193 + k_pre * k_pre) / a0_pre,
+        )
+
+        k_rlb = math.tan(math.pi * 38.13547087602444 / sample_rate)
+        q_rlb = 0.5003270373253953
+        a0_rlb = 1.0 + k_rlb / q_rlb + k_rlb * k_rlb
+        b_rlb = (1.0 / a0_rlb, -2.0 / a0_rlb, 1.0 / a0_rlb)
+        a_rlb = (
+            1.0,
+            2.0 * (k_rlb * k_rlb - 1.0) / a0_rlb,
+            (1.0 - k_rlb / q_rlb + k_rlb * k_rlb) / a0_rlb,
+        )
 
     # 1. Filter signal through pre-filter then RLB filter
     y_pre = apply_biquad(mono, b_pre, a_pre)

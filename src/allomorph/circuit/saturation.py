@@ -335,6 +335,9 @@ else:
         for i in range(n):
             val = x_arr[i]
             u = val * inv_vsat
+            if abs(u) >= 50.0:
+                out[i] = math.copysign(vsat, val)
+                continue
             u2 = u * u
             u4 = u2 * u2
             u8 = u4 * u4
@@ -367,6 +370,8 @@ def apply_algebraic_rail_limiter(
         if vsat <= 0.0:
             return 0.0
         u = val / vsat
+        if abs(u) >= 50.0:
+            return math.copysign(vsat, val)
         u8 = (u * u * u * u) ** 2
         return val / math.sqrt(math.sqrt(math.sqrt(1.0 + u8)))
 
@@ -608,7 +613,7 @@ def apply_oversampled_saturation(
                     x_disp, vsat=vsat, kappa_orbit=kappa_orbit
                 )
             if kappa_geom > 0.0 and vsat > 0.0:
-                x_disp = x_disp / (1.0 - kappa_geom * np.tanh(x_disp / vsat))
+                x_disp = x_disp / np.maximum(1.0 - kappa_geom * np.tanh(x_disp / vsat), 1e-6)
             v_asym = x_disp * (1.0 + x_disp * (alpha + alpha3 * x_disp))
             v_sat = vsat * np.tanh(v_asym / vsat)
             if slew_limit and vsat > 0.0 and f_slew > 0.0:
@@ -621,7 +626,7 @@ def apply_oversampled_saturation(
             if kappa_orbit > 0.0:
                 x = apply_elliptical_orbit_projection(x, vsat=vsat, kappa_orbit=kappa_orbit)
             if kappa_geom > 0.0 and vsat > 0.0:
-                x = x / (1.0 - kappa_geom * np.tanh(x / vsat))
+                x = x / np.maximum(1.0 - kappa_geom * np.tanh(x / vsat), 1e-6)
             v_asym = x * (1.0 + x * (alpha + alpha3 * x))
             out = vsat * np.tanh(v_asym / vsat)
             if slew_limit and vsat > 0.0 and f_slew > 0.0:
@@ -659,7 +664,7 @@ def apply_oversampled_saturation(
                 x_up_disp, vsat=vsat, kappa_orbit=kappa_orbit
             )
         if kappa_geom > 0.0 and vsat > 0.0:
-            x_up_disp = x_up_disp / (1.0 - kappa_geom * np.tanh(x_up_disp / vsat))
+            x_up_disp = x_up_disp / np.maximum(1.0 - kappa_geom * np.tanh(x_up_disp / vsat), 1e-6)
         v_asym = x_up_disp * (1.0 + x_up_disp * (alpha + alpha3 * x_up_disp))
         v_sat = vsat * np.tanh(v_asym / vsat)
         if slew_limit and vsat > 0.0 and f_slew > 0.0:
@@ -676,7 +681,7 @@ def apply_oversampled_saturation(
         if kappa_orbit > 0.0:
             x_up = apply_elliptical_orbit_projection(x_up, vsat=vsat, kappa_orbit=kappa_orbit)
         if kappa_geom > 0.0 and vsat > 0.0:
-            x_up = x_up / (1.0 - kappa_geom * np.tanh(x_up / vsat))
+            x_up = x_up / np.maximum(1.0 - kappa_geom * np.tanh(x_up / vsat), 1e-6)
         v_asym = x_up * (1.0 + x_up * (alpha + alpha3 * x_up))
         v_sat = vsat * np.tanh(v_asym / vsat)
         if slew_limit and vsat > 0.0 and f_slew > 0.0:

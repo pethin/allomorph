@@ -375,6 +375,7 @@ def main(argv: Sequence[str] | None = None):
             print(f"\n[Tone Pack] Exporting tone pack bundles for {inst}...")
             export_tone_pack(
                 inst,
+                input_wav=input_wav,
                 max_samples=args.max_samples,
                 jobs=effective_jobs,
                 overwrite=force_exec,
@@ -426,6 +427,7 @@ def main(argv: Sequence[str] | None = None):
         for inst in instruments_to_run:
             export_tone_pack(
                 inst,
+                input_wav=input_wav,
                 max_samples=args.max_samples,
                 jobs=effective_jobs,
                 overwrite=force_exec,

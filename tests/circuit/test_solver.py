@@ -300,8 +300,12 @@ def test_voice_09b_series_netlist_and_transfer():
     assert m09b.L / m09.L == pytest.approx(4.0)
     assert m09b.Rdc / m09.Rdc == pytest.approx(4.0)
 
-    c09 = np.array(compute_circuit_transfer_functions(m09, freqs=FREQS, include_active_preamp=True)[0])
-    c09b = np.array(compute_circuit_transfer_functions(m09b, freqs=FREQS, include_active_preamp=True)[0])
+    c09 = np.array(
+        compute_circuit_transfer_functions(m09, freqs=FREQS, include_active_preamp=True)[0]
+    )
+    c09b = np.array(
+        compute_circuit_transfer_functions(m09b, freqs=FREQS, include_active_preamp=True)[0]
+    )
 
     peak_09 = FREQS[np.argmax(c09)]
     peak_09b = FREQS[np.argmax(c09b)]
@@ -543,3 +547,170 @@ def test_smooth_soft_knee_db_cinf_properties():
     assert np.all(dy_dx > 0.0)
     # Second derivative must be continuous and bounded everywhere
     assert np.max(np.abs(d2y_dx2)) < 1.0
+
+
+def test_compute_active_preamp_biquads():
+    """Verify bilinear transform biquad coefficient generation for active preamp bands."""
+    from allomorph.circuit.solver import compute_active_preamp_biquads
+    from allomorph.config.schema import PreampBandConfig
+
+    bands = [
+        PreampBandConfig(type="low_shelf", freq_hz=100.0, gain_db=6.0),
+        PreampBandConfig(type="high_shelf", freq_hz=4000.0, gain_db=-4.0),
+        PreampBandConfig(type="bell", freq_hz=1000.0, gain_db=3.0, q=1.5),
+        PreampBandConfig(type="bell", freq_hz=800.0, gain_db=0.0),  # Should be bypassed
+    ]
+
+    biquads = compute_active_preamp_biquads(bands, fs=48000.0)
+    # Flat band is bypassed, so 3 biquads generated
+    assert len(biquads) == 3
+    for b0, b1, b2, a0, a1, a2 in biquads:
+        assert a0 == 1.0
+        assert all(math.isfinite(val) for val in (b0, b1, b2, a1, a2))
+
+
+def test_evaluate_analog_band_types():
+    """Verify continuous s-domain evaluation for low-pass, high-pass, and flat bands."""
+    from allomorph.circuit.solver import evaluate_analog_band
+    from allomorph.config.schema import PreampBandConfig
+
+    s = 2.0 * np.pi * 1000.0 * 1j
+
+    # Low pass
+    lp_band = PreampBandConfig(type="low_pass", freq_hz=500.0, gain_db=0.0)
+    h_lp = evaluate_analog_band(lp_band, s)
+    assert abs(h_lp) < 1.0
+
+    # High pass
+    hp_band = PreampBandConfig(type="high_pass", freq_hz=2000.0, gain_db=0.0)
+    h_hp = evaluate_analog_band(hp_band, s)
+    assert abs(h_hp) < 1.0
+
+    # Flat gain (bypassed)
+    flat_band = PreampBandConfig(type="bell", freq_hz=1000.0, gain_db=0.0)
+    h_flat = evaluate_analog_band(flat_band, s)
+    assert abs(h_flat - 1.0) < 1e-6
+
+
+def test_compute_active_preamp_eq_variants():
+    """Verify compute_active_preamp_eq with PreampConfig, list of bands, and preset strings."""
+    from allomorph.circuit.solver import compute_active_preamp_eq
+    from allomorph.config.schema import PreampBandConfig, PreampConfig
+
+    s = 2.0 * np.pi * 1000.0 * 1j
+
+    # 1. Preset name
+    h_preset = compute_active_preamp_eq("sadowsky_2band", s)
+    assert isinstance(h_preset, (np.ndarray, complex))
+
+    # 2. PreampConfig object
+    cfg = PreampConfig(
+        id="custom_pre",
+        name="Custom Preamp",
+        description="Custom preamp description",
+        input_impedance_meg=1.0,
+        output_impedance_ohm=100.0,
+        gain_db=3.0,
+        bands=[PreampBandConfig(type="low_shelf", freq_hz=100.0, gain_db=4.0)],
+    )
+    h_cfg = compute_active_preamp_eq(cfg, s)
+    assert np.all(np.isfinite(h_cfg))
+
+    # 3. List of PreampBandConfig
+    h_list = compute_active_preamp_eq(cfg.bands, s)
+    assert np.all(np.isfinite(h_list))
+
+
+def test_compute_core_impedance_jacobians_branches():
+    """Verify core impedance sensitivity Jacobians across chi_mu and k_skin branches."""
+    from allomorph.circuit.solver import compute_core_impedance_jacobians
+
+    s = 2.0 * np.pi * 1000.0 * 1j
+
+    # Both chi_mu > 0 and k_skin > 0
+    jac = compute_core_impedance_jacobians(
+        s,
+        L=4.0,
+        L_core=1.5,
+        R_core=80000.0,
+        chi_mu=0.15,
+        k_skin=0.08,
+        omega_skin=2.0 * math.pi * 3200.0,
+    )
+    assert "dZ_dL" in jac
+    assert "dZ_dchi_mu" in jac
+    assert "dZ_dk_skin" in jac
+    assert abs(jac["dZ_dchi_mu"]) > 0.0
+    assert abs(jac["dZ_dk_skin"]) > 0.0
+
+    # Zero core diffusion
+    jac_zero = compute_core_impedance_jacobians(s, L=4.0, chi_mu=0.0, k_skin=0.0)
+    assert jac_zero["dZ_dchi_mu"] == 0.0
+    assert jac_zero["dZ_dk_skin"] == 0.0
+
+
+def test_series_topology_and_blend_pot():
+    """Verify series circuit topology transfer functions and blend potentiometer current division."""
+    from allomorph.circuit import CircuitModel, compute_circuit_transfer_functions
+
+    model = CircuitModel(
+        topology="series",
+        L=4.0,
+        L_b=4.5,
+        Rdc=8000.0,
+        Rdc_b=9000.0,
+        Reddy=45000.0,
+        Reddy_b=50000.0,
+        blend_pos=0.5,
+    )
+
+    # Center detent: both pickups fully present
+    curves_mid = compute_circuit_transfer_functions(
+        model, freqs=[100.0, 1000.0, 3000.0], return_numpy=True
+    )
+    assert len(curves_mid) == 2
+    h_n_mid, h_b_mid = curves_mid
+    assert np.all(np.isfinite(h_n_mid))
+    assert np.all(np.isfinite(h_b_mid))
+
+    # Neck favored (blend_pos = 0.2 < 0.5)
+    model.blend_pos = 0.2
+    curves_neck = compute_circuit_transfer_functions(model, freqs=[1000.0], return_numpy=True)
+    assert curves_neck[0][0] > curves_neck[1][0], (
+        "Neck pickup should have higher gain when blend_pos < 0.5"
+    )
+
+    # Bridge favored (blend_pos = 0.8 > 0.5)
+    model.blend_pos = 0.8
+    curves_bridge = compute_circuit_transfer_functions(model, freqs=[1000.0], return_numpy=True)
+    assert curves_bridge[1][0] > curves_bridge[0][0], (
+        "Bridge pickup should have higher gain when blend_pos > 0.5"
+    )
+
+    # Unknown topology raises ValueError in solver
+    object.__setattr__(model, "topology", "unsupported_topology")
+    with pytest.raises(ValueError, match="Unknown circuit topology"):
+        compute_circuit_transfer_functions(model, freqs=[1000.0])
+
+
+def test_eval_pot_taper_curves():
+    """Verify evaluation of audio, linear, and reverse-audio potentiometer tapers."""
+    from allomorph.circuit.solver import eval_pot_taper
+
+    # Endpoints
+    assert math.isclose(eval_pot_taper(0.0, "audio"), 0.0, abs_tol=1e-12)
+    assert math.isclose(eval_pot_taper(1.0, "audio"), 1.0, abs_tol=1e-12)
+    assert math.isclose(eval_pot_taper(0.0, "linear"), 0.0, abs_tol=1e-12)
+    assert math.isclose(eval_pot_taper(1.0, "linear"), 1.0, abs_tol=1e-12)
+
+    # Audio taper at midpoint ~ 10-15% resistance
+    mid_audio = eval_pot_taper(0.5, "audio")
+    assert 0.05 < mid_audio < 0.25
+
+    # Linear taper at midpoint == 50%
+    mid_linear = eval_pot_taper(0.5, "linear")
+    assert math.isclose(mid_linear, 0.5, abs_tol=1e-4)
+
+    # Reverse audio taper at midpoint ~ 85-90% resistance
+    mid_rev = eval_pot_taper(0.5, "reverse_audio")
+    assert 0.75 < mid_rev < 0.95

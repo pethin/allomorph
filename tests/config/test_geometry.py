@@ -4,6 +4,8 @@ Tests for pickup and target voice coil geometry and coordinate resolution.
 
 import math
 
+import pytest
+
 from allomorph.circuit.schema import CircuitConfig
 from allomorph.config import (
     VOICES,
@@ -196,3 +198,142 @@ def test_resolve_pickup_coils_strict_errors():
         ValueError, match="must specify either 'pickup' or 'position_from_bridge_m'"
     ):
         resolve_pickup_coils(empty_component, inst)
+
+
+def test_infer_pole_type_and_geometry_branches():
+    from allomorph.config.geometry import _infer_pole_type
+    from allomorph.config.schema import CoilConfig, PickupConfig, VoiceConfig
+
+    # 1. From coil pole_type
+    c_rod = CoilConfig(position_from_bridge_m=0.08, pole_type="rod")
+    assert _infer_pole_type(coil=c_rod) == "rod"
+
+    # 2. From pickup pole_type
+    p_blade = PickupConfig(name="Blade Pickup", type="single", pole_type="blade")
+    assert _infer_pole_type(p_blade) == "blade"
+
+    # 3. From name/type containing 'blade' or 'bar'
+    p_bar = PickupConfig(name="Bar Magnet Pickup", type="single")
+    assert _infer_pole_type(p_bar) == "blade"
+
+    # 4. From EMG in name or type
+    p_emg = PickupConfig(name="EMG-40HZ", type="humbucker")
+    assert _infer_pole_type(p_emg) == "blade"
+
+    # 5. From active in magnet_type
+    p_act = PickupConfig(name="Active Sensor", type="single", magnet_type="active")
+    assert _infer_pole_type(p_act) == "blade"
+
+    # 6. From alnico or single_coil
+    p_aln = PickupConfig(name="Vintage Single", type="single_coil", magnet_type="alnico_v")
+    assert _infer_pole_type(p_aln) == "rod"
+
+    # 7. VoiceConfig inspection
+    v_blade = VoiceConfig(
+        id="v_b",
+        name="Blade Voice",
+        description="Test blade voice",
+        topology="Blade Humbucker",
+        fr=3000.0,
+        Q=1.5,
+        circuit=VOICES["precision_vintage"].circuit,
+    )
+    assert _infer_pole_type(v_blade) == "blade"
+
+
+def test_resolve_pickup_coils_composite_direct_and_humbuckers():
+    from allomorph.config.schema import CoilConfig, PickupComponentConfig, PickupConfig
+
+    # 1. Composite with explicit position_from_bridge_m component
+    comp_direct = PickupConfig(
+        name="Direct Composite",
+        type="composite",
+        components=[
+            PickupComponentConfig(
+                position_from_bridge_m=0.10,
+                aperture_width_in=0.75,
+                weight=1.0,
+                polarity=1.0,
+                strings=["all"],
+            )
+        ],
+    )
+    coils = resolve_pickup_coils(comp_direct)
+    assert len(coils) == 1
+    assert coils[0].position_from_bridge_m == 0.10
+
+    # 2. Explicit coils list on PickupConfig
+    explicit = PickupConfig(
+        name="Explicit Coils",
+        type="custom",
+        coils=[
+            CoilConfig(
+                position_from_bridge_m=0.12,
+                aperture_width_in=0.6,
+                weight=1.0,
+                polarity=1.0,
+                strings=["all"],
+            )
+        ],
+    )
+    res_exp = resolve_pickup_coils(explicit)
+    assert len(res_exp) == 1
+    assert res_exp[0].position_from_bridge_m == 0.12
+
+    # 3. Dual coil humbucker via coil_spacing_in > 0
+    hb = PickupConfig(
+        name="Humbucker",
+        type="humbucker",
+        position_from_bridge_m=0.08,
+        aperture_width_in=1.5,
+        coil_spacing_in=0.75,
+    )
+    hb_coils = resolve_pickup_coils(hb)
+    assert len(hb_coils) == 2
+    d_m = 0.75 * 0.0254
+    assert hb_coils[0].position_from_bridge_m == pytest.approx(0.08 - d_m / 2.0)
+    assert hb_coils[1].position_from_bridge_m == pytest.approx(0.08 + d_m / 2.0)
+
+    # 4. Standard single coil fallback
+    sc = PickupConfig(
+        name="Single Coil",
+        type="single",
+        position_from_bridge_m=0.08,
+        aperture_width_in=0.75,
+        coil_spacing_in=0.0,
+    )
+    sc_coils = resolve_pickup_coils(sc)
+    assert len(sc_coils) == 1
+    assert sc_coils[0].position_from_bridge_m == 0.08
+
+
+def test_resolve_voice_coils_empty_fallback():
+    from allomorph.config.schema import VoiceConfig
+
+    # Voice with no pickups and no coils falls back to default 0.088m coil
+    v_empty = VoiceConfig(
+        id="empty_voice",
+        name="Empty Voice",
+        description="Test empty voice",
+        topology="single",
+        fr=3000.0,
+        Q=1.5,
+        circuit=VOICES["precision_vintage"].circuit,
+    )
+    coils = resolve_voice_coils(v_empty)
+    assert len(coils) == 1
+    assert coils[0].position_from_bridge_m == 0.088
+
+
+def test_compute_effective_position_edge_cases():
+    from allomorph.config.schema import CoilConfig
+
+    # 1. Empty coils list returns default 0.08m
+    assert compute_effective_position([]) == 0.08
+
+    # 2. Total weight sum == 0 returns position of first coil
+    c0 = CoilConfig(position_from_bridge_m=0.15, weight=1.0)
+    c1 = CoilConfig(position_from_bridge_m=0.05, weight=1.0)
+    object.__setattr__(c0, "weight", 0.0)
+    object.__setattr__(c1, "weight", 0.0)
+    assert compute_effective_position([c0, c1]) == 0.15

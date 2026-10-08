@@ -261,7 +261,7 @@ VOICE_CATALOG_DESCRIPTIONS: dict[str, dict[str, str]] = {
         "family": "Progressive & Classic Rock Legends",
         "name": "Mudbucker Deep",
         "desc": (
-            "The legendary Gibson \"Mudbucker\": a dark, colossal wall of pure vintage "
+            'The legendary Gibson "Mudbucker": a dark, colossal wall of pure vintage '
             "bass rumble with zero top-end harshness—pure '60s and '70s British blues-rock."
         ),
     },
@@ -272,7 +272,7 @@ VOICE_CATALOG_DESCRIPTIONS: dict[str, dict[str, str]] = {
         "desc": (
             "Acoustic upright double bass: transforms your electric bass into a woody, "
             "resonant acoustic upright with natural body thump and organic finger feel. "
-            "Pair with 3 Sigma Audio \"Acoustic Upright Standard\" AST IRs in your cabinet "
+            'Pair with 3 Sigma Audio "Acoustic Upright Standard" AST IRs in your cabinet '
             "loader for authentic soundboard acoustic bloom."
         ),
     },
@@ -522,7 +522,9 @@ def generate_storefront_description(
                 seen_positions.add(pos_label)
                 lines.append(f"• [{pos_label}]: Select {b.pickup.name}")
         if is_active:
-            lines.append("• Onboard Active EQ (Bass, Mid, Treble): Set to Center Detents (Flat / 0 dB)")
+            lines.append(
+                "• Onboard Active EQ (Bass, Mid, Treble): Set to Center Detents (Flat / 0 dB)"
+            )
             lines.append("• Master Volume Knob: 100% (Wide Open)")
         else:
             lines.append("• Master Tone Knob: 100% (Wide Open across all models)")
@@ -530,7 +532,9 @@ def generate_storefront_description(
     else:
         lines.append("• Physical Volume Knob: 100% (Wide Open)")
         if is_active:
-            lines.append("• Onboard Active EQ (Bass, Mid, Treble): Set to Center Detents (Flat / 0 dB)")
+            lines.append(
+                "• Onboard Active EQ (Bass, Mid, Treble): Set to Center Detents (Flat / 0 dB)"
+            )
         else:
             lines.append("• Physical Tone Knob: 100% (Wide Open)")
 
@@ -615,6 +619,19 @@ def export_tone_pack(
     # 1. Partition instrument into pickup bundles
     bundles = partition_instrument_bundles(inst, catalog_targets=catalog_targets)
 
+    manifest_path = pack_dir / "manifest.json"
+    if not overwrite and manifest_path.exists():
+        all_bundles_exist = all(
+            (bundles_dir / b_name / "manifest.json").exists()
+            and (bundles_dir / b_name / "upload_instructions.txt").exists()
+            for b_name in bundles
+        )
+        if all_bundles_exist:
+            print(
+                f"\n[Tone Pack Exporter] Tone Pack already exists at '{pack_dir}'. Pass overwrite=True (or --force) to force repack."
+            )
+            return pack_dir
+
     # 2. Process each bundle
     manifest_entries: dict[str, Any] = {
         "instrument_id": inst.id,
@@ -652,13 +669,10 @@ def export_tone_pack(
         for old_wav in b_dir.glob("*.wav"):
             old_wav.unlink(missing_ok=True)
 
-        if (
-            max_samples is None
-            and is_wet_stem_valid(
-                source_wet_path,
-                base_dry_path=input_wav,
-                expected_version=dry_v_tag,
-            )
+        if max_samples is None and is_wet_stem_valid(
+            source_wet_path,
+            base_dry_path=input_wav,
+            expected_version=dry_v_tag,
         ):
             shutil.copyfile(source_wet_path, dry_dest)
         elif max_samples is None:
@@ -669,7 +683,7 @@ def export_tone_pack(
                 input_wav=input_wav,
                 output_wav=source_wet_path,
                 max_samples=None,
-                force=overwrite,
+                force=False,
             )
             shutil.copyfile(source_wet_path, dry_dest)
         else:

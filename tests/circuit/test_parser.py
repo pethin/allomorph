@@ -218,3 +218,113 @@ def test_magnet_properties_configuration():
     assert ideal.k_eddy == 0.0
     assert ideal.k_core == 0.0
     assert ideal.vsat == 20.0
+
+
+def test_load_circuit_formats_and_errors():
+    from allomorph.circuit.parser import load_circuit, parse_netlist
+    from allomorph.config.schema import PickupConfig
+
+    # 1. From existing CircuitModel (copy)
+    c_base = load_circuit("precision_vintage")
+    c_copy = load_circuit(c_base)
+    assert c_copy is not c_base
+    assert c_copy.L == c_base.L
+
+    # 2. From instrument ID string
+    c_inst = load_circuit("34in_standard_p")
+    assert c_inst.L > 0
+
+    # 3. Pickup without circuit raises ValueError
+    p_no_circ = PickupConfig(name="No Circuit", type="single", circuit=None)
+    with pytest.raises(ValueError, match="has no embedded circuit configuration"):
+        load_circuit(p_no_circ)
+
+    # 4. Deprecated .cir files raise ValueError
+    with pytest.raises(ValueError, match="Legacy SPICE ASCII netlists .* are deprecated"):
+        load_circuit("legacy_circuit.cir")
+
+    # 5. Non-existent circuit string raises ValueError
+    with pytest.raises(ValueError, match="Could not load circuit from"):
+        load_circuit("completely_unknown_circuit_source_123")
+
+    # 6. parse_netlist delegates directly to load_circuit
+    assert parse_netlist("precision_vintage").L == c_base.L
+
+
+def test_circuit_config_detailed_properties():
+    """Verify parser correctly maps all optional circuit properties and controls."""
+    cfg = {
+        "topology": "parallel",
+        "L": 3.0,
+        "L_core": 0.5,
+        "R_core": 500.0,
+        "Rdc": 6000.0,
+        "Reddy": 150000.0,
+        "Ccoil": 60e-12,
+        "L_b": 3.5,
+        "L_core_b": 0.6,
+        "R_core_b": 600.0,
+        "Rdc_b": 7000.0,
+        "Reddy_b": 140000.0,
+        "Ccoil_b": 70e-12,
+        "Rvol": 250000.0,
+        "Rtone": 250000.0,
+        "Ctone": 47e-9,
+        "series_hpf_cap_nf": 3.3,
+        "Ctb": 1e-9,
+        "Rtb_par": 150000.0,
+        "Rtb_ser": 1000.0,
+        "Rpot_n": 250000.0,
+        "Rpot_b": 250000.0,
+        "active": True,
+        "preamp_gain": 2.0,
+        "R_preamp_in": 1e6,
+        "C_preamp_in": 10e-12,
+        "R_out": 100.0,
+        "no_eq": True,
+        "tan_delta": 0.02,
+        "tan_delta_coil": 0.015,
+        "Ranagram": 1e6,
+        "Canagram": 22e-12,
+        "alpha_dielectric_tone": 0.98,
+        "alpha_dielectric_cable": 0.99,
+        "chi_mu": 0.2,
+        "chi_mu_b": 0.25,
+        "omega_mu": 20000.0,
+        "k_dist": 0.1,
+        "k_dist_b": 0.12,
+        "omega_dist": 15000.0,
+        "k_skin": 0.05,
+        "f_skin": 5000.0,
+        "k_skin_b": 0.06,
+        "f_skin_b": 5500.0,
+        "vol_pos": 0.8,
+        "tone_pos": 0.5,
+        "blend_pos": 0.3,
+        "pot_taper": "linear",
+    }
+    m = CircuitModel.from_dict(cfg)
+    assert m.L_core == pytest.approx(0.5)
+    assert m.R_core == pytest.approx(500.0)
+    assert m.L_core_b == pytest.approx(0.6)
+    assert m.R_core_b == pytest.approx(600.0)
+    assert m.Crick == pytest.approx(3.3e-9)
+    assert m.Ctb == pytest.approx(1e-9)
+    assert m.Rtb_par == pytest.approx(150000.0)
+    assert m.Rtb_ser == pytest.approx(1000.0)
+    assert m.Rpot_n_default == pytest.approx(250000.0)
+    assert m.Rpot_b_default == pytest.approx(250000.0)
+    assert m.preamp_gain == pytest.approx(2.0)
+    assert m.R_preamp_in == pytest.approx(1e6)
+    assert m.C_preamp_in == pytest.approx(10e-12)
+    assert m.R_out == pytest.approx(100.0)
+    assert m.no_eq is True
+    assert m.tan_delta == pytest.approx(0.02)
+    assert m.tan_delta_coil == pytest.approx(0.015)
+    assert m.Ranagram == pytest.approx(1e6)
+    assert m.Canagram == pytest.approx(22e-12)
+    assert m.alpha_dielectric_tone == pytest.approx(0.98)
+    assert m.alpha_dielectric_cable == pytest.approx(0.99)
+    assert m.chi_mu == pytest.approx(0.2)
+    assert m.k_skin == pytest.approx(0.05)
+    assert m.pot_taper == "linear"

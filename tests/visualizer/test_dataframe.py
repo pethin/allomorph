@@ -44,7 +44,9 @@ def test_circuit_simulation_integration():
     """Verify that build_voice_dataframe accurately incorporates the exact circuit transfer functions."""
     # 1. 47nF tone capacitor rolloff on P-Bass
     df_tone = build_voice_dataframe("precision_warm", VOICES["precision_warm"], instrument="30in")
-    df_p = build_voice_dataframe("precision_vintage", VOICES["precision_vintage"], instrument="30in")
+    df_p = build_voice_dataframe(
+        "precision_vintage", VOICES["precision_vintage"], instrument="30in"
+    )
 
     mag_tone_5k = df_tone.filter(pl.col("frequency") > 4500.0)["magnitude_db"].to_list()[0]
     mag_p_5k = df_p.filter(pl.col("frequency") > 4500.0)["magnitude_db"].to_list()[0]
@@ -111,9 +113,7 @@ def test_build_voicings_comparison_dataframe():
     df_tf = build_voicings_comparison_dataframe("precision_vintage", "stingray_parallel", step=1)
     s1 = df_tf.filter(df_tf["line_type"] == "1. Source Voicing")["magnitude_db"].to_numpy()
     s2 = df_tf.filter(df_tf["line_type"] == "2. Target Voicing")["magnitude_db"].to_numpy()
-    s3 = df_tf.filter(df_tf["line_type"] == "3. Difference")[
-        "magnitude_db"
-    ].to_numpy()
+    s3 = df_tf.filter(df_tf["line_type"] == "3. Difference")["magnitude_db"].to_numpy()
     assert np.allclose(s1 + s3, s2, atol=0.05)
 
     # 3. Invalid voice IDs raise KeyError
@@ -138,8 +138,8 @@ def test_compute_fir_csd():
 
 def test_spatial_bridge_proximity_displacement_ratio_in_visualizer():
     """Validates that build_voice_dataframe accurately reflects standing-wave bridge proximity displacement:
-      - Precision Vintage (125mm): full fundamental excursion around 0 dB relative to mids
-      - Jazz Bridge Open (63.5mm): leaner fundamental at 20 Hz (-4.4 dB) relative to 1 kHz (+0.8 dB)
+    - Precision Vintage (125mm): full fundamental excursion around 0 dB relative to mids
+    - Jazz Bridge Open (63.5mm): leaner fundamental at 20 Hz (-4.4 dB) relative to 1 kHz (+0.8 dB)
     """
     df_p = build_voice_dataframe("precision_vintage", VOICES["precision_vintage"], mode="output")
     df_j = build_voice_dataframe("jazz_bridge_open", VOICES["jazz_bridge_open"], mode="output")
@@ -159,9 +159,7 @@ def test_spatial_bridge_proximity_displacement_ratio_in_visualizer():
 
     # Voicings comparison dataframe verifies Difference curve at 20 Hz equals tgt - src
     df_comp = build_voicings_comparison_dataframe("precision_vintage", "jazz_bridge_open", step=1)
-    s3_20 = df_comp.filter(df_comp["line_type"] == "3. Difference")[
-        "magnitude_db"
-    ][0]
+    s3_20 = df_comp.filter(df_comp["line_type"] == "3. Difference")["magnitude_db"][0]
     expected_diff_20 = mag_j_20 - mag_p_20
     assert abs(s3_20 - expected_diff_20) < 0.05
 
@@ -183,4 +181,3 @@ def test_compute_curve_rms_db():
     # 20 * log10(1.45469) ~= 3.255 dB
     rms_val = compute_curve_rms_db(series)
     assert 3.2 <= rms_val <= 3.3
-

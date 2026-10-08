@@ -235,18 +235,30 @@ def get_source_pickup(
     mapping = inst.pickup_mapping
 
     # 2. Explicit voice/target mapping
-    if target_key in mapping and mapping[target_key] in pickups:
-        p_raw = pickups[mapping[target_key]]
+    if target_key in mapping:
+        p_key = mapping[target_key]
+        if p_key not in pickups:
+            raise KeyError(
+                f"Instrument '{inst.id}' pickup_mapping for '{target_key}' references non-existent pickup '{p_key}'. "
+                f"Available pickups: {list(pickups.keys())}"
+            )
+        p_raw = pickups[p_key]
         p = p_raw.model_copy(deep=True)
-        p.id = mapping[target_key]
+        p.id = p_key
         return p
 
     # 3. Physical position affinity mapping
     affinity = resolve_target_affinity(voice_id)
-    if affinity and affinity in mapping and mapping[affinity] in pickups:
-        p_raw = pickups[mapping[affinity]]
+    if affinity and affinity in mapping:
+        p_key = mapping[affinity]
+        if p_key not in pickups:
+            raise KeyError(
+                f"Instrument '{inst.id}' pickup_mapping for affinity '{affinity}' references non-existent pickup '{p_key}'. "
+                f"Available pickups: {list(pickups.keys())}"
+            )
+        p_raw = pickups[p_key]
         p = p_raw.model_copy(deep=True)
-        p.id = mapping[affinity]
+        p.id = p_key
         return p
 
     # 4. Default pickup declared on instrument
@@ -336,7 +348,7 @@ def is_identity_voicing(
         _, dry_v = resolve_target_voicing(source_pickup_key, instrument=source_inst)
         if target_voicing.id == dry_v.id:
             return True
-    except (KeyError, ValueError, ImportError):
+    except KeyError, ValueError, ImportError:
         pass
 
     p_cfg = source_inst.pickups.get(source_pickup_key)
@@ -375,12 +387,12 @@ def is_identity_voicing(
         return False
 
     # Tone cap check
-    return not (
-        target_voicing.tone_cap_f is not None
-        and p_circuit
-        and p_circuit.Ctone is not None
-        and abs(target_voicing.tone_cap_f - p_circuit.Ctone) > 1e-12
-    )
+    if target_voicing.tone_cap_f is not None:
+        if p_circuit is None or p_circuit.Ctone is None:
+            return False
+        if abs(target_voicing.tone_cap_f - p_circuit.Ctone) > 1e-12:
+            return False
+    return True
 
 
 def partition_instrument_bundles(

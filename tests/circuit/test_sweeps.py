@@ -8,6 +8,7 @@ import time
 
 import numpy as np
 import polars as pl
+import pytest
 
 from allomorph.circuit import (
     compute_parametric_sweep,
@@ -154,3 +155,58 @@ def test_circuit_state_restoration():
 
     compute_parametric_sweep(model, param="cable", values=[250.0, 1200.0])
     assert model.Ccable == orig_ccable
+
+
+def test_curves_linear():
+    """Verify curves_linear property properly converts dB curves to linear scale."""
+    model = load_circuit("precision_vintage")
+    res = compute_parametric_sweep(model, param="tone", values=[0.0, 1.0])
+    lin_curves = res.curves_linear
+    assert len(lin_curves) == 2
+    for c_db, c_lin in zip(res.curves, lin_curves):
+        expected_lin = 10.0 ** (np.asarray(c_db) / 20.0)
+        assert np.allclose(c_lin, expected_lin)
+
+
+def test_metrics_and_summary_table(capsys: pytest.CaptureFixture[str]):
+    """Verify analytical metrics computation and summary table printing."""
+    model = load_circuit("precision_vintage")
+    res = compute_parametric_sweep(model, param="tone", values=[0.2, 0.8])
+    records = res.metrics_records()
+    assert len(records) == 2
+    for r in records:
+        assert r.f_res_hz is not None or r.peak_db is not None
+        assert isinstance(r.insertion_loss_db, float)
+
+    table_str = res.summary_table()
+    assert "Setting / Label" in table_str
+    assert "f_res (Hz)" in table_str
+
+    res.print_metrics()
+    captured = capsys.readouterr()
+    assert "Setting / Label" in captured.out
+
+
+def test_active_preamp_treble_boost_sweep():
+    """Active preamp treble boost sweep must increase high-frequency gain."""
+    res = compute_parametric_sweep(
+        "jazz_pair_active", param="treble_boost", values=[0.0, 6.0, 12.0]
+    )
+    assert len(res.curves) == 3
+    f_arr = np.asarray(res.freqs)
+    idx_4k = int(np.argmin(np.abs(f_arr - 4000.0)))
+    boost = res.curves[-1][idx_4k] - res.curves[0][idx_4k]
+    assert boost > 4.0, f"Expected active treble boost at 4 kHz, got {boost:.2f} dB"
+
+
+def test_tone_cap_sweep():
+    """Tone cap sweep (10 nF to 100 nF) with rolled-off tone pot must downshift resonant peak frequency."""
+    model = load_circuit("precision_vintage")
+    model.apply_pot_positions(tone_pos=0.0)
+    res = compute_parametric_sweep(model, param="tone_cap", values=[10e-9, 47e-9, 100e-9])
+    assert len(res.curves) == 3
+    records = res.metrics_records()
+    f_res_list = [r.f_res_hz for r in records if r.f_res_hz is not None]
+    if len(f_res_list) >= 2:
+        for i in range(len(f_res_list) - 1):
+            assert f_res_list[i] >= f_res_list[i + 1]

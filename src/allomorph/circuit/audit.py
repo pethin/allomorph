@@ -138,8 +138,7 @@ def _record_from_manifest(path: Path, entry: dict[str, Any]) -> AudioAuditRecord
     lufs_val = entry.get("lufs")
     lufs_reported = (
         round(float(lufs_val), 2)
-        if lufs_val is not None
-        and not (math.isinf(float(lufs_val)) or math.isnan(float(lufs_val)))
+        if lufs_val is not None and not (math.isinf(float(lufs_val)) or math.isnan(float(lufs_val)))
         else None
     )
 
@@ -226,7 +225,7 @@ def audit_wet_audio_catalog(
                         if isinstance(fentry, dict):
                             p = (mf.parent / fname).resolve()
                             manifest_entries[p] = fentry
-            except (json.JSONDecodeError, OSError):
+            except json.JSONDecodeError, OSError:
                 continue
 
     records: list[AudioAuditRecord] = []

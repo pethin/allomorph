@@ -73,7 +73,7 @@ def run_spice_batch(
                         print(
                             f"  [{completed}/{len(target_voices)}] Voice simulation finished: {v}"
                         )
-                except (OSError, RuntimeError, ValueError) as e:
+                except (OSError, RuntimeError, ValueError, KeyError) as e:
                     failed.append(f"unknown (error: {e})")
                     print(
                         f"  [{completed}/{len(target_voices)}] Voice simulation worker error: {e}"

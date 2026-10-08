@@ -2,6 +2,10 @@
 Tests for reusable onboard active preamps and buffer catalog configuration.
 """
 
+from typing import Any, cast
+
+import pytest
+
 from allomorph.config import (
     PREAMPS,
     PreampBandConfig,
@@ -67,3 +71,49 @@ def test_get_preamp_resolution():
     )
     assert custom.name == "Custom 1-Band"
     assert len(custom.bands) == 1
+
+
+def test_get_preamp_edge_cases_and_errors(monkeypatch: pytest.MonkeyPatch) -> None:
+    from allomorph.config.preamps import get_preamp, load_preamps_config
+
+    # None, empty string, 'none', 'flat'
+    for spec in ("", "none", "flat"):
+        p = get_preamp(spec)
+        assert p.id == "flat_buffer"
+
+    # PreampOverrideConfig with all optional fields
+    override = PreampOverrideConfig(
+        preset="sadowsky_2band",
+        gain_db=1.5,
+        input_impedance_meg=2.0,
+        output_impedance_ohm=50.0,
+        bands=[PreampBandConfig(type="bell", freq_hz=500.0, gain_db=-3.0, q=0.7)],
+    )
+    res = get_preamp(override)
+    assert res.gain_db == 1.5
+    assert res.input_impedance_meg == 2.0
+    assert res.output_impedance_ohm == 50.0
+    assert len(res.bands) == 1
+    assert res.bands[0].freq_hz == 500.0
+
+    # Unknown string preset raises KeyError
+    with pytest.raises(KeyError, match="Unknown preamp preset 'non_existent_preset'"):
+        get_preamp("non_existent_preset")
+
+    # Override with unknown preset raises KeyError
+    with pytest.raises(KeyError, match="Unknown preamp preset 'bad_preset'"):
+        get_preamp(PreampOverrideConfig(preset="bad_preset"))
+
+    # Invalid specification type raises TypeError
+    with pytest.raises(TypeError, match="Invalid preamp specification type"):
+        get_preamp(cast(Any, 12345))
+
+    # Missing config file returns empty dict
+    assert load_preamps_config("/non_existent_dir/preamps.toml") == {}
+
+    # Flat buffer fallback when flat_buffer not in PREAMPS
+    monkeypatch.setattr("allomorph.config.preamps.PREAMPS", {})
+    fallback = get_preamp(None)
+    assert fallback.id == "flat_buffer"
+    assert fallback.name == "Flat Active Buffer"
+    assert fallback.input_impedance_meg == 1.0

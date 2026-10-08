@@ -2,6 +2,7 @@
 Unit tests for Allomorph optimal synthetic bass dry signal generation.
 """
 
+import math
 from pathlib import Path
 
 import numpy as np
@@ -196,3 +197,138 @@ def test_default_input_path():
 
     assert DEFAULT_INPUT_PATH.name == "input.wav"
     assert DEFAULT_INPUT_PATH == get_default_input_path()
+
+
+def test_synthetic_articulation_subroutines():
+    """Directly unit test all synthetic articulation subroutines and their edge cases."""
+    from allomorph.dsp import (
+        _synth_dyad,
+        _synth_ghost_note,
+        _synth_ghost_rake,
+        _synth_glissando,
+        _synth_groove_burst,
+        _synth_long_ringout,
+        _synth_natural_harmonic,
+        _synth_pluck,
+        _synth_slap_pop_pair,
+        _synth_two_tone_probe,
+        _synth_vibrato_pluck,
+    )
+
+    # 1. _synth_pluck with various playing techniques and velocity tiers
+    # Slap with high excursion (fret collision branch) vs low excursion
+    p_slap_hi = _synth_pluck(41.2, 0.85, 0.1, FS, clank=True, technique="slap")
+    p_slap_lo = _synth_pluck(41.2, 0.50, 0.1, FS, clank=True, technique="slap")
+    assert len(p_slap_hi) == int(0.1 * FS)
+    assert np.all(np.isfinite(p_slap_hi))
+    assert np.all(np.isfinite(p_slap_lo))
+
+    # Pick with high vs low excursion
+    p_pick_hi = _synth_pluck(55.0, 0.80, 0.1, FS, clank=True, technique="pick")
+    p_pick_lo = _synth_pluck(55.0, 0.50, 0.1, FS, clank=True, technique="pick")
+    assert len(p_pick_hi) == int(0.1 * FS)
+    assert len(p_pick_lo) == int(0.1 * FS)
+
+    # Palm mute
+    p_pm = _synth_pluck(41.2, 0.85, 0.1, FS, clank=False, technique="palm_mute")
+    assert len(p_pm) == int(0.1 * FS)
+
+    # Finger with clank (high and low amp) and without clank
+    p_finger_hi = _synth_pluck(73.42, 0.80, 0.1, FS, clank=True, technique="finger")
+    p_finger_lo = _synth_pluck(73.42, 0.40, 0.1, FS, clank=True, technique="finger")
+    p_finger_noclank = _synth_pluck(73.42, 0.40, 0.1, FS, clank=False, technique="finger")
+    assert len(p_finger_hi) == int(0.1 * FS)
+    assert len(p_finger_lo) == int(0.1 * FS)
+    assert len(p_finger_noclank) == int(0.1 * FS)
+
+    # 2. _synth_ghost_note normal and zero duration
+    g_norm = _synth_ghost_note(0.04, 0.75, FS)
+    assert len(g_norm) == int(0.04 * FS)
+    assert np.all(np.isfinite(g_norm))
+    g_empty = _synth_ghost_note(0.0, 0.75, FS)
+    assert len(g_empty) == 0
+
+    # 3. _synth_natural_harmonic normal and high-frequency cutoff
+    harm = _synth_natural_harmonic(82.41, 0.70, 0.1, FS, num_partials=5)
+    assert len(harm) == int(0.1 * FS)
+    harm_hi = _synth_natural_harmonic(22000.0, 0.70, 0.1, FS, num_partials=5)
+    assert len(harm_hi) == int(0.1 * FS)
+    harm_empty = _synth_natural_harmonic(82.41, 0.70, 0.0, FS)
+    assert len(harm_empty) == 0
+
+    # 4. _synth_dyad
+    dyad = _synth_dyad(41.2, 61.74, 0.75, 0.15, FS)
+    assert len(dyad) > 0
+    assert np.all(np.isfinite(dyad))
+
+    # 5. _synth_glissando rising, falling, and zero duration
+    gl_up = _synth_glissando(41.2, 82.4, 0.80, 0.1, FS)
+    gl_down = _synth_glissando(82.4, 41.2, 0.80, 0.1, FS)
+    assert len(gl_up) == int(0.1 * FS)
+    assert len(gl_down) == int(0.1 * FS)
+    gl_empty = _synth_glissando(41.2, 82.4, 0.80, 0.0, FS)
+    assert len(gl_empty) == 0
+
+    # 6. _synth_ghost_rake
+    rake = _synth_ghost_rake(41.2, 0.80, 0.25, FS)
+    assert len(rake) > 0
+    assert np.all(np.isfinite(rake))
+
+    # 7. _synth_groove_burst (exercising even/odd stroke amplitudes)
+    gb = _synth_groove_burst(41.2, 0.80, bpm=120.0, count=6, sample_rate=FS, technique="finger")
+    assert len(gb) > 0
+    assert np.all(np.isfinite(gb))
+
+    # 8. _synth_slap_pop_pair
+    sp = _synth_slap_pop_pair(41.2, 82.41, 0.85, gap_ms=40.0, dur=0.2, sample_rate=FS)
+    assert len(sp) > 0
+    assert np.all(np.isfinite(sp))
+
+    # 9. _synth_vibrato_pluck normal and zero duration
+    vib = _synth_vibrato_pluck(55.0, 0.75, 0.15, mod_rate=5.0, mod_depth_cents=25.0, sample_rate=FS)
+    assert len(vib) == int(0.15 * FS)
+    assert np.all(np.isfinite(vib))
+    vib_empty = _synth_vibrato_pluck(55.0, 0.75, 0.0, sample_rate=FS)
+    assert len(vib_empty) == 0
+
+    # 10. _synth_long_ringout normal and zero duration
+    ring = _synth_long_ringout(41.2, 0.85, 0.15, FS)
+    assert len(ring) == int(0.15 * FS)
+    assert np.all(np.isfinite(ring))
+    ring_empty = _synth_long_ringout(41.2, 0.85, 0.0, FS)
+    assert len(ring_empty) == 0
+
+    # 11. _synth_two_tone_probe normal and zero duration
+    pr = _synth_two_tone_probe(3000.0, 3200.0, 0.5, 0.1, FS)
+    assert len(pr) == int(0.1 * FS)
+    assert np.all(np.isfinite(pr))
+    pr_empty = _synth_two_tone_probe(3000.0, 3200.0, 0.5, 0.0, FS)
+    assert len(pr_empty) == 0
+
+
+def test_generate_optimal_bass_dry_full_track():
+    """Verify complete 240-second dry generation executes all 9 tiers and target RMS normalization."""
+    audio = generate_optimal_bass_dry(
+        duration_sec=240.0,
+        sample_rate=FS,
+        peak_dbfs=-1.0,
+        target_rms_dbfs=-20.50,
+        seed=42,
+    )
+    assert len(audio) == 240 * FS
+    assert audio.dtype == np.float32
+    assert np.all(np.isfinite(audio))
+
+    # Check peak bounding
+    peak = float(np.max(np.abs(audio)))
+    expected_peak_ceiling = 10.0 ** (-1.0 / 20.0)
+    assert peak <= expected_peak_ceiling + 1e-4
+
+    # Check RMS is calibrated near -20.50 dBFS
+    rms = float(np.sqrt(np.mean(audio**2)))
+    rms_dbfs = 20.0 * math.log10(rms)
+    assert abs(rms_dbfs - (-20.50)) < 1.5
+
+    # Check pure silence in rests
+    zero_fraction = float(np.mean(audio == 0.0))
+    assert zero_fraction > 0.05

@@ -489,7 +489,9 @@ def test_resolve_scale_length_fallbacks():
     """Verify resolve_scale_length edge cases and scale identification."""
     # Custom speeds with explicit length
     assert resolve_scale_length([70.0, 90.0], scale_length_m=0.8128) == pytest.approx(0.8128)
-    assert resolve_scale_length([70.0, 90.0], scale_length_m=(0.8128, 0.8636)) == pytest.approx(0.8382)
+    assert resolve_scale_length([70.0, 90.0], scale_length_m=(0.8128, 0.8636)) == pytest.approx(
+        0.8382
+    )
 
     # 4-string matching 34in
     assert resolve_scale_length([71.16, 95.0, 126.81, 169.27]) == pytest.approx(0.8636)
@@ -531,4 +533,3 @@ def test_generate_wave_speed_continuum_types():
     cont_float = generate_wave_speed_continuum(0.8128, num_points=12)
     assert len(cont_float) == 12
     assert cont_float[0].scale_m == pytest.approx(0.8128)
-

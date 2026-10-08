@@ -503,7 +503,10 @@ def test_numpy_pickup_acoustic_response_string_names_markers():
     assert math.isclose(resp_numeric[0], 1.0, abs_tol=1e-3)
 
     resp_str_markers = numpy_pickup_acoustic_response(
-        freqs, upper_coil_only, string_speeds=[70.0, 90.0, 120.0, 160.0], string_names=["E", "A", "D", "G"]
+        freqs,
+        upper_coil_only,
+        string_speeds=[70.0, 90.0, 120.0, 160.0],
+        string_names=["E", "A", "D", "G"],
     )
     assert len(resp_str_markers) == len(freqs)
     assert math.isclose(resp_str_markers[0], 1.0, abs_tol=1e-3)
@@ -536,7 +539,10 @@ def test_numpy_pickup_acoustic_response_advanced_branches():
     # Passing scale_length_m as a list of speeds (> 10.0)
     speeds_list = [70.0, 95.0, 125.0, 165.0]
     resp_from_speeds = numpy_pickup_acoustic_response(
-        freqs, coils_stacked, scale_length_m=speeds_list, string_names=["low", "bass", "treble", "high"]
+        freqs,
+        coils_stacked,
+        scale_length_m=speeds_list,
+        string_names=["low", "bass", "treble", "high"],
     )
     assert len(resp_from_speeds) == len(freqs)
     assert math.isclose(resp_from_speeds[0], 1.0, abs_tol=1e-3)
@@ -555,7 +561,9 @@ def test_numpy_pickup_macro_aperture_blade_and_speeds():
             strings=["all"],
         )
     ]
-    macro_blade = numpy_pickup_macro_aperture(freqs, coils_blade, string_speeds=[70.0, 95.0, 125.0, 165.0])
+    macro_blade = numpy_pickup_macro_aperture(
+        freqs, coils_blade, string_speeds=[70.0, 95.0, 125.0, 165.0]
+    )
     assert len(macro_blade) == len(freqs)
     assert math.isclose(macro_blade[0], 1.0, abs_tol=1e-3)
 
@@ -563,4 +571,3 @@ def test_numpy_pickup_macro_aperture_blade_and_speeds():
     macro_empty = numpy_pickup_macro_aperture(freqs, [])
     assert len(macro_empty) == len(freqs)
     assert math.isclose(macro_empty[0], 1.0, abs_tol=1e-3)
-

@@ -78,18 +78,14 @@ def test_voicings_comparison_identity_and_differential_math():
     ]
     for vid in test_identities:
         df_id = build_voicings_comparison_dataframe(vid, vid, step=1)
-        s3 = df_id.filter(df_id["line_type"] == "3. Difference")[
-            "magnitude_db"
-        ]
+        s3 = df_id.filter(df_id["line_type"] == "3. Difference")["magnitude_db"]
         assert (s3 == 0.0).all(), f"Identity pair {vid} -> {vid} did not evaluate to 0.00 dB"
 
     # 2. Transformative pair: Source + Difference == Target everywhere
     df_diff = build_voicings_comparison_dataframe("precision_vintage", "jazz_bridge_growl", step=1)
     s1 = df_diff.filter(df_diff["line_type"] == "1. Source Voicing")["magnitude_db"].to_numpy()
     s2 = df_diff.filter(df_diff["line_type"] == "2. Target Voicing")["magnitude_db"].to_numpy()
-    s3 = df_diff.filter(df_diff["line_type"] == "3. Difference")[
-        "magnitude_db"
-    ].to_numpy()
+    s3 = df_diff.filter(df_diff["line_type"] == "3. Difference")["magnitude_db"].to_numpy()
 
     assert np.allclose(s1 + s3, s2, atol=0.05)
 

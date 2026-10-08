@@ -357,3 +357,110 @@ def test_ensure_input_audio_wav(tmp_path: Path):
     audio, sr = read_wav(out_file)
     assert sr == FS
     assert len(audio) == int(1.0 * FS)
+
+
+def test_is_wet_stem_valid_comprehensive_matrix(tmp_path: Path):
+    """Verify is_wet_stem_valid condition matrix (missing files, invalid JSON, version/hash mismatch)."""
+    from allomorph.version import is_wet_stem_valid, write_manifest
+
+    base_dry = tmp_path / "base_dry.wav"
+    base_dry.write_bytes(b"base dry audio content")
+    stem = tmp_path / "wet_stem.wav"
+    stem.write_bytes(b"wet audio stem content")
+    manifest_p = tmp_path / "manifest.json"
+
+    # 1. Stem file does not exist
+    non_existent = tmp_path / "non_existent.wav"
+    assert is_wet_stem_valid(non_existent, base_dry_path=base_dry) is False
+
+    # 2. Manifest does not exist
+    assert is_wet_stem_valid(stem, base_dry_path=base_dry) is False
+
+    # 3. Manifest contains invalid JSON
+    manifest_p.write_text("invalid json {", encoding="utf-8")
+    assert is_wet_stem_valid(stem, base_dry_path=base_dry) is False
+
+    # 4. Manifest missing stem entry
+    manifest_p.write_text(json.dumps({"files": {}}), encoding="utf-8")
+    assert is_wet_stem_valid(stem, base_dry_path=base_dry) is False
+
+    # 5. Manifest entry missing base_dry_sha256
+    manifest_p.write_text(
+        json.dumps({"files": {stem.name: {"version": "v4.1.1"}}}), encoding="utf-8"
+    )
+    assert is_wet_stem_valid(stem, base_dry_path=base_dry) is False
+
+    # 6. Expected version mismatch
+    write_manifest(
+        tmp_path,
+        "sim",
+        [stem],
+        version_tag="v2.1.1",
+        base_dry_file=base_dry.name,
+        base_dry_sha256="wrong_sha",
+    )
+    assert is_wet_stem_valid(stem, base_dry_path=base_dry, expected_version="v3.1.1") is False
+
+    # 7. Base dry path does not exist
+    missing_dry = tmp_path / "missing_dry.wav"
+    assert is_wet_stem_valid(stem, base_dry_path=missing_dry) is False
+
+    # 8. SHA mismatch
+    write_manifest(
+        tmp_path,
+        "sim",
+        [stem],
+        version_tag="v4.1.1",
+        base_dry_file=base_dry.name,
+        base_dry_sha256="dummy_hash",
+    )
+    assert is_wet_stem_valid(stem, base_dry_path=base_dry, expected_version="v4.1.1") is False
+
+    # 9. Valid stem: matching hash and version
+    real_sha = compute_file_sha256(base_dry)
+    write_manifest(
+        tmp_path,
+        "sim",
+        [stem],
+        version_tag="v4.1.1",
+        base_dry_file=base_dry.name,
+        base_dry_sha256=real_sha,
+    )
+    assert is_wet_stem_valid(stem, base_dry_path=base_dry, expected_version="v4.1.1") is True
+
+
+def test_write_manifest_dict_files(tmp_path: Path):
+    """Verify write_manifest handles files passed as a dictionary of metadata."""
+    from allomorph.version import write_manifest
+
+    stem1 = tmp_path / "stem1.wav"
+    stem1.write_bytes(b"content 1")
+    stem2 = tmp_path / "stem2.wav"
+    stem2.write_bytes(b"content 2")
+
+    files_dict = {
+        stem1.name: {"note": "test stem 1"},
+        stem2.name: {"note": "test stem 2"},
+    }
+
+    manifest_p = write_manifest(
+        tmp_path,
+        "sim",
+        files_dict,
+        version_tag="v4.1.1",
+        instrument_version=2,
+        voicing_version=3,
+        base_dry_file="dry.wav",
+        base_dry_sha256="abcd1234",
+    )
+
+    assert manifest_p.exists()
+    data = json.loads(manifest_p.read_text(encoding="utf-8"))
+    files = data["files"]
+    assert stem1.name in files
+    assert stem2.name in files
+    assert files[stem1.name]["version"] == "v4.1.1"
+    assert files[stem1.name]["instrument_version"] == 2
+    assert files[stem1.name]["voicing_version"] == 3
+    assert files[stem1.name]["base_dry_sha256"] == "abcd1234"
+    assert files[stem1.name]["note"] == "test stem 1"

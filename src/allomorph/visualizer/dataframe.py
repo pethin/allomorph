@@ -28,12 +28,14 @@ _DIFF_VOICE_DF_CACHE: dict[tuple[str, str, str], pl.DataFrame] = {}
 
 _TARGET_DFS_CACHE: dict[int, dict[str, tuple[str, np.ndarray]]] = {}
 
-def _compute_welch_psd(x: np.ndarray, sr: int = 48000, n_fft: int = 4096, hop_length: int = 2048) -> tuple[np.ndarray, np.ndarray]:
+
+def _compute_welch_psd(
+    x: np.ndarray, sr: int = 48000, n_fft: int = 4096, hop_length: int = 2048
+) -> tuple[np.ndarray, np.ndarray]:
     x_pad = np.pad(x, (n_fft // 2, n_fft // 2), mode="constant")
     n_frames = 1 + (len(x_pad) - n_fft) // hop_length
     frames = np.lib.stride_tricks.as_strided(
-        x_pad, shape=(n_frames, n_fft),
-        strides=(x_pad.strides[0] * hop_length, x_pad.strides[0])
+        x_pad, shape=(n_frames, n_fft), strides=(x_pad.strides[0] * hop_length, x_pad.strides[0])
     )
     window = np.hanning(n_fft)
     spectra = np.abs(np.fft.rfft(frames * window, axis=1)) ** 2
@@ -41,6 +43,7 @@ def _compute_welch_psd(x: np.ndarray, sr: int = 48000, n_fft: int = 4096, hop_le
     psd = psd / (np.sum(window**2) * sr)
     f_bins = np.fft.rfftfreq(n_fft, 1.0 / sr)
     return f_bins, psd
+
 
 def build_voice_dataframe(
     voice_id: str,
@@ -54,54 +57,58 @@ def build_voice_dataframe(
 
     from allomorph.circuit.forward import simulate_instrument_voicing
     from allomorph.dsp import read_wav
-    
+
     inst = load_instrument(instrument)
-    
+
     sr = 48000
     n_samples = 16384
     rng = np.random.RandomState(42)
     x_white = rng.normal(0.0, 1.0, n_samples)
     x_white = x_white / np.max(np.abs(x_white)) * (10.0 ** (-20.5 / 20.0))
-    
+
     with tempfile.TemporaryDirectory() as td:
         in_wav = Path(td) / "in.wav"
         out_wav = Path(td) / "out.wav"
-        
+
         from allomorph.dsp import write_wav_24bit
+
         write_wav_24bit(in_wav, x_white, 48000)
         simulate_instrument_voicing(
             input_wav=in_wav,
             instrument=inst,
             voicing=voice_id,
-            
             output_wav=out_wav,
             max_samples=n_samples,
-            normalize="none"
+            normalize="none",
         )
         y_wet, _ = read_wav(out_wav)
-        
+
     f_bins, psd_y = _compute_welch_psd(y_wet, sr=sr)
     _, psd_x = _compute_welch_psd(x_white, sr=sr)
-    
+
     H_emp = np.sqrt(psd_y / np.maximum(psd_x, 1e-12))
     freqs = np.asarray(log_freqs, dtype=np.float64)
     mag_raw = np.interp(freqs, f_bins, H_emp)
-    
+
     mag_db = 20.0 * np.log10(np.maximum(mag_raw, 1e-4))
-    
+
     mid_mask = (freqs >= 100.0) & (freqs <= 800.0)
     if len(mag_db[mid_mask]) > 0:
         mag_db = mag_db - np.median(mag_db[mid_mask])
 
-    df = pl.DataFrame({
-        "frequency": np.round(freqs, 1).tolist(),
-        "magnitude_db": np.round(mag_db, 2).tolist(),
-        "line_type": [f"Target: {cfg.name}"] * len(freqs),
-        "voice_id": [voice_id] * len(freqs)
-    })
+    df = pl.DataFrame(
+        {
+            "frequency": np.round(freqs, 1).tolist(),
+            "magnitude_db": np.round(mag_db, 2).tolist(),
+            "line_type": [f"Target: {cfg.name}"] * len(freqs),
+            "voice_id": [voice_id] * len(freqs),
+        }
+    )
     if include_mode_col:
         df = df.with_columns(pl.lit(mode.capitalize()).alias("mode"))
     return df
+
+
 def get_cached_target_dfs(step: int = 1) -> dict[str, tuple[str, np.ndarray]]:
     """Caches precomputed target voice responses downsampled by step."""
     if step in _TARGET_DFS_CACHE:
@@ -220,8 +227,6 @@ def compute_curve_rms_db(mag_db: np.ndarray | Sequence[float] | pl.Series) -> fl
     return float(20.0 * np.log10(np.sqrt(np.mean((10.0 ** (arr / 20.0)) ** 2))))
 
 
-
-
 def build_voicings_comparison_dataframe(
     source_id: str = "precision_vintage",
     target_id: str = "jazz_bridge_growl",
@@ -256,9 +261,7 @@ def build_voicings_comparison_dataframe(
     freq_col = f_pts * 3
     mag_col = np.round(db_src, 2).tolist() + np.round(db_tgt, 2).tolist() + db_diff.tolist()
     line_type_col = (
-        ["1. Source Voicing"] * n_pts
-        + ["2. Target Voicing"] * n_pts
-        + ["3. Difference"] * n_pts
+        ["1. Source Voicing"] * n_pts + ["2. Target Voicing"] * n_pts + ["3. Difference"] * n_pts
     )
     vid_col = [source_id] * n_pts + [target_id] * n_pts + [f"{source_id}_to_{target_id}"] * n_pts
     vname_col = (

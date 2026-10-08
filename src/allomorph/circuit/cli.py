@@ -310,6 +310,8 @@ def main(argv: list[str] | None = None) -> None:
                 blend_pos=args.blend,
                 cable_pf=args.cable_pf,
                 dc_block=dc_block,
+                normalize=args.normalize,
+                target_dbfs=args.target_dbfs,
             )
 
 

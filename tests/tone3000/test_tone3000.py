@@ -270,13 +270,13 @@ def test_generated_pack_storefront_descriptions():
             assert not re.match(r"^-{3,}$", line), (
                 f"Pack {pack_id} contains markdown underline: '{line}'"
             )
-            assert not line.startswith("###"), (
-                f"Pack {pack_id} contains markdown heading: '{line}'"
-            )
+            assert not line.startswith("###"), f"Pack {pack_id} contains markdown heading: '{line}'"
 
         # 3. Essential sections
         assert "OVERVIEW" in content, f"Pack {pack_id} missing OVERVIEW"
-        assert "RECOMMENDED SIGNAL CHAIN" in content, f"Pack {pack_id} missing RECOMMENDED SIGNAL CHAIN"
+        assert "RECOMMENDED SIGNAL CHAIN" in content, (
+            f"Pack {pack_id} missing RECOMMENDED SIGNAL CHAIN"
+        )
         assert "QUICK INSTRUMENT SETUP" in content, f"Pack {pack_id} missing QUICK INSTRUMENT SETUP"
         assert "DIGITAL TWIN VOICINGS" in content, f"Pack {pack_id} missing DIGITAL TWIN VOICINGS"
         assert "LICENSE & DISCLAIMER" in content, f"Pack {pack_id} missing LICENSE & DISCLAIMER"
@@ -287,20 +287,20 @@ def test_generated_pack_storefront_descriptions():
             f"Pack {pack_id} missing standard License text"
         )
         assert "Trademark Disclaimer:" in content, f"Pack {pack_id} missing 'Trademark Disclaimer:'"
-        assert "Allomorph is an independent project and is not affiliated with or endorsed" in content, (
-            f"Pack {pack_id} missing standard Trademark Disclaimer text"
-        )
+        assert (
+            "Allomorph is an independent project and is not affiliated with or endorsed" in content
+        ), f"Pack {pack_id} missing standard Trademark Disclaimer text"
 
         # 5. Character limit
-        assert len(content) <= 10000, (
-            f"Pack {pack_id} exceeds 10,000 characters: {len(content)}"
-        )
+        assert len(content) <= 10000, f"Pack {pack_id} exceeds 10,000 characters: {len(content)}"
 
         # 6. Voicing entries match file names and have versions
         voicing_lines = [
             line.strip() for line in content.splitlines() if re.match(r"^\d{2}\.", line.strip())
         ]
-        assert len(voicing_lines) >= 15, f"Pack {pack_id} has fewer than 15 voicings: {len(voicing_lines)}"
+        assert len(voicing_lines) >= 15, (
+            f"Pack {pack_id} has fewer than 15 voicings: {len(voicing_lines)}"
+        )
 
         bundle_wav_stems = {
             f.stem for f in desc_file.parent.glob("bundles/*/*.wav") if not f.name.startswith("dry")

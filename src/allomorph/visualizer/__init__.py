@@ -100,10 +100,12 @@ def main(argv: Sequence[str] | None = None) -> None:
         out=args.out,
     )
 
-    if cli_cfg.all or (isinstance(cli_cfg.instrument, str) and cli_cfg.instrument.lower() == "all"):
+    if cli_cfg.all:
         generate_all_charts(output_dir=cli_cfg.out)
     elif cli_cfg.mode == "voicings":
         generate_interactive_chart(mode=cli_cfg.mode, out_html=cli_cfg.out)
+    elif isinstance(cli_cfg.instrument, str) and cli_cfg.instrument.lower() == "all":
+        generate_all_charts(output_dir=cli_cfg.out)
     else:
         inst = load_instrument(cli_cfg.instrument)
         generate_interactive_chart(instrument=inst, out_html=cli_cfg.out, mode=cli_cfg.mode)
