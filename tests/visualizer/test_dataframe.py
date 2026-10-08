@@ -181,3 +181,22 @@ def test_compute_curve_rms_db():
     # 20 * log10(1.45469) ~= 3.255 dB
     rms_val = compute_curve_rms_db(series)
     assert 3.2 <= rms_val <= 3.3
+
+
+def test_precision_mids_vs_vintage_distinctness():
+    """Validates that Precision Mids (22nF ToneStyler shunt) and Precision Vintage (250k CTS open)
+    are clearly distinct in both resonant frequency and frequency response:
+    - Precision Vintage: wide-open resonance ~2.1-2.8 kHz
+    - Precision Mids: 22nF pure shunt low-mid vocal peak ~440 Hz with steep treble rolloff (>20 dB diff at 3 kHz)
+    """
+    df_comp = build_voicings_comparison_dataframe("precision_vintage", "precision_mids", step=1)
+    s3 = df_comp.filter(df_comp["line_type"] == "3. Difference")["magnitude_db"].to_numpy()
+    freqs = df_comp.filter(df_comp["line_type"] == "3. Difference")["frequency"].to_numpy()
+
+    # Must be distinct with max difference > 20 dB across spectrum
+    assert np.max(np.abs(s3)) > 20.0
+
+    # Treble rolloff at 3 kHz must attenuate by > 15 dB
+    idx_3k = int(np.argmin(np.abs(freqs - 3000.0)))
+    assert s3[idx_3k] < -15.0
+

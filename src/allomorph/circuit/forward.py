@@ -14,8 +14,9 @@ import numpy as np
 import pedalboard
 
 from allomorph.circuit.audio import find_default_input_audio
-from allomorph.circuit.parser import MAGNET_PROPERTIES, CircuitModel, load_circuit
+from allomorph.circuit.parser import MAGNET_PROPERTIES, CircuitModel
 from allomorph.circuit.saturation import apply_oversampled_saturation
+from allomorph.circuit.schema import CircuitConfig
 from allomorph.circuit.solver import (
     apply_magnet_properties_to_model,
     compute_active_preamp_eq,
@@ -323,11 +324,24 @@ def simulate_instrument_voicing(
     # 1. Sensor Aperture Acoustics & Loaded RLC Circuit Transfer
     circ_model = None
     curves = None
-    if pickup_cfg.circuit is not None:
-        circ_model = load_circuit(pickup_cfg.circuit)
-        eff_vol = vol_pos if vol_pos is not None else voicing_cfg.vol_pos
-        eff_tone = tone_pos if tone_pos is not None else voicing_cfg.tone_pos
-        eff_blend = blend_pos if blend_pos is not None else voicing_cfg.blend_pos
+    target_circuit_cfg = voicing_cfg.circuit or pickup_cfg.circuit
+    if target_circuit_cfg is not None:
+        cdata = target_circuit_cfg.model_dump(exclude_unset=True)
+        if voicing_cfg.vol_pos is not None:
+            cdata["vol_pos"] = voicing_cfg.vol_pos
+        if voicing_cfg.tone_pos is not None:
+            cdata["tone_pos"] = voicing_cfg.tone_pos
+        if voicing_cfg.tone_cap_f is not None:
+            cdata["Ctone"] = voicing_cfg.tone_cap_f
+        if voicing_cfg.Rtone is not None:
+            cdata["Rtone"] = voicing_cfg.Rtone
+        if voicing_cfg.preamp_preset is not None:
+            cdata["preamp"] = voicing_cfg.preamp_preset
+
+        circ_model = CircuitModel.from_circuit_config(CircuitConfig.model_validate(cdata))
+        eff_vol = vol_pos if vol_pos is not None else circ_model.vol_pos
+        eff_tone = tone_pos if tone_pos is not None else circ_model.tone_pos
+        eff_blend = blend_pos if blend_pos is not None else circ_model.blend_pos
         circ_model.apply_pot_positions(
             vol_pos=eff_vol,
             tone_pos=eff_tone,
@@ -335,8 +349,6 @@ def simulate_instrument_voicing(
         )
         if cable_pf is not None:
             circ_model.Ccable = float(cable_pf) * 1e-12
-        if voicing_cfg.tone_cap_f is not None:
-            circ_model.Ctone = float(voicing_cfg.tone_cap_f)
         apply_magnet_properties_to_model(circ_model, pickup_cfg, eddy_diffusion=True)
         curves = compute_circuit_transfer_functions(circ_model, freqs=f, return_numpy=True)
 
