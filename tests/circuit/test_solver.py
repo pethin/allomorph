@@ -7,6 +7,8 @@ import math
 
 import numpy as np
 import pytest
+from hypothesis import given
+from hypothesis import strategies as st
 
 from allomorph.circuit import (
     CircuitModel,
@@ -18,6 +20,7 @@ from allomorph.circuit import (
 from allomorph.circuit.schema import CircuitConfig
 from allomorph.config import INSTRUMENTS, load_instrument
 from allomorph.dsp import FREQS
+from tests.strategies import st_pot_wipers
 
 
 def test_single_pickup_transfer_function():
@@ -714,3 +717,19 @@ def test_eval_pot_taper_curves():
     # Reverse audio taper at midpoint ~ 85-90% resistance
     mid_rev = eval_pot_taper(0.5, "reverse_audio")
     assert 0.75 < mid_rev < 0.95
+
+
+@given(
+    st_pot_wipers(),
+    st.sampled_from(["audio", "linear", "reverse_audio", "audio10", "audio15", "mn_blend"]),
+)
+def test_eval_pot_taper_property(pos: float, taper: str) -> None:
+    """Property test verifying potentiometer tapers are smoothly bounded in [0.0, 1.0]."""
+    from allomorph.circuit.solver import eval_pot_taper
+
+    val = float(eval_pot_taper(pos, taper))
+    assert 0.0 <= val <= 1.0
+    if pos == 0.0:
+        assert math.isclose(val, 0.0, abs_tol=1e-9)
+    elif pos == 1.0:
+        assert math.isclose(val, 1.0, abs_tol=1e-9)

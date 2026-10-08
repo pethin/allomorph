@@ -15,6 +15,8 @@ import math
 
 import numpy as np
 import pytest
+from hypothesis import given
+from hypothesis import strategies as st
 
 from allomorph.circuit.saturation import (
     apply_algebraic_rail_limiter,
@@ -35,6 +37,7 @@ from allomorph.physics.strings import (
     INHARMONICITY_ANCHORS_F0,
     get_inharmonicity_for_f0,
 )
+from tests.strategies import st_audio_buffers, st_rail_voltages, st_signals_for_rail
 
 
 def test_guardrail_5_1_asymmetric_displacement_limiter():
@@ -58,6 +61,27 @@ def test_guardrail_5_1_asymmetric_displacement_limiter():
     assert -16.0 <= huge_cut < -15.5, (
         f"Negative proximity cut {huge_cut:.2f} dB violated -16.0 dB floor"
     )
+
+
+@given(st.floats(min_value=-500.0, max_value=500.0, allow_nan=False, allow_infinity=False))
+def test_guardrail_5_1_asymmetric_displacement_limiter_bounds(dg: float) -> None:
+    """Guardrail 5.1.3 property: Bounded in [-16.0, +12.0] dB across arbitrary inputs."""
+    clamped = float(soft_clamp_displacement_ratio(dg))
+    assert -16.0 <= clamped <= 12.0
+    if abs(dg) <= 3.0:
+        assert abs(clamped - dg) < 0.05
+
+
+@given(
+    st.floats(min_value=-200.0, max_value=200.0, allow_nan=False, allow_infinity=False),
+    st.floats(min_value=0.01, max_value=50.0, allow_nan=False, allow_infinity=False),
+)
+def test_guardrail_5_1_displacement_limiter_monotonicity(dg1: float, delta: float) -> None:
+    """Guardrail 5.1.3 property: Limiter is strictly non-decreasing across all inputs."""
+    dg2 = dg1 + delta
+    c1 = float(soft_clamp_displacement_ratio(dg1))
+    c2 = float(soft_clamp_displacement_ratio(dg2))
+    assert c2 >= c1
 
 
 def test_guardrail_5_1_inharmonicity_rbf_calibration_and_monotonicity():
@@ -94,6 +118,21 @@ def test_guardrail_5_2_algebraic_rail_limiter_order_8():
         assert abs(out) <= vsat, f"Limiter allowed signal {out} to exceed ceiling {vsat}"
 
 
+@given(
+    st_signals_for_rail(min_x=-1000.0, max_x=1000.0),
+    st_rail_voltages(min_vsat=0.1, max_vsat=5.0),
+)
+def test_guardrail_5_2_algebraic_rail_limiter_order_8_property(x: float, vsat: float) -> None:
+    """Guardrail 5.2.1 property: Strict peak bounding (|f(x)| <= vsat) and small-signal linearity."""
+    out = float(apply_algebraic_rail_limiter(x, vsat=vsat))
+    assert abs(out) <= vsat
+    if x != 0.0:
+        assert (out > 0.0) == (x > 0.0)
+    if abs(x) <= 0.3 * vsat and abs(x) > 1e-9:
+        dev_db = abs(20.0 * math.log10(out / x))
+        assert dev_db < 0.005
+
+
 def test_guardrail_5_2_smooth_soft_knee_c_inf():
     """Guardrail 5.2.1: Thresholded soft-knee saturation must be strictly C^inf without piecewise derivative kinks."""
     thresh = 6.0
@@ -112,6 +151,25 @@ def test_guardrail_5_2_smooth_soft_knee_c_inf():
     assert np.all(np.isfinite(d2y))
     # Monotonically non-decreasing
     assert np.all(dy >= 0.0)
+
+
+@given(
+    st.floats(min_value=-50.0, max_value=50.0, allow_nan=False, allow_infinity=False),
+    st.floats(min_value=1.0, max_value=20.0, allow_nan=False, allow_infinity=False),
+    st.floats(min_value=0.5, max_value=10.0, allow_nan=False, allow_infinity=False),
+)
+def test_guardrail_5_2_smooth_soft_knee_property(x: float, thresh: float, w: float) -> None:
+    """Guardrail 5.2.1 property: Thresholded soft-knee saturation is bounded by ceiling, compressive (y <= x),
+    and strictly transparent far below threshold."""
+    ceiling = thresh + w
+    y = float(smooth_soft_knee_db(x, thresh=thresh, ceiling=ceiling))
+    # 1. Strictly bounded by ceiling
+    assert y <= ceiling + 1e-9
+    # 2. Compressive: saturation never expands gain beyond input
+    assert y <= x + 1e-9
+    # 3. Transparent far below threshold
+    if x <= thresh - 5.0:
+        assert abs(y - x) < 0.05
 
 
 def test_guardrail_5_3_active_preamp_dc_transmission():
@@ -176,6 +234,13 @@ def test_guardrail_5_4_small_signal_linearity():
         small_sig,
         err_msg="Small signals must pass through saturation stage with bit-exact linearity",
     )
+
+
+@given(st_audio_buffers(min_len=16, max_len=256, min_val=-0.09, max_val=0.09))
+def test_guardrail_5_4_small_signal_linearity_property(small_sig: np.ndarray) -> None:
+    """Guardrail 5.4.1 property: Saturation is bit-exact identity bypass for arbitrary small buffers."""
+    out = apply_oversampled_saturation(small_sig, vsat=0.5, alpha=0.3, alpha3=0.1, k_sag=0.1)
+    np.testing.assert_array_equal(out, small_sig)
 
 
 def test_guardrail_5_6_tone_naming_pedalboard_budget():

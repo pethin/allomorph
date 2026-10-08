@@ -10,6 +10,8 @@ from typing import Any
 
 import numpy as np
 import pytest
+from hypothesis import given
+from hypothesis import strategies as st
 
 from allomorph.dsp import (
     fft_convolve,
@@ -18,6 +20,7 @@ from allomorph.dsp import (
     synthesize_minimum_phase_fir,
     write_wav_24bit,
 )
+from tests.strategies import st_audio_buffers
 
 
 def test_synthesize_minimum_phase_fir():
@@ -77,6 +80,19 @@ def test_read_wav_24bit_roundtrip():
         assert np.allclose(audio_sub, samples[:3], atol=1e-4)
 
 
+@given(st_audio_buffers(min_len=1, max_len=64, min_val=-0.99, max_val=0.99, dtype=np.float32))
+def test_read_wav_24bit_roundtrip_property(samples: np.ndarray) -> None:
+    """Property test verifying 24-bit PCM roundtrip preserves audio within quantization error."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        wav_path = Path(tmpdir) / "prop_roundtrip.wav"
+        write_wav_24bit(str(wav_path), samples, sample_rate=48000)
+
+        audio, sr = read_wav(wav_path)
+        assert sr == 48000
+        assert len(audio) == len(samples)
+        assert np.allclose(audio, samples, atol=1e-4)
+
+
 def test_fft_convolve_modes_and_accuracy():
     # Test short and medium lengths
     for n, m in [(12, 5), (5, 12), (100, 32), (1000, 128)]:
@@ -117,6 +133,29 @@ def test_fft_convolve_modes_and_accuracy():
     assert np.allclose(
         actual_causal_long[: slice_len - m_ir], direct_causal_slice[: slice_len - m_ir], atol=1e-4
     )
+
+
+@given(
+    st_audio_buffers(min_len=1, max_len=128, dtype=np.float64),
+    st_audio_buffers(min_len=1, max_len=64, dtype=np.float64),
+)
+def test_fft_convolve_properties(x: np.ndarray, y: np.ndarray) -> None:
+    """Property test verifying fft_convolve matches np.convolve across modes and preserves commutativity."""
+    expected_full = np.convolve(x, y, mode="full")
+    actual_full = fft_convolve(x, y, mode="full")
+    assert np.allclose(actual_full, expected_full, atol=1e-7)
+
+    expected_same = np.convolve(x, y, mode="same")
+    actual_same = fft_convolve(x, y, mode="same")
+    assert np.allclose(actual_same, expected_same, atol=1e-7)
+
+    expected_causal = expected_full[: max(len(x), len(y))]
+    actual_causal = fft_convolve(x, y, mode="causal")
+    assert np.allclose(actual_causal, expected_causal, atol=1e-7)
+
+    # Commutativity in mode="full"
+    reverse_full = fft_convolve(y, x, mode="full")
+    assert np.allclose(actual_full, reverse_full, atol=1e-7)
 
 
 def test_causal_preserves_pulse_timing_against_same_shift():
@@ -224,6 +263,41 @@ def test_cinf_smoothstep():
     # 4. Symmetry: S(1 - t) == 1 - S(t)
     t_mid = np.linspace(0.01, 0.99, 100)
     assert np.allclose(cinf_smoothstep(1.0 - t_mid), 1.0 - cinf_smoothstep(t_mid), atol=1e-12)
+
+
+@given(st.floats(min_value=-500.0, max_value=500.0, allow_nan=False, allow_infinity=False))
+def test_cinf_smoothstep_bounds_property(t: float) -> None:
+    """Property test verifying cinf_smoothstep exact bounds across all real numbers."""
+    from allomorph.dsp import cinf_smoothstep
+
+    res = float(cinf_smoothstep(t))
+    if t <= 0.0:
+        assert res == 0.0
+    elif t >= 1.0:
+        assert res == 1.0
+    else:
+        assert 0.0 <= res <= 1.0
+
+
+@given(st.floats(min_value=0.0, max_value=1.0, allow_nan=False, allow_infinity=False))
+def test_cinf_smoothstep_symmetry_property(t: float) -> None:
+    """Property test verifying cinf_smoothstep symmetry: S(1 - t) == 1 - S(t)."""
+    from allomorph.dsp import cinf_smoothstep
+
+    s_t = float(cinf_smoothstep(t))
+    s_inv = float(cinf_smoothstep(1.0 - t))
+    assert math.isclose(s_t + s_inv, 1.0, abs_tol=1e-12)
+
+
+@given(
+    st.floats(min_value=-5.0, max_value=5.0, allow_nan=False, allow_infinity=False),
+    st.floats(min_value=0.001, max_value=2.0, allow_nan=False, allow_infinity=False),
+)
+def test_cinf_smoothstep_monotonicity_property(t: float, dt: float) -> None:
+    """Property test verifying cinf_smoothstep monotonicity: S(t + dt) >= S(t)."""
+    from allomorph.dsp import cinf_smoothstep
+
+    assert cinf_smoothstep(t + dt) >= cinf_smoothstep(t)
 
 
 def test_fft_convolve_full_length_exactness():
@@ -403,6 +477,17 @@ def test_compute_true_peak_branches():
     assert math.isclose(tp, 1.0, abs_tol=0.05)
     tp_dbfs = compute_true_peak_dbfs(sig)
     assert abs(tp_dbfs) < 0.5
+
+
+@given(st_audio_buffers(min_len=1, max_len=128, min_val=-2.0, max_val=2.0, dtype=np.float32))
+def test_compute_true_peak_property(sig: np.ndarray) -> None:
+    """Property test verifying true peak is always >= sample peak and finite."""
+    from allomorph.dsp import compute_true_peak
+
+    tp = float(compute_true_peak(sig))
+    sample_peak = float(np.max(np.abs(sig)))
+    assert tp >= sample_peak - 1e-5
+    assert math.isfinite(tp)
 
 
 def test_fft_convolve_multi_modes():

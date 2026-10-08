@@ -6,6 +6,8 @@ saddle boundary stiffness, cylindrical rod vs blade aperture, and microphonics.
 import math
 
 import numpy as np
+from hypothesis import given
+from hypothesis import strategies as st
 
 from allomorph.config import (
     SCALES,
@@ -47,6 +49,27 @@ def test_aperture_zero_frequency():
     # Test numpy_aperture with default speeds and d_in == 0
     res_single = numpy_aperture(np.array([0.0]), w_in=0.75, d_in=0.0)[0]
     assert math.isclose(res_single, 1.0, abs_tol=1e-6)
+
+
+@given(
+    st.floats(min_value=0.1, max_value=3.0, allow_nan=False, allow_infinity=False),
+    st.floats(min_value=0.0, max_value=2.0, allow_nan=False, allow_infinity=False),
+)
+def test_aperture_dc_conservation_property(w_in: float, d_in: float) -> None:
+    """Property test verifying physical aperture DC identity: H(0) = 1.0 for arbitrary coil geometry."""
+    speeds = SCALES["34in"].speeds
+    res = float(aperture_response(np.array([0.0]), w_in=w_in, d_in=d_in, speeds=speeds)[0])
+    assert math.isclose(res, 1.0, abs_tol=1e-5)
+
+
+@given(
+    st.floats(min_value=0.0, max_value=24000.0, allow_nan=False, allow_infinity=False),
+    st.floats(min_value=0.1, max_value=2.5, allow_nan=False, allow_infinity=False),
+)
+def test_numpy_aperture_bounding_property(f: float, w_in: float) -> None:
+    """Property test verifying single-coil aperture filtering magnitude |H(f)| <= 1.0 everywhere."""
+    res = float(numpy_aperture(np.array([f]), w_in=w_in, d_in=0.0)[0])
+    assert 0.0 <= res <= 1.0 + 1e-6
 
 
 def test_aperture_single_vs_dual():

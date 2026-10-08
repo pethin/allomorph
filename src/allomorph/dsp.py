@@ -571,7 +571,9 @@ def compute_true_peak(
         chunk_peak = float(np.max(np.abs(interpolated[valid_start:valid_end])))
         max_peak = max(max_peak, chunk_peak)
 
-    return float(max_peak)
+    # Intersample true-peak must never under-read the discrete sample peak (ITU-R BS.1770-4)
+    sample_peak = float(np.max(np.abs(mono)))
+    return float(max(max_peak, sample_peak))
 
 
 def compute_true_peak_dbfs(

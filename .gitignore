@@ -8,6 +8,7 @@ wheels/
 .cache/
 .miopen_cache/
 .pytest_cache/
+.hypothesis/
 .coverage
 .coverage.*
 htmlcov/

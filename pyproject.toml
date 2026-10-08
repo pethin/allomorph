@@ -29,6 +29,8 @@ rocm = [
 
 [dependency-groups]
 dev = [
+    "hypothesis[crosshair]>=6.168.0",
+    "hypothesis-jsonschema>=0.23.0",
     "pyrefly>=1.3.0",
     "pytest>=9.1.1",
     "pytest-cov>=7.1.0",
@@ -82,7 +84,7 @@ preset = "strict"
 project-includes = [
     "**/*.py*",
 ]
-search-path = ["src", "scripts"]
+search-path = ["src", "scripts", "."]
 
 [tool.uv]
 environments = [

@@ -1,12 +1,19 @@
-"""
-Pytest configuration and global session fixtures.
-"""
-
+import os
 from collections.abc import Generator
 
 import pytest
+from hypothesis import Verbosity, settings
 
 from allomorph.config.scales import REPO_ROOT
+
+# Register standard Hypothesis profiles
+settings.register_profile("ci", max_examples=100, deadline=None)
+settings.register_profile("dev", max_examples=25, deadline=None)
+settings.register_profile("debug", max_examples=10, verbosity=Verbosity.verbose, deadline=None)
+settings.register_profile("smt", max_examples=10, backend="crosshair", deadline=None)
+
+# Load profile from environment (default to 'dev' for fast local test runs)
+settings.load_profile(os.getenv("HYPOTHESIS_PROFILE", "dev"))
 
 
 @pytest.fixture(scope="session", autouse=True)

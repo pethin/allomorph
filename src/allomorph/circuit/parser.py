@@ -266,6 +266,11 @@ def eval_pot_taper(pos: float, taper: str = "audio") -> float:
     where gamma = 2 * ln(1/k - 1).
     """
     theta = min(max(float(pos), 0.0), 1.0)
+    if theta <= 0.0:
+        return 0.0
+    if theta >= 1.0:
+        return 1.0
+
     t = (
         taper.lower().strip()
         if isinstance(taper, str) and taper.lower().strip() not in ("", "none")
@@ -274,11 +279,11 @@ def eval_pot_taper(pos: float, taper: str = "audio") -> float:
     if t == "linear":
         return theta
     elif t in ("audio", "audio10"):
-        return math.expm1(_AUDIO10_GAMMA * theta) / _AUDIO10_DENOM
+        return min(max(math.expm1(_AUDIO10_GAMMA * theta) / _AUDIO10_DENOM, 0.0), 1.0)
     elif t == "audio15":
-        return math.expm1(_AUDIO15_GAMMA * theta) / _AUDIO15_DENOM
+        return min(max(math.expm1(_AUDIO15_GAMMA * theta) / _AUDIO15_DENOM, 0.0), 1.0)
     elif t == "reverse_audio":
-        return 1.0 - math.expm1(_AUDIO10_GAMMA * (1.0 - theta)) / _AUDIO10_DENOM
+        return min(max(1.0 - math.expm1(_AUDIO10_GAMMA * (1.0 - theta)) / _AUDIO10_DENOM, 0.0), 1.0)
     elif t == "mn_blend":
         return theta
     else:

@@ -7,6 +7,8 @@ import math
 
 import numpy as np
 import pytest
+from hypothesis import given
+from hypothesis import strategies as st
 
 from allomorph.config import (
     SCALES,
@@ -408,6 +410,29 @@ def test_alternate_tunings_dispersion_and_split_coil():
     )
     fwd_coil_resp = numpy_pickup_acoustic_response(freqs, [split_p_coils[0]], [63.42])
     assert np.allclose(single_string_0_d, fwd_coil_resp, rtol=1e-4)
+
+
+@given(
+    st.floats(min_value=25.0, max_value=180.0, allow_nan=False, allow_infinity=False),
+    st.floats(min_value=0.5, max_value=30.0, allow_nan=False, allow_infinity=False),
+)
+def test_inharmonicity_continuous_monotonicity_property(f0: float, df: float) -> None:
+    """Property test verifying inharmonicity RBF solver is strictly decreasing across bass fundamentals."""
+    b1 = float(get_inharmonicity_for_f0(f0))
+    b2 = float(get_inharmonicity_for_f0(f0 + df))
+    assert b1 > b2
+    assert 1e-7 < b1 < 1e-3
+
+
+@given(
+    st.floats(min_value=30.0, max_value=200.0, allow_nan=False, allow_infinity=False),
+)
+def test_dispersive_wave_speed_property(c0: float) -> None:
+    """Property test verifying wave speed dispersion is monotonically non-decreasing with frequency."""
+    freqs = np.array([20.0, 100.0, 500.0, 2000.0, 10000.0], dtype=np.float64)
+    v_disp = compute_dispersive_wave_speed(freqs, c0)
+    assert math.isclose(v_disp[0], c0, rel_tol=1e-3)
+    assert np.all(np.diff(v_disp) >= -1e-6)
 
 
 def test_multiscale_wave_speed_continuum_endpoints():

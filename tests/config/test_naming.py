@@ -5,6 +5,8 @@ Tests for naming authority, Tone3000 basenames, and CLI voice/instrument resolve
 from pathlib import Path
 
 import pytest
+from hypothesis import given
+from hypothesis import strategies as st
 
 from allomorph.naming import (
     VOICE_CONCISE_SLUGS,
@@ -61,6 +63,22 @@ def test_get_t3k_basename_exceeds_max_length_raises():
     long_tone = "A" * 60
     with pytest.raises(ValueError, match="exceeds 64 characters"):
         get_t3k_basename(tone_name=long_tone, version_tag="v2.1.1", max_length=64)
+
+
+@given(
+    st.text(min_size=1, max_size=25),
+    st.text(min_size=1, max_size=15),
+    st.text(min_size=1, max_size=10),
+)
+def test_get_t3k_basename_sanitization_and_length_property(tone: str, pos: str, ver: str) -> None:
+    """Property test verifying slash sanitization and length bounds on get_t3k_basename."""
+    try:
+        res = get_t3k_basename(tone_name=tone, position_name=pos, version_tag=ver, max_length=64)
+        assert "/" not in res
+        assert "\\" not in res
+        assert len(res) <= 64
+    except ValueError as e:
+        assert "exceeds 64 characters" in str(e)
 
 
 def test_resolve_voices_all_and_none():
