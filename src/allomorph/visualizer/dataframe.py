@@ -150,6 +150,9 @@ VOICE_FAMILIES: dict[str, str] = {
     "p_mm_series": "P∕MM",
     "mudbucker_deep": "Mudbucker",
     "upright_acoustic": "Upright",
+    "soapbar_pair": "Soapbar",
+    "soapbar_neck": "Soapbar",
+    "soapbar_bridge": "Soapbar",
 }
 
 

@@ -238,6 +238,7 @@ def load_voices_config(instruments_path: str | Path | None = None) -> VoiceRegis
     Constructs the target voice registry dynamically from instrument catalog configurations.
     """
     from allomorph.config.instruments import (
+        SOURCE_CATALOG_VOICINGS,
         STANDARD_CATALOG_TARGETS,
         load_all_instruments,
     )
@@ -246,7 +247,8 @@ def load_voices_config(instruments_path: str | Path | None = None) -> VoiceRegis
     voices_dict: dict[str, VoiceConfig] = {}
     aliases: dict[str, str] = {}
 
-    for inst_id, voicing_id in STANDARD_CATALOG_TARGETS:
+    all_catalog_entries = list(STANDARD_CATALOG_TARGETS) + list(SOURCE_CATALOG_VOICINGS)
+    for inst_id, voicing_id in all_catalog_entries:
         if inst_id not in instruments:
             continue
         inst = instruments[inst_id]

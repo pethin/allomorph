@@ -185,10 +185,13 @@ def resolve_target_voicing(
             )
             return inst, dyn_v
 
-    # Search STANDARD_CATALOG_TARGETS across all instruments
-    from allomorph.config.instruments import STANDARD_CATALOG_TARGETS
+    # Search STANDARD_CATALOG_TARGETS and SOURCE_CATALOG_VOICINGS across all instruments
+    from allomorph.config.instruments import (
+        SOURCE_CATALOG_VOICINGS,
+        STANDARD_CATALOG_TARGETS,
+    )
 
-    for iid, vid in STANDARD_CATALOG_TARGETS:
+    for iid, vid in list(STANDARD_CATALOG_TARGETS) + list(SOURCE_CATALOG_VOICINGS):
         t_inst = load_instrument(iid)
         if vid in t_inst.voicings:
             t_v = t_inst.voicings[vid]

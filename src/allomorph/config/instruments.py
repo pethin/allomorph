@@ -308,6 +308,14 @@ STANDARD_CATALOG_TARGETS: list[tuple[str, str]] = [
     ("41in_upright_bass", "bridge_piezo_acoustic"),
 ]
 
+# Additional source instrument voicings available in the visualizer suite
+# (for comparing physical source bass configurations against target voicings)
+SOURCE_CATALOG_VOICINGS: list[tuple[str, str]] = [
+    ("34in_preamp_soapbar", "pair_parallel"),
+    ("34in_preamp_soapbar", "neck_solo"),
+    ("34in_preamp_soapbar", "bridge_solo"),
+]
+
 
 @dataclass
 class TargetVoicingRef:
