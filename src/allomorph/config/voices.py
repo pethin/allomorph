@@ -1,5 +1,5 @@
 """
-Allomorph - Target Voice Configuration Registry (v0.4.0 / DSP Gen 4).
+Allomorph - Target Voice Configuration Registry (DSP Gen 5).
 Constructs first-principles target VoiceConfig models dynamically from the
 Unified Instrument Catalog in config/instruments/*.toml.
 """

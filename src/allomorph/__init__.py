@@ -2,7 +2,7 @@
 Allomorph - Universal Pickup & Transducer Analog Modeling Engine
 """
 
-__version__ = "0.4.0"
+__version__ = "0.4.1"
 
 from allomorph.circuit import (
     CALIBRATION_PEAK_CEILING,

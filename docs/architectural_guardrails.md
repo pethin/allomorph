@@ -224,9 +224,9 @@ The interactive Voicing Comparator visualizer (`docs/frequency_responses/voicing
 #### 3.7.2 Performance & Vectorization Mandate
 All visualizer curves must be evaluated using precomputed, globally cached universal target matrices (`get_cached_target_dfs`) and vectorized NumPy array operations without invoking multi-rate FFT solvers inside per-pickup loops. Full generation of all charts must complete in $< 5.0\text{ seconds}$ (verified in `tests/test_guardrails.py`).
 
-### 3.8 DSP Generation 4: Universal Forward Twin & Audio Telemetry Pipeline
+### 3.8 Allomorph v0.4.x: Universal Forward Twin & Audio Telemetry Pipeline
 
-DSP Generation 4 (Allomorph v0.4.0) establishes the next-generation forward simulation architecture for synthesizing 24-bit PCM digital twins directly from dry excitation audio, eliminating canonical intermediate abstractions, hardcoded piecewise branch combiners, and heuristic level matching.
+Allomorph v0.4.x establishes the next-generation forward simulation architecture for synthesizing 24-bit PCM digital twins directly from dry excitation audio, eliminating canonical intermediate abstractions, hardcoded piecewise branch combiners, and heuristic level matching.
 
 #### 3.8.1 Physical Invariant: Branch-Wise Pre-Summing Saturation
 In physical multi-pickup bass systems (e.g. Jazz Bass neck + bridge, PJ split + J single coil, Dingwall multi-scale dual coils), vibrating strings induce independent magnetic flux variations across physically separated magnetic apertures with different pole pieces, individual heights, and localized clearance. The non-linear dynamics of magnetic saturation occur in each pickup branch independently before electrical current summation at the control harness:
@@ -254,7 +254,7 @@ To prevent inter-sample clipping when 24-bit PCM digital twin audio is reconstru
 2. **Linear Headroom Ceiling:** If the 4x true peak exceeds $0.9900$ ($-0.087\text{ dBFS}$), the entire file is scaled transparently by $(0.9900 / \text{tp})$. Peak-based whole-file linear scaling preserves dynamic punch without introducing non-linear limiter pumping.
 
 #### 3.8.4 Provenance Invariant: Cryptographic Bit-Provenance & Telemetry Audit
-1. **DSP Gen 4 Tri-Part Semantic Versioning:** All compiled wet stems, Tone3000 upload packs, and models embed the DSP Generation 4 semantic token `v4.[inst].[voice]`.
+1. **DSP Gen 5 Tri-Part Semantic Versioning:** All compiled wet stems, Tone3000 upload packs, and models embed the DSP Generation 5 semantic token `v5.[inst].[voice]`.
 2. **Sidecar Manifest Telemetry:** Sidecar `manifest.json` files record `sample_rate`, `peak_dbfs`, `rms_dbfs`, `true_peak_dbfs`, `lufs`, `base_dry_sha256`, and `version`.
 3. **Automated Verification:** The `allomorph --stage audit` command programmatically audits 100% of wet files in the catalog, verifying zero clipping ($\text{true\_peak} \le 0.9900$) and uniform loudness compliance.
 

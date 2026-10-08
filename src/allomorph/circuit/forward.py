@@ -1,5 +1,5 @@
 """
-Allomorph - Direct Unified Forward Simulation Engine (DSP Gen 4 / v0.4.0)
+Allomorph - Direct Unified Forward Simulation Engine (DSP Gen 5)
 Convolves dry string excitation audio with authentic instrument physical aperture,
 loaded RLC circuit, active preamps, and string mechanics into 24-bit PCM wet stems.
 """

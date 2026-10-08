@@ -20,8 +20,8 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-ALLOMORPH_VERSION: str = "0.4.0"
-DSP_GENERATION: int = 4
+ALLOMORPH_VERSION: str = "0.4.1"
+DSP_GENERATION: int = 5
 DEFAULT_INST_VERSION: int = 1
 DEFAULT_VOICE_VERSION: int = 1
 

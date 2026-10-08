@@ -435,7 +435,7 @@ Because wave speed $v$ is an intrinsic physical property of each tuned string, *
 | **Reverse-P: D/G Half ($145.4\text{ mm}$)** | — | — | $436\text{ Hz}$ | **$582\text{ Hz}$** |
 
 #### The Physical Spatial Implication:
-Because physical pickups possess fixed spatial comb nulls corresponding to their physical distance from the bridge, a neck-positioned transducer (e.g. Precision @ $125.0\text{ mm}$) and a bridge-positioned transducer (e.g. StingRay @ $66.0\text{ mm}$) capture fundamentally different harmonic spectra. Under DSP Generation 4, Allomorph's forward simulation models these spatial comb filters directly from unvoiced string excitation, allowing NAM neural models to train wet-to-wet against authentic harmonic ground truth without fragile deconvolution filters.
+Because physical pickups possess fixed spatial comb nulls corresponding to their physical distance from the bridge, a neck-positioned transducer (e.g. Precision @ $125.0\text{ mm}$) and a bridge-positioned transducer (e.g. StingRay @ $66.0\text{ mm}$) capture fundamentally different harmonic spectra. Under DSP Generation 5, Allomorph's forward simulation models these spatial comb filters directly from unvoiced string excitation, allowing NAM neural models to train wet-to-wet against authentic harmonic ground truth without fragile deconvolution filters.
 
 ---
 

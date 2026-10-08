@@ -175,7 +175,7 @@ def test_export_tone_pack_parallel_bundles_and_cached_stems(
                 p.parent,
                 "sim",
                 [p],
-                version_tag="v4.1.1",
+                version_tag="v5.1.1",
                 base_dry_file=mini_dry_audio.name,
                 base_dry_sha256=_sha256_file(mini_dry_audio),
             )
