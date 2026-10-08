@@ -209,8 +209,14 @@ def evaluate_analog_band(band: PreampBandConfig, s: complex | np.ndarray) -> com
         den = s**2 + (w0 / q) * s + w0**2
         return num / den
     elif b_type == "low_pass":
+        if band.q is not None and band.q > 0.0:
+            q = float(band.q)
+            return (w0**2) / (s**2 + (w0 / q) * s + w0**2)
         return w0 / (s + w0)
     elif b_type == "high_pass":
+        if band.q is not None and band.q > 0.0:
+            q = float(band.q)
+            return (s**2) / (s**2 + (w0 / q) * s + w0**2)
         return s / (s + w0)
     return np.ones_like(s, dtype=np.complex128)
 
@@ -269,6 +275,48 @@ def compute_active_preamp_biquads(
             a1 = (2.0 * (w2 - k2)) / a0
             a2 = (k2 - kw_q + w2) / a0
             biquads.append((b0, b1, b2, 1.0, a1, a2))
+        elif b_type == "low_pass":
+            if band.q is not None and band.q > 0.0:
+                q = float(band.q)
+                k2 = k_bilinear * k_bilinear
+                w2 = omega_a * omega_a
+                kw_q = (k_bilinear * omega_a) / q
+                a0 = k2 + kw_q + w2
+                b0 = w2 / a0
+                b1 = (2.0 * w2) / a0
+                b2 = w2 / a0
+                a1 = (2.0 * (w2 - k2)) / a0
+                a2 = (k2 - kw_q + w2) / a0
+                biquads.append((b0, b1, b2, 1.0, a1, a2))
+            else:
+                a0 = k_bilinear + omega_a
+                b0 = omega_a / a0
+                b1 = omega_a / a0
+                b2 = 0.0
+                a1 = (omega_a - k_bilinear) / a0
+                a2 = 0.0
+                biquads.append((b0, b1, b2, 1.0, a1, a2))
+        elif b_type == "high_pass":
+            if band.q is not None and band.q > 0.0:
+                q = float(band.q)
+                k2 = k_bilinear * k_bilinear
+                w2 = omega_a * omega_a
+                kw_q = (k_bilinear * omega_a) / q
+                a0 = k2 + kw_q + w2
+                b0 = k2 / a0
+                b1 = (-2.0 * k2) / a0
+                b2 = k2 / a0
+                a1 = (2.0 * (w2 - k2)) / a0
+                a2 = (k2 - kw_q + w2) / a0
+                biquads.append((b0, b1, b2, 1.0, a1, a2))
+            else:
+                a0 = k_bilinear + omega_a
+                b0 = k_bilinear / a0
+                b1 = -k_bilinear / a0
+                b2 = 0.0
+                a1 = (omega_a - k_bilinear) / a0
+                a2 = 0.0
+                biquads.append((b0, b1, b2, 1.0, a1, a2))
 
     return biquads
 

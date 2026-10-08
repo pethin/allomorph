@@ -99,7 +99,9 @@ tone_name = "MMTW Warm"
 pickup = "mmtw_dual"
 affinity = "neck"
 vol_pos = 1.0
-tone_pos = 0.5
+preamp_bands = [
+    { type = "low_pass", freq_hz = 650.0, gain_db = 0.0, q = 1.6 }
+]
 
 # ------------------------------------------------------------------------------
 # 4. PICKUP AFFINITY ROUTING

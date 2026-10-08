@@ -66,15 +66,6 @@ sensor_type = "bridge_force"
 vol_pos = 1.0
 string_preset_override = "double_bass_spirocore"
 
-[voicings.bridge_piezo_jazz]
-version = 1
-name = "Jazz Pizzicato Upright Double Bass"
-tone_name = "Upright Jazz"
-pickup = "bridge_piezo"
-affinity = "neck"
-sensor_type = "bridge_force"
-vol_pos = 1.0
-string_preset_override = "double_bass_spirocore"
 
 # ------------------------------------------------------------------------------
 # 3. PICKUP AFFINITY ROUTING

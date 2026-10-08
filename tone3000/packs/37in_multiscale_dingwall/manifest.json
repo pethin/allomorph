@@ -57,7 +57,7 @@
           "target_voicing_version": 1,
           "version": "v5.1.1",
           "tone_name": "StingRay Series",
-          "sha256": "7a99e37e26e7bce12606065d3bc8491a64197d5589929c4c9e5f8c2c55ac37e9"
+          "sha256": "30339ea17d246bfb478f8c1f93d832c4ca84d1855ac82995e11e99655a02c4f9"
         },
         {
           "filename": "Rickenbacker Clank [Bridge] v5.1.1.wav",
@@ -112,7 +112,7 @@
           "target_voicing_version": 1,
           "version": "v5.1.1",
           "tone_name": "Precision Mids",
-          "sha256": "5aad345c272183af4f93c88ee06d68eb48ee629df725a74bc31562332ceff39a"
+          "sha256": "cb99640fd04b885511e608beefd9918e2e3d3bf5d21140e026d1db68483a8655"
         },
         {
           "filename": "Precision Warm [Middle] v5.1.1.wav",
@@ -207,7 +207,7 @@
           "target_voicing_version": 1,
           "version": "v5.1.1",
           "tone_name": "Jazz Pair Mids",
-          "sha256": "571823889957825c8bd6ba2903ecb9e9b9d864de3708406959d698ebc57626bd"
+          "sha256": "38131aa1217b3212a4eb7613581b807feb1146c4205b4246a752410bdb63acb9"
         },
         {
           "filename": "Jazz Pair Active [Parallel] v5.1.1.wav",

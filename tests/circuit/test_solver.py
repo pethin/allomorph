@@ -562,11 +562,15 @@ def test_compute_active_preamp_biquads():
         PreampBandConfig(type="high_shelf", freq_hz=4000.0, gain_db=-4.0),
         PreampBandConfig(type="bell", freq_hz=1000.0, gain_db=3.0, q=1.5),
         PreampBandConfig(type="bell", freq_hz=800.0, gain_db=0.0),  # Should be bypassed
+        PreampBandConfig(type="low_pass", freq_hz=650.0, gain_db=0.0, q=1.6),  # 2nd order resonant
+        PreampBandConfig(type="low_pass", freq_hz=2000.0, gain_db=0.0),  # 1st order
+        PreampBandConfig(type="high_pass", freq_hz=80.0, gain_db=0.0, q=0.707),  # 2nd order
+        PreampBandConfig(type="high_pass", freq_hz=30.0, gain_db=0.0),  # 1st order
     ]
 
     biquads = compute_active_preamp_biquads(bands, fs=48000.0)
-    # Flat band is bypassed, so 3 biquads generated
-    assert len(biquads) == 3
+    # Flat band is bypassed, so 7 biquads generated
+    assert len(biquads) == 7
     for b0, b1, b2, a0, a1, a2 in biquads:
         assert a0 == 1.0
         assert all(math.isfinite(val) for val in (b0, b1, b2, a1, a2))
@@ -579,15 +583,25 @@ def test_evaluate_analog_band_types():
 
     s = 2.0 * np.pi * 1000.0 * 1j
 
-    # Low pass
+    # Low pass (1st order)
     lp_band = PreampBandConfig(type="low_pass", freq_hz=500.0, gain_db=0.0)
     h_lp = evaluate_analog_band(lp_band, s)
     assert abs(h_lp) < 1.0
 
-    # High pass
+    # Low pass (2nd order resonant bump with Q)
+    lp_res_band = PreampBandConfig(type="low_pass", freq_hz=1000.0, gain_db=0.0, q=2.0)
+    h_lp_res = evaluate_analog_band(lp_res_band, s)
+    assert abs(abs(h_lp_res) - 2.0) < 1e-6  # Peak resonance at f0 equals Q
+
+    # High pass (1st order)
     hp_band = PreampBandConfig(type="high_pass", freq_hz=2000.0, gain_db=0.0)
     h_hp = evaluate_analog_band(hp_band, s)
     assert abs(h_hp) < 1.0
+
+    # High pass (2nd order resonant bump with Q)
+    hp_res_band = PreampBandConfig(type="high_pass", freq_hz=1000.0, gain_db=0.0, q=2.0)
+    h_hp_res = evaluate_analog_band(hp_res_band, s)
+    assert abs(abs(h_hp_res) - 2.0) < 1e-6  # Peak resonance at f0 equals Q
 
     # Flat gain (bypassed)
     flat_band = PreampBandConfig(type="bell", freq_hz=1000.0, gain_db=0.0)
