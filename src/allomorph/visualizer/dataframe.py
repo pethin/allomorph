@@ -10,40 +10,11 @@ from typing import Any
 import numpy as np
 import polars as pl
 
-from allomorph.circuit import (
-    apply_magnet_properties_to_model,
-    compute_circuit_transfer_functions,
-    compute_differential_circuit_transfer_functions,
-    load_circuit,
-    smooth_soft_knee_db,
-)
-from allomorph.config.geometry import (
-    compute_effective_position,
-    resolve_voice_pickups,
-)
 from allomorph.config.instruments import (
-    get_source_pickup,
     load_instrument,
 )
-from allomorph.config.scales import SCALES, resolve_scale_range
-from allomorph.config.schema import InstrumentConfig, VoiceConfig
-from allomorph.config.strings import STRINGS, get_voice_string
+from allomorph.config.schema import InstrumentConfig
 from allomorph.config.voices import VOICES
-from allomorph.dsp import (
-    FREQS,
-    synthesize_minimum_phase_fir,
-)
-from allomorph.physics import (
-    MEAN_BASS_F0,
-    compute_differential_longitudinal_transfer,
-    compute_differential_string_transfer,
-    compute_displacement_proximity_shelf,
-    compute_pickup_isolation_leveling,
-    compute_saddle_boundary_coupling,
-    compute_voice_prefilter_firs,
-    is_voice_matching_source,
-    numpy_pickup_acoustic_response,
-)
 
 NUM_POINTS = 600
 F_MIN = 20.0
@@ -55,332 +26,82 @@ _OUTPUT_VOICE_DF_CACHE: dict[str, pl.DataFrame] = {}
 _DIFF_VOICE_DF_CACHE: dict[tuple[str, str, str], pl.DataFrame] = {}
 
 
-def build_voice_dataframe(
-    voice_id: str,
-    cfg: VoiceConfig,
-    instrument: InstrumentConfig | str = "30in",
-    src_scale: InstrumentConfig | str | None = None,
-    mode: str = "difference",
-    include_mode_col: bool = False,
-    src_pickup_key: str | None = None,
-) -> pl.DataFrame:
-    """
-    Calculates magnitude frequency response in dB for a voice using NumPy vector math and Polars.
-    mode="output": Absolute acoustic aperture + loaded SPICE circuit frequency response of the target voice.
-    mode="difference": Regularized differential transfer function (H_target / H_source) applied to the source instrument.
-    """
-    if mode == "output" and cfg == VOICES.get(voice_id) and voice_id in _OUTPUT_VOICE_DF_CACHE:
-        base_df = _OUTPUT_VOICE_DF_CACHE[voice_id]
-        return (
-            base_df.with_columns(pl.lit("Output Voice").alias("mode"))
-            if include_mode_col
-            else base_df
-        )
-
-    inst_selector = src_scale if src_scale is not None else instrument
-    inst = (
-        inst_selector
-        if isinstance(inst_selector, InstrumentConfig)
-        else load_instrument(inst_selector)
-    )
-
-    cache_key_diff = (inst.id, voice_id, src_pickup_key or "")
-    if (
-        mode == "difference"
-        and cfg == VOICES.get(voice_id)
-        and cache_key_diff in _DIFF_VOICE_DF_CACHE
-    ):
-        base_df = _DIFF_VOICE_DF_CACHE[cache_key_diff]
-        return (
-            base_df.with_columns(pl.lit("Input/Output Difference").alias("mode"))
-            if include_mode_col
-            else base_df
-        )
-
-    tgt_scale = cfg.scale
-    _ = SCALES[tgt_scale]
-
-    freqs = np.asarray(log_freqs, dtype=np.float64)
-    pickups = resolve_voice_pickups(cfg)
-    tgt_circuit = cfg.circuit
-
-    sensor_type = cfg.sensor_type
-    tgt_string = get_voice_string(cfg)
-    is_passive = inst.electronics == "passive"
-    if src_pickup_key:
-        is_spatial_match = (
-            (mode != "output")
-            and (inst.pickup_mapping.get(voice_id, inst.default_pickup) == src_pickup_key)
-            and is_voice_matching_source(inst, voice_id, cfg)
-        )
-    else:
-        is_spatial_match = (mode != "output") and is_voice_matching_source(inst, voice_id, cfg)
-
-    is_pure_di = tgt_circuit is not None and getattr(load_circuit(tgt_circuit), "no_eq", False)
-    if is_pure_di and mode == "output":
-        data = {
-            "frequency": log_freqs,
-            "magnitude_db": [0.0] * len(log_freqs),
-            "voice_id": voice_id,
-            "voice_name": cfg.name,
-            "topology": cfg.topology,
-            "description": cfg.description,
-        }
-        df = pl.DataFrame(data)
-        if cfg == VOICES.get(voice_id):
-            _OUTPUT_VOICE_DF_CACHE[voice_id] = df
-        if include_mode_col:
-            return df.with_columns(pl.lit("Output Voice").alias("mode"))
-        return df
-
-    if mode == "output":
-        # 1. Output Voice: Target acoustic aperture + loaded SPICE circuit + string mechanics
-        model = load_circuit(tgt_circuit)
-        apply_magnet_properties_to_model(model, cfg)
-        circuit_curves = compute_circuit_transfer_functions(model, freqs=FREQS)
-
-        if sensor_type == "bridge_force":
-            f_lin = freqs
-            is_flatwound = "flat" in (tgt_string.type or "")
-            f_damp = 4200.0 if is_flatwound else 3800.0
-            h_damp = 1.0 / np.sqrt(1.0 + (f_lin / f_damp) ** 4)
-            f_sub = 10.0
-            h_sub = np.sqrt(f_lin**2 / (f_sub**2 + f_lin**2))
-            c_curve = circuit_curves[0] if circuit_curves else [1.0] * len(FREQS)
-            branch = np.interp(freqs, FREQS, np.asarray(c_curve, dtype=np.float64)) * h_damp * h_sub
-            h_tgt_total = branch
-        elif sensor_type == "direct":
-            c_curve = circuit_curves[0] if circuit_curves else [1.0] * len(FREQS)
-            h_tgt_total = np.interp(freqs, FREQS, np.asarray(c_curve, dtype=np.float64))
-        else:
-            tgt_scale_range = resolve_scale_range(tgt_scale)
-            tgt_scale_m = (tgt_scale_range[0] + tgt_scale_range[1]) / 2.0
-            positions = [compute_effective_position(p.coils) for p in pickups]
-            pos_max = max(positions) if positions else 0.0
-            ref_pos = cfg.ref_pos_m or (pos_max if len(positions) > 1 else None)
-            c_mean = 2.0 * tgt_scale_m * MEAN_BASS_F0
-
-            N = 8192
-            f_bins = np.fft.rfftfreq(N, 1.0 / 48000.0)
-            H_channels = []
-            peaks = []
-
-            for i, p in enumerate(pickups):
-                c_curve_raw = circuit_curves[i] if i < len(circuit_curves) else [1.0] * len(FREQS)
-                c_curve = np.asarray(c_curve_raw, dtype=np.float64)
-                p_weight = p.weight
-                p_pol = p.polarity
-                weight_fac = 1.0 if len(circuit_curves) > 1 else p_weight
-
-                ac_raw = numpy_pickup_acoustic_response(
-                    f_bins, p.coils, scale_length_m=tgt_scale_range
-                ) * (weight_fac * p_pol)
-
-                p_pos = compute_effective_position(p.coils)
-                h_pos = compute_displacement_proximity_shelf(f_bins, p_pos, scale_m=tgt_scale_m)
-                k_iso = compute_pickup_isolation_leveling(
-                    p_pos, scale_m=tgt_scale_m, ref_pos_m=ref_pos
-                )
-                ac = ac_raw * h_pos * k_iso
-
-                min_pos = min((c.position_from_bridge_m for c in p.coils), default=0.10)
-                if min_pos < 0.075:
-                    h_saddle = compute_saddle_boundary_coupling(f_bins, min_pos)
-                    ac = ac * np.asarray(h_saddle, dtype=np.float64)
-
-                fir_ac = synthesize_minimum_phase_fir(ac, num_taps=2048, normalize=False)
-                tau_i = (pos_max - positions[i]) / c_mean if len(pickups) > 1 else 0.0
-                delay_samples = round(tau_i * 48000.0)
-                if 0 < delay_samples < 2048:
-                    fir_ac = [0.0] * delay_samples + fir_ac[: 2048 - delay_samples]
-                peaks.append(int(np.argmax(np.abs(fir_ac))))
-
-                fir_circ = synthesize_minimum_phase_fir(c_curve, num_taps=2048, normalize=False)
-                H_channels.append(np.fft.rfft(fir_ac, N) * np.fft.rfft(fir_circ, N))
-
-            H_channels = np.array(H_channels)
-            delta_samples = max(peaks) - min(peaks) if len(peaks) > 1 else 0
-
-            if len(H_channels) > 1 and delta_samples > 0:
-                P_coherent = np.abs(np.sum(H_channels, axis=0)) ** 2
-                P_incoherent = np.sum(np.abs(H_channels) ** 2, axis=0)
-                delta_tau = delta_samples / 48000.0
-                f_notch = 1.0 / (2.0 * delta_tau)
-                f_mid = 1.35 * f_notch
-                f_sigma = max(0.35 * f_notch, 1.0)
-                gamma = 0.5 * (1.0 - np.tanh((f_bins - f_mid) / f_sigma))
-                mag_spectrum = np.sqrt(gamma * P_coherent + (1.0 - gamma) * P_incoherent)
-            elif len(H_channels) > 1:
-                mag_spectrum = np.abs(np.sum(H_channels, axis=0))
-            else:
-                mag_spectrum = np.abs(H_channels[0])
-
-            h_tgt_total = np.interp(freqs, f_bins, mag_spectrum)
-
-        # Scale-Length Tension Dynamics for target instrument
-        tgt_scale_in = (
-            41.25
-            if tgt_scale == "upright"
-            else (
-                37.0
-                if tgt_scale in ["multiscale", "37in"]
-                else (35.0 if tgt_scale == "multiscale_super" else 34.0)
-            )
-        )
-        r_L = tgt_scale_in / 34.0
-        if sensor_type == "bridge_force":
-            g_snap = r_L**1.5
-            h_tension = np.sqrt(
-                (1.0 + g_snap**2 * (freqs / 2800.0) ** 2) / (1.0 + (freqs / 2800.0) ** 2)
-            )
-        else:
-            g_excursion = 1.0 / r_L
-            g_snap = r_L**1.5
-            h_tension = np.sqrt(
-                (g_excursion**2 + (freqs / 100.0) ** 2) / (1.0 + (freqs / 100.0) ** 2)
-            ) * np.sqrt((1.0 + g_snap**2 * (freqs / 2800.0) ** 2) / (1.0 + (freqs / 2800.0) ** 2))
-
-        # String voicing for target instrument (relative to standard nickel roundwound)
-        if (
-            sensor_type != "bridge_force"
-            and cfg.target_string
-            and cfg.target_string != "roundwound_nickel_standard"
-        ):
-            std_str = STRINGS["roundwound_nickel_standard"]
-            scale_in = tgt_scale_in
-            h_str = compute_differential_string_transfer(freqs, std_str, tgt_string)
-            h_long = compute_differential_longitudinal_transfer(
-                freqs, std_str, tgt_string, scale_length_inches=scale_in
-            )
-        else:
-            h_str = np.ones_like(freqs)
-            h_long = np.ones_like(freqs)
-
-        mag_raw = h_tgt_total * h_tension * h_str * h_long
-
-    else:
-        # 2. Input/Output Difference: H_diff = H_target / H_source
-        if src_pickup_key and src_pickup_key in inst.pickups:
-            p_raw = inst.pickups[src_pickup_key]
-            src_pickup = p_raw.model_copy(deep=True)
-            src_pickup.id = src_pickup_key
-        else:
-            src_pickup = get_source_pickup(inst, voice_id)
-        src_circuit = src_pickup.circuit
-
-        if not src_circuit and is_passive:
-            raise ValueError(
-                f"Passive instrument '{inst.id}' pickup '{src_pickup.id or 'unknown'}' "
-                f"does not define a '[circuit]' block. Passive source pickups require an explicit "
-                f"circuit model for differential deconvolution."
-            )
-
-        if src_circuit:
-            model = load_circuit(tgt_circuit)
-            apply_magnet_properties_to_model(model, cfg)
-            src_model = load_circuit(src_circuit)
-            apply_magnet_properties_to_model(src_model, src_pickup)
-            circuit_curves = compute_differential_circuit_transfer_functions(
-                model, src_model, freqs=FREQS
-            )
-        else:
-            model = load_circuit(tgt_circuit)
-            apply_magnet_properties_to_model(model, cfg)
-            circuit_curves = compute_circuit_transfer_functions(model, freqs=FREQS)
-
-        # Multi-rate FFT evaluation matching native circuit simulator synthesis exactly
-        prefilter_firs = compute_voice_prefilter_firs(
-            voice_id, instrument=inst, num_taps=2048, src_pickup_key=src_pickup_key
-        )
-        N = 8192
-        f_bins = np.fft.rfftfreq(N, 1.0 / 48000.0)
-        H_channels = []
-        for i in range(len(prefilter_firs)):
-            pf = np.array(prefilter_firs[i], dtype=np.float32)
-            c_curve = circuit_curves[i] if i < len(circuit_curves) else circuit_curves[0]
-            cf = np.array(
-                synthesize_minimum_phase_fir(c_curve, num_taps=2048, normalize=False),
-                dtype=np.float32,
-            )
-            H_channels.append(np.fft.rfft(pf, N) * np.fft.rfft(cf, N))
-
-        H_channels = np.array(H_channels)
-        peaks = [int(np.argmax(np.abs(fir))) for fir in prefilter_firs]
-        delta_samples = max(peaks) - min(peaks) if len(peaks) > 1 else 0
-        has_spatial_delay = len(prefilter_firs) > 1 and delta_samples > 0
-
-        if has_spatial_delay:
-            # Acoustic inter-pickup spatial coherence decay:
-            P_coherent = np.abs(np.sum(H_channels, axis=0)) ** 2
-            P_incoherent = np.sum(np.abs(H_channels) ** 2, axis=0)
-            delta_tau = delta_samples / 48000.0
-            f_notch = 1.0 / (2.0 * delta_tau)
-            f_mid = 1.35 * f_notch
-            f_sigma = max(0.35 * f_notch, 1.0)
-            gamma = 0.5 * (1.0 - np.tanh((f_bins - f_mid) / f_sigma))
-            mag_spectrum = np.sqrt(gamma * P_coherent + (1.0 - gamma) * P_incoherent)
-        elif len(H_channels) > 1:
-            mag_spectrum = np.abs(np.sum(H_channels, axis=0))
-        else:
-            mag_spectrum = np.abs(H_channels[0])
-
-        mag_raw = np.interp(freqs, f_bins, mag_spectrum)
-
-    is_circuit_match = bool(
-        circuit_curves
-        and len(circuit_curves) > 0
-        and np.allclose(circuit_curves[0], 1.0, rtol=1e-3)
-    )
-    is_full_identity = is_spatial_match and (is_circuit_match if mode == "difference" else True)
-    gain_offset = 0.0 if is_full_identity else cfg.gain_db
-
-    if mode == "difference":
-        # Differential transfer function evaluated in absolute gain units
-        # Identity match (source == target) evaluates to bit-exact 0.00 dB across all bins
-        if is_full_identity:
-            mag_norm = np.ones_like(freqs)
-        else:
-            mag_norm = mag_raw
-    else:
-        # Output voice magnitude: preserve absolute physical excursion relative to calibration baseline
-        hpf_val = cfg.hpf
-        if hpf_val is not None and float(hpf_val) >= 80.0:
-            ref_idx = np.argmin(np.abs(freqs - 1000.0))
-            ref_val = mag_raw[ref_idx]
-            mag_norm = mag_raw / ref_val if ref_val > 0 else mag_raw
-        elif cfg.sensor_type == "bridge_force":
-            ref_idx = np.argmin(np.abs(freqs - 100.0))
-            ref_val = mag_raw[ref_idx]
-            mag_norm = mag_raw / ref_val if ref_val > 0 else mag_raw
-        else:
-            mag_norm = mag_raw
-
-    mag_db = 20.0 * np.log10(np.clip(mag_norm, 1e-5, 20.0)) + gain_offset
-
-    data = {
-        "frequency": log_freqs,
-        "magnitude_db": mag_db.tolist(),
-        "voice_id": voice_id,
-        "voice_name": cfg.name,
-        "topology": cfg.topology,
-        "description": cfg.description,
-    }
-    df = pl.DataFrame(data)
-    if mode == "output" and cfg == VOICES.get(voice_id):
-        _OUTPUT_VOICE_DF_CACHE[voice_id] = df
-    elif mode == "difference" and cfg == VOICES.get(voice_id):
-        _DIFF_VOICE_DF_CACHE[cache_key_diff] = df
-
-    if include_mode_col:
-        return df.with_columns(
-            pl.lit("Output Voice" if mode == "output" else "Input/Output Difference").alias("mode")
-        )
-    return df
-
-
 _TARGET_DFS_CACHE: dict[int, dict[str, tuple[str, np.ndarray]]] = {}
 
+def _compute_welch_psd(x: np.ndarray, sr: int = 48000, n_fft: int = 4096, hop_length: int = 2048) -> tuple[np.ndarray, np.ndarray]:
+    x_pad = np.pad(x, (n_fft // 2, n_fft // 2), mode="constant")
+    n_frames = 1 + (len(x_pad) - n_fft) // hop_length
+    frames = np.lib.stride_tricks.as_strided(
+        x_pad, shape=(n_frames, n_fft),
+        strides=(x_pad.strides[0] * hop_length, x_pad.strides[0])
+    )
+    window = np.hanning(n_fft)
+    spectra = np.abs(np.fft.rfft(frames * window, axis=1)) ** 2
+    psd = np.mean(spectra, axis=0)
+    psd = psd / (np.sum(window**2) * sr)
+    f_bins = np.fft.rfftfreq(n_fft, 1.0 / sr)
+    return f_bins, psd
 
+def build_voice_dataframe(
+    voice_id: str,
+    cfg: Any,
+    instrument: InstrumentConfig | str = "30in",
+    mode: str = "output",
+    include_mode_col: bool = False,
+) -> pl.DataFrame:
+    import tempfile
+    from pathlib import Path
+
+    from allomorph.circuit.forward import simulate_instrument_voicing
+    from allomorph.dsp import read_wav
+    
+    inst = load_instrument(instrument)
+    
+    sr = 48000
+    n_samples = 16384
+    rng = np.random.RandomState(42)
+    x_white = rng.normal(0.0, 1.0, n_samples)
+    x_white = x_white / np.max(np.abs(x_white)) * (10.0 ** (-20.5 / 20.0))
+    
+    with tempfile.TemporaryDirectory() as td:
+        in_wav = Path(td) / "in.wav"
+        out_wav = Path(td) / "out.wav"
+        
+        from allomorph.dsp import write_wav_24bit
+        write_wav_24bit(in_wav, x_white, 48000)
+        simulate_instrument_voicing(
+            input_wav=in_wav,
+            instrument=inst,
+            voicing=voice_id,
+            
+            output_wav=out_wav,
+            max_samples=n_samples,
+            normalize="none"
+        )
+        y_wet, _ = read_wav(out_wav)
+        
+    f_bins, psd_y = _compute_welch_psd(y_wet, sr=sr)
+    _, psd_x = _compute_welch_psd(x_white, sr=sr)
+    
+    H_emp = np.sqrt(psd_y / np.maximum(psd_x, 1e-12))
+    freqs = np.asarray(log_freqs, dtype=np.float64)
+    mag_raw = np.interp(freqs, f_bins, H_emp)
+    
+    mag_db = 20.0 * np.log10(np.maximum(mag_raw, 1e-4))
+    
+    mid_mask = (freqs >= 100.0) & (freqs <= 800.0)
+    if len(mag_db[mid_mask]) > 0:
+        mag_db = mag_db - np.median(mag_db[mid_mask])
+
+    df = pl.DataFrame({
+        "frequency": np.round(freqs, 1).tolist(),
+        "magnitude_db": np.round(mag_db, 2).tolist(),
+        "line_type": [f"Target: {cfg.name}"] * len(freqs),
+        "voice_id": [voice_id] * len(freqs)
+    })
+    if include_mode_col:
+        df = df.with_columns(pl.lit(mode.capitalize()).alias("mode"))
+    return df
 def get_cached_target_dfs(step: int = 1) -> dict[str, tuple[str, np.ndarray]]:
     """Caches precomputed target voice responses downsampled by step."""
     if step in _TARGET_DFS_CACHE:
@@ -499,56 +220,6 @@ def compute_curve_rms_db(mag_db: np.ndarray | Sequence[float] | pl.Series) -> fl
     return float(20.0 * np.log10(np.sqrt(np.mean((10.0 ** (arr / 20.0)) ** 2))))
 
 
-def compute_regularized_differential_db(
-    db_tgt: np.ndarray,
-    db_src: np.ndarray,
-    freqs: np.ndarray | None = None,
-    max_boost_db: float = 7.0,
-    snr_db: float = 35.0,
-    f_c_hz: float = 1200.0,
-) -> np.ndarray:
-    """
-    Computes regularized differential gain in decibels modeling the empirical
-    transfer function of a Neural Amp Modeler (NAM) trained on normalized audio:
-      H_nam(f) = (h_tgt,norm * h_src,norm * S_dry(f)) / (|h_src,norm|^2 * S_dry(f) + eps)
-    where:
-      - S_dry(f) = 1 / (1 + (f / f_c)^2) is the dry bass string excitation power spectrum
-      - eps = 10^(-SNR/10) * max(P_in) is the regularization floor corresponding to NAM training ESR
-      - smooth_soft_knee_db smoothly bounds any resonance peaks at max_boost_db (+7.0 dB)
-
-    This accurately mirrors trained neural models:
-      - Passband (< 3.0 kHz): Perfect linear EQ matching with < 0.09 dB error.
-      - Treble / Stopband (> 5 kHz): Smooth, natural physical roll-off governed by
-        input signal energy, completely eliminating unconstrained ultrasonic boost.
-      - Identity pairs (h_tgt == h_src): Bit-exact 0.00 dB.
-    """
-    if np.allclose(db_tgt, db_src, atol=1e-5):
-        return np.zeros_like(db_tgt, dtype=np.float64)
-
-    n_pts = len(db_tgt)
-    if freqs is None:
-        f_arr = np.asarray(
-            [F_MIN * (F_MAX / F_MIN) ** (i / (n_pts - 1)) for i in range(n_pts)],
-            dtype=np.float64,
-        )
-    else:
-        f_arr = np.asarray(freqs, dtype=np.float64)
-
-    h_src = 10.0 ** (np.asarray(db_src, dtype=np.float64) / 20.0)
-    h_tgt = 10.0 ** (np.asarray(db_tgt, dtype=np.float64) / 20.0)
-
-    s_dry = 1.0 / (1.0 + (f_arr / f_c_hz) ** 2)
-    p_in = (h_src**2) * s_dry
-    eps = (10.0 ** (-snr_db / 10.0)) * float(np.max(p_in))
-
-    h_nam = (h_tgt * h_src * s_dry) / (p_in + eps)
-    db_nam = 20.0 * np.log10(np.maximum(h_nam, 1e-3))
-
-    knee_width = min(2.5, max_boost_db / 2.0)
-    thresh = max_boost_db - knee_width
-    h_db_soft = smooth_soft_knee_db(db_nam, thresh=thresh, ceiling=max_boost_db, alpha=2.0)
-
-    return np.asarray(h_db_soft, dtype=np.float64)
 
 
 def build_voicings_comparison_dataframe(
@@ -580,22 +251,18 @@ def build_voicings_comparison_dataframe(
     if source_id == target_id:
         db_diff = np.zeros(n_pts, dtype=np.float64)
     else:
-        src_rms = compute_curve_rms_db(db_src)
-        tgt_rms = compute_curve_rms_db(db_tgt)
-        db_src_norm = db_src - src_rms
-        db_tgt_norm = db_tgt - tgt_rms
-        db_diff = np.round(compute_regularized_differential_db(db_tgt_norm, db_src_norm, freqs), 2)
+        db_diff = np.round(db_tgt - db_src, 2)
 
     freq_col = f_pts * 3
     mag_col = np.round(db_src, 2).tolist() + np.round(db_tgt, 2).tolist() + db_diff.tolist()
     line_type_col = (
         ["1. Source Voicing"] * n_pts
         + ["2. Target Voicing"] * n_pts
-        + ["3. Normalized Difference (Norm. Diff)"] * n_pts
+        + ["3. Difference"] * n_pts
     )
     vid_col = [source_id] * n_pts + [target_id] * n_pts + [f"{source_id}_to_{target_id}"] * n_pts
     vname_col = (
-        [src_name] * n_pts + [tgt_name] * n_pts + [f"Norm. Diff: {tgt_name} - {src_name}"] * n_pts
+        [src_name] * n_pts + [tgt_name] * n_pts + [f"Difference: {tgt_name} - {src_name}"] * n_pts
     )
 
     return pl.DataFrame(

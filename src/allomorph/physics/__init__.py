@@ -23,9 +23,6 @@ from allomorph.physics.aperture import (
     position_envelope,
     soft_clamp_displacement_ratio,
 )
-from allomorph.physics.prefilter import (
-    compute_voice_prefilter_firs,
-)
 from allomorph.physics.strings import (
     INHARMONICITY_ANCHORS_BS,
     INHARMONICITY_ANCHORS_F0,
@@ -62,7 +59,6 @@ __all__ = [
     "compute_displacement_proximity_shelf",
     "compute_pickup_isolation_leveling",
     "compute_saddle_boundary_coupling",
-    "compute_voice_prefilter_firs",
     "generate_wave_speed_continuum",
     "get_coil_register",
     "get_inharmonicity_for_f0",

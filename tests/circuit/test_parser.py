@@ -202,11 +202,11 @@ def test_magnet_properties_configuration():
     assert a3.k_body == pytest.approx(0.09)
     assert a3.alpha == pytest.approx(0.30)
     assert a3.k_core == pytest.approx(0.09)
-    assert a3.vsat == pytest.approx(0.48)
+    assert a3.vsat == pytest.approx(0.96)
 
     neo = MAGNET_PROPERTIES["neodymium"]
     assert neo.k_body == pytest.approx(0.02)
-    assert neo.vsat == pytest.approx(0.90)
+    assert neo.vsat == pytest.approx(1.80)
 
     act = MAGNET_PROPERTIES["active"]
     assert act.k_body == 0.0
@@ -217,4 +217,4 @@ def test_magnet_properties_configuration():
     assert ideal.k_sag == 0.0
     assert ideal.k_eddy == 0.0
     assert ideal.k_core == 0.0
-    assert ideal.vsat == 10.0
+    assert ideal.vsat == 20.0

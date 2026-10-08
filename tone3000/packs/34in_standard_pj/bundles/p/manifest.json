@@ -3,14 +3,14 @@
   "pickup_key": "p",
   "position_name": "Neck",
   "base_dry_file": "input.wav",
-  "base_dry_sha256": "1e746c6ad4b789b413782ca468095d6ee7629cd3e93244cf1fb30f0f5eac349a",
+  "base_dry_sha256": "7b361f99d72cf978d39e28e5e8b461b168eaee31919f63e4153ba76ce0609401",
   "dry_file": "dry v4.1.1.wav",
   "dry_version": "v4.1.1",
-  "dry_sha256": "f1895850151ea02ec7c333cf15733465137cce42ad69c1f4b917795e90b765b2",
+  "dry_sha256": "a5c982db5c3b976018811fc6333c8a79d775662c3b3258efbaa623ee84aa4c28",
   "instrument_id": "34in_standard_pj",
   "instrument_version": 1,
   "source_voicing_version": 1,
-  "stem_count": 9,
+  "stem_count": 10,
   "stems": [
     {
       "filename": "Precision Vintage [Neck] v4.1.1.wav",
@@ -20,7 +20,7 @@
       "target_voicing_version": 1,
       "version": "v4.1.1",
       "tone_name": "Precision Vintage",
-      "sha256": "ac306a3fd4867813ca19118fb744af8bf5dc87e689bec7c7417011538a371258"
+      "sha256": "5cedfa8ad51c72ef88919c735dd9daea85e2b496df8a6bc0a0c1bd911383d7c5"
     },
     {
       "filename": "Precision Mids [Neck] v4.1.1.wav",
@@ -30,7 +30,7 @@
       "target_voicing_version": 1,
       "version": "v4.1.1",
       "tone_name": "Precision Mids",
-      "sha256": "dc96aeb2dde74bb4a291ed2973baf388d060f1d8a52ece61fc91fca44c0013bb"
+      "sha256": "5aad345c272183af4f93c88ee06d68eb48ee629df725a74bc31562332ceff39a"
     },
     {
       "filename": "Precision Warm [Neck] v4.1.1.wav",
@@ -40,7 +40,7 @@
       "target_voicing_version": 1,
       "version": "v4.1.1",
       "tone_name": "Precision Warm",
-      "sha256": "977598dacfb9d5e2b2d973fc16dcf2b2a7b8662a5874931887a3dbbb63c6c1cd"
+      "sha256": "8daf1d55144d795246d47cb6a185e1685b74c3fa7bacaafc9c40a1813d13a8af"
     },
     {
       "filename": "Precision Active [Neck] v4.1.1.wav",
@@ -50,7 +50,7 @@
       "target_voicing_version": 1,
       "version": "v4.1.1",
       "tone_name": "Precision Active",
-      "sha256": "62f81b57e3550e3ed60d7a2da692265d7f5e4a4583c517ec413dfecea7e558de"
+      "sha256": "7fe54915981b769fd13341af0c67a6e86becc713bfad35189e2c11d8619e430f"
     },
     {
       "filename": "Precision Dub [Neck] v4.1.1.wav",
@@ -60,7 +60,7 @@
       "target_voicing_version": 1,
       "version": "v4.1.1",
       "tone_name": "Precision Dub",
-      "sha256": "48b0e5e2d4e0d4127559ea6b42084e5f4e1e038287edb4bc3225bdadc71d2801"
+      "sha256": "bbbfce1a1f81319561fb9c74d4033c4d3202235f9ea4874bfd168c71239e7587"
     },
     {
       "filename": "Jazz Neck Warm [Neck] v4.1.1.wav",
@@ -70,7 +70,17 @@
       "target_voicing_version": 1,
       "version": "v4.1.1",
       "tone_name": "Jazz Neck Warm",
-      "sha256": "0958716ed3f5ba5e6084819bf50e868437bbb037781a056292d87fe272b36655"
+      "sha256": "975c419ec0130aff4e0b0369663f55b6f679a6f943c1e15dc85e340969a3b59d"
+    },
+    {
+      "filename": "Soapbar Neck [Neck] v4.1.1.wav",
+      "target_instrument": "34in_preamp_soapbar",
+      "target_instrument_version": 1,
+      "target_voicing": "neck_solo",
+      "target_voicing_version": 1,
+      "version": "v4.1.1",
+      "tone_name": "Soapbar Neck",
+      "sha256": "564556ca90f0d06f5549921bfea6491a017c47d8af18158e2784c81ef0148709"
     },
     {
       "filename": "Dingwall Middle [Neck] v4.1.1.wav",
@@ -80,7 +90,7 @@
       "target_voicing_version": 1,
       "version": "v4.1.1",
       "tone_name": "Dingwall Middle",
-      "sha256": "4b5a9164152a2bccda1978816853e2f9d6a89145754c16a0268f97385c4528bc"
+      "sha256": "6ecae5d6027d60bc8d46818eb2be5743643e21e8987e22405517b460144fad1a"
     },
     {
       "filename": "Mudbucker Deep [Neck] v4.1.1.wav",
@@ -90,7 +100,7 @@
       "target_voicing_version": 1,
       "version": "v4.1.1",
       "tone_name": "Mudbucker Deep",
-      "sha256": "081115968b3fe6e7b5d4d0828975d3411b4b90864529ac27e76802d6d2282147"
+      "sha256": "f23335e6f7a38590953628c595e9cef610c42bf7f2953930961e9224b5464b67"
     },
     {
       "filename": "Upright Acoustic [Neck] v4.1.1.wav",
@@ -100,7 +110,7 @@
       "target_voicing_version": 1,
       "version": "v4.1.1",
       "tone_name": "Upright Acoustic",
-      "sha256": "75eedb106bb5f53ff971743455b893ba067c524d410c08a0dd5f9a895681d0b1"
+      "sha256": "b2c972d4c4c5629dc3b48927c00c990fc4e08b5125f39d459c09bb1a3ad8c0e0"
     }
   ]
 }

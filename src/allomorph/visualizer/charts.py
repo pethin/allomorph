@@ -119,7 +119,7 @@ def generate_voicings_page(target_html: Path | str | None = None) -> Path:
     Displays an interactive 3-line graph:
       1. Source Voicing (H_src)
       2. Target Voicing (H_tgt)
-      3. Normalized Difference (Norm. Diff = H_tgt,norm - H_src,norm)
+      3. Difference
     When Source == Target, the differential line evaluates to exact 0.00 dB.
     Includes live metrics, preset comparisons, and zero-scroll responsiveness.
     """
@@ -412,7 +412,7 @@ def generate_voicings_page(target_html: Path | str | None = None) -> Path:
           <span class="badge">3-Line Direct Forward Twin</span>
         </div>
         <div class="header-sub">
-          Source Voicing (H<sub>src</sub>) &times; Normalized Difference (Norm. Diff = H&#770;<sub>tgt</sub> / H&#770;<sub>src</sub>) = Target Voicing (H<sub>tgt</sub>)
+          Source Voicing (H<sub>src</sub>) &times; Difference (Target - Source) = Target Voicing (H<sub>tgt</sub>)
         </div>
       </div>
       <div class="header-links">
@@ -452,15 +452,15 @@ def generate_voicings_page(target_html: Path | str | None = None) -> Path:
 
       <div class="metrics-row">
         <div class="metric-card">
-          <div class="metric-name">Norm. Diff Max Boost</div>
+          <div class="metric-name">Difference Max Boost</div>
           <div class="metric-val boost" id="metric-boost">+0.0 dB</div>
         </div>
         <div class="metric-card">
-          <div class="metric-name">Norm. Diff Max Cut</div>
+          <div class="metric-name">Difference Max Cut</div>
           <div class="metric-val cut" id="metric-cut">-0.0 dB</div>
         </div>
         <div class="metric-card">
-          <div class="metric-name">Norm. Diff Dynamic Range</div>
+          <div class="metric-name">Difference Dynamic Range</div>
           <div class="metric-val" id="metric-range">0.0 dB</div>
         </div>
         <div class="metric-card">
@@ -595,39 +595,9 @@ def generate_voicings_page(target_html: Path | str | None = None) -> Path:
         maxCut = 0.0;
         maxCutFreq = freqs[0];
       }} else {{
-        const hSrc = [];
-        const hTgt = [];
-        const pIn = [];
-        let maxPIn = 1e-12;
-        const fC = 1200.0;
-        const snrDb = 35.0;
-        const maxBoostDb = 7.0;
-
         for (let i = 0; i < freqs.length; i++) {{
-          const sn = srcMags[i] - srcRms;
-          const tn = tgtMags[i] - tgtRms;
-          const hs = Math.pow(10.0, sn / 20.0);
-          const ht = Math.pow(10.0, tn / 20.0);
-          hSrc.push(hs);
-          hTgt.push(ht);
-          const sDry = 1.0 / (1.0 + Math.pow(freqs[i] / fC, 2));
-          const pin = hs * hs * sDry;
-          pIn.push(pin);
-          if (pin > maxPIn) maxPIn = pin;
-        }}
-
-        const eps = Math.pow(10.0, -snrDb / 10.0) * maxPIn;
-        const kneeWidth = Math.min(2.5, maxBoostDb / 2.0);
-        const thresh = maxBoostDb - kneeWidth;
-
-        for (let i = 0; i < freqs.length; i++) {{
-          const sDry = 1.0 / (1.0 + Math.pow(freqs[i] / fC, 2));
-          const hNam = (hTgt[i] * hSrc[i] * sDry) / (pIn[i] + eps);
-          const dbNam = 20.0 * Math.log10(Math.max(hNam, 1e-3));
-          let d = smoothSoftKneeDb(dbNam, thresh, maxBoostDb, 2.0);
-          d = Math.round(d * 100) / 100;
+          let d = Math.round((tgtMags[i] - srcMags[i]) * 100) / 100;
           diffMags.push(d);
-
           if (freqs[i] <= 8000.0) {{
             if (d > maxBoost) {{ maxBoost = d; maxBoostFreq = freqs[i]; }}
             if (d < maxCut) {{ maxCut = d; maxCutFreq = freqs[i]; }}
@@ -674,11 +644,11 @@ def generate_voicings_page(target_html: Path | str | None = None) -> Path:
       const traceDiff = {{
         x: freqs,
         y: diffMags,
-        name: `Norm. Diff`,
+        name: `Difference`,
         type: 'scatter',
         mode: 'lines',
         line: {{ color: '#10b981', width: 3.0 }},
-        hovertemplate: `Norm. Diff: %{{y:+.1f}} dB<extra></extra>`
+        hovertemplate: `Difference: %{{y:+.1f}} dB<extra></extra>`
       }};
 
       const traceZero = {{

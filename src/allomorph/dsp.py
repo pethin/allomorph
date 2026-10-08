@@ -717,7 +717,7 @@ def _synth_log_chirp(
     phase = 2.0 * np.pi * f_start * (dur / gamma) * ((f_end / f_start) ** (t / dur) - 1.0)
     if string_tilt and f_corner > 0.0:
         inst_freq = f_start * ((f_end / f_start) ** (t / dur))
-        tilt = 1.0 / np.sqrt(1.0 + (inst_freq / f_corner) ** 2)
+        tilt = 1.0 / (1.0 + (inst_freq / f_corner) ** 2)
         sig = amp * tilt * np.sin(phase)
     else:
         sig = amp * np.sin(phase)
@@ -772,9 +772,9 @@ def _synth_pluck(
     split_hz = 0.18
 
     gamma = (
-        0.65
+        0.95
         if technique == "slap"
-        else (0.72 if technique == "pick" else (1.60 if technique == "palm_mute" else 0.92))
+        else (1.10 if technique == "pick" else (1.80 if technique == "palm_mute" else 1.45))
     )
 
     fns: list[float] = []
@@ -788,6 +788,10 @@ def _synth_pluck(
             break
         geo_pos = max(float(np.sin(h * np.pi * 0.14)), 0.25)
         h_weight = (1.0 / (h**gamma)) * geo_pos
+        if technique == "finger":
+            arg_tip = h * np.pi * 0.016
+            f_tip = abs(np.sin(arg_tip) / arg_tip) if arg_tip > 1e-4 else 1.0
+            h_weight *= max(float(f_tip), 0.15)
         if technique == "palm_mute" and fn > 600.0:
             h_weight *= float(np.exp(-(fn - 600.0) / 300.0))
         d_rate_v = (0.7 + 0.10 * h + 0.00025 * (h**2)) * decay_mult
@@ -816,28 +820,31 @@ def _synth_pluck(
         asym = 0.12 * amp * np.exp(-t / 0.012)
         sig += asym
 
-    # Attack transients based on technique and C^infinity kinematic fret collision
+    # Attack transients based on technique and velocity-gated C^infinity kinematic fret collision
     if clank or technique in ("pick", "slap"):
         if technique == "slap":
             burst = np.sin(2.0 * np.pi * 3200.0 * t) * np.exp(-t / 0.004)
-            # C^infinity softplus kinematic contact force: string strikes fretwire on negative excursions
-            contact_force = np.logaddexp(0.0, 12.0 * (-np.sin(2.0 * np.pi * f0 * t))) / 12.0
-            collision = (contact_force**3) * np.exp(-t / 0.025)
-            sig += 0.85 * burst + 0.45 * collision
+            if amp >= 0.75:
+                # C^infinity softplus kinematic contact force: string strikes fretwire on negative excursions
+                contact_force = np.logaddexp(0.0, 12.0 * (-np.sin(2.0 * np.pi * f0 * t))) / 12.0
+                collision = (contact_force**3) * np.exp(-t / 0.025)
+                sig += 0.35 * burst + 0.20 * collision
+            else:
+                sig += 0.20 * burst
         elif technique == "pick":
             burst = np.sin(2.0 * np.pi * 4200.0 * t) * np.exp(-t / 0.0035)
-            sig += 0.60 * burst
+            sig += (0.25 if amp >= 0.75 else 0.12) * burst
         elif technique == "palm_mute":
             pass  # Zero clank on palm-muted thumps
         else:
             burst = np.sin(2.0 * np.pi * 2600.0 * t) * np.exp(-t / 0.004)
-            if amp >= 0.70:
+            if amp >= 0.75:
                 # Multi-cycle fret buzz on hard finger plucks decaying over ~50ms
                 contact_force = np.logaddexp(0.0, 12.0 * (-np.sin(2.0 * np.pi * f0 * t))) / 12.0
                 collision = (contact_force**3) * np.exp(-t / 0.018)
-                sig += 0.35 * burst + 0.30 * collision
+                sig += 0.10 * burst + 0.10 * collision
             else:
-                sig += 0.35 * burst
+                sig += 0.05 * burst
 
     sig -= np.mean(sig)
     p_max = float(np.max(np.abs(sig)))
@@ -870,7 +877,7 @@ def _synth_ghost_note(
     noise = rng.standard_normal(n)
     scrape = np.diff(noise, prepend=noise[0])
     scrape_click = np.sin(2.0 * np.pi * 3200.0 * t) * np.exp(-t / 0.004)
-    transient = (0.35 * scrape + 0.40 * scrape_click) * np.exp(-t / 0.006)
+    transient = (0.20 * scrape + 0.12 * scrape_click) * np.exp(-t / 0.006)
 
     sig = body + transient
     sig -= np.mean(sig)
@@ -901,12 +908,12 @@ def _synth_natural_harmonic(
             break
         decay_rate = 0.25 + 0.10 * k
         decay = np.exp(-t * decay_rate)
-        weight = 1.0 / (k**0.85)
+        weight = 1.0 / (k**1.25)
         sig += weight * np.sin(2.0 * np.pi * fk * t) * decay
 
     # C^infinity fingertip release chime transient
     chime = np.sin(2.0 * np.pi * 4800.0 * t) * np.exp(-t / 0.003)
-    sig += 0.20 * chime
+    sig += 0.08 * chime
 
     sig -= np.mean(sig)
     p_max = float(np.max(np.abs(sig)))
@@ -966,7 +973,7 @@ def _synth_glissando(
         if max_fk >= (sample_rate / 2.0) - 200.0:
             break
         ks.append(float(k))
-        kws.append(1.0 / (k**0.88))
+        kws.append(1.0 / (k**1.30))
 
     if ks:
         _accumulate_glissando_modes_simd(
@@ -979,7 +986,7 @@ def _synth_glissando(
     num_frets = abs(12.0 * np.log2(f_end / f_start))
     if num_frets > 1.0:
         fret_clicks = np.sin(2.0 * np.pi * num_frets * (t / dur)) ** 16
-        sig += 0.08 * fret_clicks * np.sin(2.0 * np.pi * 3200.0 * t)
+        sig += 0.03 * fret_clicks * np.sin(2.0 * np.pi * 3200.0 * t)
 
     sig -= np.mean(sig)
     p_max = float(np.max(np.abs(sig)))
@@ -1081,7 +1088,7 @@ def _synth_vibrato_pluck(
         if fn >= (sample_rate / 2.0) - 200.0:
             break
         geo_pos = max(float(np.sin(h * np.pi * 0.14)), 0.25)
-        h_weight = (1.0 / (h**0.92)) * geo_pos
+        h_weight = (1.0 / (h**1.40)) * geo_pos
         decay_rate = 0.5 + 0.07 * h + 0.00018 * (h**2)
         fns.append(fn)
         hws.append(h_weight)
@@ -1132,7 +1139,7 @@ def _synth_long_ringout(
         if fn >= (sample_rate / 2.0) - 200.0:
             break
         geo_pos = max(float(np.sin(h * np.pi * 0.14)), 0.25)
-        h_weight = (1.0 / (h**0.92)) * geo_pos
+        h_weight = (1.0 / (h**1.40)) * geo_pos
         decay_v_rate = 0.35 + 0.05 * h + 0.00012 * (h**2)
         decay_h_rate = 0.20 + 0.03 * h + 0.00006 * (h**2)
         fns.append(fn)
@@ -1378,18 +1385,25 @@ def generate_optimal_bass_dry(
             break
         dt = _synth_dyad(f1, f2, 0.72, max(0.4, 1.8 * scale), sample_rate)
         append_segment(dt, 0.4)
-    # High-frequency CCIF / DIN two-tone intermodulation probes
+    # High-frequency CCIF / DIN two-tone intermodulation probes embedded on low-E1 / low-B0 drone
     ccif_probes = [
-        (3000.0, 3200.0),  # Delta f = 200 Hz, RLC resonance band
-        (4000.0, 4250.0),  # Delta f = 250 Hz, upper resonance band
-        (2000.0, 2150.0),  # Delta f = 150 Hz, upper-mid presence
+        (3000.0, 3200.0, 41.20),  # Delta f = 200 Hz, RLC resonance band on E1
+        (4000.0, 4250.0, 30.87),  # Delta f = 250 Hz, upper resonance band on B0
+        (2000.0, 2150.0, 55.00),  # Delta f = 150 Hz, upper-mid presence on A1
     ]
     probe_dur = max(0.4, 2.0 * scale)
-    for f1, f2 in ccif_probes:
+    for f1, f2, f_drone in ccif_probes:
         if cur >= total_samples - trail_silence:
             break
-        pr = _synth_two_tone_probe(f1, f2, 0.15, probe_dur, sample_rate)
-        append_segment(pr, 0.4)
+        drone = _synth_pluck(f_drone, 0.65, probe_dur, sample_rate, clank=False, technique="finger")
+        pr = _synth_two_tone_probe(f1, f2, 0.05, probe_dur, sample_rate)
+        n_p = min(len(drone), len(pr))
+        embedded = drone[:n_p] + pr[:n_p]
+        embedded -= np.mean(embedded)
+        p_max = float(np.max(np.abs(embedded)))
+        if p_max > 0:
+            embedded = (embedded / p_max) * 0.70
+        append_segment(embedded, 0.4)
     # Schroeder-phase multitone complex with 800 Hz roll-off corner
     m_rem = max(0, total_samples - trail_silence - cur)
     if m_rem > int(2.0 * sample_rate * scale):
@@ -1418,7 +1432,7 @@ def generate_optimal_bass_dry(
             sig_m = np.zeros(nm, dtype=np.float64)
             for k, fk in enumerate(clusters):
                 th = (np.pi * (k**2)) / kc
-                weight = 1.0 / np.sqrt(1.0 + (fk / 800.0) ** 1.1)
+                weight = 1.0 / np.sqrt(1.0 + (fk / 800.0) ** 1.8)
                 sig_m += weight * np.sin(2.0 * np.pi * fk * tm + th)
             sig_m -= np.mean(sig_m)
             sig_m = (sig_m / np.max(np.abs(sig_m))) * 0.80

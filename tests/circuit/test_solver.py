@@ -300,8 +300,8 @@ def test_voice_09b_series_netlist_and_transfer():
     assert m09b.L / m09.L == pytest.approx(4.0)
     assert m09b.Rdc / m09.Rdc == pytest.approx(4.0)
 
-    c09 = np.array(compute_circuit_transfer_functions(m09, freqs=FREQS)[0])
-    c09b = np.array(compute_circuit_transfer_functions(m09b, freqs=FREQS)[0])
+    c09 = np.array(compute_circuit_transfer_functions(m09, freqs=FREQS, include_active_preamp=True)[0])
+    c09b = np.array(compute_circuit_transfer_functions(m09b, freqs=FREQS, include_active_preamp=True)[0])
 
     peak_09 = FREQS[np.argmax(c09)]
     peak_09b = FREQS[np.argmax(c09b)]

@@ -68,7 +68,6 @@ from allomorph.naming import (
 )
 from allomorph.physics import (
     compute_coil_aperture,
-    compute_voice_prefilter_firs,
     generate_wave_speed_continuum,
     numpy_pickup_acoustic_response,
     numpy_pickup_macro_aperture,
@@ -107,7 +106,6 @@ __all__ = [
     "compute_lufs",
     "compute_true_peak",
     "compute_true_peak_dbfs",
-    "compute_voice_prefilter_firs",
     "ensure_input_audio_wav",
     "fft_convolve",
     "find_default_input_audio",

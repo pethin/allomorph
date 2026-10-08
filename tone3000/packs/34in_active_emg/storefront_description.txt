@@ -1,6 +1,6 @@
 ALLOMORPH: 34" ACTIVE EMG BASS (OPTION C BASELINE) EDITION
 
-Transform your 34" Active EMG Bass (Option C Baseline) into 24 legendary active, vintage, modern, and acoustic pickup configurations.
+Transform your 34" Active EMG Bass (Option C Baseline) into 27 legendary active, vintage, modern, and acoustic pickup configurations.
 
 
 OVERVIEW
@@ -41,7 +41,7 @@ For each voicing, set your bass's physical pickup controls to the recommended br
 Plug straight in. All pickup positioning, pot loading, tone capacitor shaping, and active preamp EQs are handled automatically by the models.
 
 
-THE 24 DIGITAL TWIN VOICINGS
+THE 27 DIGITAL TWIN VOICINGS
 
 
 Precision Bass & Tone Shaper Family
@@ -92,48 +92,60 @@ The iconic Music Man StingRay sound: thunderous low end, aggressive metallic sla
 StingRay wired in series for a hotter, thicker signal with punchy low-mids and an aggressive, in-your-face rock bark.
 
 
+Dual Soapbar Family
+
+14. Soapbar Pair [Parallel] v4.1.1
+Dual passive soapbars in parallel with active 3-band buffer (Ibanez SR / Yamaha TRBX / Sire F10). Modern articulate punch, wide dynamic range, and scooped slap clarity.
+
+15. Soapbar Neck [Neck] v4.1.1
+Solo neck soapbar humbucker with active buffer. Warm, woody, and punchy with rich low-mids.
+
+16. Soapbar Bridge [Bridge] v4.1.1
+Solo bridge soapbar humbucker with active buffer. Tight, articulate, mid-forward bite with fast attack.
+
+
 P/J Bass Family
 
-14. PJ Active [Parallel] v4.1.1
+17. PJ Active [Parallel] v4.1.1
 Modern active P/J punch (Sadowsky/Spector style). Combines thick split-coil body with bridge single-coil cut, boosted by a powerful active 2-band EQ.
 
-15. PJ Passive [Parallel] v4.1.1
+18. PJ Passive [Parallel] v4.1.1
 Classic '80s rock P/J tone (Fender Precision Special / Yamaha BB). Thick hard-rock punch with aggressive midrange bite and authoritative low-end grunt.
 
 
 P/MM Modern Hybrids
 
-16. P∕MM Parallel [Parallel] v4.1.1
+19. P∕MM Parallel [Parallel] v4.1.1
 Modern boutique session hybrid (Sandberg California / Lakland style). Blends the warm body of a P-bass neck with the punchy slap bite of a Music Man bridge humbucker.
 
-17. P∕MM Series [Parallel] v4.1.1
+20. P∕MM Series [Parallel] v4.1.1
 P-bass neck and Music Man bridge wired in series for a massive wall of sound with immense low-mid thrust and heavy overdrive sustain.
 
 
 Progressive & Classic Rock Legends
 
-18. Rickenbacker Clank [Bridge] v4.1.1
+21. Rickenbacker Clank [Bridge] v4.1.1
 The quintessential prog-rock clank (Chris Squire / Geddy Lee). Tight, lean low end with biting, aggressive pick attack and cutting upper-mid grit.
 
-19. Rickenbacker Open [Bridge] v4.1.1
+22. Rickenbacker Open [Bridge] v4.1.1
 Modern 4003 bridge tone with the vintage capacitor bypassed. Fuller low-end body and punch while retaining that signature biting Rickenbacker top-end cut.
 
-20. Dingwall Bridge [Bridge] v4.1.1
+23. Dingwall Bridge [Bridge] v4.1.1
 Modern progressive metal tone: razor-sharp pick clank, extreme note clarity, and piano-like low-B definition tailored for drop tunings and heavy distortion.
 
-21. Dingwall Middle [Neck] v4.1.1
+24. Dingwall Middle [Neck] v4.1.1
 FD3 middle pickup solo: focused, aggressive low-mid grunt and punchy growl with exceptional articulation across all registers.
 
-22. Dingwall Parallel [Parallel] v4.1.1
+25. Dingwall Parallel [Parallel] v4.1.1
 FD3 bridge and middle coils in parallel: modern scooped aggression with ultra-fast transient attack, tight sub-bass, and pristine harmonic sparkle.
 
-23. Mudbucker Deep [Neck] v4.1.1
+26. Mudbucker Deep [Neck] v4.1.1
 The legendary Gibson "Mudbucker": a dark, colossal wall of pure vintage bass rumble with zero top-end harshness—pure '60s and '70s British blues-rock.
 
 
 Acoustic Transducers
 
-24. Upright Acoustic [Neck] v4.1.1
+27. Upright Acoustic [Neck] v4.1.1
 Acoustic upright double bass: transforms your electric bass into a woody, resonant acoustic upright with natural body thump and organic finger feel. Pair with 3 Sigma Audio "Acoustic Upright Standard" AST IRs in your cabinet loader for authentic soundboard acoustic bloom.
 
 

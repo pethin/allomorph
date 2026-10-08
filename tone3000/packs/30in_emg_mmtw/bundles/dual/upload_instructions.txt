@@ -9,7 +9,7 @@ Tone Knob Setting: 100% (Wide Open)
 STEP-BY-STEP UPLOAD INSTRUCTIONS (Tone3000 Studio Trainer):
 1. Open Tone3000 Trainer in your browser or local batch tool.
 2. DRAG DRY FILE: Drag 'dry v4.1.1.wav' from this directory into the '1 Dry File' slot.
-3. DRAG WET STEMS: Select and drag the following 17 .wav files into the 'Wet Stems' slot:
+3. DRAG WET STEMS: Select and drag the following 19 .wav files into the 'Wet Stems' slot:
    • Precision Vintage [Dual] v4.1.1.wav
    • Precision Mids [Dual] v4.1.1.wav
    • Precision Warm [Dual] v4.1.1.wav
@@ -19,6 +19,8 @@ STEP-BY-STEP UPLOAD INSTRUCTIONS (Tone3000 Studio Trainer):
    • Jazz Pair Mids [Dual] v4.1.1.wav
    • Jazz Pair Active [Dual] v4.1.1.wav
    • Jazz Neck Warm [Dual] v4.1.1.wav
+   • Soapbar Pair [Dual] v4.1.1.wav
+   • Soapbar Neck [Dual] v4.1.1.wav
    • Dingwall Middle [Dual] v4.1.1.wav
    • Dingwall Parallel [Dual] v4.1.1.wav
    • PJ Passive [Dual] v4.1.1.wav

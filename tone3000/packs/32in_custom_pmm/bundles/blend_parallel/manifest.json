@@ -3,14 +3,14 @@
   "pickup_key": "blend_parallel",
   "position_name": "P/MM",
   "base_dry_file": "input.wav",
-  "base_dry_sha256": "1e746c6ad4b789b413782ca468095d6ee7629cd3e93244cf1fb30f0f5eac349a",
+  "base_dry_sha256": "7b361f99d72cf978d39e28e5e8b461b168eaee31919f63e4153ba76ce0609401",
   "dry_file": "dry v4.1.1.wav",
   "dry_version": "v4.1.1",
-  "dry_sha256": "2eeae69d92282ff1e8dc67184dd34a00b62b7bf2ffa52f2844f3ba093ba37593",
+  "dry_sha256": "16dfcb7c2929baadceda10570d29b912b611b8e1b0059d70e84d9a834bb4d037",
   "instrument_id": "32in_custom_pmm",
   "instrument_version": 1,
   "source_voicing_version": 1,
-  "stem_count": 8,
+  "stem_count": 9,
   "stems": [
     {
       "filename": "Jazz Pair Open [P\u2215MM] v4.1.1.wav",
@@ -20,7 +20,7 @@
       "target_voicing_version": 1,
       "version": "v4.1.1",
       "tone_name": "Jazz Pair Open",
-      "sha256": "c1f34434841ec25232bda822e0066b56e4caefedc87739a35b3caa8093abf1cd"
+      "sha256": "09b50695de45fb856bbabefa88a0b2cf7d47d425643f94226dbed747ba0a94c6"
     },
     {
       "filename": "Jazz Pair Mids [P\u2215MM] v4.1.1.wav",
@@ -30,7 +30,7 @@
       "target_voicing_version": 1,
       "version": "v4.1.1",
       "tone_name": "Jazz Pair Mids",
-      "sha256": "2d9b12b05ff8b5afee8da953e900c64602fbf6c1e04186a3a83164fd36ab0ee4"
+      "sha256": "571823889957825c8bd6ba2903ecb9e9b9d864de3708406959d698ebc57626bd"
     },
     {
       "filename": "Jazz Pair Active [P\u2215MM] v4.1.1.wav",
@@ -40,7 +40,17 @@
       "target_voicing_version": 1,
       "version": "v4.1.1",
       "tone_name": "Jazz Pair Active",
-      "sha256": "ceb9fdef8334b28a6616286638a76032d328b3408d1f0e72527ca3b5ac70bba6"
+      "sha256": "f7d3caeaf89f29c393f28ac2a97cd367d7ae40e0b57ba6b23e2ffae65d3836ef"
+    },
+    {
+      "filename": "Soapbar Pair [P\u2215MM] v4.1.1.wav",
+      "target_instrument": "34in_preamp_soapbar",
+      "target_instrument_version": 1,
+      "target_voicing": "pair_parallel",
+      "target_voicing_version": 1,
+      "version": "v4.1.1",
+      "tone_name": "Soapbar Pair",
+      "sha256": "b3c1607e0897a21effbcefd77d5d11cf53ea715a2e1c8e330d64ede7dfb743a8"
     },
     {
       "filename": "Dingwall Parallel [P\u2215MM] v4.1.1.wav",
@@ -50,7 +60,7 @@
       "target_voicing_version": 1,
       "version": "v4.1.1",
       "tone_name": "Dingwall Parallel",
-      "sha256": "461a3969956841c90d94258ec5866c2d57b88fbea2b91a6400323da167d42fe8"
+      "sha256": "33e6b6dcc020dc333c1af42215d31c8cb80e59ecc25297eed94ae91315407ddc"
     },
     {
       "filename": "PJ Passive [P\u2215MM] v4.1.1.wav",
@@ -60,7 +70,7 @@
       "target_voicing_version": 1,
       "version": "v4.1.1",
       "tone_name": "PJ Passive",
-      "sha256": "7d7c0b70e4af1726e19688fd029036a37a4f5dc44d722bb1e2e25c7885ab497a"
+      "sha256": "fc6ae15cbd49733b6009ebe505bffed65f0c11863dbff10bf2977d133c3729ea"
     },
     {
       "filename": "PJ Active [P\u2215MM] v4.1.1.wav",
@@ -70,7 +80,7 @@
       "target_voicing_version": 1,
       "version": "v4.1.1",
       "tone_name": "PJ Active",
-      "sha256": "8985c2c1e719b31005828d66ca02d018f69161f4ec668df09aa408280258890b"
+      "sha256": "725e599d83c2ffbca89911fbc7b6e6c4eb1bcba3dc20bbad5ba255d3babefcdc"
     },
     {
       "filename": "P\u2215MM Parallel [P\u2215MM] v4.1.1.wav",
@@ -80,7 +90,7 @@
       "target_voicing_version": 1,
       "version": "v4.1.1",
       "tone_name": "P\u2215MM Parallel",
-      "sha256": "4500704e6c6cc35ff4cd5d2764a9a3dd5c673e896690d4587d1015a40b333492"
+      "sha256": "90307c4af722e90c760390fe4e93bcdf0ad66d4c0466be6064e8115ce57015f3"
     },
     {
       "filename": "P\u2215MM Series [P\u2215MM] v4.1.1.wav",
@@ -90,7 +100,7 @@
       "target_voicing_version": 1,
       "version": "v4.1.1",
       "tone_name": "P\u2215MM Series",
-      "sha256": "9490c06e72bafd47f5c095b3775ba68346cf13ac55c64200d3a53fd27f39dfa2"
+      "sha256": "ed17794ce4510f7454c947688357aa3f5767aa5c88071c472468d8383e163361"
     }
   ]
 }

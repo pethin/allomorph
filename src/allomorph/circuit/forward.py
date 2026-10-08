@@ -69,6 +69,33 @@ def _get_white_noise_vector(n: int) -> np.ndarray:
     return rng.normal(0.0, 1.0, n).astype(np.float64)
 
 
+def _stft(x: np.ndarray, n_fft: int, hop_length: int) -> np.ndarray:
+    x_pad = np.pad(x, (n_fft // 2, n_fft // 2), mode="constant")
+    n_frames = 1 + (len(x_pad) - n_fft) // hop_length
+    frames = np.lib.stride_tricks.as_strided(
+        x_pad, shape=(n_frames, n_fft),
+        strides=(x_pad.strides[0] * hop_length, x_pad.strides[0])
+    )
+    window = np.hanning(n_fft)
+    return np.fft.rfft(frames * window, axis=1)
+
+def _istft(X: np.ndarray, n_fft: int, hop_length: int, orig_len: int) -> np.ndarray:
+    n_frames = X.shape[0]
+    x_out = np.zeros(n_frames * hop_length + n_fft, dtype=np.float64)
+    window_sq = np.zeros_like(x_out)
+    win = np.hanning(n_fft)
+    
+    frames = np.fft.irfft(X, n=n_fft, axis=1)
+    for i in range(n_frames):
+        start = i * hop_length
+        x_out[start : start + n_fft] += frames[i] * win
+        window_sq[start : start + n_fft] += win**2
+        
+    mask = window_sq > 1e-10
+    x_out[mask] /= window_sq[mask]
+    
+    return x_out[n_fft // 2 : n_fft // 2 + orig_len]
+
 def resolve_target_voicing(
     voicing: VoicingConfig | str,
     instrument: InstrumentConfig | str | Path | None = None,
@@ -311,12 +338,15 @@ def simulate_instrument_voicing(
 
     # 2. Active Preamp EQ Contour H_preamp(f)
     circ_preamp = getattr(circ_model, "preamp", None) if circ_model is not None else None
-    circ_has_preamp = circ_preamp not in (None, "", "none")
-    if voicing_cfg.preamp_bands and not circ_has_preamp:
+    
+    if voicing_cfg.preamp_bands:
         h_pre_raw = compute_active_preamp_transfer(voicing_cfg.preamp_bands, s)
         h_preamp = np.abs(h_pre_raw).astype(np.float64)
-    elif voicing_cfg.preamp_preset and not circ_has_preamp:
+    elif voicing_cfg.preamp_preset:
         h_pre_raw = compute_active_preamp_eq(voicing_cfg.preamp_preset, s)
+        h_preamp = np.abs(h_pre_raw).astype(np.float64)
+    elif circ_preamp and circ_preamp not in ("none", ""):
+        h_pre_raw = compute_active_preamp_eq(circ_preamp, s)
         h_preamp = np.abs(h_pre_raw).astype(np.float64)
     else:
         h_preamp = np.ones_like(f, dtype=np.float64)
@@ -463,7 +493,9 @@ def simulate_instrument_voicing(
                     sp_mag = sp.magnet_type or (
                         "active" if getattr(inst, "electronics", "") == "active" else "alnico_v"
                     )
-                    sp_props = MAGNET_PROPERTIES.get(sp_mag, MAGNET_PROPERTIES["alnico_v"])
+                    if sp_mag not in MAGNET_PROPERTIES:
+                        raise KeyError(f"Unrecognized magnet type: '{sp_mag}'")
+                    sp_props = MAGNET_PROPERTIES[sp_mag]
                     sp_vsat = (
                         float(voicing_cfg.vsat)
                         if voicing_cfg.vsat is not None
@@ -511,23 +543,47 @@ def simulate_instrument_voicing(
             delta_samples = max(peaks) - min(peaks) if len(peaks) > 1 else 0
 
             if len(H_channels_arr) > 1 and delta_samples > 0:
-                P_coh = np.abs(np.sum(H_channels_arr, axis=0)) ** 2
+                P_coh_raw = np.abs(np.sum(H_channels_arr, axis=0)) ** 2
                 P_incoh = np.sum(np.abs(H_channels_arr) ** 2, axis=0)
+                
+                eps_quad = 0.18
+                P_coh_reg = P_coh_raw + (eps_quad**2) * P_incoh
+                
+                H_dc = np.abs(H_channels_arr[:, 0])
+                total_w = np.sum(H_dc)
+                dc_incoh = np.sum(H_dc ** 2)
+                dc_norm = math.sqrt(total_w**2 + (eps_quad**2) * dc_incoh) / total_w if total_w > 0 else 1.0
+
                 delta_tau = delta_samples / 48000.0
                 f_notch = 1.0 / (2.0 * delta_tau)
                 f_mid = 1.35 * f_notch
                 f_sigma = max(0.35 * f_notch, 1.0)
                 gamma = 0.5 * (1.0 - np.tanh((f_bins - f_mid) / f_sigma))
-                M_blend = np.sqrt(gamma * P_coh + (1.0 - gamma) * P_incoh)
-                H_coh = np.sum(H_channels_arr, axis=0)
-                mag_coh = np.abs(H_coh)
-                H_spatial = M_blend / np.maximum(mag_coh, 1e-4)
-                fir_spatial = synthesize_minimum_phase_fir(
-                    H_spatial, num_taps=1024, normalize=False
-                )
-                composite_audio = fft_convolve(
-                    raw_sum, np.asarray(fir_spatial, dtype=np.float64), mode="causal"
-                )[:n_samples]
+                
+                M_blend = np.sqrt(gamma * P_coh_reg + (1.0 - gamma) * P_incoh) / dc_norm
+                
+                
+                n_fft = 4096
+                hop_length = 1024
+                
+                # STFT Magnitude Forcing (Perfect physical realization of spatial incoherence without FIR ringing)
+                X_branches = [_stft(b, n_fft, hop_length) for b in branch_audios]
+                X_coh = np.sum(X_branches, axis=0)
+                P_incoh_stft = np.sum([np.abs(X)**2 for X in X_branches], axis=0)
+                
+                f_stft = np.fft.rfftfreq(n_fft, d=1.0/48000.0)
+                gamma_stft = 0.5 * (1.0 - np.tanh((f_stft - f_mid) / f_sigma))
+                gamma_stft = gamma_stft[np.newaxis, :]
+                
+                M_target = np.sqrt(gamma_stft * (np.abs(X_coh)**2 + (eps_quad**2) * P_incoh_stft) + (1.0 - gamma_stft) * P_incoh_stft) / dc_norm
+                
+                phase_ref = X_branches[0].copy()
+                mask = np.abs(X_coh) < 1e-6
+                phase_ref[mask] = X_branches[0][mask] if len(X_branches) > 0 else 0.0
+                
+                X_out = M_target * np.exp(1j * np.angle(phase_ref))
+                composite_audio = _istft(X_out, n_fft, hop_length, n_samples)
+                
                 mag_spectrum = M_blend
             elif len(H_channels_arr) > 1:
                 composite_audio = raw_sum
@@ -583,9 +639,9 @@ def simulate_instrument_voicing(
         else:
             filtered = composite_audio
     else:
-        fir = synthesize_minimum_phase_fir(h_total, num_taps=num_taps, normalize=False)
-        fir_np = np.asarray(fir, dtype=np.float64)
-        filtered = fft_convolve(input_mono, fir_np, mode="causal")[:n_samples]
+        fir_base = synthesize_minimum_phase_fir(h_base, num_taps=num_taps, normalize=False)
+        fir_base_np = np.asarray(fir_base, dtype=np.float64)
+        filtered = fft_convolve(input_mono, fir_base_np, mode="causal")[:n_samples]
 
         # Single-pickup Oversampled Magnetic Saturation & Core Dynamics (All 16 Parameters)
         has_direct_dynamics = (
@@ -594,51 +650,56 @@ def simulate_instrument_voicing(
             and not getattr(circ_model, "no_eq", False)
         )
         if apply_saturation and (voicing_cfg.sensor_type == "magnetic" or has_direct_dynamics):
-            mag_type = pickup_cfg.magnet_type or (
+            sp = next(iter(inst.pickups.values()))
+            sp_mag = sp.magnet_type or (
                 "active" if getattr(inst, "electronics", "") == "active" else "alnico_v"
             )
-            props = MAGNET_PROPERTIES.get(mag_type, MAGNET_PROPERTIES["alnico_v"])
-
-            if voicing_cfg.vsat is not None:
-                vsat_eff = float(voicing_cfg.vsat)
-            elif circ_model is not None and circ_model.vsat is not None:
-                vsat_eff = float(circ_model.vsat)
-            else:
-                vsat_eff = float(props.vsat)
-
-            if voicing_cfg.alpha is not None:
-                alpha_eff = float(voicing_cfg.alpha)
-            elif pickup_cfg.alpha is not None:
-                alpha_eff = float(pickup_cfg.alpha)
-            else:
-                alpha_eff = float(props.alpha)
-
+            if sp_mag not in MAGNET_PROPERTIES:
+                raise KeyError(f"Unrecognized magnet type: '{sp_mag}'")
+            sp_props = MAGNET_PROPERTIES[sp_mag]
+            sp_vsat = (
+                float(voicing_cfg.vsat)
+                if voicing_cfg.vsat is not None
+                else (
+                    float(circ_model.vsat)
+                    if (circ_model is not None and circ_model.vsat is not None)
+                    else float(sp_props.vsat)
+                )
+            )
+            sp_alpha = (
+                float(voicing_cfg.alpha)
+                if voicing_cfg.alpha is not None
+                else (float(sp.alpha) if sp.alpha is not None else float(sp_props.alpha))
+            )
             drive_db = float(getattr(voicing_cfg, "gain_db", 0.0) or 0.0)
             drive_in = filtered if drive_db == 0.0 else filtered * (10.0 ** (drive_db / 20.0))
-
             filtered = apply_oversampled_saturation(
                 drive_in.astype(np.float32),
-                vsat=vsat_eff,
-                alpha=alpha_eff,
-                alpha3=float(props.alpha3),
-                eta_hyst=float(props.eta_hyst),
-                k_sag=float(props.k_sag),
-                k_eddy=float(props.k_eddy),
-                kappa_orbit=float(props.kappa_orbit),
-                beta_curv=float(props.beta_curv),
-                k_pull=float(props.k_pull),
-                tau_touch=float(props.tau_touch),
-                kappa_geom=float(props.kappa_geom),
-                k_stein=float(props.k_stein),
-                k_emf=float(props.k_emf),
-                lambda_L=float(props.lambda_L),
-                kappa_ap=float(props.kappa_ap),
+                vsat=sp_vsat,
+                alpha=sp_alpha,
+                alpha3=float(sp_props.alpha3),
+                eta_hyst=float(sp_props.eta_hyst),
+                k_sag=float(sp_props.k_sag),
+                k_eddy=float(sp_props.k_eddy),
+                kappa_orbit=float(sp_props.kappa_orbit),
+                beta_curv=float(sp_props.beta_curv),
+                k_pull=float(sp_props.k_pull),
+                tau_touch=float(sp_props.tau_touch),
+                kappa_geom=float(sp_props.kappa_geom),
+                k_stein=float(sp_props.k_stein),
+                k_emf=float(sp_props.k_emf),
+                lambda_L=float(sp_props.lambda_L),
+                kappa_ap=float(sp_props.kappa_ap),
                 slew_limit=True,
                 f_slew=16000.0,
                 oversample=2,
                 displacement_weighting=True,
                 magnet_drag=True,
             ).astype(np.float64)
+
+        if not np.allclose(H_downstream, 1.0, atol=1e-4):
+            fir_down = synthesize_minimum_phase_fir(H_downstream, num_taps=num_taps, normalize=False)
+            filtered = fft_convolve(filtered, np.asarray(fir_down, dtype=np.float64), mode="causal")[:n_samples]
 
     # 9. Sub-Audible DC-Blocking Filter (8 Hz)
     if dc_block:
@@ -799,7 +860,6 @@ def simulate_circuit_audio(
     input_audio: str | Path | np.ndarray,
     output_wav_path: str | Path,
     model: CircuitModel,
-    prefilter_firs: Sequence[Any] | None = None,
     circuit_curves: Sequence[Any] | None = None,
     is_passive: bool = False,
     bypass_saturation: bool | None = None,
@@ -885,7 +945,7 @@ def simulate_circuit_audio(
     audio_mono = np.asarray(audio_data, dtype=np.float64)
     should_bypass = bypass_saturation is True or is_passive
     in_peak = float(np.max(np.abs(audio_mono)))
-    if prefilter_firs is None and not should_bypass and in_peak > 0.10:
+    if not should_bypass and in_peak > 0.10:
         target_drive_peak = min(in_peak * 0.687, 0.70)
         audio_mono = (audio_mono / max(in_peak, 1e-9)) * target_drive_peak
 
@@ -898,63 +958,8 @@ def simulate_circuit_audio(
     h_elec = np.asarray(curves[0], dtype=np.float64)
 
     # 3. FIR Synthesis & Linear Stage Fusion
-    if prefilter_firs is not None and len(prefilter_firs) > 1:
-        channel_outputs = []
-        for i, pf in enumerate(prefilter_firs):
-            fir_p = np.asarray(pf, dtype=np.float64)
-            c_curve = curves[i] if i < len(curves) else curves[0]
-            fir_c = synthesize_minimum_phase_fir(c_curve, num_taps=NUM_TAPS, normalize=False)
-            ch_fir = fft_convolve(fir_p, fir_c, mode="causal")
-            ch_out = fft_convolve(audio_mono, ch_fir, mode="causal")[: len(audio_mono)]
-            channel_outputs.append(ch_out)
-
-        peaks = [int(np.argmax(np.abs(fir))) for fir in prefilter_firs]
-        delta_samples = max(peaks) - min(peaks) if len(peaks) > 1 else 0
-        if delta_samples > 0:
-            N_spec = 4096
-            f_bins_spec = np.fft.rfftfreq(N_spec, 1.0 / sr)
-            H_chs = []
-            for i in range(len(channel_outputs)):
-                fir_p = np.array(prefilter_firs[i], dtype=np.float32)
-                m_curve = curves[i] if i < len(curves) else curves[0]
-                fir_c = np.array(
-                    synthesize_minimum_phase_fir(m_curve, num_taps=NUM_TAPS, normalize=False),
-                    dtype=np.float32,
-                )
-                H_p = np.fft.rfft(fir_p, N_spec)
-                H_c = np.fft.rfft(fir_c, N_spec)
-                H_chs.append(H_p * H_c)
-
-            P_coh = np.abs(np.sum(H_chs, axis=0)) ** 2
-            P_incoh = np.sum(np.abs(H_chs) ** 2, axis=0)
-
-            delta_tau = delta_samples / float(sr)
-            f_notch = 1.0 / (2.0 * delta_tau)
-            f_mid = 1.35 * f_notch
-            f_sigma = max(0.35 * f_notch, 1.0)
-            gamma = 0.5 * (1.0 - np.tanh((f_bins_spec - f_mid) / f_sigma))
-            M_blend = np.sqrt(gamma * P_coh + (1.0 - gamma) * P_incoh)
-
-            H_coh = np.sum(H_chs, axis=0)
-            mag_coh = np.abs(H_coh)
-            H_spatial = M_blend / np.maximum(mag_coh, 1e-4)
-
-            fir_spatial = np.array(
-                synthesize_minimum_phase_fir(H_spatial, num_taps=1024, normalize=False),
-                dtype=np.float32,
-            )
-            raw_sum = np.sum(channel_outputs, axis=0)
-            filtered = fft_convolve(raw_sum, fir_spatial, mode="causal")[: len(audio_mono)]
-        else:
-            filtered = np.sum(channel_outputs, axis=0)
-    elif prefilter_firs is not None and len(prefilter_firs) == 1:
-        circ_fir = synthesize_minimum_phase_fir(h_elec, num_taps=NUM_TAPS, normalize=False)
-        pf = np.asarray(prefilter_firs[0], dtype=np.float64)
-        ch_fir = fft_convolve(pf, circ_fir, mode="causal")
-        filtered = fft_convolve(audio_mono, ch_fir, mode="causal")[: len(audio_mono)]
-    else:
-        circ_fir = synthesize_minimum_phase_fir(h_elec, num_taps=NUM_TAPS, normalize=False)
-        filtered = fft_convolve(audio_mono, circ_fir, mode="causal")[: len(audio_mono)]
+    circ_fir = synthesize_minimum_phase_fir(h_elec, num_taps=NUM_TAPS, normalize=False)
+    filtered = fft_convolve(audio_mono, circ_fir, mode="causal")[: len(audio_mono)]
 
     # 4. Non-Linear Saturation
     should_bypass = bypass_saturation is True or is_passive

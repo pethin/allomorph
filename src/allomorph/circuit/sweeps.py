@@ -386,7 +386,7 @@ def compute_parametric_sweep(
         try:
             for v in values:
                 model.apply_pot_positions(tone_pos=v, pot_taper=pot_taper)
-                tr = compute_circuit_transfer_functions(model, freqs=f_arr, return_numpy=True)
+                tr = compute_circuit_transfer_functions(model, freqs=f_arr, return_numpy=True, include_active_preamp=True)
                 ch = min(ch_idx, len(tr) - 1)
                 mag_db = 20.0 * np.log10(np.maximum(tr[ch], 1e-6))
                 curves.append(mag_db)
@@ -403,7 +403,7 @@ def compute_parametric_sweep(
         try:
             for v in values:
                 model.apply_pot_positions(vol_pos=v, pot_taper=pot_taper)
-                tr = compute_circuit_transfer_functions(model, freqs=f_arr, return_numpy=True)
+                tr = compute_circuit_transfer_functions(model, freqs=f_arr, return_numpy=True, include_active_preamp=True)
                 ch = min(ch_idx, len(tr) - 1)
                 mag_db = 20.0 * np.log10(np.maximum(tr[ch], 1e-6))
                 curves.append(mag_db)
@@ -421,7 +421,7 @@ def compute_parametric_sweep(
         try:
             for v in values:
                 model.apply_pot_positions(blend_pos=v, pot_taper=pot_taper)
-                tr = compute_circuit_transfer_functions(model, freqs=f_arr, return_numpy=True)
+                tr = compute_circuit_transfer_functions(model, freqs=f_arr, return_numpy=True, include_active_preamp=True)
                 if len(tr) > 1 and (
                     pickup_channel in ("sum", -1, 0) or str(pickup_channel).lower() == "sum"
                 ):
@@ -447,7 +447,7 @@ def compute_parametric_sweep(
             for v in values:
                 c_farads = v * 1e-12 if v > 1e-6 else v
                 model.Ccable = c_farads
-                tr = compute_circuit_transfer_functions(model, freqs=f_arr, return_numpy=True)
+                tr = compute_circuit_transfer_functions(model, freqs=f_arr, return_numpy=True, include_active_preamp=True)
                 ch = min(ch_idx, len(tr) - 1)
                 mag_db = 20.0 * np.log10(np.maximum(tr[ch], 1e-6))
                 curves.append(mag_db)
@@ -460,7 +460,7 @@ def compute_parametric_sweep(
             for v in values:
                 c_farads = v * 1e-9 if v > 1e-6 else v
                 model.Ctone = c_farads
-                tr = compute_circuit_transfer_functions(model, freqs=f_arr, return_numpy=True)
+                tr = compute_circuit_transfer_functions(model, freqs=f_arr, return_numpy=True, include_active_preamp=True)
                 ch = min(ch_idx, len(tr) - 1)
                 mag_db = 20.0 * np.log10(np.maximum(tr[ch], 1e-6))
                 curves.append(mag_db)
@@ -494,7 +494,7 @@ def compute_parametric_sweep(
                 bands = [b.model_copy() for b in base_bands]
                 bands[shelf_idx].gain_db = float(v)
                 model.preamp_bands = bands
-                tr = compute_circuit_transfer_functions(model, freqs=f_arr, return_numpy=True)
+                tr = compute_circuit_transfer_functions(model, freqs=f_arr, return_numpy=True, include_active_preamp=True)
                 ch = min(ch_idx, len(tr) - 1)
                 mag_db = 20.0 * np.log10(np.maximum(tr[ch], 1e-6))
                 curves.append(mag_db)
@@ -530,7 +530,7 @@ def compute_parametric_sweep(
                 bands = [b.model_copy() for b in base_bands]
                 bands[shelf_idx].gain_db = float(v)
                 model.preamp_bands = bands
-                tr = compute_circuit_transfer_functions(model, freqs=f_arr, return_numpy=True)
+                tr = compute_circuit_transfer_functions(model, freqs=f_arr, return_numpy=True, include_active_preamp=True)
                 ch = min(ch_idx, len(tr) - 1)
                 mag_db = 20.0 * np.log10(np.maximum(tr[ch], 1e-6))
                 curves.append(mag_db)
@@ -544,7 +544,7 @@ def compute_parametric_sweep(
         try:
             for v in values:
                 setattr(model, param, v)
-                tr = compute_circuit_transfer_functions(model, freqs=f_arr, return_numpy=True)
+                tr = compute_circuit_transfer_functions(model, freqs=f_arr, return_numpy=True, include_active_preamp=True)
                 ch = min(ch_idx, len(tr) - 1)
                 mag_db = 20.0 * np.log10(np.maximum(tr[ch], 1e-6))
                 curves.append(mag_db)

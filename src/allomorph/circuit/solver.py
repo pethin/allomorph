@@ -314,6 +314,7 @@ def compute_circuit_transfer_functions(
     model: CircuitModel,
     freqs: Sequence[float] | np.ndarray = FREQS,
     return_numpy: Literal[False] = False,
+    include_active_preamp: bool = False,
 ) -> list[list[float]]: ...
 
 
@@ -322,6 +323,7 @@ def compute_circuit_transfer_functions(
     model: CircuitModel,
     freqs: Sequence[float] | np.ndarray = FREQS,
     return_numpy: Literal[True] = ...,
+    include_active_preamp: bool = False,
 ) -> list[np.ndarray]: ...
 
 
@@ -330,6 +332,7 @@ def compute_circuit_transfer_functions(
     model: CircuitModel,
     freqs: Sequence[float] | np.ndarray = FREQS,
     return_numpy: bool = ...,
+    include_active_preamp: bool = False,
 ) -> list[list[float]] | list[np.ndarray]: ...
 
 
@@ -337,6 +340,7 @@ def compute_circuit_transfer_functions(
     model: CircuitModel,
     freqs: Sequence[float] | np.ndarray = FREQS,
     return_numpy: bool = False,
+    include_active_preamp: bool = False,
 ) -> list[list[float]] | list[np.ndarray]:
     """
     Computes closed-form nodal AC transfer functions across frequencies using vectorized NumPy SIMD operations.
@@ -480,7 +484,10 @@ def compute_circuit_transfer_functions(
             Y_shunt2 = Y_c_n + Y_eff2
             H_dyn_to_2 = Y_branch / (Y_branch + Y_shunt2)
 
-            H_total = H_dyn_to_2 * H_eq * H_buf_to_out
+            if include_active_preamp:
+                H_total = H_dyn_to_2 * H_eq * H_buf_to_out
+            else:
+                H_total = H_dyn_to_2
             return _ret([np.abs(H_total)])
 
         elif model.topology == "parallel":
@@ -533,8 +540,12 @@ def compute_circuit_transfer_functions(
                 H_n_to_2 = Y_br_n / Y_total
                 H_b_to_2 = Y_br_b / Y_total
 
-            H_n = H_n_to_2 * H_eq * H_buf_to_out
-            H_b = H_b_to_2 * H_eq * H_buf_to_out
+            if include_active_preamp:
+                H_n = H_n_to_2 * H_eq * H_buf_to_out
+                H_b = H_b_to_2 * H_eq * H_buf_to_out
+            else:
+                H_n = H_n_to_2
+                H_b = H_b_to_2
 
             blend_pos = model.blend_pos
             if abs(blend_pos - 0.5) >= 1e-4:
@@ -589,8 +600,12 @@ def compute_circuit_transfer_functions(
             T2_n = (Y_2b * Y_br_n) / delta
             T2_b = ((Y_br_n + Y_cn) * Y_br_b) / delta
 
-            H_n = T2_n * H_eq * H_buf_to_out
-            H_b = T2_b * H_eq * H_buf_to_out
+            if include_active_preamp:
+                H_n = T2_n * H_eq * H_buf_to_out
+                H_b = T2_b * H_eq * H_buf_to_out
+            else:
+                H_n = T2_n
+                H_b = T2_b
 
             blend_pos = model.blend_pos
             if abs(blend_pos - 0.5) >= 1e-4:
