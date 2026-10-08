@@ -31,6 +31,7 @@ rocm = [
 dev = [
     "pyrefly>=1.3.0",
     "pytest>=9.1.1",
+    "pytest-cov>=7.1.0",
     "pytest-xdist>=3.8.0",
     "ruff>=0.16.7",
 ]
@@ -46,6 +47,31 @@ allomorph-sim = "allomorph.circuit.cli:main"
 [tool.pytest.ini_options]
 pythonpath = ["src", "."]
 testpaths = ["tests"]
+addopts = [
+    "--cov=allomorph",
+    "--cov-report=term-missing",
+]
+
+[tool.coverage.run]
+source = ["src/allomorph"]
+branch = true
+omit = [
+    "tests/*",
+    "scripts/*",
+]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = false
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if TYPE_CHECKING:",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "@overload",
+]
 
 [tool.ruff]
 line-length = 100
