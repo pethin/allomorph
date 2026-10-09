@@ -3,18 +3,13 @@ Tests for Allomorph NAM Architecture 2 local trainer.
 """
 
 import json
-import sys
 from pathlib import Path
 from typing import Any
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-SCRIPTS_DIR = REPO_ROOT / "scripts"
-if str(SCRIPTS_DIR) not in sys.path:
-    sys.path.insert(0, str(SCRIPTS_DIR))
-
-from train_nam import find_sweep_input
 
 from allomorph.pipeline.schema import NamExportMetadata
+from allomorph.trainer import find_sweep_input
 
 
 def test_find_sweep_input():
@@ -50,7 +45,7 @@ def test_model_metadata_contains_input_bass():
 def test_default_goal_esr():
     import inspect
 
-    from train_nam import DEFAULT_GOAL_ESR, train_voice
+    from allomorph.trainer import DEFAULT_GOAL_ESR, train_voice
 
     assert DEFAULT_GOAL_ESR == 0.0002
     sig = inspect.signature(train_voice)
@@ -61,7 +56,7 @@ def test_default_goal_esr():
 def test_default_min_epochs():
     import inspect
 
-    from train_nam import DEFAULT_MIN_EPOCHS, train_voice
+    from allomorph.trainer import DEFAULT_MIN_EPOCHS, train_voice
 
     assert DEFAULT_MIN_EPOCHS == 5
     sig = inspect.signature(train_voice)
@@ -72,7 +67,7 @@ def test_default_min_epochs():
 def test_train_nam_cli_goal_esr_parsing():
     import argparse
 
-    from train_nam import DEFAULT_GOAL_ESR
+    from allomorph.trainer import DEFAULT_GOAL_ESR
 
     # Test parser construction from train_nam
     parser = argparse.ArgumentParser()
@@ -119,7 +114,7 @@ def test_train_nam_cli_goal_esr_parsing():
 def test_train_nam_cli_min_epochs_parsing():
     import argparse
 
-    from train_nam import DEFAULT_MIN_EPOCHS
+    from allomorph.trainer import DEFAULT_MIN_EPOCHS
 
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -146,7 +141,7 @@ def test_train_nam_cli_min_epochs_parsing():
 def test_train_voice_parameters():
     import inspect
 
-    from train_nam import (
+    from allomorph.trainer import (
         DEFAULT_BATCH_SIZE,
         DEFAULT_CONSECUTIVE_PATIENCE,
         DEFAULT_ETA_MIN,
@@ -205,7 +200,7 @@ def test_train_voice_parameters():
 def test_train_nam_cli_triple_gate_and_cosine_parsing():
     import argparse
 
-    from train_nam import (
+    from allomorph.trainer import (
         DEFAULT_BATCH_SIZE,
         DEFAULT_CONSECUTIVE_PATIENCE,
         DEFAULT_ETA_MIN,
@@ -263,7 +258,7 @@ def test_train_nam_cli_triple_gate_and_cosine_parsing():
 def test_train_nam_lite_cli_parsing():
     import argparse
 
-    from train_nam import (
+    from allomorph.trainer import (
         DEFAULT_GOAL_DELTA_ESR_LITE,
         DEFAULT_GOAL_DELTA_MRSTFT_LITE,
         DEFAULT_GOAL_ESR_LITE,
@@ -306,7 +301,8 @@ def test_train_nam_lite_cli_parsing():
 
 def test_configure_a2_architecture():
     import nam.train.core as nam_core
-    from train_nam import configure_a2_architecture
+
+    from allomorph.trainer import configure_a2_architecture
 
     # Test slimmable configuration with cosine scheduler
     configure_a2_architecture(
@@ -333,7 +329,7 @@ def test_configure_a2_architecture():
 
 
 def test_math_utilities():
-    from train_nam import compute_baseline_delta_ratio, compute_linear_slope
+    from allomorph.trainer import compute_baseline_delta_ratio, compute_linear_slope
 
     # Strictly decreasing line
     slope_down = compute_linear_slope([1.0, 0.8, 0.6, 0.4, 0.2])
@@ -352,7 +348,8 @@ def test_compute_baseline_mrstft():
 
     import numpy as np
     from pedalboard.io import AudioFile
-    from train_nam import compute_baseline_mrstft
+
+    from allomorph.trainer import compute_baseline_mrstft
 
     # Fallback on missing or invalid files
     assert compute_baseline_mrstft(None, None) == 0.400
@@ -386,7 +383,8 @@ def test_compute_baseline_mrstft():
 
 def test_linear_warmup_monotonic_floor_clamp():
     import nam.train.core as nam_core
-    from train_nam import configure_a2_architecture
+
+    from allomorph.trainer import configure_a2_architecture
 
     configure_a2_architecture(
         nam_core,
@@ -436,7 +434,8 @@ def test_linear_warmup_monotonic_floor_clamp():
 def test_esr_progress_callback_hook():
     import nam.train.core as nam_core
     import torch
-    from train_nam import configure_a2_architecture
+
+    from allomorph.trainer import configure_a2_architecture
 
     # Test slimmable mode early stopping monitors ESR_packed_1 (channels_8)
     configure_a2_architecture(
@@ -586,7 +585,8 @@ def test_triple_gate_stopping_nuance_preservation():
     """
     import nam.train.core as nam_core
     import torch
-    from train_nam import configure_a2_architecture
+
+    from allomorph.trainer import configure_a2_architecture
 
     configure_a2_architecture(
         nam_core,

@@ -266,10 +266,11 @@ def test_train_tone_pack_flat_structure_mocked(
             json.dump(dummy_content, f)
         return True
 
-    # Monkeypatch train_voice in train_nam module
-    import train_nam
+    # Monkeypatch train_voice in allomorph.trainer and allomorph.pipeline.pack
+    import allomorph.pipeline.pack
+    import allomorph.trainer
 
-    monkeypatch.setattr(train_nam, "train_voice", _mock_train_voice)
+    monkeypatch.setattr(allomorph.trainer, "train_voice", _mock_train_voice)
 
     # 1. Initial training run: both target stems should be trained
     nam_dir = train_tone_pack(pack=pack_dir, voice="all", overwrite=False)

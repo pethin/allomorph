@@ -80,13 +80,14 @@ def test_pipeline_cli_viz_stage(monkeypatch: pytest.MonkeyPatch):
 
 
 def test_pipeline_cli_train_stage(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
-    """Verify --stage train calls run_training for each voice."""
-    train_calls = []
+    """Verify --stage train calls train_voices_from_config with proper configuration."""
+    train_calls: list[Any] = []
 
-    def _mock_train(*args: Any, **kwargs: Any) -> None:
-        train_calls.append((args, kwargs))
+    def _mock_train(cfg: Any) -> bool:
+        train_calls.append(cfg)
+        return True
 
-    monkeypatch.setattr("allomorph.pipeline.cli.run_training", _mock_train)
+    monkeypatch.setattr("allomorph.trainer.train_voices_from_config", _mock_train)
 
     custom_input = tmp_path / "custom_input.wav"
     custom_input.write_bytes(b"wav")
@@ -106,10 +107,10 @@ def test_pipeline_cli_train_stage(tmp_path: Path, monkeypatch: pytest.MonkeyPatc
     )
 
     assert len(train_calls) == 1
-    kwargs = train_calls[0][1]
-    assert kwargs.get("voice") == "vintage_open"
-    assert kwargs.get("fast_dev_run") is True
-    assert kwargs.get("input_wav") == str(custom_input)
+    cfg = train_calls[0]
+    assert cfg.voice == "vintage_open"
+    assert cfg.fast_dev_run is True
+    assert cfg.input_wav == str(custom_input)
 
 
 def test_pipeline_cli_list_flags(capsys: pytest.CaptureFixture[str]):

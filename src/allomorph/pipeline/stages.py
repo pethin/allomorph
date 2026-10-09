@@ -67,68 +67,73 @@ def run_training(
     voice: str = "precision_active",
     input_wav: str | Path | None = None,
     output_wav: str | Path | None = None,
+    reference_wav: str | Path | None = None,
     models_dir: str | Path | None = None,
     epochs: int = 400,
     min_epochs: int = 5,
     goal_esr: float | None = 0.0002,
-    fast_dev_run: bool = False,
-    basename: str | None = None,
-    batch_size: int = 16,
+    goal_delta_esr: float | None = 0.020,
+    goal_delta_mrstft: float | None = 0.50,
+    max_mrstft_ceiling: float = 0.320,
     goal_esr_lite: float | None = 0.00250,
     goal_delta_esr_lite: float | None = 0.080,
     goal_delta_mrstft_lite: float | None = 0.75,
     max_mrstft_ceiling_lite: float = 0.450,
+    consecutive_patience: int = 3,
+    patience: int = 12,
+    min_delta: float = 5e-6,
+    pre_emph_weight: float = 0.25,
+    pre_emph_coef: float = 0.85,
+    mrstft_weight: float = 0.0010,
+    lr_scheduler: str = "cosine",
+    eta_min: float = 1e-5,
+    lr_t_max: int = 35,
+    fast_dev_run: bool = False,
+    basename: str | None = None,
+    batch_size: int = 16,
     version_tag: str | None = "auto",
     no_manifest: bool = False,
-):
+    include_identity: bool = False,
+) -> bool:
     """Trains a Neural Amp Modeler (NAM) Architecture 2 model locally under the studio reference standard."""
+    from allomorph.trainer import train_voice
+
     print(
         f"\n[Training] Training Neural Amp Modeler Architecture 2 Slimmable model for {voice} (Instrument: {instrument})..."
     )
-    script = SCRIPTS_DIR / "train_nam.py"
-    cmd = [
-        sys.executable,
-        str(script),
-        "--instrument",
-        instrument,
-        "--voice",
-        voice,
-        "--epochs",
-        str(epochs),
-        "--min-epochs",
-        str(min_epochs),
-        "--batch-size",
-        str(batch_size),
-    ]
-    if output_wav:
-        cmd.extend(["--output", str(output_wav)])
-    if models_dir:
-        cmd.extend(["--models-dir", str(models_dir)])
-    if basename:
-        cmd.extend(["--basename", basename])
-    if goal_esr is not None and goal_esr > 0:
-        cmd.extend(["--goal-esr", str(goal_esr)])
-    else:
-        cmd.append("--no-goal-esr")
-    if goal_esr_lite is not None:
-        cmd.extend(["--goal-esr-lite", str(goal_esr_lite)])
-    if goal_delta_esr_lite is not None:
-        cmd.extend(["--goal-delta-esr-lite", str(goal_delta_esr_lite)])
-    if goal_delta_mrstft_lite is not None:
-        cmd.extend(["--goal-delta-mrstft-lite", str(goal_delta_mrstft_lite)])
-    if max_mrstft_ceiling_lite is not None:
-        cmd.extend(["--max-mrstft-ceiling-lite", str(max_mrstft_ceiling_lite)])
-    if input_wav:
-        cmd.extend(["--input", str(input_wav)])
-    if fast_dev_run:
-        cmd.append("--fast-dev-run")
-    if version_tag:
-        cmd.extend(["--version-tag", str(version_tag)])
-    if no_manifest:
-        cmd.append("--no-manifest")
-    res = subprocess.run(cmd, cwd=str(REPO_ROOT), check=False)
-    if res.returncode != 0:
-        print(f"Notice: Model training exited with code {res.returncode}")
+    return train_voice(
+        instrument=instrument,
+        voice=voice,
+        input_wav=input_wav,
+        output_wav=output_wav,
+        reference_wav=reference_wav,
+        models_dir=models_dir or (REPO_ROOT / "models"),
+        epochs=epochs,
+        min_epochs=min_epochs,
+        goal_esr=goal_esr,
+        goal_delta_esr=goal_delta_esr,
+        goal_delta_mrstft=goal_delta_mrstft,
+        max_mrstft_ceiling=max_mrstft_ceiling,
+        goal_esr_lite=goal_esr_lite,
+        goal_delta_esr_lite=goal_delta_esr_lite,
+        goal_delta_mrstft_lite=goal_delta_mrstft_lite,
+        max_mrstft_ceiling_lite=max_mrstft_ceiling_lite,
+        consecutive_patience=consecutive_patience,
+        patience=patience,
+        min_delta=min_delta,
+        pre_emph_weight=pre_emph_weight,
+        pre_emph_coef=pre_emph_coef,
+        mrstft_weight=mrstft_weight,
+        lr_scheduler=lr_scheduler,
+        eta_min=eta_min,
+        lr_t_max=lr_t_max,
+        batch_size=batch_size,
+        fast_dev_run=fast_dev_run,
+        basename=basename,
+        version_tag=version_tag,
+        no_manifest=no_manifest,
+        include_identity=include_identity,
+    )
 
 
 def run_tone_pack_training(

@@ -76,16 +76,18 @@ def test_run_circuit_simulation_error_handling(tmp_path: Path):
 
 
 def test_run_training_mocked(monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
-    """Verify run_training constructs proper train_nam.py command line."""
-    calls = []
+    """Verify run_training constructs proper in-process train_voice invocation."""
+    calls: list[dict[str, Any]] = []
 
-    def _mock_run(cmd: Any, **kwargs: Any) -> subprocess.CompletedProcess[str]:
-        calls.append(cmd)
-        return subprocess.CompletedProcess(cmd, returncode=0)
+    def _mock_train_voice(**kwargs: Any) -> bool:
+        calls.append(kwargs)
+        return True
 
-    monkeypatch.setattr(subprocess, "run", _mock_run)
+    import allomorph.trainer
 
-    run_training(
+    monkeypatch.setattr(allomorph.trainer, "train_voice", _mock_train_voice)
+
+    ok = run_training(
         instrument="34in_standard_p",
         voice="vintage_open",
         input_wav=tmp_path / "input.wav",
@@ -98,16 +100,14 @@ def test_run_training_mocked(monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
         no_manifest=True,
     )
 
+    assert ok is True
     assert len(calls) == 1
-    cmd = calls[0]
-    assert "--instrument" in cmd
-    assert "34in_standard_p" in cmd
-    assert "--voice" in cmd
-    assert "vintage_open" in cmd
-    assert "--epochs" in cmd
-    assert "10" in cmd
-    assert "--fast-dev-run" in cmd
-    assert "--goal-esr-lite" in cmd
-    assert "0.0025" in cmd
-    assert "--a2-lite-only" not in cmd
-    assert "--no-manifest" in cmd
+    call = calls[0]
+    assert call["instrument"] == "34in_standard_p"
+    assert call["voice"] == "vintage_open"
+    assert call["epochs"] == 10
+    assert call["min_epochs"] == 5
+    assert call["goal_esr"] == 0.0001
+    assert call["goal_esr_lite"] == 0.0025
+    assert call["fast_dev_run"] is True
+    assert call["no_manifest"] is True

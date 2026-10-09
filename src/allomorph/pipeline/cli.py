@@ -4,6 +4,7 @@ Command-line entrypoint coordinating full end-to-end simulation, export, and tra
 """
 
 import argparse
+import sys
 from collections.abc import Sequence
 from pathlib import Path
 
@@ -23,7 +24,6 @@ from allomorph.naming import (
 )
 from allomorph.pipeline.schema import PipelineCliConfig
 from allomorph.pipeline.stages import (
-    run_training,
     run_visualization,
 )
 
@@ -172,79 +172,9 @@ def main(argv: Sequence[str] | None = None):
         action="store_true",
         help="Force recompilation of cached dry and wet audio stems even if they already exist",
     )
-    parser.add_argument(
-        "--input-wav",
-        default=None,
-        help="Path to dry excitation audio file (default: auto-generates audio/input.wav)",
-    )
-    parser.add_argument(
-        "--epochs",
-        type=int,
-        default=400,
-        help="Maximum number of training epochs for NAM model (default: 400 for Architecture 2 studio reference)",
-    )
-    parser.add_argument(
-        "--min-epochs",
-        type=int,
-        default=180,
-        help="Minimum number of training epochs before early stopping can trigger (default: 180)",
-    )
-    parser.add_argument(
-        "--goal-esr",
-        type=float,
-        default=0.0002,
-        help="Goal validation ESR for early stopping (default: 0.0002 for Architecture 2 studio reference; set to 0 to disable)",
-    )
-    parser.add_argument(
-        "--no-goal-esr",
-        action="store_true",
-        help="Disable goal ESR early stopping and train for the exact number of epochs specified",
-    )
-    parser.add_argument(
-        "--batch-size",
-        type=int,
-        default=16,
-        help="Batch size for model training (default: 16)",
-    )
-    parser.add_argument(
-        "--goal-esr-lite",
-        type=float,
-        default=0.00250,
-        help="Goal validation ESR for A2 Lite tier (channels_3) (default: 0.00250, -26 dB)",
-    )
-    parser.add_argument(
-        "--goal-delta-esr-lite",
-        type=float,
-        default=0.080,
-        help="Goal validation Differential Delta ESR for A2 Lite tier (channels_3) (default: 0.080)",
-    )
-    parser.add_argument(
-        "--goal-delta-mrstft-lite",
-        type=float,
-        default=0.75,
-        help="Goal validation Differential MRSTFT ratio for A2 Lite tier (channels_3) (default: 0.75)",
-    )
-    parser.add_argument(
-        "--max-mrstft-ceiling-lite",
-        type=float,
-        default=0.450,
-        help="Absolute ceiling on MRSTFT for A2 Lite tier qualification (default: 0.450)",
-    )
-    parser.add_argument(
-        "--fast-dev-run",
-        action="store_true",
-        help="Run 1-batch dry run for smoke testing NAM training",
-    )
-    parser.add_argument(
-        "--version-tag",
-        default="auto",
-        help="Semantic version tag (default: 'auto' -> v[dsp].[inst].[voice], or explicit string, or 'none' to disable)",
-    )
-    parser.add_argument(
-        "--no-manifest",
-        action="store_true",
-        help="Disable generating sidecar manifest.json",
-    )
+    from allomorph.trainer import add_trainer_arguments
+
+    add_trainer_arguments(parser)
     parser.add_argument(
         "--list-instruments",
         action="store_true",
@@ -297,11 +227,6 @@ def main(argv: Sequence[str] | None = None):
 
     effective_jobs = args.jobs if args.jobs is not None else min(4, os.cpu_count() or 1)
 
-    effective_goal_esr = (
-        None
-        if args.no_goal_esr or (args.goal_esr is not None and args.goal_esr <= 0)
-        else args.goal_esr
-    )
     instruments_to_run = resolve_instruments(args.instrument or "all")
     voices_to_run = resolve_voices(args.voice or "all")
 
@@ -421,44 +346,69 @@ def main(argv: Sequence[str] | None = None):
         return
 
     if args.stage == "train":
-        if args.pack:
-            from allomorph.pipeline.stages import run_tone_pack_training
+        if getattr(args, "gui", False):
+            try:
+                from nam.cli import nam_gui
 
-            run_tone_pack_training(
-                pack=args.pack,
-                voice=args.voice or "all",
-                overwrite=force_exec,
-                epochs=args.epochs,
-                min_epochs=args.min_epochs,
-                goal_esr=effective_goal_esr,
-                goal_esr_lite=args.goal_esr_lite,
-                goal_delta_esr_lite=args.goal_delta_esr_lite,
-                goal_delta_mrstft_lite=args.goal_delta_mrstft_lite,
-                max_mrstft_ceiling_lite=args.max_mrstft_ceiling_lite,
-                fast_dev_run=args.fast_dev_run,
-                batch_size=args.batch_size,
-            )
-            return
+                nam_gui()
+                return
+            except (ImportError, RuntimeError) as e:
+                print(f"Error: 'neural-amp-modeler' GUI could not be loaded ({e}).")
+                print("Note: The desktop GUI requires system Tkinter (e.g., `sudo apt install python3-tk`).")
+                sys.exit(1)
 
-        for inst in instruments_to_run:
-            for idx, voice in enumerate(voices_to_run, 1):
-                print(f"\n[{idx}/{len(voices_to_run)}] Training NAM A2 Model: {inst} -> {voice}...")
-                run_training(
-                    instrument=inst,
-                    voice=voice,
-                    input_wav=input_wav,
-                    epochs=args.epochs,
-                    min_epochs=args.min_epochs,
-                    goal_esr=effective_goal_esr,
-                    goal_esr_lite=args.goal_esr_lite,
-                    goal_delta_esr_lite=args.goal_delta_esr_lite,
-                    goal_delta_mrstft_lite=args.goal_delta_mrstft_lite,
-                    max_mrstft_ceiling_lite=args.max_mrstft_ceiling_lite,
-                    fast_dev_run=args.fast_dev_run,
-                    batch_size=args.batch_size,
-                    version_tag=args.version_tag,
-                    no_manifest=args.no_manifest,
-                )
+        from allomorph.pipeline.schema import NamTrainingConfig
+        from allomorph.trainer import train_voices_from_config
+
+        input_val = getattr(args, "input_wav", None) or getattr(args, "input", None) or input_wav
+        output_val = getattr(args, "output_wav", None) or getattr(args, "output", None)
+        ref_val = getattr(args, "reference_wav", None) or getattr(args, "reference", None)
+
+        cli_cfg = NamTrainingConfig.model_validate(
+            {
+                "instrument": args.instrument or "all",
+                "pack": args.pack,
+                "overwrite": force_exec,
+                "voice": args.voice or "all",
+                "input_wav": input_val,
+                "output_wav": output_val,
+                "reference_wav": ref_val,
+                "models_dir": getattr(args, "models_dir", str(REPO_ROOT / "models")),
+                "epochs": args.epochs,
+                "min_epochs": args.min_epochs,
+                "goal_esr": args.goal_esr,
+                "goal_delta_esr": args.goal_delta_esr,
+                "goal_delta_mrstft": args.goal_delta_mrstft,
+                "max_mrstft_ceiling": args.max_mrstft_ceiling,
+                "goal_esr_lite": args.goal_esr_lite,
+                "goal_delta_esr_lite": args.goal_delta_esr_lite,
+                "goal_delta_mrstft_lite": args.goal_delta_mrstft_lite,
+                "max_mrstft_ceiling_lite": args.max_mrstft_ceiling_lite,
+                "consecutive_patience": args.consecutive_patience,
+                "patience": args.patience,
+                "min_delta": args.min_delta,
+                "pre_emph_weight": args.pre_emph_weight,
+                "pre_emph_coef": args.pre_emph_coef,
+                "mrstft_weight": args.mrstft_weight,
+                "lr_scheduler": args.lr_scheduler,
+                "eta_min": args.eta_min,
+                "lr_t_max": args.lr_t_max,
+                "no_goal_esr": args.no_goal_esr,
+                "batch_size": args.batch_size,
+                "show_plot": getattr(args, "show_plot", False),
+                "save_plot": getattr(args, "save_plot", False),
+                "basename": getattr(args, "basename", None),
+                "fast_dev_run": args.fast_dev_run,
+                "gui": getattr(args, "gui", False),
+                "version_tag": args.version_tag,
+                "no_manifest": args.no_manifest,
+                "include_identity": getattr(args, "include_identity", False),
+            }
+        )
+
+        ok = train_voices_from_config(cli_cfg)
+        if not ok:
+            sys.exit(1)
         return
 
     if args.stage == "all":

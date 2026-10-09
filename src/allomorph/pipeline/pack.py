@@ -954,7 +954,6 @@ def train_tone_pack(
     Skips already trained models unless overwrite=True.
     Updates the pack manifest with a top-level 'models' section indexing all trained model containers.
     """
-    import sys
 
     from allomorph.config.voices import VOICES
 
@@ -1017,10 +1016,7 @@ def train_tone_pack(
     if "models" not in manifest_data or not isinstance(manifest_data["models"], dict):
         manifest_data["models"] = {}
 
-    scripts_dir = REPO_ROOT / "scripts"
-    if str(scripts_dir) not in sys.path:
-        sys.path.insert(0, str(scripts_dir))
-    from train_nam import train_voice
+    from allomorph.trainer import train_voice
 
     total_trained = 0
     total_skipped = 0

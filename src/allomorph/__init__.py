@@ -4,6 +4,48 @@ Allomorph - Universal Pickup & Transducer Analog Modeling Engine
 
 __version__ = "0.4.1"
 
+import sys
+import types
+from typing import Any
+
+# Ensure headless matplotlib raster backend is active
+try:
+    import matplotlib
+
+    matplotlib.use("Agg")
+except ImportError:
+    pass
+
+# Headless Tkinter fallback: neural-amp-modeler's core trainer imports tkinter at top-level
+# for an unused GUI warning modal. On headless Linux environments or systems without python3-tk,
+# this raises ModuleNotFoundError during import. Provide a minimal shim if tkinter is unavailable.
+if "tkinter" not in sys.modules:
+    try:
+        import tkinter  # noqa: F401
+    except ModuleNotFoundError:
+        def _dummy_mainloop(*args: object, **kwargs: object) -> None:
+            pass
+
+        class _DummyTkMisc:
+            mainloop = _dummy_mainloop
+
+        class _DummyTkWidget:
+            def __init__(self, *args: object, **kwargs: object) -> None:
+                pass
+
+            def __getattr__(self, name: str) -> Any:
+                return _dummy_mainloop
+
+        class _DummyTkModule(types.ModuleType):
+            Tk = _DummyTkWidget
+            Toplevel = _DummyTkWidget
+            Label = _DummyTkWidget
+            Button = _DummyTkWidget
+            Misc = _DummyTkMisc
+            mainloop = _dummy_mainloop
+
+        sys.modules["tkinter"] = _DummyTkModule("tkinter")
+
 from allomorph.circuit import (
     CALIBRATION_PEAK_CEILING,
     audit_audio_file,
