@@ -178,6 +178,7 @@ def get_hardware_device_name(engine: str = DEFAULT_ENGINE) -> str:
 def resolve_hardware_batch_size(
     batch_size: int | str = DEFAULT_BATCH_SIZE,
     num_train_samples: int = 1350,
+    engine: str = DEFAULT_ENGINE,
 ) -> int:
     """Dynamically resolves optimal batch size balancing GPU VRAM and gradient update density."""
     if isinstance(batch_size, int) and batch_size > 0:
@@ -186,6 +187,9 @@ def resolve_hardware_batch_size(
         return int(batch_size)
 
     try:
+        if engine == "mlx" or (engine == "auto" and is_mlx_available()):
+            return 8
+
         import torch
 
         if torch.cuda.is_available():

@@ -15,14 +15,9 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, cast
 
-# pyrefly: ignore [missing-import]
 import mlx.core as mx
-
-# pyrefly: ignore [missing-import]
 import mlx.optimizers as optim
 import numpy as np
-
-# pyrefly: ignore [missing-import]
 from mlx import nn
 from pedalboard.io import AudioFile
 
@@ -277,29 +272,35 @@ class MLXMRSTFTLoss:
             padded_win[start : start + win_len] = hann
             win_mx = _to_mx_array(padded_win)
             self.configs.append((n_fft, hop, n_fft // 2, win_mx))
+        self._idx_cache: dict[tuple[int, int, int], mx.array] = {}
+
+    def _get_idx(self, t_pad: int, n_fft: int, hop: int) -> mx.array:
+        key = (t_pad, n_fft, hop)
+        if key not in self._idx_cache:
+            starts = np.arange(0, t_pad - n_fft + 1, hop)
+            idx = np.arange(n_fft)[None, :] + starts[:, None]
+            self._idx_cache[key] = _to_mx_array(idx)
+        return self._idx_cache[key]
 
     def _stft_mag(self, x: mx.array, n_fft: int, hop: int, pad_size: int, win_mx: mx.array) -> mx.array:
         x_pad = mx.pad(x, [(0, 0), (pad_size, pad_size)], mode="reflect")
-        t_pad = x_pad.shape[1]
-        starts = np.arange(0, t_pad - n_fft + 1, hop)
-        idx = _to_mx_array(np.arange(n_fft)[None, :] + starts[:, None])
+        idx = self._get_idx(x_pad.shape[1], n_fft, hop)
         frames = x_pad[:, idx] * win_mx
         x_fft = mx.fft.rfft(frames, n=n_fft)
         return mx.sqrt(mx.maximum(x_fft.real**2 + x_fft.imag**2, 1e-8))
 
-    def __call__(self, x: mx.array, y: mx.array) -> mx.array:
-        """Computes MultiResolutionSTFTLoss(x, y).
-
-        Matches PyTorch auraloss.freq.MultiResolutionSTFTLoss:
-        x is target (y_true), y is prediction (y_pred).
-        """
+    def get_mags(self, x: mx.array) -> list[mx.array]:
+        """Precomputes multi-resolution STFT magnitudes for a waveform."""
         if x.ndim == 1:
             x_in = x[None, :]
         elif x.ndim == 3:
             x_in = x.squeeze(-1)
         else:
             x_in = x
+        return [self._stft_mag(x_in, n_fft, hop, pad, win) for n_fft, hop, pad, win in self.configs]
 
+    def loss_from_mags(self, m_targets: list[mx.array], y: mx.array) -> mx.array:
+        """Computes MRSTFT loss given precomputed target magnitudes."""
         if y.ndim == 1:
             y_in = y[None, :]
         elif y.ndim == 3:
@@ -308,17 +309,21 @@ class MLXMRSTFTLoss:
             y_in = y
 
         total_loss = mx.array(0.0)
-        for n_fft, hop, pad, win in self.configs:
-            m_target = self._stft_mag(x_in, n_fft, hop, pad, win)
-            m_pred = self._stft_mag(y_in, n_fft, hop, pad, win)
-
-            # Spectral convergence loss: norm(target - pred) / norm(target)
-            sc = mx.sqrt(mx.sum(mx.square(m_target - m_pred))) / (mx.sqrt(mx.sum(mx.square(m_target))) + 1e-8)
-            # Log magnitude loss: mean(abs(log(pred) - log(target)))
-            log_mag = mx.mean(mx.abs(mx.log(m_pred) - mx.log(m_target)))
+        for (n_fft, hop, pad, win), mt in zip(self.configs, m_targets):
+            mp = self._stft_mag(y_in, n_fft, hop, pad, win)
+            sc = mx.sqrt(mx.sum(mx.square(mt - mp))) / (mx.sqrt(mx.sum(mx.square(mt))) + 1e-8)
+            log_mag = mx.mean(mx.abs(mx.log(mp) - mx.log(mt)))
             total_loss = total_loss + sc + log_mag
-
         return total_loss / len(self.configs)
+
+    def __call__(self, x: mx.array, y: mx.array) -> mx.array:
+        """Computes MultiResolutionSTFTLoss(x, y).
+
+        Matches PyTorch auraloss.freq.MultiResolutionSTFTLoss:
+        x is target (y_true), y is prediction (y_pred).
+        """
+        m_targets = self.get_mags(x)
+        return self.loss_from_mags(m_targets, y)
 
 
 def esr_loss(y_true: mx.array, y_pred: mx.array, eps: float = 1e-7) -> mx.array:
@@ -586,7 +591,7 @@ def train_voice_mlx(
 
     # 4. Resolve Dynamic Hardware Batch Sizing
     from allomorph.trainer.core import resolve_hardware_batch_size
-    resolved_batch_size = resolve_hardware_batch_size(batch_size)
+    resolved_batch_size = resolve_hardware_batch_size(batch_size, engine="mlx")
     if fast_dev_run:
         epochs = 1
         min_epochs = 1
@@ -658,10 +663,11 @@ def train_voice_mlx(
             l_pre_lite = mx.array(0.0)
             l_pre_full = mx.array(0.0)
 
-        # MRSTFT loss
+        # MRSTFT loss with shared target magnitude precomputation
         if mrstft_weight > 0.0:
-            l_mrstft_lite = mrstft_fn(batch_y, y_pred_lite)
-            l_mrstft_full = mrstft_fn(batch_y, y_pred_full)
+            m_target = mrstft_fn.get_mags(batch_y)
+            l_mrstft_lite = mrstft_fn.loss_from_mags(m_target, y_pred_lite)
+            l_mrstft_full = mrstft_fn.loss_from_mags(m_target, y_pred_full)
         else:
             l_mrstft_lite = mx.array(0.0)
             l_mrstft_full = mx.array(0.0)
@@ -671,6 +677,14 @@ def train_voice_mlx(
         return loss_lite + loss_full
 
     loss_and_grad_fn = nn.value_and_grad(model, compute_step_loss)
+
+    def train_step(batch_x: mx.array, batch_y: mx.array) -> mx.array:
+        loss, grads = loss_and_grad_fn(model, batch_x, batch_y)
+        optimizer.update(model, grads)
+        return loss
+
+    compile_state = [model.state, optimizer.state]
+    train_step_compiled = mx.compile(train_step, inputs=compile_state, outputs=compile_state)
 
     # Validation tensor in MLX
     x_val_mx = mx.array(x_val_np[None, :])
@@ -707,10 +721,8 @@ def train_voice_mlx(
             x_batch_mx = _to_mx_array(b_x)
             y_batch_mx = _to_mx_array(b_y)
 
-            _loss, grads = loss_and_grad_fn(model, x_batch_mx, y_batch_mx)
-            optimizer.update(model, grads)
-            model.apply_mask()
-            mx.eval(_loss, model.parameters(), optimizer.state)
+            _loss = train_step_compiled(x_batch_mx, y_batch_mx)
+            mx.eval(_loss, compile_state)
         else:
             for b_idx in range(0, total_slices - resolved_batch_size + 1, resolved_batch_size):
                 b_starts = shuffled_starts[b_idx : b_idx + resolved_batch_size]
@@ -720,10 +732,11 @@ def train_voice_mlx(
                 x_batch_mx = _to_mx_array(b_x)
                 y_batch_mx = _to_mx_array(b_y)
 
-                _loss, grads = loss_and_grad_fn(model, x_batch_mx, y_batch_mx)
-                optimizer.update(model, grads)
-                model.apply_mask()
-                mx.eval(_loss, model.parameters(), optimizer.state)
+                _loss = train_step_compiled(x_batch_mx, y_batch_mx)
+                mx.eval(_loss, compile_state)
+
+        # Enforce block-diagonal parameter isolation across submodel partitions once per epoch
+        model.apply_mask()
 
         # Validation Pass (valid causal forward over history-aligned validation segment)
         val_pred = model(x_val_mx, pad_start=False)[0]
@@ -926,7 +939,6 @@ def train_voice_mlx(
         )
 
     # Scoped memory cleanup
-    del model, optimizer
     if hasattr(mx, "clear_cache"):
         mx.clear_cache()
     elif hasattr(mx.metal, "clear_cache"):
