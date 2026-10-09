@@ -82,6 +82,13 @@ class NamTrainingMetadata(AllomorphBaseModel):
 
     esr: float | None = None
     validation_esr: float | None = None
+    differential_esr: float | None = None
+    mrstft_loss: float | None = None
+    baseline_mrstft: float | None = None
+    differential_mrstft: float | None = None
+    consecutive_gates_met: int | None = None
+    epochs_trained: int | None = None
+    stop_reason: str | None = None
     epochs: int | None = None
     batch_size: int | None = None
     lr: float | None = None
@@ -141,6 +148,7 @@ class NamTrainingConfig(AllomorphBaseModel):
     voice: str = "all"
     input_wav: Path | str | None = None
     output_wav: Path | str | None = None
+    reference_wav: Path | str | None = None
     models_dir: Path | str = Field(default=Path("models"))
     epochs: int = Field(
         default=400,
@@ -148,25 +156,89 @@ class NamTrainingConfig(AllomorphBaseModel):
         description="Maximum number of training epochs (default: 400 for Architecture 2 studio reference)",
     )
     min_epochs: int = Field(
-        default=180,
+        default=5,
         ge=0,
-        description="Minimum number of training epochs before early stopping can trigger (default: 180)",
+        description="Warmup epoch floor before early stopping can trigger (default: 5 covering linear warmup)",
     )
     goal_esr: float | None = Field(
-        default=0.0002,
+        default=0.00020,
         ge=0.0,
-        description="Goal validation ESR for early stopping (default: 0.0002 for Architecture 2 studio reference)",
+        description="Gate 1: Goal validation Global ESR for early stopping (default: 0.00020 for Architecture 2 studio reference)",
+    )
+    goal_delta_esr: float | None = Field(
+        default=0.020,
+        ge=0.0,
+        description="Gate 2: Goal validation Differential Delta ESR for nuance convergence (default: 0.020)",
+    )
+    goal_delta_mrstft: float | None = Field(
+        default=0.50,
+        ge=0.0,
+        description="Gate 3: Goal validation Differential MRSTFT ratio MRSTFT / max(baseline_mrstft, 1e-6) (default: 0.50)",
+    )
+    max_mrstft_ceiling: float = Field(
+        default=0.320,
+        ge=0.0,
+        description="Gate 3: Absolute ceiling on MRSTFT for Gate 3 qualification (default: 0.320)",
+    )
+    consecutive_patience: int = Field(
+        default=3,
+        ge=1,
+        description="Consecutive validation epochs satisfying all 3 gates before early exit (default: 3)",
+    )
+    patience: int = Field(
+        default=12,
+        ge=0,
+        description="Patience epochs for plateau early stopping (default: 12, set 0 to disable)",
+    )
+    min_delta: float = Field(
+        default=5e-6,
+        ge=0.0,
+        description="Minimum loss improvement to reset plateau patience (default: 5e-6)",
+    )
+    pre_emph_weight: float = Field(
+        default=0.25,
+        ge=0.0,
+        description="Pre-emphasis loss weight for equalizing high-frequency resonance (default: 0.25)",
+    )
+    pre_emph_coef: float = Field(
+        default=0.85,
+        ge=0.0,
+        le=1.0,
+        description="Pre-emphasis filter coefficient (default: 0.85)",
+    )
+    mrstft_weight: float = Field(
+        default=0.0010,
+        ge=0.0,
+        description="Multi-Resolution STFT loss weight (default: 0.0010)",
+    )
+    lr_scheduler: str = Field(
+        default="cosine",
+        description="Learning rate scheduler schedule: 'cosine' (monotonic clamped) or 'exponential'",
+    )
+    eta_min: float = Field(
+        default=1e-5,
+        ge=0.0,
+        description="Minimum learning rate floor for CosineAnnealingLR (default: 1e-5)",
+    )
+    lr_t_max: int = Field(
+        default=35,
+        ge=5,
+        description="Cosine decay period (T_max in epochs, default: 35)",
     )
     no_goal_esr: bool = False
-    batch_size: int = Field(default=32, gt=0)
+    batch_size: int = Field(default=16, gt=0)
     show_plot: bool = False
     save_plot: bool = False
     basename: str | None = None
     fast_dev_run: bool = False
     gui: bool = False
     a2_lite_only: bool = Field(
+        default=True,
+        description="Train A2-Lite channels_8 only instead of full slimmable container (default: True, ~35% faster)",
+    )
+    full_slimmable: bool = Field(
         default=False,
-        description="Train A2-Lite channels_8 only instead of the full slimmable container (default: False)",
+        description="Train full slimmable container (channels_3 + channels_8) instead of A2-Lite (default: False)",
     )
     version_tag: str | None = "auto"
     no_manifest: bool = False

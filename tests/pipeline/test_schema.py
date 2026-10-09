@@ -66,7 +66,15 @@ def test_tone3000_listing_validation():
 def test_nam_export_metadata_validation():
     """Verify NamExportMetadata and nested instrument/voice metadata validation."""
     meta = NamExportMetadata(
-        training=NamTrainingMetadata(esr=0.0004, epochs=100),
+        training=NamTrainingMetadata(
+            esr=0.0004,
+            validation_esr=0.0004,
+            differential_esr=0.015,
+            mrstft_loss=0.0008,
+            epochs_trained=85,
+            stop_reason="Dual-Gate ESR & Delta Met",
+            epochs=100,
+        ),
         license="PolyForm Noncommercial License 1.0.0",
         copyright="Copyright 2026 Peter Nguyen",
         author="Peter Nguyen",
@@ -89,6 +97,10 @@ def test_nam_export_metadata_validation():
     assert meta.source_instrument.id == "30in"
     assert meta.target_voice.id == "precision_vintage"
     assert meta.training.esr == 0.0004
+    assert meta.training.differential_esr == 0.015
+    assert meta.training.mrstft_loss == 0.0008
+    assert meta.training.epochs_trained == 85
+    assert meta.training.stop_reason == "Dual-Gate ESR & Delta Met"
     assert meta.source_instrument.pickup.name == "EMG MMTW"
 
     # Rejection of missing required fields
@@ -102,10 +114,23 @@ def test_nam_training_config_validation():
     assert cfg.instrument == "all"
     assert cfg.voice == "all"
     assert cfg.epochs == 400
-    assert cfg.min_epochs == 180
-    assert cfg.batch_size == 32
-    assert cfg.goal_esr == 0.0002
-    assert cfg.a2_lite_only is False
+    assert cfg.min_epochs == 5
+    assert cfg.batch_size == 16
+    assert cfg.goal_esr == 0.00020
+    assert cfg.goal_delta_esr == 0.020
+    assert cfg.goal_delta_mrstft == 0.50
+    assert cfg.max_mrstft_ceiling == 0.320
+    assert cfg.consecutive_patience == 3
+    assert cfg.patience == 12
+    assert cfg.min_delta == 5e-6
+    assert cfg.pre_emph_weight == 0.25
+    assert cfg.pre_emph_coef == 0.85
+    assert cfg.mrstft_weight == 0.0010
+    assert cfg.lr_scheduler == "cosine"
+    assert cfg.eta_min == 1e-5
+    assert cfg.lr_t_max == 35
+    assert cfg.a2_lite_only is True
+    assert cfg.full_slimmable is False
 
     # Valid custom configuration
     custom = NamTrainingConfig(
@@ -115,12 +140,14 @@ def test_nam_training_config_validation():
         min_epochs=20,
         batch_size=64,
         fast_dev_run=True,
-        a2_lite_only=True,
+        a2_lite_only=False,
+        full_slimmable=True,
     )
     assert custom.epochs == 50
     assert custom.min_epochs == 20
     assert custom.batch_size == 64
-    assert custom.a2_lite_only is True
+    assert custom.a2_lite_only is False
+    assert custom.full_slimmable is True
 
     # Negative epochs rejection
     with pytest.raises(ValidationError):
