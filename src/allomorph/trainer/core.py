@@ -4,13 +4,14 @@ Provides dataset preparation, baseline delta & spectral distance computation,
 NAM Architecture 2 model configuration, and model export with studio reference metadata.
 """
 
+import contextlib
 import math
 import os
 import shutil
 import sys
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, override
 
 from allomorph.config import (
     VOICES,
@@ -89,13 +90,34 @@ def setup_headless_environment() -> None:
     except OSError:
         pass
 
-    # Ensure headless matplotlib raster backend is active
+    # Ensure headless matplotlib raster backend is active and suppress open figure accumulation
     try:
         import matplotlib
+        import matplotlib.pyplot as plt
 
         matplotlib.use("Agg")
+        plt.rc("figure", max_open_warning=0)
     except ImportError:
         pass
+
+    # Suppress upstream PyTorch Lightning / Python 3.14 deprecation warnings
+    import warnings
+
+    warnings.filterwarnings("ignore", message=r".*LeafSpec.*")
+    # Suppress Lightning 16-mixed model summary warning (informational bit depth notice)
+    warnings.filterwarnings("ignore", message=r".*not supported by the model summary.*")
+
+    # Suppress LitLogger promotion tip from Lightning rank_zero logs
+    import logging
+
+    class _LitLoggerFilter(logging.Filter):
+        @override
+        def filter(self, record: logging.LogRecord) -> bool:
+            return "litlogger" not in record.getMessage()
+
+    logging.getLogger("lightning_fabric.utilities.rank_zero").addFilter(_LitLoggerFilter())
+    logging.getLogger("lightning_utilities.core.rank_zero").addFilter(_LitLoggerFilter())
+    logging.getLogger("pytorch_lightning.utilities.rank_zero").addFilter(_LitLoggerFilter())
 
     # Headless Tkinter fallback: neural-amp-modeler's core trainer imports tkinter at top-level
     if "tkinter" not in sys.modules:
@@ -732,22 +754,28 @@ def train_voice(
     )
 
     print("Validating dataset and calibration markers...")
-    train_output = nam_core.train(
-        input_path=str(input_path),
-        output_path=str(output_path),
-        train_path=str(train_work_dir),
-        epochs=epochs,
-        batch_size=resolved_batch_size,
-        modelname=model_basename,
-        silent=silent,
-        save_plot=save_plot,
-        local=False,
-        threshold_esr=None,
-        user_metadata=user_metadata,
-        fast_dev_run=fast_dev_run,
-        latency=0,
-        ignore_checks=True,
-    )
+    try:
+        train_output = nam_core.train(
+            input_path=str(input_path),
+            output_path=str(output_path),
+            train_path=str(train_work_dir),
+            epochs=epochs,
+            batch_size=resolved_batch_size,
+            modelname=model_basename,
+            silent=silent,
+            save_plot=save_plot,
+            local=False,
+            threshold_esr=None,
+            user_metadata=user_metadata,
+            fast_dev_run=fast_dev_run,
+            latency=0,
+            ignore_checks=True,
+        )
+    finally:
+        with contextlib.suppress(ImportError, RuntimeError):
+            import matplotlib.pyplot as plt
+
+            plt.close("all")
 
     if train_output is None or train_output.model is None:
         print("Error: Training did not produce a model.")
