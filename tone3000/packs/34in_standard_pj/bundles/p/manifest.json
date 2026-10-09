@@ -6,7 +6,7 @@
   "base_dry_sha256": "7b361f99d72cf978d39e28e5e8b461b168eaee31919f63e4153ba76ce0609401",
   "dry_file": "dry v5.1.1.wav",
   "dry_version": "v5.1.1",
-  "dry_sha256": "a5c982db5c3b976018811fc6333c8a79d775662c3b3258efbaa623ee84aa4c28",
+  "dry_sha256": "8f0f4e6cb3d2e0e6d6ca3147863f3c0803d51834051a1d77d8254029c93a7014",
   "instrument_id": "34in_standard_pj",
   "instrument_version": 1,
   "source_voicing_version": 1,
@@ -20,7 +20,7 @@
       "target_voicing_version": 1,
       "version": "v5.1.1",
       "tone_name": "Precision Vintage",
-      "sha256": "5cedfa8ad51c72ef88919c735dd9daea85e2b496df8a6bc0a0c1bd911383d7c5"
+      "sha256": "b09086a9abf7c8a01aea306745802ea6173321dbac95599db446bdee07a1de71"
     },
     {
       "filename": "Precision Mids [Neck] v5.1.1.wav",
@@ -30,7 +30,7 @@
       "target_voicing_version": 1,
       "version": "v5.1.1",
       "tone_name": "Precision Mids",
-      "sha256": "cb99640fd04b885511e608beefd9918e2e3d3bf5d21140e026d1db68483a8655"
+      "sha256": "5177ebe27c63bfa6f3dc70281afa49003756ac48fffa4f6edeac1e71a3314696"
     },
     {
       "filename": "Precision Warm [Neck] v5.1.1.wav",
@@ -40,7 +40,7 @@
       "target_voicing_version": 1,
       "version": "v5.1.1",
       "tone_name": "Precision Warm",
-      "sha256": "8daf1d55144d795246d47cb6a185e1685b74c3fa7bacaafc9c40a1813d13a8af"
+      "sha256": "a8d406a5aa6c3ffbcf08538a055e238950b2b329c69b878940cb9dc727c2c388"
     },
     {
       "filename": "Precision Active [Neck] v5.1.1.wav",
@@ -50,7 +50,7 @@
       "target_voicing_version": 1,
       "version": "v5.1.1",
       "tone_name": "Precision Active",
-      "sha256": "7e315653403b7cd5172a0811f03656987f463f9a8a2eb34e5275553ffb5f7647"
+      "sha256": "98630ee8608a57a3a923e92e91edd5c05d93f5240334815434179036886f0d6a"
     },
     {
       "filename": "Precision Dub [Neck] v5.1.1.wav",
@@ -60,7 +60,7 @@
       "target_voicing_version": 1,
       "version": "v5.1.1",
       "tone_name": "Precision Dub",
-      "sha256": "bbbfce1a1f81319561fb9c74d4033c4d3202235f9ea4874bfd168c71239e7587"
+      "sha256": "66465db4a48000abcee4ec5d75a9950b08bc9d486f7240bd6b97d126ce9ca10e"
     },
     {
       "filename": "Jazz Neck Warm [Neck] v5.1.1.wav",
@@ -70,7 +70,7 @@
       "target_voicing_version": 1,
       "version": "v5.1.1",
       "tone_name": "Jazz Neck Warm",
-      "sha256": "975c419ec0130aff4e0b0369663f55b6f679a6f943c1e15dc85e340969a3b59d"
+      "sha256": "720820a2914b7daa59d3fce030c9865d5c524bf5f62883bd4a990fef4c76b9dc"
     },
     {
       "filename": "Dingwall Middle [Neck] v5.1.1.wav",
@@ -80,7 +80,7 @@
       "target_voicing_version": 1,
       "version": "v5.1.1",
       "tone_name": "Dingwall Middle",
-      "sha256": "6ecae5d6027d60bc8d46818eb2be5743643e21e8987e22405517b460144fad1a"
+      "sha256": "3de135722a9ca74ae93cc1b70f3d4c143f928d943fa52f4e5bd6bb84d6c4b2d2"
     },
     {
       "filename": "Mudbucker Deep [Neck] v5.1.1.wav",
@@ -90,7 +90,7 @@
       "target_voicing_version": 1,
       "version": "v5.1.1",
       "tone_name": "Mudbucker Deep",
-      "sha256": "1d090e6fd2f4a4ce5692111a89b6379b43a605d6ad2ab2d10213d752c4dcbb6f"
+      "sha256": "b7579946613622b283560f652d68f069960d5d26de5b58c98234585ea63b1edf"
     },
     {
       "filename": "Upright Acoustic [Neck] v5.1.1.wav",
@@ -100,7 +100,7 @@
       "target_voicing_version": 1,
       "version": "v5.1.1",
       "tone_name": "Upright Acoustic",
-      "sha256": "b2c972d4c4c5629dc3b48927c00c990fc4e08b5125f39d459c09bb1a3ad8c0e0"
+      "sha256": "455dbdb5da2f4b62ff2202bdeb8e0a1d15027a22fe99f30f2c48562ea7c1fe54"
     }
   ]
 }

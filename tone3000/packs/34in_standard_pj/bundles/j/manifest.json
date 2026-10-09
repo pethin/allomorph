@@ -6,7 +6,7 @@
   "base_dry_sha256": "7b361f99d72cf978d39e28e5e8b461b168eaee31919f63e4153ba76ce0609401",
   "dry_file": "dry v5.1.1.wav",
   "dry_version": "v5.1.1",
-  "dry_sha256": "b03021cf9e1605644df25f6324ef4014d56c9a937c4330ef7e61aaa46bfef8fd",
+  "dry_sha256": "e050870c057e278b7c3a3f31b15dfa6b21c4ff744a147dc7dd631653f2b22f42",
   "instrument_id": "34in_standard_pj",
   "instrument_version": 1,
   "source_voicing_version": 1,
@@ -20,7 +20,7 @@
       "target_voicing_version": 1,
       "version": "v5.1.1",
       "tone_name": "Jazz Bridge Growl",
-      "sha256": "6be5989bb92bacd2e5235e65b04b7fd56fbc5b418d76712e1616d2581c71ecc5"
+      "sha256": "124f36e9d295ddfd56e2aaf07c204fda6438e808ab5b4c5b481214cc5bdbab8c"
     },
     {
       "filename": "Jazz Bridge Open [Bridge] v5.1.1.wav",
@@ -30,7 +30,7 @@
       "target_voicing_version": 1,
       "version": "v5.1.1",
       "tone_name": "Jazz Bridge Open",
-      "sha256": "f16fe8bde829aefe09c810d5e29dc60756c3a1c9290e1767f83421593b941165"
+      "sha256": "2e9008e2da1a63316a8929872745a8410efd881b898eb2c786092eb8c2757241"
     },
     {
       "filename": "StingRay Parallel [Bridge] v5.1.1.wav",
@@ -40,7 +40,7 @@
       "target_voicing_version": 1,
       "version": "v5.1.1",
       "tone_name": "StingRay Parallel",
-      "sha256": "7c04b092bcd3808ed89972bb39a88be8ebe13a37d31d0502fa41bc5988c92d12"
+      "sha256": "fea6f9ed7947e4c29b9c5397b2d75d797927217b8a0380402dcaec4523074bb3"
     },
     {
       "filename": "StingRay Series [Bridge] v5.1.1.wav",
@@ -50,7 +50,7 @@
       "target_voicing_version": 1,
       "version": "v5.1.1",
       "tone_name": "StingRay Series",
-      "sha256": "30339ea17d246bfb478f8c1f93d832c4ca84d1855ac82995e11e99655a02c4f9"
+      "sha256": "ea031bbab1c556475e2df6d4a69767729edcc24db49b5185e48426a0fe4c6ee7"
     },
     {
       "filename": "Dingwall Bridge [Bridge] v5.1.1.wav",
@@ -60,7 +60,7 @@
       "target_voicing_version": 1,
       "version": "v5.1.1",
       "tone_name": "Dingwall Bridge",
-      "sha256": "47f48709f1cc5422d0e287249ba1ff7bf20d73d5a9adc62164ddbd0840536ebf"
+      "sha256": "9aaa0922f8320ee0b343d2b5df1874b51083e6e59485cb0cf089d69e2dac6845"
     },
     {
       "filename": "Rickenbacker Clank [Bridge] v5.1.1.wav",
@@ -70,7 +70,7 @@
       "target_voicing_version": 1,
       "version": "v5.1.1",
       "tone_name": "Rickenbacker Clank",
-      "sha256": "9b62f44351bffb219bd275006d3e608d6ee51c14f5ae720e78c4453c39017bad"
+      "sha256": "bd2065884a4e71b72bfc61e5b91e970a5f24a8bf8eda0f73fce2d8fe45517838"
     },
     {
       "filename": "Rickenbacker Open [Bridge] v5.1.1.wav",
@@ -80,7 +80,7 @@
       "target_voicing_version": 1,
       "version": "v5.1.1",
       "tone_name": "Rickenbacker Open",
-      "sha256": "e58633964f894de8ec959556f7533d9296a004db80e71c7229c102696c0e66cd"
+      "sha256": "78a01b6074fbe82330b48127111932d429a481c6772d68231c200a49f7c0b101"
     }
   ]
 }
