@@ -20,9 +20,19 @@ from allomorph.pipeline.schema import (
 
 def test_pipeline_cli_config_validation():
     """Verify PipelineCliConfig validation of command line options."""
-    cfg = PipelineCliConfig(stage="sim", instrument="30in", cable_pf=750.0)
+    cfg = PipelineCliConfig(
+        stage="sim",
+        instrument="30in",
+        pack="34in_active_stingray",
+        cable_pf=750.0,
+        overwrite=True,
+        force=True,
+    )
     assert cfg.stage == "sim"
     assert cfg.instrument == "30in"
+    assert cfg.pack == "34in_active_stingray"
+    assert cfg.overwrite is True
+    assert cfg.force is True
 
     with pytest.raises(ValidationError):
         PipelineCliConfig(stage="unsupported_stage")  # type: ignore[arg-type]
@@ -69,6 +79,8 @@ def test_nam_export_metadata_validation():
         training=NamTrainingMetadata(
             esr=0.0004,
             validation_esr=0.0004,
+            validation_esr_a2_full=0.0004,
+            validation_esr_a2_lite=0.0018,
             differential_esr=0.015,
             mrstft_loss=0.0008,
             epochs_trained=85,
@@ -97,6 +109,8 @@ def test_nam_export_metadata_validation():
     assert meta.source_instrument.id == "30in"
     assert meta.target_voice.id == "precision_vintage"
     assert meta.training.esr == 0.0004
+    assert meta.training.validation_esr_a2_full == 0.0004
+    assert meta.training.validation_esr_a2_lite == 0.0018
     assert meta.training.differential_esr == 0.015
     assert meta.training.mrstft_loss == 0.0008
     assert meta.training.epochs_trained == 85
@@ -112,6 +126,8 @@ def test_nam_training_config_validation():
     """Verify NamTrainingConfig defaults and hyperparameter bounds."""
     cfg = NamTrainingConfig()
     assert cfg.instrument == "all"
+    assert cfg.pack is None
+    assert cfg.overwrite is False
     assert cfg.voice == "all"
     assert cfg.epochs == 400
     assert cfg.min_epochs == 5
@@ -129,25 +145,29 @@ def test_nam_training_config_validation():
     assert cfg.lr_scheduler == "cosine"
     assert cfg.eta_min == 1e-5
     assert cfg.lr_t_max == 35
-    assert cfg.a2_lite_only is True
-    assert cfg.full_slimmable is False
+    assert cfg.goal_esr_lite == 0.00250
+    assert cfg.goal_delta_esr_lite == 0.080
+    assert cfg.goal_delta_mrstft_lite == 0.75
+    assert cfg.max_mrstft_ceiling_lite == 0.450
 
-    # Valid custom configuration
+    # Valid custom configuration with primary _lite parameters
     custom = NamTrainingConfig(
         instrument="30in",
+        pack="30in_emg_mmtw",
+        overwrite=True,
         voice="precision_vintage",
         epochs=50,
         min_epochs=20,
         batch_size=64,
         fast_dev_run=True,
-        a2_lite_only=False,
-        full_slimmable=True,
+        goal_esr_lite=0.0030,
     )
+    assert custom.pack == "30in_emg_mmtw"
+    assert custom.overwrite is True
     assert custom.epochs == 50
     assert custom.min_epochs == 20
     assert custom.batch_size == 64
-    assert custom.a2_lite_only is False
-    assert custom.full_slimmable is True
+    assert custom.goal_esr_lite == 0.0030
 
     # Negative epochs rejection
     with pytest.raises(ValidationError):

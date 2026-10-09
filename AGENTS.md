@@ -92,7 +92,7 @@ The models produced by Allomorph are loaded into **Block 1** (as a high-impedanc
 ```
 [Bass: Active / Passive / Piezo] -> [Block 1: Allomorph NAM] -> [Block 2: Darkglass Preamp/Drive] -> [Block 3: Cab IR Loader] -> [FOH/Audio Interface]
 ```
-- **Block 1 (NAM Preamp):** Load trained `.nam` neural model (feather/nano architecture) capturing full RLC resonance, eddy currents, and non-linear magnetic feel.
+- **Block 1 (NAM Preamp):** Load trained `.nam` neural model (A2 architecture) capturing full RLC resonance, eddy currents, and non-linear magnetic feel.
 - **Block 2 (Darkglass Preamp/Drive):** Microtubes B7K, Vintage Ultra, or Alpha·Omega for bass saturation.
 - **Block 3 (Cabinet IR Loader):** Downstream speaker cabinet impulse responses (4x10, 8x10, 2x12).
 

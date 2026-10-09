@@ -93,8 +93,8 @@ def test_run_training_mocked(monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
         epochs=10,
         min_epochs=5,
         goal_esr=0.0001,
+        goal_esr_lite=0.0025,
         fast_dev_run=True,
-        a2_lite_only=True,
         no_manifest=True,
     )
 
@@ -107,5 +107,7 @@ def test_run_training_mocked(monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
     assert "--epochs" in cmd
     assert "10" in cmd
     assert "--fast-dev-run" in cmd
-    assert "--a2-lite-only" in cmd
+    assert "--goal-esr-lite" in cmd
+    assert "0.0025" in cmd
+    assert "--a2-lite-only" not in cmd
     assert "--no-manifest" in cmd

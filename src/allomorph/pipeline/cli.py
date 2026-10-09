@@ -73,6 +73,13 @@ def main(argv: Sequence[str] | None = None):
         help="Source instrument configuration (ID, comma-separated list, 'all', path to .toml, or alias like 30in, 32in; default: 'all')",
     )
     parser.add_argument(
+        "--pack",
+        "--tone-pack",
+        dest="pack",
+        default=None,
+        help="Tone3000 pack identifier to export or train (e.g. '34in_active_stingray' or 'stingray')",
+    )
+    parser.add_argument(
         "--stage",
         choices=[
             "all",
@@ -196,13 +203,32 @@ def main(argv: Sequence[str] | None = None):
     parser.add_argument(
         "--batch-size",
         type=int,
-        default=32,
-        help="Batch size for model training (default: 32)",
+        default=16,
+        help="Batch size for model training (default: 16)",
     )
     parser.add_argument(
-        "--a2-lite-only",
-        action="store_true",
-        help="Train A2-Lite channels_8 only instead of the full slimmable container",
+        "--goal-esr-lite",
+        type=float,
+        default=0.00250,
+        help="Goal validation ESR for A2 Lite tier (channels_3) (default: 0.00250, -26 dB)",
+    )
+    parser.add_argument(
+        "--goal-delta-esr-lite",
+        type=float,
+        default=0.080,
+        help="Goal validation Differential Delta ESR for A2 Lite tier (channels_3) (default: 0.080)",
+    )
+    parser.add_argument(
+        "--goal-delta-mrstft-lite",
+        type=float,
+        default=0.75,
+        help="Goal validation Differential MRSTFT ratio for A2 Lite tier (channels_3) (default: 0.75)",
+    )
+    parser.add_argument(
+        "--max-mrstft-ceiling-lite",
+        type=float,
+        default=0.450,
+        help="Absolute ceiling on MRSTFT for A2 Lite tier qualification (default: 0.450)",
     )
     parser.add_argument(
         "--fast-dev-run",
@@ -234,6 +260,7 @@ def main(argv: Sequence[str] | None = None):
     PipelineCliConfig.model_validate(
         {
             "instrument": args.instrument or "all",
+            "pack": args.pack,
             "stage": args.stage,
             "pickup": args.pickup,
             "voice": args.voice or "all",
@@ -247,6 +274,8 @@ def main(argv: Sequence[str] | None = None):
             "version_tag": args.version_tag,
             "no_manifest": args.no_manifest,
             "clean_audio": args.clean_audio,
+            "force": args.force,
+            "overwrite": args.overwrite,
         }
     )
 
@@ -371,7 +400,8 @@ def main(argv: Sequence[str] | None = None):
     if args.stage == "pack":
         from allomorph.pipeline.pack import export_tone_pack
 
-        for inst in instruments_to_run:
+        packs_to_run = [args.pack] if args.pack else instruments_to_run
+        for inst in packs_to_run:
             print(f"\n[Tone Pack] Exporting tone pack bundles for {inst}...")
             export_tone_pack(
                 inst,
@@ -379,6 +409,7 @@ def main(argv: Sequence[str] | None = None):
                 max_samples=args.max_samples,
                 jobs=effective_jobs,
                 overwrite=force_exec,
+                train=args.train,
             )
         return
 
@@ -390,6 +421,25 @@ def main(argv: Sequence[str] | None = None):
         return
 
     if args.stage == "train":
+        if args.pack:
+            from allomorph.pipeline.stages import run_tone_pack_training
+
+            run_tone_pack_training(
+                pack=args.pack,
+                voice=args.voice or "all",
+                overwrite=force_exec,
+                epochs=args.epochs,
+                min_epochs=args.min_epochs,
+                goal_esr=effective_goal_esr,
+                goal_esr_lite=args.goal_esr_lite,
+                goal_delta_esr_lite=args.goal_delta_esr_lite,
+                goal_delta_mrstft_lite=args.goal_delta_mrstft_lite,
+                max_mrstft_ceiling_lite=args.max_mrstft_ceiling_lite,
+                fast_dev_run=args.fast_dev_run,
+                batch_size=args.batch_size,
+            )
+            return
+
         for inst in instruments_to_run:
             for idx, voice in enumerate(voices_to_run, 1):
                 print(f"\n[{idx}/{len(voices_to_run)}] Training NAM A2 Model: {inst} -> {voice}...")
@@ -400,9 +450,12 @@ def main(argv: Sequence[str] | None = None):
                     epochs=args.epochs,
                     min_epochs=args.min_epochs,
                     goal_esr=effective_goal_esr,
+                    goal_esr_lite=args.goal_esr_lite,
+                    goal_delta_esr_lite=args.goal_delta_esr_lite,
+                    goal_delta_mrstft_lite=args.goal_delta_mrstft_lite,
+                    max_mrstft_ceiling_lite=args.max_mrstft_ceiling_lite,
                     fast_dev_run=args.fast_dev_run,
                     batch_size=args.batch_size,
-                    a2_lite_only=args.a2_lite_only,
                     version_tag=args.version_tag,
                     no_manifest=args.no_manifest,
                 )
@@ -424,13 +477,15 @@ def main(argv: Sequence[str] | None = None):
         print("\n--- Step 2: Tone Pack Bundles Export ---")
         from allomorph.pipeline.pack import export_tone_pack
 
-        for inst in instruments_to_run:
+        packs_to_run = [args.pack] if args.pack else instruments_to_run
+        for inst in packs_to_run:
             export_tone_pack(
                 inst,
                 input_wav=input_wav,
                 max_samples=args.max_samples,
                 jobs=effective_jobs,
                 overwrite=force_exec,
+                train=args.train,
             )
 
         print("\n--- Step 3: Interactive Altair Frequency Visualization ---")

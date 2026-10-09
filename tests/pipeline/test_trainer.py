@@ -143,7 +143,7 @@ def test_train_nam_cli_min_epochs_parsing():
     assert args.min_epochs == 100
 
 
-def test_train_voice_a2_lite_only_parameter():
+def test_train_voice_parameters():
     import inspect
 
     from train_nam import (
@@ -151,10 +151,15 @@ def test_train_voice_a2_lite_only_parameter():
         DEFAULT_CONSECUTIVE_PATIENCE,
         DEFAULT_ETA_MIN,
         DEFAULT_GOAL_DELTA_ESR,
+        DEFAULT_GOAL_DELTA_ESR_LITE,
         DEFAULT_GOAL_DELTA_MRSTFT,
+        DEFAULT_GOAL_DELTA_MRSTFT_LITE,
+        DEFAULT_GOAL_ESR,
+        DEFAULT_GOAL_ESR_LITE,
         DEFAULT_LR_SCHEDULER,
         DEFAULT_LR_T_MAX,
         DEFAULT_MAX_MRSTFT_CEILING,
+        DEFAULT_MAX_MRSTFT_CEILING_LITE,
         DEFAULT_MRSTFT_WEIGHT,
         DEFAULT_PATIENCE,
         DEFAULT_PRE_EMPH_COEF,
@@ -163,11 +168,16 @@ def test_train_voice_a2_lite_only_parameter():
     )
 
     sig = inspect.signature(train_voice)
-    assert "a2_lite_only" in sig.parameters
-    assert sig.parameters["a2_lite_only"].default is True
+    assert "a2_lite_only" not in sig.parameters
+    assert "goal_esr_nano" not in sig.parameters
+    assert sig.parameters["goal_esr"].default == DEFAULT_GOAL_ESR
     assert sig.parameters["goal_delta_esr"].default == DEFAULT_GOAL_DELTA_ESR
     assert sig.parameters["goal_delta_mrstft"].default == DEFAULT_GOAL_DELTA_MRSTFT
     assert sig.parameters["max_mrstft_ceiling"].default == DEFAULT_MAX_MRSTFT_CEILING
+    assert sig.parameters["goal_esr_lite"].default == DEFAULT_GOAL_ESR_LITE
+    assert sig.parameters["goal_delta_esr_lite"].default == DEFAULT_GOAL_DELTA_ESR_LITE
+    assert sig.parameters["goal_delta_mrstft_lite"].default == DEFAULT_GOAL_DELTA_MRSTFT_LITE
+    assert sig.parameters["max_mrstft_ceiling_lite"].default == DEFAULT_MAX_MRSTFT_CEILING_LITE
     assert sig.parameters["consecutive_patience"].default == DEFAULT_CONSECUTIVE_PATIENCE
     assert sig.parameters["patience"].default == DEFAULT_PATIENCE
     assert sig.parameters["pre_emph_weight"].default == DEFAULT_PRE_EMPH_WEIGHT
@@ -180,8 +190,13 @@ def test_train_voice_a2_lite_only_parameter():
     assert DEFAULT_PATIENCE == 12
     assert DEFAULT_BATCH_SIZE == 16
     assert DEFAULT_CONSECUTIVE_PATIENCE == 3
+    assert DEFAULT_GOAL_ESR == 0.00020
+    assert DEFAULT_GOAL_ESR_LITE == 0.00250
+    assert DEFAULT_GOAL_DELTA_ESR_LITE == 0.080
     assert DEFAULT_GOAL_DELTA_MRSTFT == 0.50
     assert DEFAULT_MAX_MRSTFT_CEILING == 0.320
+    assert DEFAULT_GOAL_DELTA_MRSTFT_LITE == 0.75
+    assert DEFAULT_MAX_MRSTFT_CEILING_LITE == 0.450
     assert DEFAULT_LR_SCHEDULER == "cosine"
     assert DEFAULT_ETA_MIN == 1e-5
     assert DEFAULT_LR_T_MAX == 35
@@ -245,37 +260,48 @@ def test_train_nam_cli_triple_gate_and_cosine_parsing():
     assert custom_args.lr_t_max == 40
 
 
-def test_train_nam_a2_lite_only_cli_parsing():
+def test_train_nam_lite_cli_parsing():
     import argparse
 
+    from train_nam import (
+        DEFAULT_GOAL_DELTA_ESR_LITE,
+        DEFAULT_GOAL_DELTA_MRSTFT_LITE,
+        DEFAULT_GOAL_ESR_LITE,
+        DEFAULT_MAX_MRSTFT_CEILING_LITE,
+    )
+
     parser = argparse.ArgumentParser()
+    parser.add_argument("--goal-esr-lite", type=float, default=DEFAULT_GOAL_ESR_LITE)
+    parser.add_argument("--goal-delta-esr-lite", type=float, default=DEFAULT_GOAL_DELTA_ESR_LITE)
     parser.add_argument(
-        "--a2-lite-only",
-        action="store_true",
-        default=None,
+        "--goal-delta-mrstft-lite", type=float, default=DEFAULT_GOAL_DELTA_MRSTFT_LITE
     )
     parser.add_argument(
-        "--full-slimmable",
-        action="store_true",
+        "--max-mrstft-ceiling-lite", type=float, default=DEFAULT_MAX_MRSTFT_CEILING_LITE
     )
 
-    # Default case (A2-Lite is default)
     args = parser.parse_args([])
-    effective_a2_lite = (
-        not args.full_slimmable
-        if args.full_slimmable
-        else (args.a2_lite_only if args.a2_lite_only is not None else True)
-    )
-    assert effective_a2_lite is True
+    assert args.goal_esr_lite == 0.00250
+    assert args.goal_delta_esr_lite == 0.080
+    assert args.goal_delta_mrstft_lite == 0.75
+    assert args.max_mrstft_ceiling_lite == 0.450
 
-    # Explicit full slimmable
-    args = parser.parse_args(["--full-slimmable"])
-    effective_a2_lite = (
-        not args.full_slimmable
-        if args.full_slimmable
-        else (args.a2_lite_only if args.a2_lite_only is not None else True)
+    custom = parser.parse_args(
+        [
+            "--goal-esr-lite",
+            "0.0030",
+            "--goal-delta-esr-lite",
+            "0.090",
+            "--goal-delta-mrstft-lite",
+            "0.80",
+            "--max-mrstft-ceiling-lite",
+            "0.500",
+        ]
     )
-    assert effective_a2_lite is False
+    assert custom.goal_esr_lite == 0.0030
+    assert custom.goal_delta_esr_lite == 0.090
+    assert custom.goal_delta_mrstft_lite == 0.80
+    assert custom.max_mrstft_ceiling_lite == 0.500
 
 
 def test_configure_a2_architecture():
@@ -285,7 +311,6 @@ def test_configure_a2_architecture():
     # Test slimmable configuration with cosine scheduler
     configure_a2_architecture(
         nam_core,
-        a2_lite_only=False,
         pre_emph_weight=0.25,
         pre_emph_coef=0.85,
         mrstft_weight=0.0010,
@@ -305,13 +330,6 @@ def test_configure_a2_architecture():
     assert cfg_full["lr_scheduler"]["class"] == "CosineAnnealingLR"
     assert cfg_full["lr_scheduler"]["kwargs"]["T_max"] == 35
     assert cfg_full["lr_scheduler"]["kwargs"]["eta_min"] == 1e-5
-
-    # Test lite-only configuration
-    configure_a2_architecture(nam_core, a2_lite_only=True)
-    cfg = nam_core._get_packed_model_config()
-    submodels = cfg["net"]["config"]["submodels"]
-    assert len(submodels) == 1
-    assert submodels[0]["name"] == "channels_8"
 
 
 def test_math_utilities():
@@ -372,7 +390,6 @@ def test_linear_warmup_monotonic_floor_clamp():
 
     configure_a2_architecture(
         nam_core,
-        a2_lite_only=True,
         lr_scheduler="cosine",
         eta_min=1e-5,
         lr_t_max=35,
@@ -424,12 +441,15 @@ def test_esr_progress_callback_hook():
     # Test slimmable mode early stopping monitors ESR_packed_1 (channels_8)
     configure_a2_architecture(
         nam_core,
-        a2_lite_only=False,
         min_epochs=5,
         goal_esr=0.00020,
         goal_delta_esr=0.020,
         goal_delta_mrstft=0.50,
         max_mrstft_ceiling=0.320,
+        goal_esr_lite=0.00250,
+        goal_delta_esr_lite=0.080,
+        goal_delta_mrstft_lite=0.75,
+        max_mrstft_ceiling_lite=0.450,
         consecutive_patience=3,
         patience=12,
     )
@@ -439,7 +459,6 @@ def test_esr_progress_callback_hook():
     assert cb is not None
     assert cb.target_esr == 0.00020
     assert cb.target_delta_esr == 0.020
-    assert cb.a2_lite_only is False
     assert cb.min_epochs == 5
 
     warmup_cb: Any = next((c for c in callbacks if "LinearWarmupCallback" in type(c).__name__), None)
@@ -453,28 +472,21 @@ def test_esr_progress_callback_hook():
     assert stopping_cb.goal_delta_esr == 0.020
     assert stopping_cb.goal_delta_mrstft == 0.50
     assert stopping_cb.max_mrstft_ceiling == 0.320
+    assert stopping_cb.goal_esr_lite == 0.00250
+    assert stopping_cb.goal_delta_esr_lite == 0.080
+    assert stopping_cb.goal_delta_mrstft_lite == 0.75
+    assert stopping_cb.max_mrstft_ceiling_lite == 0.450
     assert stopping_cb.consecutive_patience == 3
     assert stopping_cb.min_epochs == 5
     assert stopping_cb.warmup_floor == 5
     assert stopping_cb.patience == 12
-
-    # Test lite-only mode early stopping monitors ESR
-    configure_a2_architecture(nam_core, a2_lite_only=True, min_epochs=5)
-    callbacks_lite = nam_core.get_callbacks(threshold_esr=0.00020)
-    vs_cb_lite: Any = next(
-        (c for c in callbacks_lite if "AllomorphAdaptiveStopping" in type(c).__name__), None
-    )
-    assert vs_cb_lite is not None
-    assert vs_cb_lite.monitor == "ESR"
-    assert vs_cb_lite.stopping_threshold == 0.00020
-    assert vs_cb_lite.min_epochs == 5
 
     # Test threshold_esr=None adds no stopping callback
     callbacks_none = nam_core.get_callbacks(threshold_esr=None)
     assert not any("AllomorphAdaptiveStopping" in type(c).__name__ for c in callbacks_none)
 
     # Re-test slimmable validation epoch end with dual submodel metrics
-    configure_a2_architecture(nam_core, a2_lite_only=False, min_epochs=5)
+    configure_a2_architecture(nam_core, min_epochs=5)
     callbacks = nam_core.get_callbacks(threshold_esr=0.00020)
     cb: Any = next(c for c in callbacks if "EsrProgressCallback" in type(c).__name__)
     vs_cb: Any = next(c for c in callbacks if "AllomorphAdaptiveStopping" in type(c).__name__)
@@ -510,13 +522,22 @@ def test_esr_progress_callback_hook():
             return decision
 
     class EarlyStoppingTestTrainer:
-        def __init__(self, current_epoch: int, esr_val: float, mrstft_val: float = 0.15) -> None:
+        def __init__(
+            self,
+            current_epoch: int,
+            esr_val: float,
+            mrstft_val: float = 0.15,
+            esr_ch3_val: float = 0.0008,
+            mrstft_ch3_val: float = 0.20,
+        ) -> None:
             self.fast_dev_run = False
             self.current_epoch = current_epoch
             self.should_stop = False
             self.callback_metrics = {
                 "ESR_packed_1": torch.tensor(esr_val),
                 "MRSTFT_packed_1": torch.tensor(mrstft_val),
+                "ESR_packed_0": torch.tensor(esr_ch3_val),
+                "MRSTFT_packed_0": torch.tensor(mrstft_ch3_val),
             }
             self.strategy = DummyStrategy()
 
@@ -527,26 +548,29 @@ def test_esr_progress_callback_hook():
     assert vs_cb.consecutive_gates_met == 0
 
     # 2. Triple-gate check: baseline_delta_ratio=0.015, baseline_mrstft=0.400
-    # Epoch 5: Gate 1: esr 0.00015 <= 0.00020
-    #          Gate 2: delta 0.00015 / 0.015 = 0.010 <= 0.020
-    #          Gate 3: MRSTFT 0.15 / 0.400 = 0.375 <= 0.50 AND 0.15 <= 0.320
+    # Epoch 5: Studio Gate 1: esr 0.00015 <= 0.00020
+    #          Studio Gate 2: delta 0.00015 / 0.015 = 0.010 <= 0.020
+    #          Studio Gate 3: MRSTFT 0.15 / 0.400 = 0.375 <= 0.50 AND 0.15 <= 0.320
+    #          A2 Lite Gate 4: esr 0.0008 <= 0.00250
+    #          A2 Lite Gate 5: delta 0.0008 / 0.015 = 0.0533 <= 0.080
+    #          A2 Lite Gate 6: MRSTFT 0.20 / 0.400 = 0.50 <= 0.75 AND 0.20 <= 0.450
     # 1st consecutive pass -> consecutive_gates_met = 1, should_stop = False
-    trainer_pass1 = EarlyStoppingTestTrainer(current_epoch=5, esr_val=0.00015, mrstft_val=0.15)
+    trainer_pass1 = EarlyStoppingTestTrainer(current_epoch=5, esr_val=0.00015, mrstft_val=0.15, esr_ch3_val=0.0008)
     vs_cb._run_early_stopping_check(trainer_pass1)
     assert trainer_pass1.should_stop is False
     assert vs_cb.consecutive_gates_met == 1
 
     # Epoch 6: 2nd consecutive pass -> consecutive_gates_met = 2, should_stop = False
-    trainer_pass2 = EarlyStoppingTestTrainer(current_epoch=6, esr_val=0.00014, mrstft_val=0.14)
+    trainer_pass2 = EarlyStoppingTestTrainer(current_epoch=6, esr_val=0.00014, mrstft_val=0.14, esr_ch3_val=0.0007)
     vs_cb._run_early_stopping_check(trainer_pass2)
     assert trainer_pass2.should_stop is False
     assert vs_cb.consecutive_gates_met == 2
 
     # Epoch 7: 3rd consecutive pass -> consecutive_gates_met = 3 >= 3 -> should_stop = True!
-    trainer_pass3 = EarlyStoppingTestTrainer(current_epoch=7, esr_val=0.00013, mrstft_val=0.13)
+    trainer_pass3 = EarlyStoppingTestTrainer(current_epoch=7, esr_val=0.00013, mrstft_val=0.13, esr_ch3_val=0.0006)
     vs_cb._run_early_stopping_check(trainer_pass3)
     assert trainer_pass3.should_stop is True
-    assert vs_cb.stop_reason == "triple_gate_converged"
+    assert vs_cb.stop_reason == "dual_triple_gate_converged"
 
     # 3. Consecutive gate reset if any gate fails:
     vs_cb.consecutive_gates_met = 2
@@ -566,12 +590,15 @@ def test_triple_gate_stopping_nuance_preservation():
 
     configure_a2_architecture(
         nam_core,
-        a2_lite_only=True,
         min_epochs=5,
         goal_esr=0.00020,
         goal_delta_esr=0.020,
         goal_delta_mrstft=0.50,
         max_mrstft_ceiling=0.320,
+        goal_esr_lite=0.00250,
+        goal_delta_esr_lite=0.080,
+        goal_delta_mrstft_lite=0.75,
+        max_mrstft_ceiling_lite=0.450,
         consecutive_patience=1,
     )
     callbacks = nam_core.get_callbacks(threshold_esr=0.00020)
@@ -588,13 +615,22 @@ def test_triple_gate_stopping_nuance_preservation():
             return decision
 
     class EarlyStoppingTestTrainer:
-        def __init__(self, current_epoch: int, esr_val: float, mrstft_val: float) -> None:
+        def __init__(
+            self,
+            current_epoch: int,
+            esr_val: float,
+            mrstft_val: float,
+            esr_ch3_val: float = 0.0005,
+            mrstft_ch3_val: float = 0.020,
+        ) -> None:
             self.fast_dev_run = False
             self.current_epoch = current_epoch
             self.should_stop = False
             self.callback_metrics = {
-                "ESR": torch.tensor(esr_val),
-                "MRSTFT": torch.tensor(mrstft_val),
+                "ESR_packed_1": torch.tensor(esr_val),
+                "MRSTFT_packed_1": torch.tensor(mrstft_val),
+                "ESR_packed_0": torch.tensor(esr_ch3_val),
+                "MRSTFT_packed_0": torch.tensor(mrstft_ch3_val),
             }
             self.strategy = DummyStrategy()
 
@@ -608,4 +644,50 @@ def test_triple_gate_stopping_nuance_preservation():
     t_pass = EarlyStoppingTestTrainer(current_epoch=11, esr_val=0.00010, mrstft_val=0.022)
     vs_cb._run_early_stopping_check(t_pass)
     assert t_pass.should_stop is True
-    assert vs_cb.stop_reason == "triple_gate_converged"
+    assert vs_cb.stop_reason == "dual_triple_gate_converged"
+
+
+def test_train_nam_cli_pack_and_overwrite_parsing():
+    import argparse
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--pack", "--tone-pack", dest="pack", default=None)
+    parser.add_argument("--force", "--overwrite", dest="overwrite", action="store_true")
+
+    args = parser.parse_args([])
+    assert args.pack is None
+    assert args.overwrite is False
+
+    args_pack = parser.parse_args(["--pack", "34in_active_stingray", "--force"])
+    assert args_pack.pack == "34in_active_stingray"
+    assert args_pack.overwrite is True
+
+    args_alias = parser.parse_args(["--tone-pack", "stingray", "--overwrite"])
+    assert args_alias.pack == "stingray"
+    assert args_alias.overwrite is True
+
+
+def test_inst_models_dir_non_nesting_on_nam_dir(tmp_path: Path):
+    """Verify that passing models_dir pointing to a 'nam' directory does NOT nest inst_id."""
+    nam_dir = tmp_path / "tone3000" / "packs" / "34in_active_stingray" / "nam"
+    nam_dir.mkdir(parents=True)
+    inst_id = "34in_active_stingray"
+
+    models_path = Path(nam_dir)
+    if models_path.name == "nam" or models_path.name == inst_id:
+        inst_models_dir = models_path
+    else:
+        inst_models_dir = models_path / inst_id
+
+    assert inst_models_dir == nam_dir
+    assert inst_models_dir.name == "nam"
+
+    # Conversely, passing models/ does nest inst_id
+    general_models_dir = tmp_path / "models"
+    models_path2 = Path(general_models_dir)
+    if models_path2.name == "nam" or models_path2.name == inst_id:
+        inst_models_dir2 = models_path2
+    else:
+        inst_models_dir2 = models_path2 / inst_id
+
+    assert inst_models_dir2 == general_models_dir / inst_id

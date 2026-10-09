@@ -49,7 +49,7 @@ The Darkglass Anagram allows up to 24 simultaneous blocks in series or parallel 
 
 > [!NOTE]
 > **Single Neural Slot Economy:**
-> By combining acoustic de-combing, RLC network transfer, and non-linear magnetic feel into a single slimmable A2 or nano model in Block 1, Allomorph uses only 1 of the Anagram's 9 neural slots. This leaves 8 neural slots completely free for drive engines, amplifier captures, and synths.
+> By combining acoustic de-combing, RLC network transfer, and non-linear magnetic feel into a single slimmable A2 model (Full or Lite) in Block 1, Allomorph uses only 1 of the Anagram's 9 neural slots. This leaves 8 neural slots completely free for drive engines, amplifier captures, and synths.
 > For the complete table of training audio pairings, mathematical proofs, and CLI workflows, see [`docs/training.md`](training.md).
 
 ---

@@ -32,6 +32,7 @@ class PipelineCliConfig(AllomorphBaseModel):
     """Validation schema for Allomorph pipeline command-line arguments."""
 
     instrument: str = "all"
+    pack: str | None = None
     stage: Literal["all", "viz", "sim", "pack", "train", "audit"] = "all"
     pickup: str | None = None
     voice: str = "all"
@@ -52,6 +53,8 @@ class PipelineCliConfig(AllomorphBaseModel):
     version_tag: str | None = "auto"
     no_manifest: bool = False
     clean_audio: bool = False
+    force: bool = False
+    overwrite: bool = False
 
 
 class Tone3000PackListing(AllomorphBaseModel):
@@ -82,8 +85,15 @@ class NamTrainingMetadata(AllomorphBaseModel):
 
     esr: float | None = None
     validation_esr: float | None = None
+    validation_esr_a2_full: float | None = None
+    validation_esr_a2_lite: float | None = None
+    validation_esr_ch8: float | None = None
+    validation_esr_ch3: float | None = None
+    validation_esr_aggregate: float | None = None
     differential_esr: float | None = None
+    differential_esr_ch3: float | None = None
     mrstft_loss: float | None = None
+    mrstft_loss_ch3: float | None = None
     baseline_mrstft: float | None = None
     differential_mrstft: float | None = None
     consecutive_gates_met: int | None = None
@@ -145,6 +155,10 @@ class NamTrainingConfig(AllomorphBaseModel):
     """Training hyperparameters and execution flags for NAM Architecture 2 local training."""
 
     instrument: str = "all"
+    pack: str | None = Field(
+        default=None,
+        description="Tone3000 pack identifier to train (outputs flat .nam files to tone3000/packs/[pack]/nam/)",
+    )
     voice: str = "all"
     input_wav: Path | str | None = None
     output_wav: Path | str | None = None
@@ -232,17 +246,33 @@ class NamTrainingConfig(AllomorphBaseModel):
     basename: str | None = None
     fast_dev_run: bool = False
     gui: bool = False
-    a2_lite_only: bool = Field(
-        default=True,
-        description="Train A2-Lite channels_8 only instead of full slimmable container (default: True, ~35% faster)",
+    goal_esr_lite: float | None = Field(
+        default=0.00250,
+        ge=0.0,
+        description="Gate 4: Goal validation Global ESR for A2 Lite tier (channels_3) (default: 0.00250, -26 dB)",
     )
-    full_slimmable: bool = Field(
-        default=False,
-        description="Train full slimmable container (channels_3 + channels_8) instead of A2-Lite (default: False)",
+    goal_delta_esr_lite: float | None = Field(
+        default=0.080,
+        ge=0.0,
+        description="Gate 5: Goal validation Differential Delta ESR for A2 Lite tier (channels_3) (default: 0.080)",
+    )
+    goal_delta_mrstft_lite: float | None = Field(
+        default=0.75,
+        ge=0.0,
+        description="Gate 6: Goal validation Differential MRSTFT ratio for A2 Lite tier (channels_3) (default: 0.75)",
+    )
+    max_mrstft_ceiling_lite: float = Field(
+        default=0.450,
+        ge=0.0,
+        description="Gate 6: Absolute ceiling on MRSTFT for A2 Lite tier qualification (default: 0.450)",
     )
     version_tag: str | None = "auto"
     no_manifest: bool = False
     include_identity: bool = False
+    overwrite: bool = Field(
+        default=False,
+        description="Force retraining of models even if .nam files already exist",
+    )
 
 
 class ArtworkPackConfig(AllomorphBaseModel):

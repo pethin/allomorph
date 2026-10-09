@@ -578,11 +578,11 @@ def export_tone_pack(
 
     pack_dir = Path(output_dir) if output_dir else PACKS_DIR / inst.id
     bundles_dir = pack_dir / "bundles"
-    models_dir = pack_dir / "models"
+    nam_dir = pack_dir / "nam"
     pack_dir.mkdir(parents=True, exist_ok=True)
     bundles_dir.mkdir(parents=True, exist_ok=True)
     if train:
-        models_dir.mkdir(parents=True, exist_ok=True)
+        nam_dir.mkdir(parents=True, exist_ok=True)
 
     # 1. Partition instrument into pickup bundles
     bundles = partition_instrument_bundles(inst, catalog_targets=catalog_targets)
@@ -866,4 +866,271 @@ def export_tone_pack(
     print(f"  -> Bundles: {list(bundles.keys())}")
     print(f"  -> Total Stems: {sum(len(b['stems']) for b in manifest_entries['bundles'].values())}")
 
+    if train:
+        train_tone_pack(
+            pack=inst,
+            overwrite=overwrite,
+        )
+
     return pack_dir
+
+
+def _populate_manifest_model_entry(
+    models_dict: dict[str, Any],
+    nam_path: Path,
+    stem_info: dict[str, Any],
+    bundle_name: str,
+) -> None:
+    """Reads .nam container and populates metadata entry in pack manifest."""
+    sha256 = _sha256_file(nam_path)
+    entry: dict[str, Any] = {
+        "filename": nam_path.name,
+        "bundle": bundle_name,
+        "target_instrument": stem_info.get("target_instrument"),
+        "target_instrument_version": stem_info.get("target_instrument_version"),
+        "target_voicing": stem_info.get("target_voicing"),
+        "target_voicing_version": stem_info.get("target_voicing_version"),
+        "version": stem_info.get("version"),
+        "tone_name": stem_info.get("tone_name"),
+        "sha256": sha256,
+    }
+    try:
+        with open(nam_path, "r", encoding="utf-8") as f:
+            nam_data = json.load(f)
+        meta = nam_data.get("metadata", {})
+        training_meta = meta.get("training", {})
+        if isinstance(training_meta, dict):
+            for field in [
+                "validation_esr",
+                "validation_esr_a2_full",
+                "validation_esr_a2_lite",
+                "validation_esr_ch8",
+                "validation_esr_ch3",
+                "validation_esr_aggregate",
+                "esr",
+                "differential_esr",
+                "differential_esr_ch3",
+                "mrstft_loss",
+                "mrstft_loss_ch3",
+                "baseline_mrstft",
+                "differential_mrstft",
+                "epochs_trained",
+                "stop_reason",
+            ]:
+                if field in training_meta and training_meta[field] is not None:
+                    entry[field] = training_meta[field]
+    except (json.JSONDecodeError, OSError) as e:
+        print(f"[Tone Pack Trainer] Warning: Could not read training metadata from {nam_path.name}: {e}")
+
+    models_dict[nam_path.name] = entry
+
+
+def train_tone_pack(
+    pack: InstrumentConfig | str | Path,
+    voice: str = "all",
+    overwrite: bool = False,
+    epochs: int = 400,
+    min_epochs: int = 5,
+    goal_esr: float | None = 0.00020,
+    goal_delta_esr: float | None = 0.020,
+    goal_delta_mrstft: float | None = 0.50,
+    max_mrstft_ceiling: float = 0.320,
+    goal_esr_lite: float | None = 0.00250,
+    goal_delta_esr_lite: float | None = 0.080,
+    goal_delta_mrstft_lite: float | None = 0.75,
+    max_mrstft_ceiling_lite: float = 0.450,
+    consecutive_patience: int = 3,
+    patience: int = 12,
+    batch_size: int = 16,
+    lr_scheduler: str = "cosine",
+    eta_min: float = 1e-5,
+    lr_t_max: int = 35,
+    fast_dev_run: bool = False,
+) -> Path:
+    """Trains a complete Tone3000 upload pack, outputting flat .nam files to tone3000/packs/[pack]/nam/.
+
+    Reads each bundle in the pack manifest, training its target wet stems against the bundle's dry excitation.
+    Automatically generates missing or incomplete bundle files before training.
+    Skips already trained models unless overwrite=True.
+    Updates the pack manifest with a top-level 'models' section indexing all trained model containers.
+    """
+    import sys
+
+    from allomorph.config.voices import VOICES
+
+    if (
+        isinstance(pack, (str, Path))
+        and Path(pack).is_dir()
+        and (Path(pack) / "manifest.json").exists()
+    ):
+        with open(Path(pack) / "manifest.json", "r", encoding="utf-8") as mf:
+            pack_manifest = json.load(mf)
+        inst = load_instrument(pack_manifest.get("instrument_id", Path(pack).name))
+        pack_dir = Path(pack)
+    else:
+        inst = load_instrument(pack) if not isinstance(pack, InstrumentConfig) else pack
+        pack_dir = PACKS_DIR / inst.id
+
+    manifest_path = pack_dir / "manifest.json"
+    if not manifest_path.exists():
+        print(f"[Tone Pack Trainer] Manifest missing for '{inst.name}' at '{pack_dir}'. Auto-exporting pack...")
+        export_tone_pack(inst, output_dir=pack_dir, overwrite=overwrite)
+
+    with open(manifest_path, "r", encoding="utf-8") as f:
+        manifest_data = json.load(f)
+
+    # Check for missing bundle stems and auto-export if needed
+    bundles_dict = manifest_data.get("bundles", {})
+    missing_stems = False
+    if not bundles_dict:
+        missing_stems = True
+    else:
+        for b_name, b_info in bundles_dict.items():
+            b_dir = pack_dir / "bundles" / b_name
+            dry_p = b_dir / b_info.get("dry_file", "")
+            if not dry_p.exists():
+                missing_stems = True
+                break
+            for s_info in b_info.get("stems", []):
+                stem_p = b_dir / s_info.get("filename", "")
+                if not stem_p.exists():
+                    missing_stems = True
+                    break
+            if missing_stems:
+                break
+
+    if missing_stems:
+        print(f"[Tone Pack Trainer] Pack bundles missing or incomplete in '{pack_dir}'. Auto-exporting...")
+        export_tone_pack(inst, output_dir=pack_dir, overwrite=True)
+        with open(manifest_path, "r", encoding="utf-8") as f:
+            manifest_data = json.load(f)
+
+    nam_dir = pack_dir / "nam"
+    nam_dir.mkdir(parents=True, exist_ok=True)
+
+    selected_voices: set[str] | None = None
+    if voice and str(voice).strip().lower() != "all":
+        from allomorph.naming import resolve_voices
+
+        selected_voices = set(resolve_voices(voice))
+
+    if "models" not in manifest_data or not isinstance(manifest_data["models"], dict):
+        manifest_data["models"] = {}
+
+    scripts_dir = REPO_ROOT / "scripts"
+    if str(scripts_dir) not in sys.path:
+        sys.path.insert(0, str(scripts_dir))
+    from train_nam import train_voice
+
+    total_trained = 0
+    total_skipped = 0
+
+    for b_name, b_info in manifest_data.get("bundles", {}).items():
+        b_dir = pack_dir / "bundles" / b_name
+        dry_p = b_dir / b_info["dry_file"]
+        if not dry_p.exists():
+            raise FileNotFoundError(f"Bundle dry file not found: {dry_p}")
+
+        for s_info in b_info.get("stems", []):
+            stem_filename = s_info["filename"]
+            stem_p = b_dir / stem_filename
+            if not stem_p.exists():
+                raise FileNotFoundError(f"Bundle wet stem not found: {stem_p}")
+
+            raw_tone = s_info.get("tone_name", "")
+            raw_slug = raw_tone.lower().replace(" ", "_").replace("∕", "_").replace("/", "_")
+            target_voicing = s_info.get("target_voicing", "")
+            canonical_voice = VOICE_SLUG_ALIASES.get(target_voicing, target_voicing)
+            if canonical_voice not in VOICES:
+                canonical_voice = VOICE_SLUG_ALIASES.get(raw_slug, raw_slug)
+
+            if selected_voices is not None:
+                matches_filter = (
+                    target_voicing in selected_voices
+                    or canonical_voice in selected_voices
+                    or raw_slug in selected_voices
+                )
+                if not matches_filter:
+                    continue
+
+            model_basename = stem_p.stem
+            target_nam = nam_dir / f"{model_basename}.nam"
+
+            if target_nam.exists() and not overwrite:
+                # Verify that existing model is a valid dual-tier slimmable container
+                is_legacy = False
+                try:
+                    with open(target_nam, "r", encoding="utf-8") as f:
+                        data = json.load(f)
+                    submodels = data.get("config", {}).get("submodels", [])
+                    if len(submodels) < 2:
+                        is_legacy = True
+                except (json.JSONDecodeError, OSError):
+                    is_legacy = True
+
+                if is_legacy:
+                    print(
+                        f"[Tone Pack Trainer] Removing legacy single-tier model to upgrade to official slimmable A2: {target_nam.name}"
+                    )
+                    try:
+                        target_nam.unlink(missing_ok=True)
+                    except OSError:
+                        pass
+                else:
+                    print(f"[Tone Pack Trainer] Model already exists, skipping: {target_nam.name}")
+                    total_skipped += 1
+                    if target_nam.name not in manifest_data["models"]:
+                        _populate_manifest_model_entry(manifest_data["models"], target_nam, s_info, b_name)
+                        with open(manifest_path, "w", encoding="utf-8") as f:
+                            json.dump(manifest_data, f, indent=2)
+                    continue
+
+            print(f"\n[Tone Pack Trainer] Training model for {model_basename} (Bundle: {b_name})...")
+            ok = train_voice(
+                instrument=inst,
+                voice=canonical_voice if canonical_voice in VOICES else target_voicing,
+                input_wav=dry_p,
+                output_wav=stem_p,
+                reference_wav=dry_p,
+                models_dir=nam_dir,
+                basename=model_basename,
+                epochs=epochs,
+                min_epochs=min_epochs,
+                goal_esr=goal_esr,
+                goal_delta_esr=goal_delta_esr,
+                goal_delta_mrstft=goal_delta_mrstft,
+                max_mrstft_ceiling=max_mrstft_ceiling,
+                goal_esr_lite=goal_esr_lite,
+                goal_delta_esr_lite=goal_delta_esr_lite,
+                goal_delta_mrstft_lite=goal_delta_mrstft_lite,
+                max_mrstft_ceiling_lite=max_mrstft_ceiling_lite,
+                consecutive_patience=consecutive_patience,
+                patience=patience,
+                batch_size=batch_size,
+                lr_scheduler=lr_scheduler,
+                eta_min=eta_min,
+                lr_t_max=lr_t_max,
+                fast_dev_run=fast_dev_run,
+                version_tag=None,
+                no_manifest=True,
+                include_identity=False,
+            )
+            if not ok:
+                print(f"[Tone Pack Trainer] Warning: Training failed for {target_nam.name}")
+                continue
+
+            total_trained += 1
+            if target_nam.exists():
+                _populate_manifest_model_entry(manifest_data["models"], target_nam, s_info, b_name)
+                with open(manifest_path, "w", encoding="utf-8") as f:
+                    json.dump(manifest_data, f, indent=2)
+
+    with open(manifest_path, "w", encoding="utf-8") as f:
+        json.dump(manifest_data, f, indent=2)
+
+    print(f"\n[Tone Pack Trainer] Training completed for pack '{inst.name}':")
+    print(f"  -> Model Directory: {nam_dir}")
+    print(
+        f"  -> Trained: {total_trained}, Skipped: {total_skipped}, Total Models Indexed: {len(manifest_data['models'])}"
+    )
+    return nam_dir

@@ -199,3 +199,132 @@ def test_export_tone_pack_parallel_bundles_and_cached_stems(
     assert (pack_dir / "manifest.json").exists()
     bundles_dir = pack_dir / "bundles"
     assert bundles_dir.exists()
+
+
+def test_train_tone_pack_flat_structure_mocked(
+    tmp_path: Path, mini_dry_audio: Path, monkeypatch: pytest.MonkeyPatch
+):
+    """Verify train_tone_pack outputs flat .nam models, updates manifest, and respects skip logic."""
+    import json
+
+    from allomorph.pipeline.pack import train_tone_pack
+
+    inst = load_instrument("30in_emg_mmtw")
+    pack_dir = tmp_path / "test_train_pack"
+    targets = [
+        ("34in_standard_p", "vintage_open"),
+        ("34in_standard_p", "vintage_mids"),
+    ]
+
+    export_tone_pack(
+        instrument=inst,
+        output_dir=pack_dir,
+        input_wav=mini_dry_audio,
+        max_samples=2400,
+        catalog_targets=targets,
+        overwrite=True,
+    )
+
+    mock_train_calls: list[dict[str, Any]] = []
+
+    def _mock_train_voice(
+        *args: Any,
+        models_dir: Path | str = "",
+        basename: str | None = None,
+        voice: str = "",
+        **kwargs: Any,
+    ) -> bool:
+        mock_train_calls.append({"models_dir": Path(models_dir), "basename": basename, "voice": voice})
+        out_dir = Path(models_dir)
+        out_dir.mkdir(parents=True, exist_ok=True)
+        nam_file = out_dir / f"{basename}.nam"
+        dummy_content = {
+            "version": "0.5.1",
+            "architecture": "A2-Slimmable",
+            "config": {
+                "submodels": [
+                    {"name": "channels_3"},
+                    {"name": "channels_8"},
+                ]
+            },
+            "metadata": {
+                "training": {
+                    "validation_esr": 0.000185,
+                    "validation_esr_a2_full": 0.000185,
+                    "validation_esr_a2_lite": 0.001850,
+                    "validation_esr_ch8": 0.000185,
+                    "validation_esr_ch3": 0.001850,
+                    "differential_esr": 0.0142,
+                    "mrstft_loss": 0.125,
+                    "differential_mrstft": 0.450,
+                    "epochs_trained": 24,
+                    "stop_reason": "triple_gate_converged",
+                }
+            },
+        }
+        with open(nam_file, "w", encoding="utf-8") as f:
+            json.dump(dummy_content, f)
+        return True
+
+    # Monkeypatch train_voice in train_nam module
+    import train_nam
+
+    monkeypatch.setattr(train_nam, "train_voice", _mock_train_voice)
+
+    # 1. Initial training run: both target stems should be trained
+    nam_dir = train_tone_pack(pack=pack_dir, voice="all", overwrite=False)
+
+    assert nam_dir == pack_dir / "nam"
+    assert nam_dir.exists()
+
+    # Verify flat structure: NO .nam or nam folders inside bundles
+    bundles_dir = pack_dir / "bundles"
+    assert not any(p.suffix == ".nam" for p in bundles_dir.rglob("*"))
+    assert not any(p.name == "nam" for p in bundles_dir.rglob("*"))
+
+    # Models must be placed flatly inside pack_dir / "nam"
+    nam_files = list(nam_dir.glob("*.nam"))
+    assert len(nam_files) == 2
+    for nf in nam_files:
+        assert nf.parent == nam_dir
+        # Filename matches stem without .wav
+        assert " v5.1.1.nam" in nf.name
+
+    assert len(mock_train_calls) == 2
+
+    # Verify manifest.json was updated with top-level "models" dictionary
+    with open(pack_dir / "manifest.json", "r", encoding="utf-8") as f:
+        manifest_data = json.load(f)
+
+    assert "models" in manifest_data
+    assert len(manifest_data["models"]) == 2
+
+    for model_name, model_meta in manifest_data["models"].items():
+        assert model_name.endswith(".nam")
+        assert model_meta["filename"] == model_name
+        assert model_meta["validation_esr"] == 0.000185
+        assert model_meta["validation_esr_a2_full"] == 0.000185
+        assert model_meta["validation_esr_a2_lite"] == 0.001850
+        assert model_meta["validation_esr_ch8"] == 0.000185
+        assert model_meta["validation_esr_ch3"] == 0.001850
+        assert model_meta["differential_esr"] == 0.0142
+        assert model_meta["mrstft_loss"] == 0.125
+        assert model_meta["differential_mrstft"] == 0.450
+        assert model_meta["epochs_trained"] == 24
+        assert model_meta["stop_reason"] == "triple_gate_converged"
+        assert len(model_meta["sha256"]) == 64
+
+    # 2. Resumption & Skipping: calling again with overwrite=False skips existing models
+    mock_train_calls.clear()
+    train_tone_pack(pack=pack_dir, voice="all", overwrite=False)
+    assert len(mock_train_calls) == 0  # 0 calls, 100% skipped!
+
+    # 3. Forcing overwrite: calling with overwrite=True retrains both
+    train_tone_pack(pack=pack_dir, voice="all", overwrite=True)
+    assert len(mock_train_calls) == 2
+
+    # 4. Voice filter: only train matching voice
+    mock_train_calls.clear()
+    train_tone_pack(pack=pack_dir, voice="precision_vintage", overwrite=True)
+    assert len(mock_train_calls) == 1
+    assert "vintage" in mock_train_calls[0]["basename"].lower()

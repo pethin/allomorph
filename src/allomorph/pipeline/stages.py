@@ -69,19 +69,21 @@ def run_training(
     output_wav: str | Path | None = None,
     models_dir: str | Path | None = None,
     epochs: int = 400,
-    min_epochs: int = 180,
+    min_epochs: int = 5,
     goal_esr: float | None = 0.0002,
     fast_dev_run: bool = False,
     basename: str | None = None,
-    batch_size: int = 32,
-    a2_lite_only: bool = False,
+    batch_size: int = 16,
+    goal_esr_lite: float | None = 0.00250,
+    goal_delta_esr_lite: float | None = 0.080,
+    goal_delta_mrstft_lite: float | None = 0.75,
+    max_mrstft_ceiling_lite: float = 0.450,
     version_tag: str | None = "auto",
     no_manifest: bool = False,
 ):
-    """Trains a Neural Amp Modeler (NAM) Architecture 2 slimmable model locally under the studio reference standard."""
-    arch_lbl = "A2-Lite" if a2_lite_only else "Architecture 2 Slimmable"
+    """Trains a Neural Amp Modeler (NAM) Architecture 2 model locally under the studio reference standard."""
     print(
-        f"\n[Training] Training Neural Amp Modeler {arch_lbl} model for {voice} (Instrument: {instrument})..."
+        f"\n[Training] Training Neural Amp Modeler Architecture 2 Slimmable model for {voice} (Instrument: {instrument})..."
     )
     script = SCRIPTS_DIR / "train_nam.py"
     cmd = [
@@ -98,8 +100,6 @@ def run_training(
         "--batch-size",
         str(batch_size),
     ]
-    if a2_lite_only:
-        cmd.append("--a2-lite-only")
     if output_wav:
         cmd.extend(["--output", str(output_wav)])
     if models_dir:
@@ -110,6 +110,14 @@ def run_training(
         cmd.extend(["--goal-esr", str(goal_esr)])
     else:
         cmd.append("--no-goal-esr")
+    if goal_esr_lite is not None:
+        cmd.extend(["--goal-esr-lite", str(goal_esr_lite)])
+    if goal_delta_esr_lite is not None:
+        cmd.extend(["--goal-delta-esr-lite", str(goal_delta_esr_lite)])
+    if goal_delta_mrstft_lite is not None:
+        cmd.extend(["--goal-delta-mrstft-lite", str(goal_delta_mrstft_lite)])
+    if max_mrstft_ceiling_lite is not None:
+        cmd.extend(["--max-mrstft-ceiling-lite", str(max_mrstft_ceiling_lite)])
     if input_wav:
         cmd.extend(["--input", str(input_wav)])
     if fast_dev_run:
@@ -121,3 +129,52 @@ def run_training(
     res = subprocess.run(cmd, cwd=str(REPO_ROOT), check=False)
     if res.returncode != 0:
         print(f"Notice: Model training exited with code {res.returncode}")
+
+
+def run_tone_pack_training(
+    pack: str,
+    voice: str = "all",
+    overwrite: bool = False,
+    epochs: int = 400,
+    min_epochs: int = 5,
+    goal_esr: float | None = 0.00020,
+    goal_delta_esr: float | None = 0.020,
+    goal_delta_mrstft: float | None = 0.50,
+    max_mrstft_ceiling: float = 0.320,
+    goal_esr_lite: float | None = 0.00250,
+    goal_delta_esr_lite: float | None = 0.080,
+    goal_delta_mrstft_lite: float | None = 0.75,
+    max_mrstft_ceiling_lite: float = 0.450,
+    consecutive_patience: int = 3,
+    patience: int = 12,
+    batch_size: int = 16,
+    lr_scheduler: str = "cosine",
+    eta_min: float = 1e-5,
+    lr_t_max: int = 35,
+    fast_dev_run: bool = False,
+) -> Path:
+    """Executes local NAM Architecture 2 model training for all wet stems in a Tone3000 pack."""
+    from allomorph.pipeline.pack import train_tone_pack
+
+    return train_tone_pack(
+        pack=pack,
+        voice=voice,
+        overwrite=overwrite,
+        epochs=epochs,
+        min_epochs=min_epochs,
+        goal_esr=goal_esr,
+        goal_delta_esr=goal_delta_esr,
+        goal_delta_mrstft=goal_delta_mrstft,
+        max_mrstft_ceiling=max_mrstft_ceiling,
+        goal_esr_lite=goal_esr_lite,
+        goal_delta_esr_lite=goal_delta_esr_lite,
+        goal_delta_mrstft_lite=goal_delta_mrstft_lite,
+        max_mrstft_ceiling_lite=max_mrstft_ceiling_lite,
+        consecutive_patience=consecutive_patience,
+        patience=patience,
+        batch_size=batch_size,
+        lr_scheduler=lr_scheduler,
+        eta_min=eta_min,
+        lr_t_max=lr_t_max,
+        fast_dev_run=fast_dev_run,
+    )

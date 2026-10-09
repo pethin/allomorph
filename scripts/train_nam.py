@@ -86,10 +86,16 @@ def find_sweep_input(
     return find_default_input_audio(version_tag=version_tag)
 
 
-DEFAULT_GOAL_ESR = 0.00020  # Gate 1: Studio reference Global ESR (~ -37.0 dB ESR)
+DEFAULT_GOAL_ESR = 0.00020  # Gate 1: A2 Full Global ESR (~ -37.0 dB ESR)
 DEFAULT_GOAL_DELTA_ESR = 0.020  # Gate 2: Nuance target <= -17.0 dB residual on pickup transformation delta
 DEFAULT_GOAL_DELTA_MRSTFT = 0.50  # Gate 3: Differential MRSTFT ratio (MRSTFT / max(baseline_mrstft, 1e-6))
 DEFAULT_MAX_MRSTFT_CEILING = 0.320  # Gate 3: Absolute ceiling on validation MRSTFT
+DEFAULT_GOAL_ESR_LITE = 0.00250  # Gate 4: A2 Lite Global ESR (~ -26.0 dB ESR)
+DEFAULT_GOAL_DELTA_ESR_LITE = 0.080  # Gate 5: A2 Lite nuance target <= -11.0 dB residual on pickup delta
+DEFAULT_GOAL_DELTA_MRSTFT_LITE = 0.75  # Gate 6: A2 Lite differential MRSTFT ratio
+DEFAULT_MAX_MRSTFT_CEILING_LITE = 0.450  # Gate 6: Absolute ceiling on A2 Lite validation MRSTFT
+
+
 DEFAULT_CONSECUTIVE_PATIENCE = 3  # Consecutive validation checks meeting all gates before early exit
 DEFAULT_MIN_EPOCHS = 5  # Warmup epoch floor covering initial linear learning rate ramp
 DEFAULT_MAX_EPOCHS = 400  # Architecture 2 studio reference epoch safety ceiling
@@ -215,12 +221,15 @@ def compute_baseline_mrstft(
 
 def configure_a2_architecture(
     nam_core: Any,
-    a2_lite_only: bool = True,
     min_epochs: int = DEFAULT_MIN_EPOCHS,
     goal_esr: float | None = DEFAULT_GOAL_ESR,
     goal_delta_esr: float | None = DEFAULT_GOAL_DELTA_ESR,
     goal_delta_mrstft: float | None = DEFAULT_GOAL_DELTA_MRSTFT,
     max_mrstft_ceiling: float = DEFAULT_MAX_MRSTFT_CEILING,
+    goal_esr_lite: float | None = DEFAULT_GOAL_ESR_LITE,
+    goal_delta_esr_lite: float | None = DEFAULT_GOAL_DELTA_ESR_LITE,
+    goal_delta_mrstft_lite: float | None = DEFAULT_GOAL_DELTA_MRSTFT_LITE,
+    max_mrstft_ceiling_lite: float = DEFAULT_MAX_MRSTFT_CEILING_LITE,
     consecutive_patience: int = DEFAULT_CONSECUTIVE_PATIENCE,
     patience: int = DEFAULT_PATIENCE,
     min_delta: float = DEFAULT_MIN_DELTA,
@@ -235,9 +244,9 @@ def configure_a2_architecture(
 ) -> None:
     """Configure NAM Architecture 2 packed model submodels, loss weighting, and adaptive early stopping.
 
-    Default: a2_lite_only=True isolates channels_8 (A2-Lite studio tier), running ~35% faster on Apple Silicon MPS.
+    Configures dual-tier slimmable PackedWaveNet (channels_3 A2 Lite + channels_8 A2 Full) for Tone3000 A2 recognition.
     Injects pre-emphasis loss (alpha=0.85) and MRSTFT (0.0010) to equalize high-frequency pickup resonance gradients.
-    Hooks LinearWarmupCallback (5 epochs) and AllomorphAdaptiveStopping (triple-gate + de-risked plateau patience).
+    Hooks LinearWarmupCallback (5 epochs) and AllomorphAdaptiveStopping (dual-tier triple-gate + joint plateau).
     """
 
     try:
@@ -316,16 +325,11 @@ def configure_a2_architecture(
 
     def get_configured_packed_model_config() -> dict[str, Any]:
         cfg: dict[str, Any] = orig_get_packed_model_config()
-        if a2_lite_only:
-            cfg["net"]["config"]["submodels"] = [
-                s for s in cfg["net"]["config"]["submodels"] if s["name"] == "channels_8"
-            ]
-        else:
-            cfg["net"]["config"]["submodels"] = [
-                s
-                for s in cfg["net"]["config"]["submodels"]
-                if s["name"] in ("channels_3", "channels_8")
-            ]
+        cfg["net"]["config"]["submodels"] = [
+            s
+            for s in cfg["net"]["config"]["submodels"]
+            if s["name"] in ("channels_3", "channels_8")
+        ]
         if "loss" not in cfg:
             new_loss: dict[str, Any] = {}
             cfg["loss"] = new_loss
@@ -408,12 +412,15 @@ def configure_a2_architecture(
             goal_delta_esr: float | None = goal_delta_esr,
             goal_delta_mrstft: float | None = goal_delta_mrstft,
             max_mrstft_ceiling: float = max_mrstft_ceiling,
+            goal_esr_lite: float | None = goal_esr_lite,
+            goal_delta_esr_lite: float | None = goal_delta_esr_lite,
+            goal_delta_mrstft_lite: float | None = goal_delta_mrstft_lite,
+            max_mrstft_ceiling_lite: float = max_mrstft_ceiling_lite,
             consecutive_patience: int = consecutive_patience,
             patience: int = patience,
             min_delta: float = min_delta,
             baseline_delta_ratio: float = baseline_delta_ratio,
             baseline_mrstft: float = baseline_mrstft,
-            a2_lite_only: bool = a2_lite_only,
             **cb_kwargs: Any,
         ) -> None:
             super().__init__(*cb_args, **cb_kwargs)
@@ -425,23 +432,39 @@ def configure_a2_architecture(
             self.target_delta_esr = goal_delta_esr
             self.goal_delta_mrstft = goal_delta_mrstft
             self.max_mrstft_ceiling = max_mrstft_ceiling
+            self.goal_esr_lite = goal_esr_lite
+            self.goal_delta_esr_lite = goal_delta_esr_lite
+            self.goal_delta_mrstft_lite = goal_delta_mrstft_lite
+            self.max_mrstft_ceiling_lite = max_mrstft_ceiling_lite
             self.consecutive_patience = consecutive_patience
             self.patience = patience
             self.min_delta = min_delta
             self.baseline_delta_ratio = max(baseline_delta_ratio, 1e-6)
             self.baseline_mrstft = max(baseline_mrstft, 1e-6)
             self.is_identity = baseline_mrstft < 1e-6
-            self.a2_lite_only = a2_lite_only
+
+            # A2 Full tier (channels_8) history & bests
             self.esr_history: list[float] = []
             self.mrstft_history: list[float] = []
             self.best_esr: float = float("inf")
             self.best_delta_esr: float = float("inf")
             self.best_mrstft: float | None = None
             self.best_diff_mrstft: float | None = None
-            self.consecutive_gates_met: int = 0
-            self.stop_reason: str = "max_epochs"
             self.last_esr_slope: float = 0.0
             self.last_mrstft_slope: float = 0.0
+
+            # A2 Lite tier (channels_3) history & bests
+            self.esr_ch3_history: list[float] = []
+            self.mrstft_ch3_history: list[float] = []
+            self.best_ch3_esr: float = float("inf")
+            self.best_ch3_delta_esr: float = float("inf")
+            self.best_ch3_mrstft: float | None = None
+            self.best_ch3_diff_mrstft: float | None = None
+            self.last_esr_ch3_slope: float = 0.0
+            self.last_mrstft_ch3_slope: float = 0.0
+
+            self.consecutive_gates_met: int = 0
+            self.stop_reason: str = "max_epochs"
 
         def get_status_str(self, epoch: int) -> str:
             if epoch < self.warmup_floor:
@@ -451,27 +474,35 @@ def configure_a2_architecture(
             if self.patience <= 0:
                 return "Plateau guard: off"
             pts_count = len(self.esr_history)
-            return f"Patience: {min(pts_count, self.patience)}/{self.patience} (slope: {self.last_esr_slope:+.1e})"
+            return (
+                f"Patience: {min(pts_count, self.patience)}/{self.patience} "
+                f"(slopes: full {self.last_esr_slope:+.1e}, lite {self.last_esr_ch3_slope:+.1e})"
+            )
 
         def _run_early_stopping_check(self, trainer: Any) -> None:
             metrics: dict[str, Any] = getattr(trainer, "callback_metrics", {})
             epoch: int = getattr(trainer, "current_epoch", 0)
 
-            raw_esr: Any = metrics.get("ESR") if self.a2_lite_only else metrics.get("ESR_packed_1")
-            if raw_esr is None:
-                raw_esr = metrics.get("val_loss")
+            # Studio tier metrics (channels_8)
+            raw_esr: Any = metrics.get("ESR_packed_1") or metrics.get("ESR") or metrics.get("val_loss")
             if raw_esr is None:
                 return
             esr_val = float(raw_esr.item() if hasattr(raw_esr, "item") else raw_esr)
             delta_esr_val = esr_val / self.baseline_delta_ratio
 
-            raw_mrstft = metrics.get("MRSTFT") or metrics.get("MRSTFT_packed_1") or metrics.get("MRSTFT_packed_0")
-            mrstft_val = float(raw_mrstft.item() if hasattr(raw_mrstft, "item") else raw_mrstft) if raw_mrstft is not None else None
+            raw_mrstft = metrics.get("MRSTFT_packed_1") or metrics.get("MRSTFT")
+            mrstft_val = (
+                float(raw_mrstft.item() if hasattr(raw_mrstft, "item") else raw_mrstft)
+                if raw_mrstft is not None
+                else None
+            )
 
             self.best_esr = min(self.best_esr, esr_val)
             self.best_delta_esr = min(self.best_delta_esr, delta_esr_val)
             if mrstft_val is not None:
-                self.best_mrstft = min(self.best_mrstft if self.best_mrstft is not None else float("inf"), mrstft_val)
+                self.best_mrstft = min(
+                    self.best_mrstft if self.best_mrstft is not None else float("inf"), mrstft_val
+                )
                 diff_mrstft = mrstft_val / self.baseline_mrstft
                 self.best_diff_mrstft = min(
                     self.best_diff_mrstft if self.best_diff_mrstft is not None else float("inf"),
@@ -482,9 +513,48 @@ def configure_a2_architecture(
             if mrstft_val is not None:
                 self.mrstft_history.append(mrstft_val)
 
+            # A2 Lite tier metrics (channels_3)
+            raw_esr_ch3: Any = metrics.get("ESR_packed_0")
+            esr_ch3_val = (
+                float(raw_esr_ch3.item() if hasattr(raw_esr_ch3, "item") else raw_esr_ch3)
+                if raw_esr_ch3 is not None
+                else None
+            )
+            delta_esr_ch3_val = (
+                (esr_ch3_val / self.baseline_delta_ratio) if esr_ch3_val is not None else None
+            )
+
+            raw_mrstft_ch3 = metrics.get("MRSTFT_packed_0")
+            mrstft_ch3_val = (
+                float(raw_mrstft_ch3.item() if hasattr(raw_mrstft_ch3, "item") else raw_mrstft_ch3)
+                if raw_mrstft_ch3 is not None
+                else None
+            )
+
+            if esr_ch3_val is not None:
+                self.best_ch3_esr = min(self.best_ch3_esr, esr_ch3_val)
+                self.esr_ch3_history.append(esr_ch3_val)
+            if delta_esr_ch3_val is not None:
+                self.best_ch3_delta_esr = min(self.best_ch3_delta_esr, delta_esr_ch3_val)
+            if mrstft_ch3_val is not None:
+                self.best_ch3_mrstft = min(
+                    self.best_ch3_mrstft if self.best_ch3_mrstft is not None else float("inf"),
+                    mrstft_ch3_val,
+                )
+                diff_mr_ch3 = mrstft_ch3_val / self.baseline_mrstft
+                self.best_ch3_diff_mrstft = min(
+                    self.best_ch3_diff_mrstft if self.best_ch3_diff_mrstft is not None else float("inf"),
+                    diff_mr_ch3,
+                )
+                self.mrstft_ch3_history.append(mrstft_ch3_val)
+
+            # Rolling least-squares regression slopes
             if len(self.esr_history) >= 2:
                 window_pts = self.esr_history[-max(self.patience, 5):]
                 self.last_esr_slope = compute_linear_slope(window_pts)
+            if len(self.esr_ch3_history) >= 2:
+                window_pts_ch3 = self.esr_ch3_history[-max(self.patience, 5):]
+                self.last_esr_ch3_slope = compute_linear_slope(window_pts_ch3)
             if len(self.mrstft_history) >= 2:
                 mr_window = self.mrstft_history[-max(self.patience, 5):]
                 self.last_mrstft_slope = compute_linear_slope(mr_window)
@@ -492,7 +562,8 @@ def configure_a2_architecture(
             if epoch < self.warmup_floor:
                 return
 
-            # 1. Triple-Gate Goal Check
+            # 1. Dual-Tier Triple-Gate Goal Check (All 6 Gates)
+            # A2 Full Tier (channels_8)
             gate1_ok = (self.goal_esr is None) or (esr_val <= self.goal_esr)
             gate2_ok = (self.goal_delta_esr is None) or (delta_esr_val <= self.goal_delta_esr)
             gate3_ok = True
@@ -503,27 +574,42 @@ def configure_a2_architecture(
                     diff_mr = mrstft_val / self.baseline_mrstft
                     gate3_ok = (diff_mr <= self.goal_delta_mrstft) and (mrstft_val <= self.max_mrstft_ceiling)
 
-            all_gates_pass = gate1_ok and gate2_ok and gate3_ok
+            # A2 Lite Tier (channels_3)
+            gate4_ok = (self.goal_esr_lite is None) or (esr_ch3_val is None) or (esr_ch3_val <= self.goal_esr_lite)
+            gate5_ok = (self.goal_delta_esr_lite is None) or (delta_esr_ch3_val is None) or (delta_esr_ch3_val <= self.goal_delta_esr_lite)
+            gate6_ok = True
+            if (
+                not self.is_identity
+                and self.goal_delta_mrstft_lite is not None
+                and mrstft_ch3_val is not None
+            ):
+                diff_mr_ch3 = mrstft_ch3_val / self.baseline_mrstft
+                gate6_ok = (diff_mr_ch3 <= self.goal_delta_mrstft_lite) and (
+                    mrstft_ch3_val <= self.max_mrstft_ceiling_lite
+                )
+
+            all_gates_pass = gate1_ok and gate2_ok and gate3_ok and gate4_ok and gate5_ok and gate6_ok
             if all_gates_pass and (self.goal_esr is not None or self.goal_delta_esr is not None):
                 self.consecutive_gates_met += 1
                 if self.consecutive_gates_met >= self.consecutive_patience and epoch >= self.warmup_floor:
                     esr_db = 10.0 * math.log10(max(esr_val, 1e-12))
                     delta_db = 10.0 * math.log10(max(delta_esr_val, 1e-12))
+                    ch3_info = f", A2 Lite ESR {esr_ch3_val:.6f}" if esr_ch3_val is not None else ""
                     mr_info = f", MRSTFT {mrstft_val:.4f}" if mrstft_val is not None else ""
                     print(
-                        f"\n[Triple-Gate Achieved] Epoch {epoch:03d}: Global ESR {esr_val:.6f} ({esr_db:+.2f} dB) "
-                        f"AND Delta Nuance {delta_esr_val:.6f} ({delta_db:+.2f} dB){mr_info} "
+                        f"\n[Dual-Tier Triple-Gate Achieved] Epoch {epoch:03d}: A2 Full ESR {esr_val:.6f} ({esr_db:+.2f} dB) "
+                        f"AND Delta Nuance {delta_esr_val:.6f} ({delta_db:+.2f} dB){mr_info}{ch3_info} "
                         f"held for {self.consecutive_gates_met}/{self.consecutive_patience} consecutive epochs. "
-                        "Terminating successfully with studio fidelity!",
+                        "Terminating successfully with official A2 dual-tier studio fidelity!",
                         flush=True,
                     )
                     trainer.should_stop = True
-                    self.stop_reason = "triple_gate_converged"
+                    self.stop_reason = "dual_triple_gate_converged"
                     return
             else:
                 self.consecutive_gates_met = 0
 
-            # 2. De-risked Adaptive Plateau Check
+            # 2. Joint Adaptive Plateau Check (Both Tiers Flat)
             if (
                 self.patience > 0
                 and len(self.esr_history) >= self.patience
@@ -531,6 +617,14 @@ def configure_a2_architecture(
             ):
                 recent_esr = self.esr_history[-self.patience:]
                 esr_improvement = recent_esr[0] - esr_val
+                studio_flat = (self.last_esr_slope >= -1e-7) and (esr_improvement < self.min_delta)
+
+                lite_flat = True
+                if len(self.esr_ch3_history) >= self.patience:
+                    recent_ch3 = self.esr_ch3_history[-self.patience:]
+                    ch3_improvement = recent_ch3[0] - self.esr_ch3_history[-1]
+                    lite_flat = (self.last_esr_ch3_slope >= -1e-7) and (ch3_improvement < self.min_delta * 5.0)
+
                 empty_mrstft: list[float] = []
                 recent_mrstft = (
                     self.mrstft_history[-self.patience:]
@@ -539,25 +633,24 @@ def configure_a2_architecture(
                 )
                 mrstft_flat = (len(recent_mrstft) == 0) or (self.last_mrstft_slope >= -1e-7)
 
-                if self.last_esr_slope >= -1e-7 and mrstft_flat and (esr_improvement < self.min_delta):
+                if studio_flat and lite_flat and mrstft_flat:
                     print(
                         f"\n[Early Stopping] Diminishing returns plateau reached at epoch {epoch:03d}: "
-                        f"ESR slope {self.last_esr_slope:+.1e}, MRSTFT slope {self.last_mrstft_slope:+.1e} over {self.patience} epochs. "
+                        f"A2 Full slope {self.last_esr_slope:+.1e}, A2 Lite slope {self.last_esr_ch3_slope:+.1e} over {self.patience} epochs. "
                         "Terminating to preserve GPU efficiency.",
                         flush=True,
                     )
                     trainer.should_stop = True
-                    self.stop_reason = "plateau_exit"
+                    self.stop_reason = "joint_plateau_exit"
                     return
 
     class EsrProgressCallback(Callback):
-        """Logs validation ESR progress and updates progress bar metrics each epoch."""
+        """Logs validation ESR progress and updates progress bar metrics each epoch for both tiers."""
 
         def __init__(
             self,
             target_esr: float | None = None,
             target_delta_esr: float | None = None,
-            a2_lite_only: bool = True,
             min_epochs: int = DEFAULT_MIN_EPOCHS,
             baseline_delta_ratio: float = 0.015,
             baseline_mrstft: float = 0.400,
@@ -566,7 +659,6 @@ def configure_a2_architecture(
             super().__init__()
             self.target_esr: float | None = target_esr
             self.target_delta_esr: float | None = target_delta_esr
-            self.a2_lite_only: bool = a2_lite_only
             self.min_epochs: int = min_epochs
             self.baseline_delta_ratio: float = max(baseline_delta_ratio, 1e-6)
             self.baseline_mrstft: float = max(baseline_mrstft, 1e-6)
@@ -576,6 +668,8 @@ def configure_a2_architecture(
             self.best_mrstft: float | None = None
             self.best_diff_mrstft: float | None = None
             self.best_ch3_esr: float | None = float("inf")
+            self.best_ch3_delta_esr: float | None = float("inf")
+            self.best_ch3_mrstft: float | None = None
             self.last_epoch: int = 0
 
         @override
@@ -597,7 +691,7 @@ def configure_a2_architecture(
                 )
                 target_str = f" | Target: {self.target_esr:.6f} ({target_db:+.2f} dB){min_ep_str}"
 
-            raw_mrstft = metrics.get("MRSTFT") or metrics.get("MRSTFT_packed_1") or metrics.get("MRSTFT_packed_0")
+            raw_mrstft = metrics.get("MRSTFT_packed_1") or metrics.get("MRSTFT")
             mrstft_val = float(raw_mrstft.item() if hasattr(raw_mrstft, "item") else raw_mrstft) if raw_mrstft is not None else None
             if mrstft_val is not None:
                 self.best_mrstft = min(self.best_mrstft if self.best_mrstft is not None else float("inf"), mrstft_val)
@@ -607,6 +701,18 @@ def configure_a2_architecture(
                     diff_mrstft,
                 )
             mrstft_str = f" | MRSTFT: {mrstft_val:.5f}" if mrstft_val is not None else ""
+
+            raw_mrstft_ch3 = metrics.get("MRSTFT_packed_0")
+            mrstft_ch3_val = (
+                float(raw_mrstft_ch3.item() if hasattr(raw_mrstft_ch3, "item") else raw_mrstft_ch3)
+                if raw_mrstft_ch3 is not None
+                else None
+            )
+            if mrstft_ch3_val is not None:
+                self.best_ch3_mrstft = min(
+                    self.best_ch3_mrstft if self.best_ch3_mrstft is not None else float("inf"),
+                    mrstft_ch3_val,
+                )
 
             optimizers = getattr(trainer, "optimizers", []) or []
             current_lr = (
@@ -628,76 +734,56 @@ def configure_a2_architecture(
             if self.stopping_callback is not None and hasattr(self.stopping_callback, "get_status_str"):
                 patience_str = f" | {self.stopping_callback.get_status_str(epoch)}"
 
-            if self.a2_lite_only:
-                raw_esr: Any = metrics.get("ESR")
-                if raw_esr is None:
-                    raw_esr = metrics.get("val_loss")
-                if raw_esr is None:
-                    return
-                esr_val: float = float(raw_esr.item() if hasattr(raw_esr, "item") else raw_esr)
-                self.best_esr = min(self.best_esr, esr_val)
-                delta_esr_val = esr_val / self.baseline_delta_ratio
-                self.best_delta_esr = min(self.best_delta_esr, delta_esr_val)
+            # Primary Studio Tier (channels_8)
+            raw_ch8: Any = metrics.get("ESR_packed_1") or metrics.get("ESR") or metrics.get("val_loss")
+            if raw_ch8 is None:
+                return
+            ch8_val: float = float(raw_ch8.item() if hasattr(raw_ch8, "item") else raw_ch8)
+            self.best_esr = min(self.best_esr, ch8_val)
+            delta_esr_val = ch8_val / self.baseline_delta_ratio
+            self.best_delta_esr = min(self.best_delta_esr, delta_esr_val)
 
-                if hasattr(trainer, "progress_bar_metrics") and isinstance(
-                    trainer.progress_bar_metrics, dict
-                ):
-                    trainer.progress_bar_metrics["val_ESR"] = f"{esr_val:.5f}"
-                    trainer.progress_bar_metrics["best_ESR"] = f"{self.best_esr:.5f}"
-                    trainer.progress_bar_metrics["delta_ESR"] = f"{delta_esr_val:.5f}"
-
-                esr_db: float = 10.0 * math.log10(max(esr_val, 1e-12))
-                delta_db: float = 10.0 * math.log10(max(delta_esr_val, 1e-12))
-                delta_str = f" | Delta: {delta_esr_val:.5f} ({delta_db:+.2f} dB)"
-
-                print(
-                    f"\n[Epoch {epoch:03d}/{max_epochs}] Studio ESR: {esr_val:.6f} ({esr_db:+.2f} dB){delta_str}{mrstft_str}{lr_str}{gates_str}{patience_str}{target_str}",
-                    flush=True,
+            # A2 Lite Tier (channels_3)
+            raw_ch3: Any = metrics.get("ESR_packed_0")
+            ch3_val: float | None = (
+                float(raw_ch3.item() if hasattr(raw_ch3, "item") else raw_ch3)
+                if raw_ch3 is not None
+                else None
+            )
+            if ch3_val is not None:
+                self.best_ch3_esr = min(
+                    self.best_ch3_esr if self.best_ch3_esr is not None else float("inf"), ch3_val
                 )
-            else:
-                # Slimmable Architecture 2: channels_8 is the primary studio tier
-                raw_ch8: Any = metrics.get("ESR_packed_1")
-                raw_ch3: Any = metrics.get("ESR_packed_0")
-                if raw_ch8 is None:
-                    raw_ch8 = metrics.get("ESR")
-                if raw_ch8 is None:
-                    raw_ch8 = metrics.get("val_loss")
-                if raw_ch8 is None:
-                    return
-                ch8_val: float = float(raw_ch8.item() if hasattr(raw_ch8, "item") else raw_ch8)
-                ch3_val: float | None = (
-                    float(raw_ch3.item() if hasattr(raw_ch3, "item") else raw_ch3)
-                    if raw_ch3 is not None
-                    else None
+                delta_ch3 = ch3_val / self.baseline_delta_ratio
+                self.best_ch3_delta_esr = min(
+                    self.best_ch3_delta_esr if self.best_ch3_delta_esr is not None else float("inf"),
+                    delta_ch3,
                 )
-                self.best_esr = min(self.best_esr, ch8_val)
-                delta_esr_val = ch8_val / self.baseline_delta_ratio
-                self.best_delta_esr = min(self.best_delta_esr, delta_esr_val)
+
+            if hasattr(trainer, "progress_bar_metrics") and isinstance(
+                trainer.progress_bar_metrics, dict
+            ):
+                trainer.progress_bar_metrics["val_ESR"] = f"{ch8_val:.5f}"
+                trainer.progress_bar_metrics["best_ESR"] = f"{self.best_esr:.5f}"
+                trainer.progress_bar_metrics["val_ESR_a2_full"] = f"{ch8_val:.5f}"
+                trainer.progress_bar_metrics["val_ESR_ch8"] = f"{ch8_val:.5f}"
+                trainer.progress_bar_metrics["delta_ESR"] = f"{delta_esr_val:.5f}"
                 if ch3_val is not None:
-                    self.best_ch3_esr = min(self.best_ch3_esr if self.best_ch3_esr is not None else float("inf"), ch3_val)
+                    trainer.progress_bar_metrics["val_ESR_a2_lite"] = f"{ch3_val:.5f}"
+                    trainer.progress_bar_metrics["val_ESR_ch3"] = f"{ch3_val:.5f}"
 
-                if hasattr(trainer, "progress_bar_metrics") and isinstance(
-                    trainer.progress_bar_metrics, dict
-                ):
-                    trainer.progress_bar_metrics["val_ESR"] = f"{ch8_val:.5f}"
-                    trainer.progress_bar_metrics["best_ESR"] = f"{self.best_esr:.5f}"
-                    trainer.progress_bar_metrics["val_ESR_ch8"] = f"{ch8_val:.5f}"
-                    trainer.progress_bar_metrics["delta_ESR"] = f"{delta_esr_val:.5f}"
-                    if ch3_val is not None:
-                        trainer.progress_bar_metrics["val_ESR_ch3"] = f"{ch3_val:.5f}"
+            ch8_db: float = 10.0 * math.log10(max(ch8_val, 1e-12))
+            delta_db = 10.0 * math.log10(max(delta_esr_val, 1e-12))
+            delta_str = f" | Delta: {delta_esr_val:.5f} ({delta_db:+.2f} dB)"
+            ch3_str = ""
+            if ch3_val is not None:
+                ch3_db = 10.0 * math.log10(max(ch3_val, 1e-12))
+                ch3_str = f" | A2 Lite (Ch3): {ch3_val:.6f} ({ch3_db:+.2f} dB)"
 
-                ch8_db: float = 10.0 * math.log10(max(ch8_val, 1e-12))
-                delta_db = 10.0 * math.log10(max(delta_esr_val, 1e-12))
-                delta_str = f" | Delta: {delta_esr_val:.5f} ({delta_db:+.2f} dB)"
-                ch3_str = ""
-                if ch3_val is not None:
-                    ch3_db = 10.0 * math.log10(max(ch3_val, 1e-12))
-                    ch3_str = f" | Ch3 Nano: {ch3_val:.6f} ({ch3_db:+.2f} dB)"
-
-                print(
-                    f"\n[Epoch {epoch:03d}/{max_epochs}] Studio ESR: {ch8_val:.6f} ({ch8_db:+.2f} dB){delta_str}{mrstft_str}{ch3_str}{lr_str}{gates_str}{patience_str}{target_str}",
-                    flush=True,
-                )
+            print(
+                f"\n[Epoch {epoch:03d}/{max_epochs}] A2 Full ESR: {ch8_val:.6f} ({ch8_db:+.2f} dB){delta_str}{mrstft_str}{ch3_str}{lr_str}{gates_str}{patience_str}{target_str}",
+                flush=True,
+            )
 
     orig_get_callbacks = getattr(nam_core, "_orig_get_callbacks", nam_core.get_callbacks)
     nam_core._orig_get_callbacks = orig_get_callbacks
@@ -722,7 +808,7 @@ def configure_a2_architecture(
         )
         callbacks.append(warmup_cb)
 
-        monitor_key = "ESR" if a2_lite_only else "ESR_packed_1"
+        monitor_key = "ESR_packed_1"
         effective_goal = threshold_esr if threshold_esr is not None else None
         stopping_cb = None
         if effective_goal is not None:
@@ -734,12 +820,15 @@ def configure_a2_architecture(
                 goal_delta_esr=goal_delta_esr,
                 goal_delta_mrstft=goal_delta_mrstft,
                 max_mrstft_ceiling=max_mrstft_ceiling,
+                goal_esr_lite=goal_esr_lite,
+                goal_delta_esr_lite=goal_delta_esr_lite,
+                goal_delta_mrstft_lite=goal_delta_mrstft_lite,
+                max_mrstft_ceiling_lite=max_mrstft_ceiling_lite,
                 consecutive_patience=consecutive_patience,
                 patience=patience,
                 min_delta=min_delta,
                 baseline_delta_ratio=baseline_delta_ratio,
                 baseline_mrstft=baseline_mrstft,
-                a2_lite_only=a2_lite_only,
             )
             callbacks.append(stopping_cb)
         nam_core._last_stopping_callback = stopping_cb
@@ -747,7 +836,6 @@ def configure_a2_architecture(
         progress_cb = EsrProgressCallback(
             target_esr=effective_goal,
             target_delta_esr=goal_delta_esr if effective_goal is not None else None,
-            a2_lite_only=a2_lite_only,
             min_epochs=effective_min_epochs,
             baseline_delta_ratio=baseline_delta_ratio,
             baseline_mrstft=baseline_mrstft,
@@ -773,6 +861,10 @@ def train_voice(
     goal_delta_esr: float | None = DEFAULT_GOAL_DELTA_ESR,
     goal_delta_mrstft: float | None = DEFAULT_GOAL_DELTA_MRSTFT,
     max_mrstft_ceiling: float = DEFAULT_MAX_MRSTFT_CEILING,
+    goal_esr_lite: float | None = DEFAULT_GOAL_ESR_LITE,
+    goal_delta_esr_lite: float | None = DEFAULT_GOAL_DELTA_ESR_LITE,
+    goal_delta_mrstft_lite: float | None = DEFAULT_GOAL_DELTA_MRSTFT_LITE,
+    max_mrstft_ceiling_lite: float = DEFAULT_MAX_MRSTFT_CEILING_LITE,
     consecutive_patience: int = DEFAULT_CONSECUTIVE_PATIENCE,
     patience: int = DEFAULT_PATIENCE,
     min_delta: float = DEFAULT_MIN_DELTA,
@@ -787,7 +879,6 @@ def train_voice(
     save_plot: bool = False,
     fast_dev_run: bool = False,
     basename: str | None = None,
-    a2_lite_only: bool = True,
     version_tag: str | None = "auto",
     no_manifest: bool = False,
     include_identity: bool = False,
@@ -849,7 +940,11 @@ def train_voice(
         src_pickup_name = "Pickup"
         src_pos_mm = 0.0
 
-    inst_models_dir = Path(models_dir) / inst_id
+    models_path = Path(models_dir)
+    if models_path.name == "nam" or models_path.name == inst_id:
+        inst_models_dir = models_path
+    else:
+        inst_models_dir = models_path / inst_id
     inst_models_dir.mkdir(parents=True, exist_ok=True)
     target_nam = inst_models_dir / f"{model_basename}.nam"
 
@@ -937,12 +1032,15 @@ def train_voice(
 
     configure_a2_architecture(
         nam_core,
-        a2_lite_only=a2_lite_only,
         min_epochs=min_epochs,
         goal_esr=threshold_esr,
         goal_delta_esr=goal_delta_esr,
         goal_delta_mrstft=goal_delta_mrstft,
         max_mrstft_ceiling=max_mrstft_ceiling,
+        goal_esr_lite=goal_esr_lite,
+        goal_delta_esr_lite=goal_delta_esr_lite,
+        goal_delta_mrstft_lite=goal_delta_mrstft_lite,
+        max_mrstft_ceiling_lite=max_mrstft_ceiling_lite,
         consecutive_patience=consecutive_patience,
         patience=patience,
         min_delta=min_delta,
@@ -964,11 +1062,7 @@ def train_voice(
     print(f'  Source Bass: {inst_name} ({inst_id}, {scale_length_in}")')
     print(f"  Source PU:   {src_pickup_name} (pos={src_pos_mm:.1f}mm)")
     print(f"  Target Voice:{voice} ({voice_name})")
-    arch_display = (
-        "Architecture 2 Lite (channels_8 only, fast)"
-        if a2_lite_only
-        else "Architecture 2 Slimmable (channels_3 + channels_8, full)"
-    )
+    arch_display = "Architecture 2 Slimmable (channels_3 + channels_8)"
     print(f"  Model Tier:  {arch_display}")
     print(f"  Batch Size:  {batch_size}")
     print(f"  Input Audio: {input_path.name}")
@@ -978,13 +1072,9 @@ def train_voice(
     print(f"  Max Epochs:  {epochs}")
     print(f"  Warmup Ep:   {min_epochs}")
     esr_display = (
-        f"{threshold_esr:.6f} (A2-Lite Studio Reference Early Stopping, min {min_epochs} epochs)"
-        if (threshold_esr is not None and a2_lite_only)
-        else (
-            f"{threshold_esr:.6f} (A2 Slimmable Studio Reference Early Stopping, Ch8 <= {threshold_esr:.6f}, min {min_epochs} epochs)"
-            if threshold_esr is not None
-            else "Disabled (Fixed Epochs)"
-        )
+        f"{threshold_esr:.6f} (A2 Slimmable Studio Reference Early Stopping, Ch8 <= {threshold_esr:.6f}, min {min_epochs} epochs)"
+        if threshold_esr is not None
+        else "Disabled (Fixed Epochs)"
     )
     print(f"  Goal ESR:    {esr_display}")
     if goal_delta_esr is not None and goal_delta_esr > 0:
@@ -1052,6 +1142,39 @@ def train_voice(
     stop_reason = stopping_cb.stop_reason if stopping_cb is not None else None
 
     raw_meta = train_output.metadata.model_dump()
+    vesr = raw_meta.get("validation_esr")
+    best_studio_esr = (
+        cb.best_esr if (cb is not None and cb.best_esr < float("inf")) else vesr
+    )
+    best_lite_esr = (
+        cb.best_ch3_esr
+        if (cb is not None and cb.best_ch3_esr is not None and cb.best_ch3_esr < float("inf"))
+        else None
+    )
+    best_lite_diff_esr = (
+        cb.best_ch3_delta_esr
+        if (cb is not None and cb.best_ch3_delta_esr is not None and cb.best_ch3_delta_esr < float("inf"))
+        else None
+    )
+    best_lite_mrstft = (
+        cb.best_ch3_mrstft
+        if (cb is not None and cb.best_ch3_mrstft is not None and cb.best_ch3_mrstft < float("inf"))
+        else None
+    )
+
+    if best_studio_esr is not None:
+        raw_meta["validation_esr"] = best_studio_esr
+        raw_meta["validation_esr_a2_full"] = best_studio_esr
+        raw_meta["validation_esr_ch8"] = best_studio_esr
+    if best_lite_esr is not None:
+        raw_meta["validation_esr_a2_lite"] = best_lite_esr
+        raw_meta["validation_esr_ch3"] = best_lite_esr
+    if vesr is not None:
+        raw_meta["validation_esr_aggregate"] = vesr
+    if best_lite_diff_esr is not None:
+        raw_meta["differential_esr_ch3"] = best_lite_diff_esr
+    if best_lite_mrstft is not None:
+        raw_meta["mrstft_loss_ch3"] = best_lite_mrstft
     if best_diff_esr is not None:
         raw_meta["differential_esr"] = best_diff_esr
     if best_mrstft is not None:
@@ -1153,26 +1276,27 @@ def train_voice(
         print(f"  Source Bass:   {inst_name}")
         print(f"  Source Pickup: {src_pickup_name} ({src_pos_mm:.1f}mm)")
         if train_output.metadata.validation_esr is not None:
-            vesr = train_output.metadata.validation_esr
-            best_studio_esr = (
-                cb.best_esr if (cb is not None and cb.best_esr < float("inf")) else vesr
+            vesr_val = float(train_output.metadata.validation_esr)
+            best_studio_val: float = (
+                cb.best_esr if (cb is not None and cb.best_esr < float("inf")) else vesr_val
             )
             esr_status = ""
             if threshold_esr is not None:
-                if best_studio_esr <= threshold_esr:
+                if best_studio_val <= threshold_esr:
                     esr_status = (
                         f" (Goal Met <= {threshold_esr:.6f}, min {min_epochs} epochs observed)"
                     )
                 else:
                     esr_status = f" (Safety ceiling reached at {epochs} epochs)"
-            if not a2_lite_only:
-                ch8_db = 10.0 * math.log10(max(best_studio_esr, 1e-12))
-                print(
-                    f"  Validation ESR: {best_studio_esr:.6f} (Ch8 Studio, {ch8_db:+.2f} dB) | {vesr:.6f} (Aggregate){esr_status}"
-                )
-            else:
-                esr_db = 10.0 * math.log10(max(best_studio_esr, 1e-12))
-                print(f"  Validation ESR: {best_studio_esr:.6f} ({esr_db:+.2f} dB){esr_status}")
+            ch8_db = 10.0 * math.log10(max(best_studio_val, 1e-12))
+            lite_disp = ""
+            if best_lite_esr is not None:
+                lite_db = 10.0 * math.log10(max(best_lite_esr, 1e-12))
+                lite_disp = f" | {best_lite_esr:.6f} (A2 Lite Ch3, {lite_db:+.2f} dB)"
+            agg_disp = f" | {vesr_val:.6f} (Aggregate)"
+            print(
+                f"  Validation ESR: {best_studio_val:.6f} (A2 Full Ch8, {ch8_db:+.2f} dB){lite_disp}{agg_disp}{esr_status}"
+            )
             if best_diff_esr is not None:
                 diff_db = 10.0 * math.log10(max(best_diff_esr, 1e-12))
                 print(f"  Differential Delta ESR: {best_diff_esr:.6f} ({diff_db:+.2f} dB)")
@@ -1324,15 +1448,28 @@ def main():
         help=f"Batch size (default: {DEFAULT_BATCH_SIZE})",
     )
     parser.add_argument(
-        "--a2-lite-only",
-        action="store_true",
-        default=None,
-        help="Train A2-Lite channels_8 only (default: True, ~35%% faster)",
+        "--goal-esr-lite",
+        type=float,
+        default=DEFAULT_GOAL_ESR_LITE,
+        help=f"Gate 4: Goal validation ESR for A2 Lite tier (channels_3) (default: {DEFAULT_GOAL_ESR_LITE}; set to 0 to disable)",
     )
     parser.add_argument(
-        "--full-slimmable",
-        action="store_true",
-        help="Train full slimmable Architecture 2 (channels_3 + channels_8) instead of default A2-Lite",
+        "--goal-delta-esr-lite",
+        type=float,
+        default=DEFAULT_GOAL_DELTA_ESR_LITE,
+        help=f"Gate 5: Goal validation Differential Delta ESR on pickup delta for A2 Lite tier (default: {DEFAULT_GOAL_DELTA_ESR_LITE}; set to 0 to disable)",
+    )
+    parser.add_argument(
+        "--goal-delta-mrstft-lite",
+        type=float,
+        default=DEFAULT_GOAL_DELTA_MRSTFT_LITE,
+        help=f"Gate 6: Goal MRSTFT ratio relative to baseline for A2 Lite tier (default: {DEFAULT_GOAL_DELTA_MRSTFT_LITE}; set to 0 to disable)",
+    )
+    parser.add_argument(
+        "--max-mrstft-ceiling-lite",
+        type=float,
+        default=DEFAULT_MAX_MRSTFT_CEILING_LITE,
+        help=f"Gate 6: Absolute MRSTFT ceiling for A2 Lite tier (default: {DEFAULT_MAX_MRSTFT_CEILING_LITE})",
     )
     parser.add_argument(
         "--show-plot", action="store_true", help="Display matplotlib validation plot window"
@@ -1357,6 +1494,20 @@ def main():
         help="Disable generating sidecar manifest.json",
     )
     parser.add_argument(
+        "--pack",
+        "--tone-pack",
+        dest="pack",
+        default=None,
+        help="Tone3000 pack identifier to train (outputs flat .nam files to tone3000/packs/[pack]/nam/)",
+    )
+    parser.add_argument(
+        "--force",
+        "--overwrite",
+        dest="overwrite",
+        action="store_true",
+        help="Force retraining of models even if .nam files already exist",
+    )
+    parser.add_argument(
         "--include-identity",
         action="store_true",
         help="Force training even if source and target stems are identical",
@@ -1364,15 +1515,11 @@ def main():
     parser.add_argument("--gui", action="store_true", help="Launch NAM training GUI")
     args = parser.parse_args()
 
-    effective_a2_lite = (
-        not args.full_slimmable
-        if args.full_slimmable
-        else (args.a2_lite_only if args.a2_lite_only is not None else True)
-    )
-
     cli_cfg = NamTrainingConfig.model_validate(
         {
             "instrument": args.instrument,
+            "pack": args.pack,
+            "overwrite": args.overwrite,
             "voice": args.voice,
             "input_wav": args.input,
             "output_wav": args.output,
@@ -1384,6 +1531,10 @@ def main():
             "goal_delta_esr": args.goal_delta_esr,
             "goal_delta_mrstft": args.goal_delta_mrstft,
             "max_mrstft_ceiling": args.max_mrstft_ceiling,
+            "goal_esr_lite": args.goal_esr_lite,
+            "goal_delta_esr_lite": args.goal_delta_esr_lite,
+            "goal_delta_mrstft_lite": args.goal_delta_mrstft_lite,
+            "max_mrstft_ceiling_lite": args.max_mrstft_ceiling_lite,
             "consecutive_patience": args.consecutive_patience,
             "patience": args.patience,
             "min_delta": args.min_delta,
@@ -1400,8 +1551,6 @@ def main():
             "basename": args.basename,
             "fast_dev_run": args.fast_dev_run,
             "gui": args.gui,
-            "a2_lite_only": effective_a2_lite,
-            "full_slimmable": args.full_slimmable,
             "version_tag": args.version_tag,
             "no_manifest": args.no_manifest,
             "include_identity": args.include_identity,
@@ -1423,6 +1572,33 @@ def main():
         if cli_cfg.no_goal_esr or (cli_cfg.goal_esr is not None and cli_cfg.goal_esr <= 0)
         else cli_cfg.goal_esr
     )
+
+    if cli_cfg.pack:
+        from allomorph.pipeline.pack import train_tone_pack
+
+        train_tone_pack(
+            pack=cli_cfg.pack,
+            voice=cli_cfg.voice or "all",
+            overwrite=cli_cfg.overwrite,
+            epochs=cli_cfg.epochs,
+            min_epochs=cli_cfg.min_epochs,
+            goal_esr=effective_goal_esr,
+            goal_delta_esr=cli_cfg.goal_delta_esr,
+            goal_delta_mrstft=cli_cfg.goal_delta_mrstft,
+            max_mrstft_ceiling=cli_cfg.max_mrstft_ceiling,
+            goal_esr_lite=cli_cfg.goal_esr_lite,
+            goal_delta_esr_lite=cli_cfg.goal_delta_esr_lite,
+            goal_delta_mrstft_lite=cli_cfg.goal_delta_mrstft_lite,
+            max_mrstft_ceiling_lite=cli_cfg.max_mrstft_ceiling_lite,
+            consecutive_patience=cli_cfg.consecutive_patience,
+            patience=cli_cfg.patience,
+            batch_size=cli_cfg.batch_size,
+            lr_scheduler=cli_cfg.lr_scheduler,
+            eta_min=cli_cfg.eta_min,
+            lr_t_max=cli_cfg.lr_t_max,
+            fast_dev_run=cli_cfg.fast_dev_run,
+        )
+        return
 
     input_wav_path = cli_cfg.input_wav
     instruments_to_run = resolve_instruments(cli_cfg.instrument)
@@ -1455,6 +1631,10 @@ def main():
                 goal_delta_esr=cli_cfg.goal_delta_esr,
                 goal_delta_mrstft=cli_cfg.goal_delta_mrstft,
                 max_mrstft_ceiling=cli_cfg.max_mrstft_ceiling,
+                goal_esr_lite=cli_cfg.goal_esr_lite,
+                goal_delta_esr_lite=cli_cfg.goal_delta_esr_lite,
+                goal_delta_mrstft_lite=cli_cfg.goal_delta_mrstft_lite,
+                max_mrstft_ceiling_lite=cli_cfg.max_mrstft_ceiling_lite,
                 consecutive_patience=cli_cfg.consecutive_patience,
                 patience=cli_cfg.patience,
                 min_delta=cli_cfg.min_delta,
@@ -1471,7 +1651,6 @@ def main():
                 basename=cli_cfg.basename
                 if (len(voices_to_run) == 1 and len(instruments_to_run) == 1)
                 else None,
-                a2_lite_only=cli_cfg.a2_lite_only,
                 version_tag=cli_cfg.version_tag,
                 no_manifest=cli_cfg.no_manifest,
                 include_identity=cli_cfg.include_identity,

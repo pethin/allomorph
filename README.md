@@ -205,7 +205,7 @@ uv run allomorph --stage sim --voice precision_active
 ```
 
 ### 3. NAM Neural Model Training (Architecture 2 / A2)
-Trains a high-efficiency **NAM Architecture 2 (A2)** neural model directly pairing the source instrument wet stem ($X_{\text{src}}$) to the target voice wet stem ($Y_{\text{tgt}}$). A2 replaces legacy A1 models (nano/feather/standard) with a "slimmable" neural architecture designed specifically for low-power hardware like the Darkglass Anagram:
+Trains a high-efficiency **NAM Architecture 2 (A2)** neural model directly pairing the source instrument wet stem ($X_{\text{src}}$) to the target voice wet stem ($Y_{\text{tgt}}$). A2 replaces legacy A1 models (nano/feather/standard) with a "slimmable (full/lite)" neural architecture designed specifically for low-power hardware like the Darkglass Anagram:
 
 ```bash
 # Train NAM Architecture 2 (A2) model for Darkglass Anagram Block 1:
