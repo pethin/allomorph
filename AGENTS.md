@@ -8,12 +8,12 @@ Welcome to **Allomorph**. This repository houses an analog digital twin and univ
 
 ### Source Instruments
 1. **Current Bass (30" Short Scale):**
-   - Pickup: Single active 18V EMG MMTW (dual-mode: MM dual coil or J single-coil, coil spacing $d=0.90''$, coil aperture $w=0.75''$).
+   - Pickup: Single active 18V EMG MMTWX (X-series, equivalent to 35TWX in MMTW housing; dual-mode Ceramic & Steel blades: CSX MM dual coil $f_r = 2.5\text{ kHz}$ or JCSX single-coil $f_r = 3.5\text{ kHz}$, coil spacing $d=0.90''$, coil aperture $w=0.75''$).
    - Physical Datum: Centerline located **$77.5\text{ mm}$ from the bridge** ($303.5\text{ mm}$ from the 12th fret; neck coil $88.9\text{ mm}$, bridge coil $66.1\text{ mm}$).
-   - Character: Warm low-mid bloom ($180\text{--}250\text{ Hz}$), reduced string tension compared to 34", selectable J-bridge growl or MM authority.
+   - Character: Warm low-mid bloom ($180\text{--}250\text{ Hz}$), reduced string tension compared to 34", selectable J-bridge growl or MM authority, open X-series dynamic headroom with zero premature compression.
 
 2. **Planned Bass (32" Medium Scale):**
-   - Routing: Reverse EMG PX split ($122.8\text{ mm}$ from bridge) + EMG MMTWX ($62.2\text{ mm}$ centerline, $50.8\text{ mm}$ bridge coil) with EMG ABCX active blend.
+   - Routing: Reverse EMG PX split (Ceramic blades, $f_r = 3.2\text{ kHz}$, $122.8\text{ mm}$ from bridge) + EMG MMTWX (Ceramic & Steel blades, $62.2\text{ mm}$ centerline, $50.8\text{ mm}$ bridge coil) with EMG ABCX active blend.
    - Reference: `/Users/peter/Projects/pethin/medium-scale-bass/Pickup Placement - P_MM.md`.
 
 ### Target Instruments & Tonal Scalings

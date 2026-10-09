@@ -120,6 +120,30 @@ MAGNET_PROPERTIES: dict[str, MagnetPropertiesConfig] = {
         k_stein=0.015,
         kappa_ap=0.020,
     ),
+    "ceramic_steel": MagnetPropertiesConfig(
+        k_core=0.035,
+        f_core=5500.0,
+        k_skin=0.025,
+        f_skin=5500.0,
+        lambda_L=0.025,
+        k_emf=0.025,
+        eta_hyst=0.030,
+        alpha=0.15,
+        alpha3=0.055,
+        k_sag=0.045,
+        vsat=1.28,
+        k_eddy=0.060,
+        kappa_orbit=0.030,
+        k_body=0.035,
+        beta_curv=0.015,
+        k_pull=0.018,
+        tau_touch=0.028,
+        chi_mu=0.018,
+        k_dist=0.14,
+        kappa_geom=0.16,
+        k_stein=0.020,
+        kappa_ap=0.025,
+    ),
     "ceramic_alnico_hybrid": MagnetPropertiesConfig(
         k_core=0.05,
         f_core=4500.0,
@@ -242,6 +266,9 @@ MAGNET_PROPERTIES: dict[str, MagnetPropertiesConfig] = {
     ),
 }
 MAGNET_PROPERTIES["hybrid"] = MAGNET_PROPERTIES["ceramic_alnico_hybrid"]
+MAGNET_PROPERTIES["ceramic_and_steel"] = MAGNET_PROPERTIES["ceramic_steel"]
+MAGNET_PROPERTIES["ceramic/steel"] = MAGNET_PROPERTIES["ceramic_steel"]
+MAGNET_PROPERTIES["cs"] = MAGNET_PROPERTIES["ceramic_steel"]
 MAGNET_PROPERTIES["ideal_passive"] = MAGNET_PROPERTIES["ideal"]
 MAGNET_PROPERTIES["linear"] = MAGNET_PROPERTIES["ideal"]
 

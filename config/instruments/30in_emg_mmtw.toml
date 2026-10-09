@@ -1,11 +1,11 @@
 # ==============================================================================
 # ALLOMORPH SOURCE INSTRUMENT CONFIGURATION
-# 30" Short Scale Bass with Active 18V EMG MMTW
+# 30" Short Scale Bass with Active 18V EMG MMTWX (X-Series)
 # ==============================================================================
 # Physical Datum: Centerline located 77.5mm from bridge saddle (303.5mm from 12th fret).
-# Pickup Hardware: Active EMG MMTW with internal push/pull dual-mode preamp.
-#   - Dual-Coil Mode: Coils L1 (neck) + L2 (bridge) in parallel (2.50 kHz fr).
-#   - Single-Coil Mode: Coils L2 + L3 (bridge-side stacked hum-canceler, 3.50 kHz fr).
+# Pickup Hardware: Active 18V EMG MMTWX (X-series, equivalent to 35TWX with MMTW physical specs).
+#   - Dual-Coil Mode: Coils L1 (neck) + L2 (bridge) in parallel (2.50 kHz fr, Ceramic & Steel).
+#   - Single-Coil Mode: Coils L2 + L3 (bridge-side stacked hum-canceler, 3.50 kHz fr, Ceramic & Steel).
 
 id = "30in_emg_mmtw"
 name = "30\" Short Scale MM (EMG MMTW)"
@@ -44,13 +44,15 @@ position_from_bridge_m = 0.0775  # 77.5mm centerline
 aperture_width_in = 1.50         # Overall pickup housing sensing envelope
 coil_spacing_in = 0.90           # 0.90" (22.86mm) spacing between coil centers
 type = "dual_coil_parallel"
-resonant_frequency_hz = 2500.0   # Internal active preamp resonance (from EMG datasheet)
+magnet_type = "ceramic_steel"
+pole_type = "blade"
+resonant_frequency_hz = 2500.0   # Internal active X-series CSX resonance (equivalent to 35TWX)
 q_factor = 1.35                  # Quality factor of the active resonant peak
 
 # Multi-coil spatial standing wave breakdown:
 coils = [
-    { strings = ["all"], position_from_bridge_m = 0.08893, aperture_width_in = 0.75, weight = 0.5 }, # L1 (Neck)
-    { strings = ["all"], position_from_bridge_m = 0.06607, aperture_width_in = 0.75, weight = 0.5 }  # L2 (Bridge)
+    { strings = ["all"], position_from_bridge_m = 0.08893, aperture_width_in = 0.75, weight = 0.5, pole_type = "blade" }, # L1 (Neck)
+    { strings = ["all"], position_from_bridge_m = 0.06607, aperture_width_in = 0.75, weight = 0.5, pole_type = "blade" }  # L2 (Bridge)
 ]
 
 # ------------------------------------------------------------------------------
@@ -66,10 +68,12 @@ position_from_bridge_m = 0.06607 # 66.07mm (L2 coil center)
 aperture_width_in = 0.75         # Narrow 0.75" single-coil aperture
 coil_spacing_in = 0.0            # Single sensing line (no humbucker comb notch)
 type = "single_coil"
-resonant_frequency_hz = 3500.0   # Higher active resonance for single-coil clarity
+magnet_type = "ceramic_steel"
+pole_type = "blade"
+resonant_frequency_hz = 3500.0   # Higher active X-series JCSX resonance (equivalent to 35TWX)
 q_factor = 1.40
 coils = [
-    { strings = ["all"], position_from_bridge_m = 0.06607, aperture_width_in = 0.75, weight = 1.0 }
+    { strings = ["all"], position_from_bridge_m = 0.06607, aperture_width_in = 0.75, weight = 1.0, pole_type = "blade" }
 ]
 
 # ------------------------------------------------------------------------------

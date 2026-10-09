@@ -184,6 +184,8 @@ def test_magnet_properties_configuration():
         "alnico_ii",
         "alnico_iii",
         "ceramic",
+        "ceramic_steel",
+        "ceramic_and_steel",
         "ceramic_alnico_hybrid",
         "hybrid",
         "neodymium",
@@ -197,6 +199,11 @@ def test_magnet_properties_configuration():
         assert mag in MAGNET_PROPERTIES
         props = MAGNET_PROPERTIES[mag]
         assert isinstance(props, MagnetPropertiesConfig)
+
+    cs = MAGNET_PROPERTIES["ceramic_steel"]
+    assert cs.k_eddy == pytest.approx(0.060)
+    assert cs.vsat == pytest.approx(1.28)
+    assert cs.alpha == pytest.approx(0.15)
 
     # Specific property checks
     a3 = MAGNET_PROPERTIES["alnico_iii"]
