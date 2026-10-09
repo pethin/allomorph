@@ -15,9 +15,14 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, cast
 
+# pyrefly: ignore [missing-import]
 import mlx.core as mx
+
+# pyrefly: ignore [missing-import]
 import mlx.optimizers as optim
 import numpy as np
+
+# pyrefly: ignore [missing-import]
 from mlx import nn
 from pedalboard.io import AudioFile
 

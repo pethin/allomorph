@@ -55,6 +55,7 @@ def test_mlx_detection_and_engine_resolution():
 @pytest.mark.skipif(not is_mlx_available(), reason="Requires Apple Silicon MLX Metal")
 def test_mlx_model_shapes_and_receptive_field():
     """Verifies PackedWaveNet layer counts, receptive field, and submodel parameter counts."""
+    # pyrefly: ignore [missing-import]
     import mlx.core as mx
 
     from allomorph.trainer.engine_mlx import (
@@ -86,6 +87,7 @@ def test_mlx_model_shapes_and_receptive_field():
 @pytest.mark.skipif(not is_mlx_available(), reason="Requires Apple Silicon MLX Metal")
 def test_mlx_mrstft_loss():
     """Verifies MLX 1D Convolution STFT filterbank and MRSTFT loss computation."""
+    # pyrefly: ignore [missing-import]
     import mlx.core as mx
 
     from allomorph.trainer.engine_mlx import MLXMRSTFTLoss, esr_loss, pre_emphasis_loss
