@@ -165,49 +165,24 @@ class NamTrainingConfig(AllomorphBaseModel):
     reference_wav: Path | str | None = None
     models_dir: Path | str = Field(default=Path("models"))
     epochs: int = Field(
-        default=400,
+        default=35,
         gt=0,
-        description="Maximum number of training epochs (default: 400 for Architecture 2 studio reference)",
+        description="Maximum number of training epochs (default: 35 for Architecture 2 schedule)",
     )
     min_epochs: int = Field(
         default=5,
         ge=0,
         description="Warmup epoch floor before early stopping can trigger (default: 5 covering linear warmup)",
     )
-    goal_esr: float | None = Field(
-        default=0.00020,
-        ge=0.0,
-        description="Gate 1: Goal validation Global ESR for early stopping (default: 0.00020 for Architecture 2 studio reference)",
-    )
-    goal_delta_esr: float | None = Field(
-        default=0.020,
-        ge=0.0,
-        description="Gate 2: Goal validation Differential Delta ESR for nuance convergence (default: 0.020)",
-    )
-    goal_delta_mrstft: float | None = Field(
-        default=0.50,
-        ge=0.0,
-        description="Gate 3: Goal validation Differential MRSTFT ratio MRSTFT / max(baseline_mrstft, 1e-6) (default: 0.50)",
-    )
-    max_mrstft_ceiling: float = Field(
-        default=0.320,
-        ge=0.0,
-        description="Gate 3: Absolute ceiling on MRSTFT for Gate 3 qualification (default: 0.320)",
-    )
-    consecutive_patience: int = Field(
-        default=3,
-        ge=1,
-        description="Consecutive validation epochs satisfying all 3 gates before early exit (default: 3)",
-    )
     patience: int = Field(
-        default=12,
+        default=5,
         ge=0,
-        description="Patience epochs for plateau early stopping (default: 12, set 0 to disable)",
+        description="Patience epochs for plateau early stopping (default: 5, set 0 to disable)",
     )
     min_delta: float = Field(
-        default=5e-6,
+        default=2.0e-6,
         ge=0.0,
-        description="Minimum loss improvement to reset plateau patience (default: 5e-6)",
+        description="Minimum loss improvement to reset plateau patience (default: 2.0e-6)",
     )
     pre_emph_weight: float = Field(
         default=0.25,
@@ -239,33 +214,12 @@ class NamTrainingConfig(AllomorphBaseModel):
         ge=5,
         description="Cosine decay period (T_max in epochs, default: 35)",
     )
-    no_goal_esr: bool = False
     batch_size: int = Field(default=16, gt=0)
     show_plot: bool = False
     save_plot: bool = False
     basename: str | None = None
     fast_dev_run: bool = False
     gui: bool = False
-    goal_esr_lite: float | None = Field(
-        default=0.00250,
-        ge=0.0,
-        description="Gate 4: Goal validation Global ESR for A2 Lite tier (channels_3) (default: 0.00250, -26 dB)",
-    )
-    goal_delta_esr_lite: float | None = Field(
-        default=0.080,
-        ge=0.0,
-        description="Gate 5: Goal validation Differential Delta ESR for A2 Lite tier (channels_3) (default: 0.080)",
-    )
-    goal_delta_mrstft_lite: float | None = Field(
-        default=0.75,
-        ge=0.0,
-        description="Gate 6: Goal validation Differential MRSTFT ratio for A2 Lite tier (channels_3) (default: 0.75)",
-    )
-    max_mrstft_ceiling_lite: float = Field(
-        default=0.450,
-        ge=0.0,
-        description="Gate 6: Absolute ceiling on MRSTFT for A2 Lite tier qualification (default: 0.450)",
-    )
     version_tag: str | None = "auto"
     no_manifest: bool = False
     include_identity: bool = False

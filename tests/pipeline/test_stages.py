@@ -94,8 +94,8 @@ def test_run_training_mocked(monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
         output_wav=tmp_path / "output.wav",
         epochs=10,
         min_epochs=5,
-        goal_esr=0.0001,
-        goal_esr_lite=0.0025,
+        patience=3,
+        min_delta=1e-5,
         fast_dev_run=True,
         no_manifest=True,
     )
@@ -107,7 +107,7 @@ def test_run_training_mocked(monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
     assert call["voice"] == "vintage_open"
     assert call["epochs"] == 10
     assert call["min_epochs"] == 5
-    assert call["goal_esr"] == 0.0001
-    assert call["goal_esr_lite"] == 0.0025
+    assert call["patience"] == 3
+    assert call["min_delta"] == 1e-5
     assert call["fast_dev_run"] is True
     assert call["no_manifest"] is True

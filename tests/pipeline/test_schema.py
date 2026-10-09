@@ -129,45 +129,38 @@ def test_nam_training_config_validation():
     assert cfg.pack is None
     assert cfg.overwrite is False
     assert cfg.voice == "all"
-    assert cfg.epochs == 400
+    assert cfg.epochs == 35
     assert cfg.min_epochs == 5
     assert cfg.batch_size == 16
-    assert cfg.goal_esr == 0.00020
-    assert cfg.goal_delta_esr == 0.020
-    assert cfg.goal_delta_mrstft == 0.50
-    assert cfg.max_mrstft_ceiling == 0.320
-    assert cfg.consecutive_patience == 3
-    assert cfg.patience == 12
-    assert cfg.min_delta == 5e-6
+    assert cfg.patience == 5
+    assert cfg.min_delta == 2.0e-6
     assert cfg.pre_emph_weight == 0.25
     assert cfg.pre_emph_coef == 0.85
     assert cfg.mrstft_weight == 0.0010
     assert cfg.lr_scheduler == "cosine"
     assert cfg.eta_min == 1e-5
     assert cfg.lr_t_max == 35
-    assert cfg.goal_esr_lite == 0.00250
-    assert cfg.goal_delta_esr_lite == 0.080
-    assert cfg.goal_delta_mrstft_lite == 0.75
-    assert cfg.max_mrstft_ceiling_lite == 0.450
 
-    # Valid custom configuration with primary _lite parameters
+    # Valid custom configuration
     custom = NamTrainingConfig(
         instrument="30in",
         pack="30in_emg_mmtw",
         overwrite=True,
         voice="precision_vintage",
         epochs=50,
-        min_epochs=20,
+        min_epochs=10,
+        patience=8,
+        min_delta=1e-5,
         batch_size=64,
         fast_dev_run=True,
-        goal_esr_lite=0.0030,
     )
     assert custom.pack == "30in_emg_mmtw"
     assert custom.overwrite is True
     assert custom.epochs == 50
-    assert custom.min_epochs == 20
+    assert custom.min_epochs == 10
+    assert custom.patience == 8
+    assert custom.min_delta == 1e-5
     assert custom.batch_size == 64
-    assert custom.goal_esr_lite == 0.0030
 
     # Negative epochs rejection
     with pytest.raises(ValidationError):

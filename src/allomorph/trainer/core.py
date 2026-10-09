@@ -42,19 +42,10 @@ from allomorph.trainer.callbacks import (
 )
 from allomorph.trainer.constants import (
     DEFAULT_BATCH_SIZE,
-    DEFAULT_CONSECUTIVE_PATIENCE,
     DEFAULT_ETA_MIN,
-    DEFAULT_GOAL_DELTA_ESR,
-    DEFAULT_GOAL_DELTA_ESR_LITE,
-    DEFAULT_GOAL_DELTA_MRSTFT,
-    DEFAULT_GOAL_DELTA_MRSTFT_LITE,
-    DEFAULT_GOAL_ESR,
-    DEFAULT_GOAL_ESR_LITE,
     DEFAULT_LR_SCHEDULER,
     DEFAULT_LR_T_MAX,
     DEFAULT_MAX_EPOCHS,
-    DEFAULT_MAX_MRSTFT_CEILING,
-    DEFAULT_MAX_MRSTFT_CEILING_LITE,
     DEFAULT_MIN_DELTA,
     DEFAULT_MIN_EPOCHS,
     DEFAULT_MRSTFT_WEIGHT,
@@ -246,15 +237,6 @@ def compute_baseline_mrstft(
 def configure_a2_architecture(
     nam_core: Any,
     min_epochs: int = DEFAULT_MIN_EPOCHS,
-    goal_esr: float | None = DEFAULT_GOAL_ESR,
-    goal_delta_esr: float | None = DEFAULT_GOAL_DELTA_ESR,
-    goal_delta_mrstft: float | None = DEFAULT_GOAL_DELTA_MRSTFT,
-    max_mrstft_ceiling: float = DEFAULT_MAX_MRSTFT_CEILING,
-    goal_esr_lite: float | None = DEFAULT_GOAL_ESR_LITE,
-    goal_delta_esr_lite: float | None = DEFAULT_GOAL_DELTA_ESR_LITE,
-    goal_delta_mrstft_lite: float | None = DEFAULT_GOAL_DELTA_MRSTFT_LITE,
-    max_mrstft_ceiling_lite: float = DEFAULT_MAX_MRSTFT_CEILING_LITE,
-    consecutive_patience: int = DEFAULT_CONSECUTIVE_PATIENCE,
     patience: int = DEFAULT_PATIENCE,
     min_delta: float = DEFAULT_MIN_DELTA,
     pre_emph_weight: float = DEFAULT_PRE_EMPH_WEIGHT,
@@ -270,7 +252,7 @@ def configure_a2_architecture(
 
     Configures dual-tier slimmable PackedWaveNet (channels_3 A2 Lite + channels_8 A2 Full) for Tone3000 A2 recognition.
     Injects pre-emphasis loss (alpha=0.85) and MRSTFT (0.0010) to equalize high-frequency pickup resonance gradients.
-    Hooks LinearWarmupCallback (5 epochs) and AllomorphAdaptiveStopping (dual-tier triple-gate + joint plateau).
+    Hooks LinearWarmupCallback (5 epochs) and AllomorphAdaptiveStopping (composite val_loss plateau).
     """
     try:
         import torch
@@ -282,9 +264,6 @@ def configure_a2_architecture(
             torch.backends.cudnn.benchmark = False
     except ImportError:
         pass
-
-    baseline_delta_ratio = compute_baseline_delta_ratio(reference_wav, output_wav)
-    baseline_mrstft = compute_baseline_mrstft(reference_wav, output_wav)
 
     orig_detect_input_version = getattr(
         nam_core, "_orig_detect_input_version", nam_core._detect_input_version
@@ -396,37 +375,17 @@ def configure_a2_architecture(
         )
         callbacks.append(warmup_cb)
 
-        monitor_key = "ESR_packed_1"
-        effective_goal = threshold_esr if threshold_esr is not None else None
-        stopping_cb = None
-        if effective_goal is not None:
-            stopping_cb = AllomorphAdaptiveStopping(
-                monitor=monitor_key,
-                stopping_threshold=effective_goal,
-                warmup_floor=effective_min_epochs,
-                goal_esr=effective_goal,
-                goal_delta_esr=goal_delta_esr,
-                goal_delta_mrstft=goal_delta_mrstft,
-                max_mrstft_ceiling=max_mrstft_ceiling,
-                goal_esr_lite=goal_esr_lite,
-                goal_delta_esr_lite=goal_delta_esr_lite,
-                goal_delta_mrstft_lite=goal_delta_mrstft_lite,
-                max_mrstft_ceiling_lite=max_mrstft_ceiling_lite,
-                consecutive_patience=consecutive_patience,
-                patience=patience,
-                min_delta=min_delta,
-                baseline_delta_ratio=baseline_delta_ratio,
-                baseline_mrstft=baseline_mrstft,
-            )
-            callbacks.append(stopping_cb)
+        stopping_cb = AllomorphAdaptiveStopping(
+            monitor="val_loss",
+            warmup_floor=effective_min_epochs,
+            patience=patience,
+            min_delta=min_delta,
+        )
+        callbacks.append(stopping_cb)
         nam_core._last_stopping_callback = stopping_cb
 
         progress_cb = EsrProgressCallback(
-            target_esr=effective_goal,
-            target_delta_esr=goal_delta_esr,
             min_epochs=effective_min_epochs,
-            baseline_delta_ratio=baseline_delta_ratio,
-            baseline_mrstft=baseline_mrstft,
             stopping_callback=stopping_cb,
         )
         callbacks.append(progress_cb)
@@ -446,15 +405,6 @@ def train_voice(
     models_dir: str | Path = MODELS_DIR,
     epochs: int = DEFAULT_MAX_EPOCHS,
     min_epochs: int = DEFAULT_MIN_EPOCHS,
-    goal_esr: float | None = DEFAULT_GOAL_ESR,
-    goal_delta_esr: float | None = DEFAULT_GOAL_DELTA_ESR,
-    goal_delta_mrstft: float | None = DEFAULT_GOAL_DELTA_MRSTFT,
-    max_mrstft_ceiling: float = DEFAULT_MAX_MRSTFT_CEILING,
-    goal_esr_lite: float | None = DEFAULT_GOAL_ESR_LITE,
-    goal_delta_esr_lite: float | None = DEFAULT_GOAL_DELTA_ESR_LITE,
-    goal_delta_mrstft_lite: float | None = DEFAULT_GOAL_DELTA_MRSTFT_LITE,
-    max_mrstft_ceiling_lite: float = DEFAULT_MAX_MRSTFT_CEILING_LITE,
-    consecutive_patience: int = DEFAULT_CONSECUTIVE_PATIENCE,
     patience: int = DEFAULT_PATIENCE,
     min_delta: float = DEFAULT_MIN_DELTA,
     pre_emph_weight: float = DEFAULT_PRE_EMPH_WEIGHT,
@@ -578,7 +528,7 @@ def train_voice(
         print(f"  uv run python -m allomorph.pipeline.cli --stage sim --voice {voice}")
         return False
 
-    # Resolve reference stem for differential delta ESR (y - x_src)
+    # Resolve reference stem
     if reference_wav:
         reference_path = Path(reference_wav)
     else:
@@ -614,23 +564,9 @@ def train_voice(
         )
         return True
 
-    if goal_esr is not None and goal_esr <= 0:
-        threshold_esr = None
-    else:
-        threshold_esr = goal_esr
-
     configure_a2_architecture(
         nam_core,
         min_epochs=min_epochs,
-        goal_esr=threshold_esr,
-        goal_delta_esr=goal_delta_esr,
-        goal_delta_mrstft=goal_delta_mrstft,
-        max_mrstft_ceiling=max_mrstft_ceiling,
-        goal_esr_lite=goal_esr_lite,
-        goal_delta_esr_lite=goal_delta_esr_lite,
-        goal_delta_mrstft_lite=goal_delta_mrstft_lite,
-        max_mrstft_ceiling_lite=max_mrstft_ceiling_lite,
-        consecutive_patience=consecutive_patience,
         patience=patience,
         min_delta=min_delta,
         pre_emph_weight=pre_emph_weight,
@@ -656,27 +592,12 @@ def train_voice(
     print(f"  Batch Size:  {batch_size}")
     print(f"  Input Audio: {input_path.name}")
     print(f"  Output Audio:{output_path.name}")
-    if reference_path and reference_path != input_path:
-        print(f"  Delta Ref:   {reference_path.name}")
-    print(f"  Max Epochs:  {epochs}")
-    print(f"  Warmup Ep:   {min_epochs}")
-    esr_display = (
-        f"{threshold_esr:.6f} (A2 Slimmable Studio Reference Early Stopping, Ch8 <= {threshold_esr:.6f}, min {min_epochs} epochs)"
-        if threshold_esr is not None
-        else "Disabled (Fixed Epochs)"
-    )
-    print(f"  Goal ESR:    {esr_display}")
-    if goal_delta_esr is not None and goal_delta_esr > 0:
-        print(f"  Goal Delta:  {goal_delta_esr:.4f} (-17 dB on pickup delta)")
-    if goal_delta_mrstft is not None:
-        print(f"  Goal Spectral: MRSTFT/M_base <= {goal_delta_mrstft:.2f} (ceiling {max_mrstft_ceiling:.3f})")
-    if patience > 0:
-        print(f"  Patience:    {patience} epochs (plateau slope min_delta={min_delta:.1e})")
+    print(f"  Schedule:    {lr_scheduler} (epochs={epochs}, T_max={lr_t_max}, eta_min={eta_min:.1e})")
+    print(f"  Convergence: Adaptive plateau patience={patience} on composite val_loss (min_delta={min_delta:.1e})")
     if pre_emph_weight > 0:
         print(f"  Pre-Emph:    weight={pre_emph_weight:.2f}, coef={pre_emph_coef:.2f}")
     if mrstft_weight > 0:
         print(f"  MRSTFT:      weight={mrstft_weight:.4f}")
-    print(f"  LR Schedule: {lr_scheduler} (T_max={lr_t_max}, eta_min={eta_min:.1e})")
     print(f"  Destination: {target_nam}")
     print("========================================\n")
 
@@ -701,7 +622,7 @@ def train_voice(
         silent=silent,
         save_plot=save_plot,
         local=False,
-        threshold_esr=threshold_esr,
+        threshold_esr=None,
         user_metadata=user_metadata,
         fast_dev_run=fast_dev_run,
         latency=0,
@@ -714,18 +635,10 @@ def train_voice(
 
     cb = getattr(nam_core, "_last_esr_callback", None)
     stopping_cb = getattr(nam_core, "_last_stopping_callback", None)
-    best_diff_esr = (
-        cb.best_delta_esr if (cb is not None and cb.best_delta_esr < float("inf")) else None
-    )
     best_mrstft = (
-        cb.best_mrstft if (cb is not None and cb.best_mrstft < float("inf")) else None
-    )
-    best_diff_mrstft = (
-        cb.best_diff_mrstft if (cb is not None and cb.best_diff_mrstft < float("inf")) else None
-    )
-    baseline_mrstft = cb.baseline_mrstft if cb is not None else None
-    consecutive_gates_met = (
-        stopping_cb.consecutive_gates_met if stopping_cb is not None else None
+        cb.best_mrstft
+        if (cb is not None and cb.best_mrstft is not None and cb.best_mrstft < float("inf"))
+        else None
     )
     epochs_trained = cb.last_epoch + 1 if (cb is not None and cb.last_epoch >= 0) else None
     stop_reason = stopping_cb.stop_reason if stopping_cb is not None else None
@@ -738,11 +651,6 @@ def train_voice(
     best_lite_esr = (
         cb.best_ch3_esr
         if (cb is not None and cb.best_ch3_esr is not None and cb.best_ch3_esr < float("inf"))
-        else None
-    )
-    best_lite_diff_esr = (
-        cb.best_ch3_delta_esr
-        if (cb is not None and cb.best_ch3_delta_esr is not None and cb.best_ch3_delta_esr < float("inf"))
         else None
     )
     best_lite_mrstft = (
@@ -760,20 +668,10 @@ def train_voice(
         raw_meta["validation_esr_ch3"] = best_lite_esr
     if vesr is not None:
         raw_meta["validation_esr_aggregate"] = vesr
-    if best_lite_diff_esr is not None:
-        raw_meta["differential_esr_ch3"] = best_lite_diff_esr
     if best_lite_mrstft is not None:
         raw_meta["mrstft_loss_ch3"] = best_lite_mrstft
-    if best_diff_esr is not None:
-        raw_meta["differential_esr"] = best_diff_esr
     if best_mrstft is not None:
         raw_meta["mrstft_loss"] = best_mrstft
-    if baseline_mrstft is not None:
-        raw_meta["baseline_mrstft"] = baseline_mrstft
-    if best_diff_mrstft is not None:
-        raw_meta["differential_mrstft"] = best_diff_mrstft
-    if consecutive_gates_met is not None:
-        raw_meta["consecutive_gates_met"] = consecutive_gates_met
     if epochs_trained is not None:
         raw_meta["epochs_trained"] = epochs_trained
     if stop_reason is not None:
@@ -869,14 +767,6 @@ def train_voice(
             best_studio_val: float = (
                 cb.best_esr if (cb is not None and cb.best_esr < float("inf")) else vesr_val
             )
-            esr_status = ""
-            if threshold_esr is not None:
-                if best_studio_val <= threshold_esr:
-                    esr_status = (
-                        f" (Goal Met <= {threshold_esr:.6f}, min {min_epochs} epochs observed)"
-                    )
-                else:
-                    esr_status = f" (Safety ceiling reached at {epochs} epochs)"
             ch8_db = 10.0 * math.log10(max(best_studio_val, 1e-12))
             lite_disp = ""
             if best_lite_esr is not None:
@@ -884,15 +774,10 @@ def train_voice(
                 lite_disp = f" | {best_lite_esr:.6f} (A2 Lite Ch3, {lite_db:+.2f} dB)"
             agg_disp = f" | {vesr_val:.6f} (Aggregate)"
             print(
-                f"  Validation ESR: {best_studio_val:.6f} (A2 Full Ch8, {ch8_db:+.2f} dB){lite_disp}{agg_disp}{esr_status}"
+                f"  Validation ESR: {best_studio_val:.6f} (A2 Full Ch8, {ch8_db:+.2f} dB){lite_disp}{agg_disp}"
             )
-            if best_diff_esr is not None:
-                diff_db = 10.0 * math.log10(max(best_diff_esr, 1e-12))
-                print(f"  Differential Delta ESR: {best_diff_esr:.6f} ({diff_db:+.2f} dB)")
             if best_mrstft is not None:
                 print(f"  Validation MRSTFT: {best_mrstft:.6f}")
-            if best_diff_mrstft is not None:
-                print(f"  Differential MRSTFT: {best_diff_mrstft:.4f} (ratio of baseline)")
             if stop_reason:
                 print(f"  Termination:   {stop_reason}")
         print("  Ready for Darkglass Anagram Block 1 (Preamp) loading.")
@@ -904,12 +789,6 @@ def train_voice(
 
 def train_voices_from_config(cli_cfg: NamTrainingConfig) -> bool:
     """Executes NAM model training across configured instruments and voices in-process."""
-    effective_goal_esr = (
-        None
-        if cli_cfg.no_goal_esr or (cli_cfg.goal_esr is not None and cli_cfg.goal_esr <= 0)
-        else cli_cfg.goal_esr
-    )
-
     if cli_cfg.pack:
         from allomorph.pipeline.pack import train_tone_pack
 
@@ -919,16 +798,8 @@ def train_voices_from_config(cli_cfg: NamTrainingConfig) -> bool:
             overwrite=cli_cfg.overwrite,
             epochs=cli_cfg.epochs,
             min_epochs=cli_cfg.min_epochs,
-            goal_esr=effective_goal_esr,
-            goal_delta_esr=cli_cfg.goal_delta_esr,
-            goal_delta_mrstft=cli_cfg.goal_delta_mrstft,
-            max_mrstft_ceiling=cli_cfg.max_mrstft_ceiling,
-            goal_esr_lite=cli_cfg.goal_esr_lite,
-            goal_delta_esr_lite=cli_cfg.goal_delta_esr_lite,
-            goal_delta_mrstft_lite=cli_cfg.goal_delta_mrstft_lite,
-            max_mrstft_ceiling_lite=cli_cfg.max_mrstft_ceiling_lite,
-            consecutive_patience=cli_cfg.consecutive_patience,
             patience=cli_cfg.patience,
+            min_delta=cli_cfg.min_delta,
             batch_size=cli_cfg.batch_size,
             lr_scheduler=cli_cfg.lr_scheduler,
             eta_min=cli_cfg.eta_min,
@@ -965,15 +836,6 @@ def train_voices_from_config(cli_cfg: NamTrainingConfig) -> bool:
                 models_dir=cli_cfg.models_dir,
                 epochs=cli_cfg.epochs,
                 min_epochs=cli_cfg.min_epochs,
-                goal_esr=effective_goal_esr,
-                goal_delta_esr=cli_cfg.goal_delta_esr,
-                goal_delta_mrstft=cli_cfg.goal_delta_mrstft,
-                max_mrstft_ceiling=cli_cfg.max_mrstft_ceiling,
-                goal_esr_lite=cli_cfg.goal_esr_lite,
-                goal_delta_esr_lite=cli_cfg.goal_delta_esr_lite,
-                goal_delta_mrstft_lite=cli_cfg.goal_delta_mrstft_lite,
-                max_mrstft_ceiling_lite=cli_cfg.max_mrstft_ceiling_lite,
-                consecutive_patience=cli_cfg.consecutive_patience,
                 patience=cli_cfg.patience,
                 min_delta=cli_cfg.min_delta,
                 pre_emph_weight=cli_cfg.pre_emph_weight,

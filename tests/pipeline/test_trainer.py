@@ -42,202 +42,95 @@ def test_model_metadata_contains_input_bass():
         pass
 
 
-def test_default_goal_esr():
-    import inspect
-
-    from allomorph.trainer import DEFAULT_GOAL_ESR, train_voice
-
-    assert DEFAULT_GOAL_ESR == 0.0002
-    sig = inspect.signature(train_voice)
-    assert "goal_esr" in sig.parameters
-    assert sig.parameters["goal_esr"].default == DEFAULT_GOAL_ESR
-
-
-def test_default_min_epochs():
-    import inspect
-
-    from allomorph.trainer import DEFAULT_MIN_EPOCHS, train_voice
-
-    assert DEFAULT_MIN_EPOCHS == 5
-    sig = inspect.signature(train_voice)
-    assert "min_epochs" in sig.parameters
-    assert sig.parameters["min_epochs"].default == DEFAULT_MIN_EPOCHS
-
-
-def test_train_nam_cli_goal_esr_parsing():
-    import argparse
-
-    from allomorph.trainer import DEFAULT_GOAL_ESR
-
-    # Test parser construction from train_nam
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--goal-esr", type=float, default=DEFAULT_GOAL_ESR)
-    parser.add_argument("--no-goal-esr", action="store_true")
-
-    # Default case
-    args = parser.parse_args([])
-    effective = (
-        None
-        if args.no_goal_esr or (args.goal_esr is not None and args.goal_esr <= 0)
-        else args.goal_esr
-    )
-    assert effective == 0.00020
-
-    # Custom goal ESR
-    args = parser.parse_args(["--goal-esr", "0.0001"])
-    effective = (
-        None
-        if args.no_goal_esr or (args.goal_esr is not None and args.goal_esr <= 0)
-        else args.goal_esr
-    )
-    assert effective == 0.0001
-
-    # Disabling via --no-goal-esr
-    args = parser.parse_args(["--no-goal-esr"])
-    effective = (
-        None
-        if args.no_goal_esr or (args.goal_esr is not None and args.goal_esr <= 0)
-        else args.goal_esr
-    )
-    assert effective is None
-
-    # Disabling via --goal-esr 0
-    args = parser.parse_args(["--goal-esr", "0"])
-    effective = (
-        None
-        if args.no_goal_esr or (args.goal_esr is not None and args.goal_esr <= 0)
-        else args.goal_esr
-    )
-    assert effective is None
-
-
-def test_train_nam_cli_min_epochs_parsing():
-    import argparse
-
-    from allomorph.trainer import DEFAULT_MIN_EPOCHS
-
-    parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "--min-epochs",
-        "--warmup-epochs",
-        dest="min_epochs",
-        type=int,
-        default=DEFAULT_MIN_EPOCHS,
-    )
-
-    # Default case
-    args = parser.parse_args([])
-    assert args.min_epochs == 5
-
-    # Custom min epochs
-    args = parser.parse_args(["--min-epochs", "160"])
-    assert args.min_epochs == 160
-
-    # Warmup epochs alias
-    args = parser.parse_args(["--warmup-epochs", "100"])
-    assert args.min_epochs == 100
-
-
-def test_train_voice_parameters():
+def test_default_training_hyperparameters():
     import inspect
 
     from allomorph.trainer import (
         DEFAULT_BATCH_SIZE,
-        DEFAULT_CONSECUTIVE_PATIENCE,
         DEFAULT_ETA_MIN,
-        DEFAULT_GOAL_DELTA_ESR,
-        DEFAULT_GOAL_DELTA_ESR_LITE,
-        DEFAULT_GOAL_DELTA_MRSTFT,
-        DEFAULT_GOAL_DELTA_MRSTFT_LITE,
-        DEFAULT_GOAL_ESR,
-        DEFAULT_GOAL_ESR_LITE,
         DEFAULT_LR_SCHEDULER,
         DEFAULT_LR_T_MAX,
-        DEFAULT_MAX_MRSTFT_CEILING,
-        DEFAULT_MAX_MRSTFT_CEILING_LITE,
-        DEFAULT_MRSTFT_WEIGHT,
+        DEFAULT_MAX_EPOCHS,
+        DEFAULT_MIN_DELTA,
+        DEFAULT_MIN_EPOCHS,
         DEFAULT_PATIENCE,
-        DEFAULT_PRE_EMPH_COEF,
-        DEFAULT_PRE_EMPH_WEIGHT,
         train_voice,
     )
 
-    sig = inspect.signature(train_voice)
-    assert "a2_lite_only" not in sig.parameters
-    assert "goal_esr_nano" not in sig.parameters
-    assert sig.parameters["goal_esr"].default == DEFAULT_GOAL_ESR
-    assert sig.parameters["goal_delta_esr"].default == DEFAULT_GOAL_DELTA_ESR
-    assert sig.parameters["goal_delta_mrstft"].default == DEFAULT_GOAL_DELTA_MRSTFT
-    assert sig.parameters["max_mrstft_ceiling"].default == DEFAULT_MAX_MRSTFT_CEILING
-    assert sig.parameters["goal_esr_lite"].default == DEFAULT_GOAL_ESR_LITE
-    assert sig.parameters["goal_delta_esr_lite"].default == DEFAULT_GOAL_DELTA_ESR_LITE
-    assert sig.parameters["goal_delta_mrstft_lite"].default == DEFAULT_GOAL_DELTA_MRSTFT_LITE
-    assert sig.parameters["max_mrstft_ceiling_lite"].default == DEFAULT_MAX_MRSTFT_CEILING_LITE
-    assert sig.parameters["consecutive_patience"].default == DEFAULT_CONSECUTIVE_PATIENCE
-    assert sig.parameters["patience"].default == DEFAULT_PATIENCE
-    assert sig.parameters["pre_emph_weight"].default == DEFAULT_PRE_EMPH_WEIGHT
-    assert sig.parameters["pre_emph_coef"].default == DEFAULT_PRE_EMPH_COEF
-    assert sig.parameters["mrstft_weight"].default == DEFAULT_MRSTFT_WEIGHT
-    assert sig.parameters["lr_scheduler"].default == DEFAULT_LR_SCHEDULER
-    assert sig.parameters["eta_min"].default == DEFAULT_ETA_MIN
-    assert sig.parameters["lr_t_max"].default == DEFAULT_LR_T_MAX
-    assert sig.parameters["batch_size"].default == DEFAULT_BATCH_SIZE
-    assert DEFAULT_PATIENCE == 12
+    assert DEFAULT_MAX_EPOCHS == 35
+    assert DEFAULT_MIN_EPOCHS == 5
+    assert DEFAULT_PATIENCE == 5
+    assert DEFAULT_MIN_DELTA == 2.0e-6
     assert DEFAULT_BATCH_SIZE == 16
-    assert DEFAULT_CONSECUTIVE_PATIENCE == 3
-    assert DEFAULT_GOAL_ESR == 0.00020
-    assert DEFAULT_GOAL_ESR_LITE == 0.00250
-    assert DEFAULT_GOAL_DELTA_ESR_LITE == 0.080
-    assert DEFAULT_GOAL_DELTA_MRSTFT == 0.50
-    assert DEFAULT_MAX_MRSTFT_CEILING == 0.320
-    assert DEFAULT_GOAL_DELTA_MRSTFT_LITE == 0.75
-    assert DEFAULT_MAX_MRSTFT_CEILING_LITE == 0.450
     assert DEFAULT_LR_SCHEDULER == "cosine"
     assert DEFAULT_ETA_MIN == 1e-5
     assert DEFAULT_LR_T_MAX == 35
 
+    sig = inspect.signature(train_voice)
+    assert sig.parameters["epochs"].default == DEFAULT_MAX_EPOCHS
+    assert sig.parameters["min_epochs"].default == DEFAULT_MIN_EPOCHS
+    assert sig.parameters["patience"].default == DEFAULT_PATIENCE
+    assert sig.parameters["min_delta"].default == DEFAULT_MIN_DELTA
 
-def test_train_nam_cli_triple_gate_and_cosine_parsing():
+    # Verify legacy parameters are eliminated
+    for legacy_param in [
+        "goal_esr",
+        "goal_delta_esr",
+        "goal_delta_mrstft",
+        "max_mrstft_ceiling",
+        "goal_esr_lite",
+        "goal_delta_esr_lite",
+        "goal_delta_mrstft_lite",
+        "max_mrstft_ceiling_lite",
+        "consecutive_patience",
+        "a2_lite_only",
+        "goal_esr_nano",
+    ]:
+        assert legacy_param not in sig.parameters
+
+
+def test_train_nam_cli_schedule_and_patience_parsing():
     import argparse
 
     from allomorph.trainer import (
         DEFAULT_BATCH_SIZE,
-        DEFAULT_CONSECUTIVE_PATIENCE,
         DEFAULT_ETA_MIN,
-        DEFAULT_GOAL_DELTA_MRSTFT,
         DEFAULT_LR_SCHEDULER,
         DEFAULT_LR_T_MAX,
-        DEFAULT_MAX_MRSTFT_CEILING,
+        DEFAULT_MAX_EPOCHS,
+        DEFAULT_MIN_DELTA,
+        DEFAULT_MIN_EPOCHS,
+        DEFAULT_PATIENCE,
+        add_trainer_arguments,
     )
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("--batch-size", type=int, default=DEFAULT_BATCH_SIZE)
-    parser.add_argument("--goal-delta-mrstft", type=float, default=DEFAULT_GOAL_DELTA_MRSTFT)
-    parser.add_argument("--max-mrstft-ceiling", type=float, default=DEFAULT_MAX_MRSTFT_CEILING)
-    parser.add_argument("--consecutive-patience", type=int, default=DEFAULT_CONSECUTIVE_PATIENCE)
-    parser.add_argument("--lr-scheduler", default=DEFAULT_LR_SCHEDULER)
-    parser.add_argument("--eta-min", type=float, default=DEFAULT_ETA_MIN)
-    parser.add_argument("--lr-t-max", type=int, default=DEFAULT_LR_T_MAX)
+    add_trainer_arguments(parser)
 
+    # Default parsing
     args = parser.parse_args([])
-    assert args.batch_size == 16
-    assert args.goal_delta_mrstft == 0.50
-    assert args.max_mrstft_ceiling == 0.320
-    assert args.consecutive_patience == 3
-    assert args.lr_scheduler == "cosine"
-    assert args.eta_min == 1e-5
-    assert args.lr_t_max == 35
+    assert args.epochs == DEFAULT_MAX_EPOCHS
+    assert args.min_epochs == DEFAULT_MIN_EPOCHS
+    assert args.patience == DEFAULT_PATIENCE
+    assert args.min_delta == DEFAULT_MIN_DELTA
+    assert args.batch_size == DEFAULT_BATCH_SIZE
+    assert args.lr_scheduler == DEFAULT_LR_SCHEDULER
+    assert args.eta_min == DEFAULT_ETA_MIN
+    assert args.lr_t_max == DEFAULT_LR_T_MAX
 
+    # Custom parsing
     custom_args = parser.parse_args(
         [
+            "--epochs",
+            "40",
+            "--min-epochs",
+            "8",
+            "--patience",
+            "7",
+            "--min-delta",
+            "1e-5",
             "--batch-size",
             "32",
-            "--goal-delta-mrstft",
-            "0.40",
-            "--max-mrstft-ceiling",
-            "0.280",
-            "--consecutive-patience",
-            "4",
             "--lr-scheduler",
             "exponential",
             "--eta-min",
@@ -246,57 +139,14 @@ def test_train_nam_cli_triple_gate_and_cosine_parsing():
             "40",
         ]
     )
+    assert custom_args.epochs == 40
+    assert custom_args.min_epochs == 8
+    assert custom_args.patience == 7
+    assert custom_args.min_delta == 1e-5
     assert custom_args.batch_size == 32
-    assert custom_args.goal_delta_mrstft == 0.40
-    assert custom_args.max_mrstft_ceiling == 0.280
-    assert custom_args.consecutive_patience == 4
     assert custom_args.lr_scheduler == "exponential"
     assert custom_args.eta_min == 1e-6
     assert custom_args.lr_t_max == 40
-
-
-def test_train_nam_lite_cli_parsing():
-    import argparse
-
-    from allomorph.trainer import (
-        DEFAULT_GOAL_DELTA_ESR_LITE,
-        DEFAULT_GOAL_DELTA_MRSTFT_LITE,
-        DEFAULT_GOAL_ESR_LITE,
-        DEFAULT_MAX_MRSTFT_CEILING_LITE,
-    )
-
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--goal-esr-lite", type=float, default=DEFAULT_GOAL_ESR_LITE)
-    parser.add_argument("--goal-delta-esr-lite", type=float, default=DEFAULT_GOAL_DELTA_ESR_LITE)
-    parser.add_argument(
-        "--goal-delta-mrstft-lite", type=float, default=DEFAULT_GOAL_DELTA_MRSTFT_LITE
-    )
-    parser.add_argument(
-        "--max-mrstft-ceiling-lite", type=float, default=DEFAULT_MAX_MRSTFT_CEILING_LITE
-    )
-
-    args = parser.parse_args([])
-    assert args.goal_esr_lite == 0.00250
-    assert args.goal_delta_esr_lite == 0.080
-    assert args.goal_delta_mrstft_lite == 0.75
-    assert args.max_mrstft_ceiling_lite == 0.450
-
-    custom = parser.parse_args(
-        [
-            "--goal-esr-lite",
-            "0.0030",
-            "--goal-delta-esr-lite",
-            "0.090",
-            "--goal-delta-mrstft-lite",
-            "0.80",
-            "--max-mrstft-ceiling-lite",
-            "0.500",
-        ]
-    )
-    assert custom.goal_esr_lite == 0.0030
-    assert custom.goal_delta_esr_lite == 0.090
-    assert custom.goal_delta_mrstft_lite == 0.80
-    assert custom.max_mrstft_ceiling_lite == 0.500
 
 
 def test_configure_a2_architecture():
@@ -433,31 +283,20 @@ def test_linear_warmup_monotonic_floor_clamp():
 
 def test_esr_progress_callback_hook():
     import nam.train.core as nam_core
-    import torch
 
     from allomorph.trainer import configure_a2_architecture
 
-    # Test slimmable mode early stopping monitors ESR_packed_1 (channels_8)
+    # Test slimmable mode early stopping monitors composite val_loss
     configure_a2_architecture(
         nam_core,
         min_epochs=5,
-        goal_esr=0.00020,
-        goal_delta_esr=0.020,
-        goal_delta_mrstft=0.50,
-        max_mrstft_ceiling=0.320,
-        goal_esr_lite=0.00250,
-        goal_delta_esr_lite=0.080,
-        goal_delta_mrstft_lite=0.75,
-        max_mrstft_ceiling_lite=0.450,
-        consecutive_patience=3,
-        patience=12,
+        patience=5,
+        min_delta=2.0e-6,
     )
-    callbacks = nam_core.get_callbacks(threshold_esr=0.00020)
+    callbacks = nam_core.get_callbacks(None)
 
     cb: Any = next((c for c in callbacks if "EsrProgressCallback" in type(c).__name__), None)
     assert cb is not None
-    assert cb.target_esr == 0.00020
-    assert cb.target_delta_esr == 0.020
     assert cb.min_epochs == 5
 
     warmup_cb: Any = next((c for c in callbacks if "LinearWarmupCallback" in type(c).__name__), None)
@@ -465,30 +304,15 @@ def test_esr_progress_callback_hook():
 
     stopping_cb: Any = next((c for c in callbacks if "AllomorphAdaptiveStopping" in type(c).__name__), None)
     assert stopping_cb is not None
-    assert stopping_cb.monitor == "ESR_packed_1"
-    assert stopping_cb.stopping_threshold == 0.00020
-    assert stopping_cb.goal_esr == 0.00020
-    assert stopping_cb.goal_delta_esr == 0.020
-    assert stopping_cb.goal_delta_mrstft == 0.50
-    assert stopping_cb.max_mrstft_ceiling == 0.320
-    assert stopping_cb.goal_esr_lite == 0.00250
-    assert stopping_cb.goal_delta_esr_lite == 0.080
-    assert stopping_cb.goal_delta_mrstft_lite == 0.75
-    assert stopping_cb.max_mrstft_ceiling_lite == 0.450
-    assert stopping_cb.consecutive_patience == 3
-    assert stopping_cb.min_epochs == 5
+    assert stopping_cb.monitor == "val_loss"
     assert stopping_cb.warmup_floor == 5
-    assert stopping_cb.patience == 12
-
-    # Test threshold_esr=None adds no stopping callback
-    callbacks_none = nam_core.get_callbacks(threshold_esr=None)
-    assert not any("AllomorphAdaptiveStopping" in type(c).__name__ for c in callbacks_none)
+    assert stopping_cb.patience == 5
+    assert stopping_cb.min_delta == 2.0e-6
 
     # Re-test slimmable validation epoch end with dual submodel metrics
     configure_a2_architecture(nam_core, min_epochs=5)
-    callbacks = nam_core.get_callbacks(threshold_esr=0.00020)
+    callbacks = nam_core.get_callbacks(None)
     cb: Any = next(c for c in callbacks if "EsrProgressCallback" in type(c).__name__)
-    vs_cb: Any = next(c for c in callbacks if "AllomorphAdaptiveStopping" in type(c).__name__)
 
     class DummyTrainer:
         def __init__(self) -> None:
@@ -496,17 +320,16 @@ def test_esr_progress_callback_hook():
             self.callback_metrics = {
                 "ESR_packed_1": 0.0005,
                 "ESR_packed_0": 0.0008,
-                "ESR": 0.0013,
+                "val_loss": 0.0013,
                 "MRSTFT_packed_1": 0.25,
             }
             self.progress_bar_metrics: dict[str, str] = {}
             self.current_epoch = 12
-            self.max_epochs = 400
+            self.max_epochs = 35
 
     trainer: Any = DummyTrainer()
     dummy_pl_module: Any = None
     cb.on_validation_epoch_end(trainer, dummy_pl_module)
-    assert trainer.progress_bar_metrics["val_ESR"] == "0.00050"
     assert trainer.progress_bar_metrics["val_ESR_ch8"] == "0.00050"
     assert trainer.progress_bar_metrics["val_ESR_ch3"] == "0.00080"
     assert trainer.progress_bar_metrics["best_ESR"] == "0.00050"
@@ -514,75 +337,9 @@ def test_esr_progress_callback_hook():
     assert cb.best_ch3_esr == 0.0008
     assert cb.best_mrstft == 0.25
 
-    # Test Triple-Gate early stopping logic
-    class DummyStrategy:
-        @staticmethod
-        def reduce_boolean_decision(decision: bool, all: bool = False) -> bool:
-            return decision
 
-    class EarlyStoppingTestTrainer:
-        def __init__(
-            self,
-            current_epoch: int,
-            esr_val: float,
-            mrstft_val: float = 0.15,
-            esr_ch3_val: float = 0.0008,
-            mrstft_ch3_val: float = 0.20,
-        ) -> None:
-            self.fast_dev_run = False
-            self.current_epoch = current_epoch
-            self.should_stop = False
-            self.callback_metrics = {
-                "ESR_packed_1": torch.tensor(esr_val),
-                "MRSTFT_packed_1": torch.tensor(mrstft_val),
-                "ESR_packed_0": torch.tensor(esr_ch3_val),
-                "MRSTFT_packed_0": torch.tensor(mrstft_ch3_val),
-            }
-            self.strategy = DummyStrategy()
-
-    # 1. Warmup floor: at epoch 3 (< 5), stopping suppressed even if all gates pass
-    trainer_early = EarlyStoppingTestTrainer(current_epoch=3, esr_val=0.00005, mrstft_val=0.10)
-    vs_cb._run_early_stopping_check(trainer_early)
-    assert trainer_early.should_stop is False
-    assert vs_cb.consecutive_gates_met == 0
-
-    # 2. Triple-gate check: baseline_delta_ratio=0.015, baseline_mrstft=0.400
-    # Epoch 5: Studio Gate 1: esr 0.00015 <= 0.00020
-    #          Studio Gate 2: delta 0.00015 / 0.015 = 0.010 <= 0.020
-    #          Studio Gate 3: MRSTFT 0.15 / 0.400 = 0.375 <= 0.50 AND 0.15 <= 0.320
-    #          A2 Lite Gate 4: esr 0.0008 <= 0.00250
-    #          A2 Lite Gate 5: delta 0.0008 / 0.015 = 0.0533 <= 0.080
-    #          A2 Lite Gate 6: MRSTFT 0.20 / 0.400 = 0.50 <= 0.75 AND 0.20 <= 0.450
-    # 1st consecutive pass -> consecutive_gates_met = 1, should_stop = False
-    trainer_pass1 = EarlyStoppingTestTrainer(current_epoch=5, esr_val=0.00015, mrstft_val=0.15, esr_ch3_val=0.0008)
-    vs_cb._run_early_stopping_check(trainer_pass1)
-    assert trainer_pass1.should_stop is False
-    assert vs_cb.consecutive_gates_met == 1
-
-    # Epoch 6: 2nd consecutive pass -> consecutive_gates_met = 2, should_stop = False
-    trainer_pass2 = EarlyStoppingTestTrainer(current_epoch=6, esr_val=0.00014, mrstft_val=0.14, esr_ch3_val=0.0007)
-    vs_cb._run_early_stopping_check(trainer_pass2)
-    assert trainer_pass2.should_stop is False
-    assert vs_cb.consecutive_gates_met == 2
-
-    # Epoch 7: 3rd consecutive pass -> consecutive_gates_met = 3 >= 3 -> should_stop = True!
-    trainer_pass3 = EarlyStoppingTestTrainer(current_epoch=7, esr_val=0.00013, mrstft_val=0.13, esr_ch3_val=0.0006)
-    vs_cb._run_early_stopping_check(trainer_pass3)
-    assert trainer_pass3.should_stop is True
-    assert vs_cb.stop_reason == "dual_triple_gate_converged"
-
-    # 3. Consecutive gate reset if any gate fails:
-    vs_cb.consecutive_gates_met = 2
-    trainer_fail_mrstft = EarlyStoppingTestTrainer(current_epoch=8, esr_val=0.00013, mrstft_val=0.25)  # 0.25 / 0.40 = 0.625 > 0.50
-    vs_cb._run_early_stopping_check(trainer_fail_mrstft)
-    assert trainer_fail_mrstft.should_stop is False
-    assert vs_cb.consecutive_gates_met == 0
-
-
-def test_triple_gate_stopping_nuance_preservation():
-    """Verify that subtle voicings with small baseline distance (e.g. M_base = 0.05)
-    strictly require MRSTFT to close by >50% (MRSTFT <= 0.025) and do not early exit prematurely.
-    """
+def test_adaptive_stopping_composite_val_loss_plateau():
+    """Verify adaptive diminishing-returns early exit on composite val_loss (Full + Lite)."""
     import nam.train.core as nam_core
     import torch
 
@@ -591,60 +348,52 @@ def test_triple_gate_stopping_nuance_preservation():
     configure_a2_architecture(
         nam_core,
         min_epochs=5,
-        goal_esr=0.00020,
-        goal_delta_esr=0.020,
-        goal_delta_mrstft=0.50,
-        max_mrstft_ceiling=0.320,
-        goal_esr_lite=0.00250,
-        goal_delta_esr_lite=0.080,
-        goal_delta_mrstft_lite=0.75,
-        max_mrstft_ceiling_lite=0.450,
-        consecutive_patience=1,
+        patience=5,
+        min_delta=2.0e-6,
     )
-    callbacks = nam_core.get_callbacks(threshold_esr=0.00020)
+    callbacks = nam_core.get_callbacks(None)
     vs_cb: Any = next(c for c in callbacks if "AllomorphAdaptiveStopping" in type(c).__name__)
-
-    # Set subtle baseline: baseline_delta_ratio=0.010, baseline_mrstft=0.05
-    vs_cb.baseline_delta_ratio = 0.010
-    vs_cb.baseline_mrstft = 0.05
-    vs_cb.consecutive_patience = 1
-
-    class DummyStrategy:
-        @staticmethod
-        def reduce_boolean_decision(decision: bool, all: bool = False) -> bool:
-            return decision
 
     class EarlyStoppingTestTrainer:
         def __init__(
             self,
             current_epoch: int,
             esr_val: float,
-            mrstft_val: float,
-            esr_ch3_val: float = 0.0005,
-            mrstft_ch3_val: float = 0.020,
+            esr_ch3_val: float,
+            val_loss: float,
         ) -> None:
             self.fast_dev_run = False
             self.current_epoch = current_epoch
             self.should_stop = False
             self.callback_metrics = {
                 "ESR_packed_1": torch.tensor(esr_val),
-                "MRSTFT_packed_1": torch.tensor(mrstft_val),
                 "ESR_packed_0": torch.tensor(esr_ch3_val),
-                "MRSTFT_packed_0": torch.tensor(mrstft_ch3_val),
+                "val_loss": torch.tensor(val_loss),
             }
-            self.strategy = DummyStrategy()
 
-    # ESR passes (0.00010 <= 0.00020), Delta ESR passes (0.00010/0.010 = 0.010 <= 0.020)
-    # MRSTFT is 0.035: ratio = 0.035 / 0.05 = 0.70 > 0.50 -> Gate 3 FAILS!
-    t_fail = EarlyStoppingTestTrainer(current_epoch=10, esr_val=0.00010, mrstft_val=0.035)
-    vs_cb._run_early_stopping_check(t_fail)
-    assert t_fail.should_stop is False
+    # 1. Warmup floor: epoch 3 (< 5) suppresses stopping even if loss is completely flat
+    t_warmup = EarlyStoppingTestTrainer(current_epoch=3, esr_val=0.001, esr_ch3_val=0.002, val_loss=0.003)
+    vs_cb._run_early_stopping_check(t_warmup)
+    assert t_warmup.should_stop is False
 
-    # Now MRSTFT is 0.022: ratio = 0.022 / 0.05 = 0.44 <= 0.50 -> Gate 3 PASSES!
-    t_pass = EarlyStoppingTestTrainer(current_epoch=11, esr_val=0.00010, mrstft_val=0.022)
-    vs_cb._run_early_stopping_check(t_pass)
-    assert t_pass.should_stop is True
-    assert vs_cb.stop_reason == "dual_triple_gate_converged"
+    # 2. Steady improvement post-warmup: loss continues dropping significantly
+    losses = [0.0020, 0.0015, 0.0012, 0.0010, 0.0008, 0.0006]
+    for ep, l in enumerate(losses, start=4):
+        t_prog = EarlyStoppingTestTrainer(current_epoch=ep, esr_val=l * 0.4, esr_ch3_val=l * 0.6, val_loss=l)
+        vs_cb._run_early_stopping_check(t_prog)
+        assert t_prog.should_stop is False
+
+    # 3. Plateau: 5 epochs with virtually identical composite loss (< min_delta improvement)
+    plateau_losses = [0.000500, 0.000499, 0.000501, 0.000500, 0.000499]
+    for ep, l in enumerate(plateau_losses, start=10):
+        t_plat = EarlyStoppingTestTrainer(current_epoch=ep, esr_val=l * 0.4, esr_ch3_val=l * 0.6, val_loss=l)
+        vs_cb._run_early_stopping_check(t_plat)
+        if ep == 14:
+            # 5th plateau epoch triggers diminishing-returns exit
+            assert t_plat.should_stop is True
+            assert vs_cb.stop_reason == "diminishing_returns_plateau"
+        else:
+            assert t_plat.should_stop is False
 
 
 def test_train_nam_cli_pack_and_overwrite_parsing():

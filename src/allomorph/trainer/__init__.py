@@ -17,21 +17,10 @@ from allomorph.trainer.callbacks import (
 from allomorph.trainer.constants import (
     DEFAULT_ARCHITECTURE,
     DEFAULT_BATCH_SIZE,
-    DEFAULT_CONSECUTIVE_PATIENCE,
-    DEFAULT_ESR_TARGET,
-    DEFAULT_ESR_THRESHOLD,
     DEFAULT_ETA_MIN,
-    DEFAULT_GOAL_DELTA_ESR,
-    DEFAULT_GOAL_DELTA_ESR_LITE,
-    DEFAULT_GOAL_DELTA_MRSTFT,
-    DEFAULT_GOAL_DELTA_MRSTFT_LITE,
-    DEFAULT_GOAL_ESR,
-    DEFAULT_GOAL_ESR_LITE,
     DEFAULT_LR_SCHEDULER,
     DEFAULT_LR_T_MAX,
     DEFAULT_MAX_EPOCHS,
-    DEFAULT_MAX_MRSTFT_CEILING,
-    DEFAULT_MAX_MRSTFT_CEILING_LITE,
     DEFAULT_MIN_DELTA,
     DEFAULT_MIN_EPOCHS,
     DEFAULT_MRSTFT_FFT_SIZES,
@@ -39,8 +28,6 @@ from allomorph.trainer.constants import (
     DEFAULT_PATIENCE,
     DEFAULT_PRE_EMPH_COEF,
     DEFAULT_PRE_EMPH_WEIGHT,
-    DEFAULT_SLOPE_TOLERANCE,
-    DEFAULT_SLOPE_WINDOW,
 )
 from allomorph.trainer.core import (
     AUDIO_DIR,
@@ -107,7 +94,7 @@ def add_trainer_arguments(parser: argparse.ArgumentParser) -> None:
         "--epochs",
         type=int,
         default=DEFAULT_MAX_EPOCHS,
-        help=f"Maximum number of training epochs (default: {DEFAULT_MAX_EPOCHS} for Architecture 2 studio reference)",
+        help=f"Maximum number of training epochs (default: {DEFAULT_MAX_EPOCHS} for Architecture 2 schedule)",
     )
     _add_arg(
         "--min-epochs",
@@ -118,40 +105,10 @@ def add_trainer_arguments(parser: argparse.ArgumentParser) -> None:
         help=f"Minimum warmup training epochs before early stopping can trigger (default: {DEFAULT_MIN_EPOCHS})",
     )
     _add_arg(
-        "--goal-esr",
-        type=float,
-        default=DEFAULT_GOAL_ESR,
-        help=f"Goal validation ESR for early stopping (default: {DEFAULT_GOAL_ESR} for Architecture 2 studio reference; set to 0 to disable)",
-    )
-    _add_arg(
-        "--goal-delta-esr",
-        type=float,
-        default=DEFAULT_GOAL_DELTA_ESR,
-        help=f"Goal validation Differential Delta ESR on pickup delta (default: {DEFAULT_GOAL_DELTA_ESR}; set to 0 to disable)",
-    )
-    _add_arg(
-        "--goal-delta-mrstft",
-        type=float,
-        default=DEFAULT_GOAL_DELTA_MRSTFT,
-        help=f"Gate 3: Goal MRSTFT ratio relative to baseline (default: {DEFAULT_GOAL_DELTA_MRSTFT}; set to 0 to disable)",
-    )
-    _add_arg(
-        "--max-mrstft-ceiling",
-        type=float,
-        default=DEFAULT_MAX_MRSTFT_CEILING,
-        help=f"Gate 3: Absolute MRSTFT ceiling (default: {DEFAULT_MAX_MRSTFT_CEILING})",
-    )
-    _add_arg(
-        "--consecutive-patience",
-        type=int,
-        default=DEFAULT_CONSECUTIVE_PATIENCE,
-        help=f"Consecutive validation epochs satisfying all 3 gates before early exit (default: {DEFAULT_CONSECUTIVE_PATIENCE})",
-    )
-    _add_arg(
         "--patience",
         type=int,
         default=DEFAULT_PATIENCE,
-        help=f"Plateau patience epochs for early stopping (default: {DEFAULT_PATIENCE}; set to 0 to disable)",
+        help=f"Adaptive diminishing-returns plateau patience epochs on composite val_loss (default: {DEFAULT_PATIENCE}; set to 0 to disable)",
     )
     _add_arg(
         "--min-delta",
@@ -200,42 +157,13 @@ def add_trainer_arguments(parser: argparse.ArgumentParser) -> None:
         "--reference-wav",
         dest="reference_wav",
         default=None,
-        help="Path to reference source stem for differential delta ESR (default: auto-detected from source pickup)",
-    )
-    _add_arg(
-        "--no-goal-esr",
-        action="store_true",
-        help="Disable goal ESR early stopping and train for the exact number of epochs specified",
+        help="Path to reference source stem for differential comparison (default: auto-detected from source pickup)",
     )
     _add_arg(
         "--batch-size",
         type=int,
         default=DEFAULT_BATCH_SIZE,
         help=f"Batch size (default: {DEFAULT_BATCH_SIZE})",
-    )
-    _add_arg(
-        "--goal-esr-lite",
-        type=float,
-        default=DEFAULT_GOAL_ESR_LITE,
-        help=f"Gate 4: Goal validation ESR for A2 Lite tier (channels_3) (default: {DEFAULT_GOAL_ESR_LITE}; set to 0 to disable)",
-    )
-    _add_arg(
-        "--goal-delta-esr-lite",
-        type=float,
-        default=DEFAULT_GOAL_DELTA_ESR_LITE,
-        help=f"Gate 5: Goal validation Differential Delta ESR on pickup delta for A2 Lite tier (default: {DEFAULT_GOAL_DELTA_ESR_LITE}; set to 0 to disable)",
-    )
-    _add_arg(
-        "--goal-delta-mrstft-lite",
-        type=float,
-        default=DEFAULT_GOAL_DELTA_MRSTFT_LITE,
-        help=f"Gate 6: Goal MRSTFT ratio relative to baseline for A2 Lite tier (default: {DEFAULT_GOAL_DELTA_MRSTFT_LITE}; set to 0 to disable)",
-    )
-    _add_arg(
-        "--max-mrstft-ceiling-lite",
-        type=float,
-        default=DEFAULT_MAX_MRSTFT_CEILING_LITE,
-        help=f"Gate 6: Absolute MRSTFT ceiling for A2 Lite tier (default: {DEFAULT_MAX_MRSTFT_CEILING_LITE})",
     )
     _add_arg(
         "--show-plot",
@@ -323,15 +251,6 @@ def main(argv: Sequence[str] | None = None) -> int:
             "models_dir": getattr(args, "models_dir", str(MODELS_DIR)),
             "epochs": getattr(args, "epochs", DEFAULT_MAX_EPOCHS),
             "min_epochs": getattr(args, "min_epochs", DEFAULT_MIN_EPOCHS),
-            "goal_esr": getattr(args, "goal_esr", DEFAULT_GOAL_ESR),
-            "goal_delta_esr": getattr(args, "goal_delta_esr", DEFAULT_GOAL_DELTA_ESR),
-            "goal_delta_mrstft": getattr(args, "goal_delta_mrstft", DEFAULT_GOAL_DELTA_MRSTFT),
-            "max_mrstft_ceiling": getattr(args, "max_mrstft_ceiling", DEFAULT_MAX_MRSTFT_CEILING),
-            "goal_esr_lite": getattr(args, "goal_esr_lite", DEFAULT_GOAL_ESR_LITE),
-            "goal_delta_esr_lite": getattr(args, "goal_delta_esr_lite", DEFAULT_GOAL_DELTA_ESR_LITE),
-            "goal_delta_mrstft_lite": getattr(args, "goal_delta_mrstft_lite", DEFAULT_GOAL_DELTA_MRSTFT_LITE),
-            "max_mrstft_ceiling_lite": getattr(args, "max_mrstft_ceiling_lite", DEFAULT_MAX_MRSTFT_CEILING_LITE),
-            "consecutive_patience": getattr(args, "consecutive_patience", DEFAULT_CONSECUTIVE_PATIENCE),
             "patience": getattr(args, "patience", DEFAULT_PATIENCE),
             "min_delta": getattr(args, "min_delta", DEFAULT_MIN_DELTA),
             "pre_emph_weight": getattr(args, "pre_emph_weight", DEFAULT_PRE_EMPH_WEIGHT),
@@ -340,7 +259,6 @@ def main(argv: Sequence[str] | None = None) -> int:
             "lr_scheduler": getattr(args, "lr_scheduler", DEFAULT_LR_SCHEDULER),
             "eta_min": getattr(args, "eta_min", DEFAULT_ETA_MIN),
             "lr_t_max": getattr(args, "lr_t_max", DEFAULT_LR_T_MAX),
-            "no_goal_esr": getattr(args, "no_goal_esr", False),
             "batch_size": getattr(args, "batch_size", DEFAULT_BATCH_SIZE),
             "show_plot": getattr(args, "show_plot", False),
             "save_plot": getattr(args, "save_plot", False),
@@ -372,22 +290,11 @@ __all__ = [
     "AUDIO_DIR",
     "DEFAULT_ARCHITECTURE",
     "DEFAULT_BATCH_SIZE",
-    "DEFAULT_CONSECUTIVE_PATIENCE",
-    "DEFAULT_ESR_TARGET",
-    "DEFAULT_ESR_THRESHOLD",
     "DEFAULT_ETA_MIN",
-    "DEFAULT_GOAL_DELTA_ESR",
-    "DEFAULT_GOAL_DELTA_ESR_LITE",
-    "DEFAULT_GOAL_DELTA_MRSTFT",
-    "DEFAULT_GOAL_DELTA_MRSTFT_LITE",
-    "DEFAULT_GOAL_ESR",
-    "DEFAULT_GOAL_ESR_LITE",
     "DEFAULT_INPUT_PATH",
     "DEFAULT_LR_SCHEDULER",
     "DEFAULT_LR_T_MAX",
     "DEFAULT_MAX_EPOCHS",
-    "DEFAULT_MAX_MRSTFT_CEILING",
-    "DEFAULT_MAX_MRSTFT_CEILING_LITE",
     "DEFAULT_MIN_DELTA",
     "DEFAULT_MIN_EPOCHS",
     "DEFAULT_MRSTFT_FFT_SIZES",
@@ -395,8 +302,6 @@ __all__ = [
     "DEFAULT_PATIENCE",
     "DEFAULT_PRE_EMPH_COEF",
     "DEFAULT_PRE_EMPH_WEIGHT",
-    "DEFAULT_SLOPE_TOLERANCE",
-    "DEFAULT_SLOPE_WINDOW",
     "MODELS_DIR",
     "AllomorphAdaptiveStopping",
     "EsrProgressCallback",
