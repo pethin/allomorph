@@ -49,9 +49,11 @@ from allomorph.trainer.constants import (
     DEFAULT_MIN_DELTA,
     DEFAULT_MIN_EPOCHS,
     DEFAULT_MRSTFT_WEIGHT,
+    DEFAULT_NUM_WORKERS,
     DEFAULT_PATIENCE,
     DEFAULT_PRE_EMPH_COEF,
     DEFAULT_PRE_EMPH_WEIGHT,
+    DEFAULT_PRECISION,
 )
 from allomorph.version import (
     ALLOMORPH_VERSION,
@@ -126,6 +128,80 @@ def setup_headless_environment() -> None:
 
 
 setup_headless_environment()
+
+
+def get_hardware_device_name() -> str:
+    """Returns human-readable name of active accelerator or CPU."""
+    try:
+        import torch
+
+        if torch.cuda.is_available():
+            return str(torch.cuda.get_device_name(0))
+        if hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
+            return "Apple Silicon (MPS)"
+        return "CPU"
+    except (ImportError, RuntimeError):
+        return "CPU"
+
+
+def resolve_hardware_batch_size(
+    batch_size: int | str = DEFAULT_BATCH_SIZE,
+    num_train_samples: int = 1350,
+) -> int:
+    """Dynamically resolves optimal batch size balancing GPU VRAM and gradient update density."""
+    if isinstance(batch_size, int) and batch_size > 0:
+        return batch_size
+    if isinstance(batch_size, str) and batch_size.isdigit():
+        return int(batch_size)
+
+    try:
+        import torch
+
+        if torch.cuda.is_available():
+            _free, total_bytes = torch.cuda.mem_get_info()
+            total_gb = total_bytes / (1024**3)
+            # High-end GPU (e.g. RX 9070 XT 16GB, RTX 4080/4090): 32
+            # Yields ~42 batches/epoch, optimal 17.4s epoch speed
+            if total_gb >= 12.0:
+                return 32
+            if total_gb >= 6.0:
+                return 16
+            return 8
+        if hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
+            total_ram_gb = (os.sysconf("SC_PAGE_SIZE") * os.sysconf("SC_PHYS_PAGES")) / (1024**3)
+            return 32 if total_ram_gb >= 32.0 else 16
+        return 8
+    except (ImportError, RuntimeError, OSError):
+        return 16
+
+
+def resolve_hardware_precision(precision: str = DEFAULT_PRECISION) -> str:
+    """Dynamically resolves PyTorch Lightning precision based on device capabilities."""
+    if precision != "auto":
+        return precision
+
+    try:
+        import torch
+
+        if torch.cuda.is_available():
+            if hasattr(torch.cuda, "is_bf16_supported") and torch.cuda.is_bf16_supported():
+                return "bf16-mixed"
+            return "16-mixed"
+        if hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
+            return "32-true"
+        return "32-true"
+    except (ImportError, RuntimeError):
+        return "32-true"
+
+
+def resolve_hardware_num_workers(num_workers: int | str = DEFAULT_NUM_WORKERS) -> int:
+    """Dynamically resolves DataLoader num_workers for audio datasets."""
+    if isinstance(num_workers, int) and num_workers >= 0:
+        return num_workers
+    if isinstance(num_workers, str) and num_workers.isdigit():
+        return int(num_workers)
+    # Default auto: in-memory contiguous tensor dataset yields zero-copy main-thread slicing
+    return 0
 
 
 def find_sweep_input(
@@ -245,6 +321,8 @@ def configure_a2_architecture(
     lr_scheduler: str = DEFAULT_LR_SCHEDULER,
     eta_min: float = DEFAULT_ETA_MIN,
     lr_t_max: int = DEFAULT_LR_T_MAX,
+    precision: str = DEFAULT_PRECISION,
+    num_workers: int | str = DEFAULT_NUM_WORKERS,
     reference_wav: str | Path | None = None,
     output_wav: str | Path | None = None,
 ) -> None:
@@ -254,6 +332,9 @@ def configure_a2_architecture(
     Injects pre-emphasis loss (alpha=0.85) and MRSTFT (0.0010) to equalize high-frequency pickup resonance gradients.
     Hooks LinearWarmupCallback (5 epochs) and AllomorphAdaptiveStopping (composite val_loss plateau).
     """
+    resolved_precision = resolve_hardware_precision(precision)
+    resolved_workers = resolve_hardware_num_workers(num_workers)
+
     try:
         import torch
 
@@ -261,7 +342,7 @@ def configure_a2_architecture(
             torch.set_float32_matmul_precision("high")
 
         if hasattr(torch, "backends") and hasattr(torch.backends, "cudnn"):
-            torch.backends.cudnn.benchmark = False
+            torch.backends.cudnn.benchmark = torch.cuda.is_available()
     except ImportError:
         pass
 
@@ -352,6 +433,25 @@ def configure_a2_architecture(
 
     nam_core._get_packed_model_config = get_configured_packed_model_config
 
+    orig_get_configs = getattr(
+        nam_core, "_orig_get_configs", getattr(nam_core, "_get_configs", None)
+    )
+    if orig_get_configs is not None:
+        nam_core._orig_get_configs = orig_get_configs
+
+        def patched_get_configs(
+            *args: Any, **kwargs: Any
+        ) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]]:
+            data_config, model_config, learning_config = orig_get_configs(*args, **kwargs)
+            if resolved_precision in ("bf16-mixed", "16-mixed", "32-true", "32"):
+                learning_config["trainer"]["precision"] = resolved_precision
+            learning_config["train_dataloader"]["num_workers"] = resolved_workers
+            if resolved_workers > 0:
+                learning_config["train_dataloader"]["persistent_workers"] = True
+            return data_config, model_config, learning_config
+
+        nam_core._get_configs = patched_get_configs
+
     orig_get_callbacks = getattr(nam_core, "_orig_get_callbacks", nam_core.get_callbacks)
     nam_core._orig_get_callbacks = orig_get_callbacks
 
@@ -413,7 +513,9 @@ def train_voice(
     lr_scheduler: str = DEFAULT_LR_SCHEDULER,
     eta_min: float = DEFAULT_ETA_MIN,
     lr_t_max: int = DEFAULT_LR_T_MAX,
-    batch_size: int = DEFAULT_BATCH_SIZE,
+    batch_size: int | str = DEFAULT_BATCH_SIZE,
+    precision: str = DEFAULT_PRECISION,
+    num_workers: int | str = DEFAULT_NUM_WORKERS,
     silent: bool = True,
     save_plot: bool = False,
     fast_dev_run: bool = False,
@@ -432,7 +534,7 @@ def train_voice(
         if hasattr(torch, "set_float32_matmul_precision"):
             torch.set_float32_matmul_precision("high")
         if hasattr(torch, "backends") and hasattr(torch.backends, "cudnn"):
-            torch.backends.cudnn.benchmark = False
+            torch.backends.cudnn.benchmark = torch.cuda.is_available()
     except ImportError as e:
         print(f"Error: Failed to import 'neural-amp-modeler' ({e}).")
         print("Please run `uv sync` to ensure project dependencies are installed:")
@@ -564,6 +666,11 @@ def train_voice(
         )
         return True
 
+    resolved_batch_size = resolve_hardware_batch_size(batch_size)
+    resolved_precision = resolve_hardware_precision(precision)
+    resolved_num_workers = resolve_hardware_num_workers(num_workers)
+    device_name = get_hardware_device_name()
+
     configure_a2_architecture(
         nam_core,
         min_epochs=min_epochs,
@@ -575,6 +682,8 @@ def train_voice(
         lr_scheduler=lr_scheduler,
         eta_min=eta_min,
         lr_t_max=lr_t_max,
+        precision=resolved_precision,
+        num_workers=resolved_num_workers,
         reference_wav=reference_path,
         output_wav=output_path,
     )
@@ -589,7 +698,11 @@ def train_voice(
     print(f"  Target Voice:{voice} ({voice_name})")
     arch_display = "Architecture 2 Slimmable (channels_3 + channels_8)"
     print(f"  Model Tier:  {arch_display}")
-    print(f"  Batch Size:  {batch_size}")
+    print(f"  Hardware:    {device_name}")
+    steps_per_epoch = 1350 // resolved_batch_size
+    print(f"  Batch Size:  {resolved_batch_size} (auto, {steps_per_epoch} steps/epoch)")
+    print(f"  Precision:   {resolved_precision}")
+    print(f"  Workers:     {resolved_num_workers} (zero-copy in-memory)")
     print(f"  Input Audio: {input_path.name}")
     print(f"  Output Audio:{output_path.name}")
     print(f"  Schedule:    {lr_scheduler} (epochs={epochs}, T_max={lr_t_max}, eta_min={eta_min:.1e})")
@@ -617,7 +730,7 @@ def train_voice(
         output_path=str(output_path),
         train_path=str(train_work_dir),
         epochs=epochs,
-        batch_size=batch_size,
+        batch_size=resolved_batch_size,
         modelname=model_basename,
         silent=silent,
         save_plot=save_plot,
@@ -676,6 +789,10 @@ def train_voice(
         raw_meta["epochs_trained"] = epochs_trained
     if stop_reason is not None:
         raw_meta["stop_reason"] = stop_reason
+    raw_meta["batch_size"] = resolved_batch_size
+    raw_meta["precision"] = resolved_precision
+    raw_meta["num_workers"] = resolved_num_workers
+    raw_meta["device_name"] = device_name
 
     print("\nExporting Architecture 2 (.nam) model container with full instrument metadata...")
     nam_meta = NamExportMetadata(
@@ -801,6 +918,8 @@ def train_voices_from_config(cli_cfg: NamTrainingConfig) -> bool:
             patience=cli_cfg.patience,
             min_delta=cli_cfg.min_delta,
             batch_size=cli_cfg.batch_size,
+            precision=cli_cfg.precision,
+            num_workers=cli_cfg.num_workers,
             lr_scheduler=cli_cfg.lr_scheduler,
             eta_min=cli_cfg.eta_min,
             lr_t_max=cli_cfg.lr_t_max,
@@ -845,6 +964,8 @@ def train_voices_from_config(cli_cfg: NamTrainingConfig) -> bool:
                 eta_min=cli_cfg.eta_min,
                 lr_t_max=cli_cfg.lr_t_max,
                 batch_size=cli_cfg.batch_size,
+                precision=cli_cfg.precision,
+                num_workers=cli_cfg.num_workers,
                 silent=not cli_cfg.show_plot,
                 save_plot=cli_cfg.save_plot,
                 fast_dev_run=cli_cfg.fast_dev_run,

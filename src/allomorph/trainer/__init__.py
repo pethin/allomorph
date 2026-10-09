@@ -25,9 +25,12 @@ from allomorph.trainer.constants import (
     DEFAULT_MIN_EPOCHS,
     DEFAULT_MRSTFT_FFT_SIZES,
     DEFAULT_MRSTFT_WEIGHT,
+    DEFAULT_NUM_WORKERS,
     DEFAULT_PATIENCE,
     DEFAULT_PRE_EMPH_COEF,
     DEFAULT_PRE_EMPH_WEIGHT,
+    DEFAULT_PRECISION,
+    VALID_PRECISION_MODES,
 )
 from allomorph.trainer.core import (
     AUDIO_DIR,
@@ -37,6 +40,10 @@ from allomorph.trainer.core import (
     compute_baseline_mrstft,
     configure_a2_architecture,
     find_sweep_input,
+    get_hardware_device_name,
+    resolve_hardware_batch_size,
+    resolve_hardware_num_workers,
+    resolve_hardware_precision,
     setup_headless_environment,
     train_voice,
     train_voices_from_config,
@@ -44,6 +51,17 @@ from allomorph.trainer.core import (
 
 # Initialize headless runtime environment on import
 setup_headless_environment()
+
+
+def _parse_int_or_auto(val: str) -> int | str:
+    """Parses integer or 'auto' string CLI argument."""
+    val_clean = val.strip()
+    if val_clean.lower() == "auto":
+        return "auto"
+    try:
+        return int(val_clean)
+    except ValueError:
+        return val_clean
 
 
 def add_trainer_arguments(parser: argparse.ArgumentParser) -> None:
@@ -161,9 +179,21 @@ def add_trainer_arguments(parser: argparse.ArgumentParser) -> None:
     )
     _add_arg(
         "--batch-size",
-        type=int,
+        type=_parse_int_or_auto,
         default=DEFAULT_BATCH_SIZE,
-        help=f"Batch size (default: {DEFAULT_BATCH_SIZE})",
+        help="Batch size (default: 'auto' resolving dynamically to 32 on >=12GB VRAM, 16 on 6-12GB, 8 on CPU, or explicit integer)",
+    )
+    _add_arg(
+        "--precision",
+        choices=list(VALID_PRECISION_MODES),
+        default=DEFAULT_PRECISION,
+        help="PyTorch Lightning precision: 'auto' (resolving to 'bf16-mixed' on native bfloat16 GPUs), '16-mixed', or '32-true'",
+    )
+    _add_arg(
+        "--num-workers",
+        type=_parse_int_or_auto,
+        default=DEFAULT_NUM_WORKERS,
+        help="DataLoader worker count: 'auto' (resolving to 0 for in-memory tensor dataset), or explicit integer",
     )
     _add_arg(
         "--show-plot",
@@ -260,6 +290,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             "eta_min": getattr(args, "eta_min", DEFAULT_ETA_MIN),
             "lr_t_max": getattr(args, "lr_t_max", DEFAULT_LR_T_MAX),
             "batch_size": getattr(args, "batch_size", DEFAULT_BATCH_SIZE),
+            "precision": getattr(args, "precision", DEFAULT_PRECISION),
+            "num_workers": getattr(args, "num_workers", DEFAULT_NUM_WORKERS),
             "show_plot": getattr(args, "show_plot", False),
             "save_plot": getattr(args, "save_plot", False),
             "basename": getattr(args, "basename", None),
@@ -299,10 +331,13 @@ __all__ = [
     "DEFAULT_MIN_EPOCHS",
     "DEFAULT_MRSTFT_FFT_SIZES",
     "DEFAULT_MRSTFT_WEIGHT",
+    "DEFAULT_NUM_WORKERS",
     "DEFAULT_PATIENCE",
+    "DEFAULT_PRECISION",
     "DEFAULT_PRE_EMPH_COEF",
     "DEFAULT_PRE_EMPH_WEIGHT",
     "MODELS_DIR",
+    "VALID_PRECISION_MODES",
     "AllomorphAdaptiveStopping",
     "EsrProgressCallback",
     "LinearWarmupCallback",
@@ -313,7 +348,11 @@ __all__ = [
     "compute_linear_slope",
     "configure_a2_architecture",
     "find_sweep_input",
+    "get_hardware_device_name",
     "main",
+    "resolve_hardware_batch_size",
+    "resolve_hardware_num_workers",
+    "resolve_hardware_precision",
     "setup_headless_environment",
     "train_voice",
     "train_voices_from_config",

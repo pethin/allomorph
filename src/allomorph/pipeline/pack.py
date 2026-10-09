@@ -916,6 +916,10 @@ def _populate_manifest_model_entry(
                 "differential_mrstft",
                 "epochs_trained",
                 "stop_reason",
+                "batch_size",
+                "precision",
+                "num_workers",
+                "device_name",
             ]:
                 if field in training_meta and training_meta[field] is not None:
                     entry[field] = training_meta[field]
@@ -933,7 +937,9 @@ def train_tone_pack(
     min_epochs: int = 5,
     patience: int = 5,
     min_delta: float = 2.0e-6,
-    batch_size: int = 16,
+    batch_size: int | str = "auto",
+    precision: str = "auto",
+    num_workers: int | str = "auto",
     lr_scheduler: str = "cosine",
     eta_min: float = 1e-5,
     lr_t_max: int = 35,
@@ -1087,6 +1093,8 @@ def train_tone_pack(
                 patience=patience,
                 min_delta=min_delta,
                 batch_size=batch_size,
+                precision=precision,
+                num_workers=num_workers,
                 lr_scheduler=lr_scheduler,
                 eta_min=eta_min,
                 lr_t_max=lr_t_max,

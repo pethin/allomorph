@@ -99,8 +99,11 @@ class NamTrainingMetadata(AllomorphBaseModel):
     consecutive_gates_met: int | None = None
     epochs_trained: int | None = None
     stop_reason: str | None = None
-    epochs: int | None = None
     batch_size: int | None = None
+    precision: str | None = None
+    num_workers: int | None = None
+    device_name: str | None = None
+    epochs: int | None = None
     lr: float | None = None
     model_type: str | None = None
     architecture: str | None = None
@@ -214,7 +217,18 @@ class NamTrainingConfig(AllomorphBaseModel):
         ge=5,
         description="Cosine decay period (T_max in epochs, default: 35)",
     )
-    batch_size: int = Field(default=16, gt=0)
+    batch_size: int | str = Field(
+        default="auto",
+        description="Batch size (default: 'auto' resolving dynamically to 32 on >=12GB VRAM, 16 on 6-12GB, 8 on CPU)",
+    )
+    precision: str = Field(
+        default="auto",
+        description="PyTorch Lightning precision: 'auto' (resolving to 'bf16-mixed' on native bfloat16 GPUs), '16-mixed', or '32-true'",
+    )
+    num_workers: int | str = Field(
+        default="auto",
+        description="DataLoader num_workers: 'auto' (resolving to 0 for in-memory tensor dataset), or explicit integer",
+    )
     show_plot: bool = False
     save_plot: bool = False
     basename: str | None = None

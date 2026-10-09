@@ -9,8 +9,11 @@ DEFAULT_MIN_EPOCHS: int = 5
 # Architecture 2 studio schedule budget (matching Cosine T_max)
 DEFAULT_MAX_EPOCHS: int = 35
 
-# Universal GPU batch size (84 updates/epoch for optimal gradient depth)
-DEFAULT_BATCH_SIZE: int = 16
+# Dynamic auto-tuning defaults for hardware execution
+DEFAULT_BATCH_SIZE: str = "auto"
+DEFAULT_PRECISION: str = "auto"
+DEFAULT_NUM_WORKERS: str = "auto"
+VALID_PRECISION_MODES: tuple[str, ...] = ("auto", "bf16-mixed", "16-mixed", "32-true", "32")
 
 # Adaptive diminishing-returns plateau patience window in epochs
 DEFAULT_PATIENCE: int = 5
@@ -53,8 +56,11 @@ __all__ = [
     "DEFAULT_MIN_EPOCHS",
     "DEFAULT_MRSTFT_FFT_SIZES",
     "DEFAULT_MRSTFT_WEIGHT",
+    "DEFAULT_NUM_WORKERS",
     "DEFAULT_PATIENCE",
+    "DEFAULT_PRECISION",
     "DEFAULT_PRE_EMPH_COEF",
     "DEFAULT_PRE_EMPH_WEIGHT",
+    "VALID_PRECISION_MODES",
 ]
 

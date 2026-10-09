@@ -53,7 +53,9 @@ def test_default_training_hyperparameters():
         DEFAULT_MAX_EPOCHS,
         DEFAULT_MIN_DELTA,
         DEFAULT_MIN_EPOCHS,
+        DEFAULT_NUM_WORKERS,
         DEFAULT_PATIENCE,
+        DEFAULT_PRECISION,
         train_voice,
     )
 
@@ -61,7 +63,9 @@ def test_default_training_hyperparameters():
     assert DEFAULT_MIN_EPOCHS == 5
     assert DEFAULT_PATIENCE == 5
     assert DEFAULT_MIN_DELTA == 2.0e-6
-    assert DEFAULT_BATCH_SIZE == 16
+    assert DEFAULT_BATCH_SIZE == "auto"
+    assert DEFAULT_PRECISION == "auto"
+    assert DEFAULT_NUM_WORKERS == "auto"
     assert DEFAULT_LR_SCHEDULER == "cosine"
     assert DEFAULT_ETA_MIN == 1e-5
     assert DEFAULT_LR_T_MAX == 35
@@ -71,6 +75,9 @@ def test_default_training_hyperparameters():
     assert sig.parameters["min_epochs"].default == DEFAULT_MIN_EPOCHS
     assert sig.parameters["patience"].default == DEFAULT_PATIENCE
     assert sig.parameters["min_delta"].default == DEFAULT_MIN_DELTA
+    assert sig.parameters["batch_size"].default == DEFAULT_BATCH_SIZE
+    assert sig.parameters["precision"].default == DEFAULT_PRECISION
+    assert sig.parameters["num_workers"].default == DEFAULT_NUM_WORKERS
 
     # Verify legacy parameters are eliminated
     for legacy_param in [
@@ -89,6 +96,36 @@ def test_default_training_hyperparameters():
         assert legacy_param not in sig.parameters
 
 
+def test_hardware_resolution_utilities():
+    from allomorph.trainer import (
+        get_hardware_device_name,
+        resolve_hardware_batch_size,
+        resolve_hardware_num_workers,
+        resolve_hardware_precision,
+    )
+
+    dev_name = get_hardware_device_name()
+    assert isinstance(dev_name, str) and len(dev_name) > 0
+
+    # Batch size resolution
+    assert resolve_hardware_batch_size(32) == 32
+    assert resolve_hardware_batch_size("16") == 16
+    auto_bs = resolve_hardware_batch_size("auto")
+    assert auto_bs in (8, 16, 32)
+
+    # Precision resolution
+    assert resolve_hardware_precision("16-mixed") == "16-mixed"
+    assert resolve_hardware_precision("32-true") == "32-true"
+    assert resolve_hardware_precision("bf16-mixed") == "bf16-mixed"
+    auto_prec = resolve_hardware_precision("auto")
+    assert auto_prec in ("bf16-mixed", "16-mixed", "32-true")
+
+    # Worker count resolution
+    assert resolve_hardware_num_workers(4) == 4
+    assert resolve_hardware_num_workers("2") == 2
+    assert resolve_hardware_num_workers("auto") == 0
+
+
 def test_train_nam_cli_schedule_and_patience_parsing():
     import argparse
 
@@ -100,7 +137,9 @@ def test_train_nam_cli_schedule_and_patience_parsing():
         DEFAULT_MAX_EPOCHS,
         DEFAULT_MIN_DELTA,
         DEFAULT_MIN_EPOCHS,
+        DEFAULT_NUM_WORKERS,
         DEFAULT_PATIENCE,
+        DEFAULT_PRECISION,
         add_trainer_arguments,
     )
 
@@ -114,6 +153,8 @@ def test_train_nam_cli_schedule_and_patience_parsing():
     assert args.patience == DEFAULT_PATIENCE
     assert args.min_delta == DEFAULT_MIN_DELTA
     assert args.batch_size == DEFAULT_BATCH_SIZE
+    assert args.precision == DEFAULT_PRECISION
+    assert args.num_workers == DEFAULT_NUM_WORKERS
     assert args.lr_scheduler == DEFAULT_LR_SCHEDULER
     assert args.eta_min == DEFAULT_ETA_MIN
     assert args.lr_t_max == DEFAULT_LR_T_MAX
@@ -131,6 +172,10 @@ def test_train_nam_cli_schedule_and_patience_parsing():
             "1e-5",
             "--batch-size",
             "32",
+            "--precision",
+            "bf16-mixed",
+            "--num-workers",
+            "4",
             "--lr-scheduler",
             "exponential",
             "--eta-min",
@@ -144,9 +189,26 @@ def test_train_nam_cli_schedule_and_patience_parsing():
     assert custom_args.patience == 7
     assert custom_args.min_delta == 1e-5
     assert custom_args.batch_size == 32
+    assert custom_args.precision == "bf16-mixed"
+    assert custom_args.num_workers == 4
     assert custom_args.lr_scheduler == "exponential"
     assert custom_args.eta_min == 1e-6
     assert custom_args.lr_t_max == 40
+
+    # Auto string parsing
+    auto_args = parser.parse_args(
+        [
+            "--batch-size",
+            "auto",
+            "--precision",
+            "auto",
+            "--num-workers",
+            "auto",
+        ]
+    )
+    assert auto_args.batch_size == "auto"
+    assert auto_args.precision == "auto"
+    assert auto_args.num_workers == "auto"
 
 
 def test_configure_a2_architecture():
@@ -163,6 +225,8 @@ def test_configure_a2_architecture():
         lr_scheduler="cosine",
         eta_min=1e-5,
         lr_t_max=35,
+        precision="bf16-mixed",
+        num_workers=0,
     )
     cfg_full = nam_core._get_packed_model_config()
     submodels_full = cfg_full["net"]["config"]["submodels"]
@@ -176,6 +240,16 @@ def test_configure_a2_architecture():
     assert cfg_full["lr_scheduler"]["class"] == "CosineAnnealingLR"
     assert cfg_full["lr_scheduler"]["kwargs"]["T_max"] == 35
     assert cfg_full["lr_scheduler"]["kwargs"]["eta_min"] == 1e-5
+
+    # Check patched _get_configs
+    if hasattr(nam_core, "_get_configs"):
+        from nam.train._version import Version
+
+        _, _, learn_cfg = nam_core._get_configs(
+            Version(3, 0, 0), "dummy_in", "dummy_out", 0, 10, 100, 32
+        )
+        assert learn_cfg["trainer"]["precision"] == "bf16-mixed"
+        assert learn_cfg["train_dataloader"]["num_workers"] == 0
 
 
 def test_math_utilities():

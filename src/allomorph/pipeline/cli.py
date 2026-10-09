@@ -385,6 +385,8 @@ def main(argv: Sequence[str] | None = None):
                 "eta_min": args.eta_min,
                 "lr_t_max": args.lr_t_max,
                 "batch_size": args.batch_size,
+                "precision": getattr(args, "precision", "auto"),
+                "num_workers": getattr(args, "num_workers", "auto"),
                 "show_plot": getattr(args, "show_plot", False),
                 "save_plot": getattr(args, "save_plot", False),
                 "basename": getattr(args, "basename", None),

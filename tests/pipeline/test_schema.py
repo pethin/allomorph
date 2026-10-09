@@ -131,7 +131,9 @@ def test_nam_training_config_validation():
     assert cfg.voice == "all"
     assert cfg.epochs == 35
     assert cfg.min_epochs == 5
-    assert cfg.batch_size == 16
+    assert cfg.batch_size == "auto"
+    assert cfg.precision == "auto"
+    assert cfg.num_workers == "auto"
     assert cfg.patience == 5
     assert cfg.min_delta == 2.0e-6
     assert cfg.pre_emph_weight == 0.25
