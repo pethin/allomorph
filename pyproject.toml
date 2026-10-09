@@ -95,7 +95,7 @@ environments = [
 
 [[tool.uv.index]]
 name = "amd-rocm"
-url = "https://repo.amd.com/rocm/whl-multi-arch/"
+url = "https://stable.repo.amd.com/rocm/whl-next/"
 explicit = true
 
 [tool.uv.sources]
