@@ -69,16 +69,16 @@ def run_training(
     output_wav: str | Path | None = None,
     reference_wav: str | Path | None = None,
     models_dir: str | Path | None = None,
-    epochs: int = 35,
-    min_epochs: int = 5,
-    patience: int = 5,
-    min_delta: float = 2.0e-6,
+    epochs: int = 40,
+    min_epochs: int = 20,
+    patience: int = 8,
+    min_delta: float = 1.0e-6,
     pre_emph_weight: float = 0.25,
     pre_emph_coef: float = 0.85,
     mrstft_weight: float = 0.0010,
     lr_scheduler: str = "cosine",
     eta_min: float = 1e-5,
-    lr_t_max: int = 35,
+    lr_t_max: int = 40,
     fast_dev_run: bool = False,
     basename: str | None = None,
     batch_size: int | str = "auto",
@@ -87,6 +87,8 @@ def run_training(
     version_tag: str | None = "auto",
     no_manifest: bool = False,
     include_identity: bool = False,
+    engine: str = "auto",
+    seed: int | None = None,
 ) -> bool:
     """Trains a Neural Amp Modeler (NAM) Architecture 2 model locally under the studio reference standard."""
     from allomorph.trainer import train_voice
@@ -119,6 +121,8 @@ def run_training(
         version_tag=version_tag,
         no_manifest=no_manifest,
         include_identity=include_identity,
+        engine=engine,
+        seed=seed,
     )
 
 
@@ -126,17 +130,19 @@ def run_tone_pack_training(
     pack: str,
     voice: str = "all",
     overwrite: bool = False,
-    epochs: int = 35,
-    min_epochs: int = 5,
-    patience: int = 5,
-    min_delta: float = 2.0e-6,
+    epochs: int = 40,
+    min_epochs: int = 20,
+    patience: int = 8,
+    min_delta: float = 1.0e-6,
     batch_size: int | str = "auto",
     precision: str = "auto",
     num_workers: int | str = "auto",
     lr_scheduler: str = "cosine",
     eta_min: float = 1e-5,
-    lr_t_max: int = 35,
+    lr_t_max: int = 40,
     fast_dev_run: bool = False,
+    engine: str = "auto",
+    seed: int | None = None,
 ) -> Path:
     """Executes local NAM Architecture 2 model training for all wet stems in a Tone3000 pack."""
     from allomorph.pipeline.pack import train_tone_pack
@@ -156,4 +162,6 @@ def run_tone_pack_training(
         eta_min=eta_min,
         lr_t_max=lr_t_max,
         fast_dev_run=fast_dev_run,
+        engine=engine,
+        seed=seed,
     )

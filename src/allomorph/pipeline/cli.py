@@ -395,6 +395,8 @@ def main(argv: Sequence[str] | None = None):
                 "version_tag": args.version_tag,
                 "no_manifest": args.no_manifest,
                 "include_identity": getattr(args, "include_identity", False),
+                "engine": getattr(args, "engine", "auto"),
+                "seed": getattr(args, "seed", None),
             }
         )
 

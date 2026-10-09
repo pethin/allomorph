@@ -933,17 +933,19 @@ def train_tone_pack(
     pack: InstrumentConfig | str | Path,
     voice: str = "all",
     overwrite: bool = False,
-    epochs: int = 35,
-    min_epochs: int = 5,
-    patience: int = 5,
-    min_delta: float = 2.0e-6,
+    epochs: int = 40,
+    min_epochs: int = 20,
+    patience: int = 8,
+    min_delta: float = 1.0e-6,
     batch_size: int | str = "auto",
     precision: str = "auto",
     num_workers: int | str = "auto",
     lr_scheduler: str = "cosine",
     eta_min: float = 1e-5,
-    lr_t_max: int = 35,
+    lr_t_max: int = 40,
     fast_dev_run: bool = False,
+    engine: str = "auto",
+    seed: int | None = None,
 ) -> Path:
     """Trains a complete Tone3000 upload pack, outputting flat .nam files to tone3000/packs/[pack]/nam/.
 
@@ -1102,6 +1104,8 @@ def train_tone_pack(
                 version_tag=None,
                 no_manifest=True,
                 include_identity=False,
+                engine=engine,
+                seed=seed,
             )
             if not ok:
                 print(f"[Tone Pack Trainer] Warning: Training failed for {target_nam.name}")

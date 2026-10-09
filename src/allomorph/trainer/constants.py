@@ -42,12 +42,18 @@ DEFAULT_LR_T_MAX: int = 40
 # Architecture 2 designation
 DEFAULT_ARCHITECTURE: str = "A2"
 
+# Training engine defaults
+DEFAULT_ENGINE: str = "auto"
+VALID_ENGINES: tuple[str, ...] = ("auto", "mlx", "torch")
+DEFAULT_SEED: int | None = None
+
 # MRSTFT loss FFT window sizes
 DEFAULT_MRSTFT_FFT_SIZES: tuple[int, ...] = (512, 1024, 2048)
 
 __all__ = [
     "DEFAULT_ARCHITECTURE",
     "DEFAULT_BATCH_SIZE",
+    "DEFAULT_ENGINE",
     "DEFAULT_ETA_MIN",
     "DEFAULT_LR_SCHEDULER",
     "DEFAULT_LR_T_MAX",
@@ -61,6 +67,8 @@ __all__ = [
     "DEFAULT_PRECISION",
     "DEFAULT_PRE_EMPH_COEF",
     "DEFAULT_PRE_EMPH_WEIGHT",
+    "DEFAULT_SEED",
+    "VALID_ENGINES",
     "VALID_PRECISION_MODES",
 ]
 

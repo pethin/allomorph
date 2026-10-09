@@ -129,19 +129,20 @@ def test_nam_training_config_validation():
     assert cfg.pack is None
     assert cfg.overwrite is False
     assert cfg.voice == "all"
-    assert cfg.epochs == 35
-    assert cfg.min_epochs == 5
+    assert cfg.epochs == 40
+    assert cfg.min_epochs == 20
     assert cfg.batch_size == "auto"
     assert cfg.precision == "auto"
     assert cfg.num_workers == "auto"
-    assert cfg.patience == 5
-    assert cfg.min_delta == 2.0e-6
+    assert cfg.patience == 8
+    assert cfg.min_delta == 1.0e-6
     assert cfg.pre_emph_weight == 0.25
     assert cfg.pre_emph_coef == 0.85
     assert cfg.mrstft_weight == 0.0010
     assert cfg.lr_scheduler == "cosine"
     assert cfg.eta_min == 1e-5
-    assert cfg.lr_t_max == 35
+    assert cfg.lr_t_max == 40
+    assert cfg.engine == "auto"
 
     # Valid custom configuration
     custom = NamTrainingConfig(

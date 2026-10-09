@@ -17,6 +17,7 @@ from allomorph.trainer.callbacks import (
 from allomorph.trainer.constants import (
     DEFAULT_ARCHITECTURE,
     DEFAULT_BATCH_SIZE,
+    DEFAULT_ENGINE,
     DEFAULT_ETA_MIN,
     DEFAULT_LR_SCHEDULER,
     DEFAULT_LR_T_MAX,
@@ -30,6 +31,8 @@ from allomorph.trainer.constants import (
     DEFAULT_PRE_EMPH_COEF,
     DEFAULT_PRE_EMPH_WEIGHT,
     DEFAULT_PRECISION,
+    DEFAULT_SEED,
+    VALID_ENGINES,
     VALID_PRECISION_MODES,
 )
 from allomorph.trainer.core import (
@@ -41,9 +44,11 @@ from allomorph.trainer.core import (
     configure_a2_architecture,
     find_sweep_input,
     get_hardware_device_name,
+    is_mlx_available,
     resolve_hardware_batch_size,
     resolve_hardware_num_workers,
     resolve_hardware_precision,
+    resolve_trainer_engine,
     setup_headless_environment,
     train_voice,
     train_voices_from_config,
@@ -244,6 +249,18 @@ def add_trainer_arguments(parser: argparse.ArgumentParser) -> None:
         help="Force training even if source and target stems are identical",
     )
     _add_arg(
+        "--engine",
+        choices=list(VALID_ENGINES),
+        default=DEFAULT_ENGINE,
+        help=f"Underlying neural network training engine ('auto', 'mlx', 'torch'; default: '{DEFAULT_ENGINE}')",
+    )
+    _add_arg(
+        "--seed",
+        type=int,
+        default=DEFAULT_SEED,
+        help="Random seed for reproducible weights and shuffling (default: None)",
+    )
+    _add_arg(
         "--gui",
         action="store_true",
         help="Launch NAM training GUI",
@@ -300,6 +317,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             "version_tag": getattr(args, "version_tag", "auto"),
             "no_manifest": getattr(args, "no_manifest", False),
             "include_identity": getattr(args, "include_identity", False),
+            "engine": getattr(args, "engine", DEFAULT_ENGINE),
+            "seed": getattr(args, "seed", DEFAULT_SEED),
         }
     )
 
@@ -322,6 +341,7 @@ __all__ = [
     "AUDIO_DIR",
     "DEFAULT_ARCHITECTURE",
     "DEFAULT_BATCH_SIZE",
+    "DEFAULT_ENGINE",
     "DEFAULT_ETA_MIN",
     "DEFAULT_INPUT_PATH",
     "DEFAULT_LR_SCHEDULER",
@@ -336,7 +356,9 @@ __all__ = [
     "DEFAULT_PRECISION",
     "DEFAULT_PRE_EMPH_COEF",
     "DEFAULT_PRE_EMPH_WEIGHT",
+    "DEFAULT_SEED",
     "MODELS_DIR",
+    "VALID_ENGINES",
     "VALID_PRECISION_MODES",
     "AllomorphAdaptiveStopping",
     "EsrProgressCallback",
@@ -349,10 +371,12 @@ __all__ = [
     "configure_a2_architecture",
     "find_sweep_input",
     "get_hardware_device_name",
+    "is_mlx_available",
     "main",
     "resolve_hardware_batch_size",
     "resolve_hardware_num_workers",
     "resolve_hardware_precision",
+    "resolve_trainer_engine",
     "setup_headless_environment",
     "train_voice",
     "train_voices_from_config",

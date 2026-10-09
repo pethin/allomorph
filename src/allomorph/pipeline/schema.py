@@ -168,24 +168,24 @@ class NamTrainingConfig(AllomorphBaseModel):
     reference_wav: Path | str | None = None
     models_dir: Path | str = Field(default=Path("models"))
     epochs: int = Field(
-        default=35,
+        default=40,
         gt=0,
-        description="Maximum number of training epochs (default: 35 for Architecture 2 schedule)",
+        description="Maximum number of training epochs (default: 40 for Architecture 2 schedule)",
     )
     min_epochs: int = Field(
-        default=5,
+        default=20,
         ge=0,
-        description="Warmup epoch floor before early stopping can trigger (default: 5 covering linear warmup)",
+        description="Warmup epoch floor covering initial exploration before early stopping can engage (default: 20)",
     )
     patience: int = Field(
-        default=5,
+        default=8,
         ge=0,
-        description="Patience epochs for plateau early stopping (default: 5, set 0 to disable)",
+        description="Patience epochs for plateau early stopping (default: 8, set 0 to disable)",
     )
     min_delta: float = Field(
-        default=2.0e-6,
+        default=1.0e-6,
         ge=0.0,
-        description="Minimum loss improvement to reset plateau patience (default: 2.0e-6)",
+        description="Minimum loss improvement to reset plateau patience (default: 1.0e-6)",
     )
     pre_emph_weight: float = Field(
         default=0.25,
@@ -213,9 +213,9 @@ class NamTrainingConfig(AllomorphBaseModel):
         description="Minimum learning rate floor for CosineAnnealingLR (default: 1e-5)",
     )
     lr_t_max: int = Field(
-        default=35,
+        default=40,
         ge=5,
-        description="Cosine decay period (T_max in epochs, default: 35)",
+        description="Cosine decay period (T_max in epochs, default: 40)",
     )
     batch_size: int | str = Field(
         default="auto",
@@ -240,6 +240,14 @@ class NamTrainingConfig(AllomorphBaseModel):
     overwrite: bool = Field(
         default=False,
         description="Force retraining of models even if .nam files already exist",
+    )
+    engine: str = Field(
+        default="auto",
+        description="Underlying neural training engine ('auto', 'mlx', 'torch')",
+    )
+    seed: int | None = Field(
+        default=None,
+        description="Random seed for deterministic initialization and data shuffling",
     )
 
 
