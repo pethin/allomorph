@@ -59,16 +59,16 @@ def test_default_training_hyperparameters():
         train_voice,
     )
 
-    assert DEFAULT_MAX_EPOCHS == 35
-    assert DEFAULT_MIN_EPOCHS == 5
-    assert DEFAULT_PATIENCE == 5
-    assert DEFAULT_MIN_DELTA == 2.0e-6
+    assert DEFAULT_MAX_EPOCHS == 40
+    assert DEFAULT_MIN_EPOCHS == 20
+    assert DEFAULT_PATIENCE == 8
+    assert DEFAULT_MIN_DELTA == 1.0e-6
     assert DEFAULT_BATCH_SIZE == "auto"
     assert DEFAULT_PRECISION == "auto"
     assert DEFAULT_NUM_WORKERS == "auto"
     assert DEFAULT_LR_SCHEDULER == "cosine"
     assert DEFAULT_ETA_MIN == 1e-5
-    assert DEFAULT_LR_T_MAX == 35
+    assert DEFAULT_LR_T_MAX == 40
 
     sig = inspect.signature(train_voice)
     assert sig.parameters["epochs"].default == DEFAULT_MAX_EPOCHS

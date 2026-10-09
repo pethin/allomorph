@@ -3,11 +3,11 @@ Allomorph Trainer - Constants and Hyperparameter Defaults
 Schedule-driven natural convergence standards, optimizer annealing periods, and early stopping tolerances.
 """
 
-# Warmup epoch floor covering initial linear learning rate ramp
-DEFAULT_MIN_EPOCHS: int = 5
+# Warmup epoch floor covering initial exploration before early stopping can engage
+DEFAULT_MIN_EPOCHS: int = 20
 
 # Architecture 2 studio schedule budget (matching Cosine T_max)
-DEFAULT_MAX_EPOCHS: int = 35
+DEFAULT_MAX_EPOCHS: int = 40
 
 # Dynamic auto-tuning defaults for hardware execution
 DEFAULT_BATCH_SIZE: str = "auto"
@@ -16,10 +16,10 @@ DEFAULT_NUM_WORKERS: str = "auto"
 VALID_PRECISION_MODES: tuple[str, ...] = ("auto", "bf16-mixed", "16-mixed", "32-true", "32")
 
 # Adaptive diminishing-returns plateau patience window in epochs
-DEFAULT_PATIENCE: int = 5
+DEFAULT_PATIENCE: int = 8
 
 # Minimum loss improvement to reset plateau patience
-DEFAULT_MIN_DELTA: float = 2.0e-6
+DEFAULT_MIN_DELTA: float = 1.0e-6
 
 # Pre-emphasis loss weight for equalizing high-frequency resonance
 DEFAULT_PRE_EMPH_WEIGHT: float = 0.25
@@ -37,7 +37,7 @@ DEFAULT_LR_SCHEDULER: str = "cosine"
 DEFAULT_ETA_MIN: float = 1e-5
 
 # Cosine decay period (T_max in epochs)
-DEFAULT_LR_T_MAX: int = 35
+DEFAULT_LR_T_MAX: int = 40
 
 # Architecture 2 designation
 DEFAULT_ARCHITECTURE: str = "A2"
