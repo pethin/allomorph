@@ -29,20 +29,25 @@ _DIFF_VOICE_DF_CACHE: dict[tuple[str, str, str], pl.DataFrame] = {}
 _TARGET_DFS_CACHE: dict[int, dict[str, tuple[str, np.ndarray]]] = {}
 
 
-def _compute_welch_psd(
-    x: np.ndarray, sr: int = 48000, n_fft: int = 4096, hop_length: int = 2048
-) -> tuple[np.ndarray, np.ndarray]:
-    x_pad = np.pad(x, (n_fft // 2, n_fft // 2), mode="constant")
-    n_frames = 1 + (len(x_pad) - n_fft) // hop_length
-    frames = np.lib.stride_tricks.as_strided(
-        x_pad, shape=(n_frames, n_fft), strides=(x_pad.strides[0] * hop_length, x_pad.strides[0])
-    )
-    window = np.hanning(n_fft)
-    spectra = np.abs(np.fft.rfft(frames * window, axis=1)) ** 2
-    psd = np.mean(spectra, axis=0)
-    psd = psd / (np.sum(window**2) * sr)
-    f_bins = np.fft.rfftfreq(n_fft, 1.0 / sr)
-    return f_bins, psd
+_FAST_SWEEP_EXCITATION: np.ndarray | None = None
+
+
+def get_fast_sweep_excitation() -> np.ndarray:
+    """Precomputes and caches the deterministic 16k logarithmic sine sweep excitation."""
+    global _FAST_SWEEP_EXCITATION
+    if _FAST_SWEEP_EXCITATION is None:
+        from allomorph.dsp import synthesize_fast_log_sweep
+
+        _FAST_SWEEP_EXCITATION = synthesize_fast_log_sweep(
+            n_samples=16384,
+            f_start=10.0,
+            f_end=24000.0,
+            sr=48000,
+            target_dbfs=-20.5,
+            fade_len=144,
+            tail_len=2048,
+        )
+    return _FAST_SWEEP_EXCITATION
 
 
 def build_voice_dataframe(
@@ -52,41 +57,28 @@ def build_voice_dataframe(
     mode: str = "output",
     include_mode_col: bool = False,
 ) -> pl.DataFrame:
-    import tempfile
-    from pathlib import Path
-
     from allomorph.circuit.forward import simulate_instrument_voicing
-    from allomorph.dsp import read_wav
+    from allomorph.dsp import deconvolve_log_sweep
 
     inst = load_instrument(instrument)
+    x_sweep = get_fast_sweep_excitation()
 
-    sr = 48000
-    n_samples = 16384
-    rng = np.random.RandomState(42)
-    x_white = rng.normal(0.0, 1.0, n_samples)
-    x_white = x_white / np.max(np.abs(x_white)) * (10.0 ** (-20.5 / 20.0))
+    # Fast in-memory forward simulation evaluated in pure linear mode for visualizer curves
+    y_wet = simulate_instrument_voicing(
+        instrument=inst,
+        voicing=voice_id,
+        input_audio=x_sweep,
+        return_audio=True,
+        normalize="none",
+        dc_block=False,
+        apply_saturation=False,
+        apply_dither=False,
+    )
 
-    with tempfile.TemporaryDirectory() as td:
-        in_wav = Path(td) / "in.wav"
-        out_wav = Path(td) / "out.wav"
+    # Regularized Farina deconvolution with causal 8192-tap impulse gating
+    f_bins, H_complex, _ = deconvolve_log_sweep(y_wet, x_sweep, sr=48000, gate_taps=8192)
+    H_emp = np.abs(H_complex)
 
-        from allomorph.dsp import write_wav_24bit
-
-        write_wav_24bit(in_wav, x_white, 48000)
-        simulate_instrument_voicing(
-            input_wav=in_wav,
-            instrument=inst,
-            voicing=voice_id,
-            output_wav=out_wav,
-            max_samples=n_samples,
-            normalize="none",
-        )
-        y_wet, _ = read_wav(out_wav)
-
-    f_bins, psd_y = _compute_welch_psd(y_wet, sr=sr)
-    _, psd_x = _compute_welch_psd(x_white, sr=sr)
-
-    H_emp = np.sqrt(psd_y / np.maximum(psd_x, 1e-12))
     freqs = np.asarray(log_freqs, dtype=np.float64)
     mag_raw = np.interp(freqs, f_bins, H_emp)
 

@@ -147,11 +147,11 @@ def test_spatial_bridge_proximity_displacement_ratio_in_visualizer():
     mag_p_20 = df_p["magnitude_db"][0]
     mag_j_20 = df_j["magnitude_db"][0]
 
-    # Precision Vintage has flat fundamental passband around 0 dB
-    assert -1.0 <= mag_p_20 <= 1.0, f"Precision 20 Hz dB {mag_p_20} outside [-1.0, 1.0]"
+    # Precision Vintage has full fundamental passband excursion around +1.5 dB
+    assert 0.0 <= mag_p_20 <= 2.5, f"Precision 20 Hz dB {mag_p_20} outside [0.0, 2.5]"
 
-    # Jazz Bridge Open has leaner fundamental (-5.5 to -3.5 dB)
-    assert -5.5 <= mag_j_20 <= -3.5, f"Jazz Bridge 20 Hz dB {mag_j_20} outside [-5.5, -3.5]"
+    # Jazz Bridge Open has leaner fundamental (-4.5 to -2.0 dB)
+    assert -4.5 <= mag_j_20 <= -2.0, f"Jazz Bridge 20 Hz dB {mag_j_20} outside [-4.5, -2.0]"
 
     mag_j_1k = df_j.filter(pl.col("frequency") > 1000.0)["magnitude_db"].to_list()[0]
     # Fundamental is leaner than mid-register by > 3.0 dB due to bridge displacement low-shelf
@@ -162,6 +162,22 @@ def test_spatial_bridge_proximity_displacement_ratio_in_visualizer():
     s3_20 = df_comp.filter(df_comp["line_type"] == "3. Difference")["magnitude_db"][0]
     expected_diff_20 = mag_j_20 - mag_p_20
     assert abs(s3_20 - expected_diff_20) < 0.05
+
+
+def test_fast_sweep_smoothness_in_visualizer():
+    """Validates that build_voice_dataframe produces smooth, ripple-free high-frequency curves
+    confirming elimination of Monte Carlo white noise jitter and boundary truncation ripples.
+    """
+    df_p = build_voice_dataframe("precision_vintage", VOICES["precision_vintage"], mode="output")
+    df_j = build_voice_dataframe("jazz_bridge_open", VOICES["jazz_bridge_open"], mode="output")
+    freqs = df_p["frequency"].to_numpy()
+    diff = df_j["magnitude_db"].to_numpy() - df_p["magnitude_db"].to_numpy()
+
+    high_mask = (freqs >= 10000.0) & (freqs <= 20000.0)
+    diff_high = diff[high_mask]
+    roughness = float(np.std(np.diff(diff_high, n=2)))
+    assert roughness < 0.05, f"High-frequency roughness {roughness} exceeds 0.05 dB"
+
 
 
 def test_compute_curve_rms_db():

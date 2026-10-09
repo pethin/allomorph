@@ -8,7 +8,7 @@ import functools
 import math
 from collections.abc import Sequence
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal, overload
 
 import numpy as np
 import pedalboard
@@ -69,33 +69,6 @@ def _get_white_noise_vector(n: int) -> np.ndarray:
     rng = np.random.RandomState(42)
     return rng.normal(0.0, 1.0, n).astype(np.float64)
 
-
-def _stft(x: np.ndarray, n_fft: int, hop_length: int) -> np.ndarray:
-    x_pad = np.pad(x, (n_fft // 2, n_fft // 2), mode="constant")
-    n_frames = 1 + (len(x_pad) - n_fft) // hop_length
-    frames = np.lib.stride_tricks.as_strided(
-        x_pad, shape=(n_frames, n_fft), strides=(x_pad.strides[0] * hop_length, x_pad.strides[0])
-    )
-    window = np.hanning(n_fft)
-    return np.fft.rfft(frames * window, axis=1)
-
-
-def _istft(X: np.ndarray, n_fft: int, hop_length: int, orig_len: int) -> np.ndarray:
-    n_frames = X.shape[0]
-    x_out = np.zeros(n_frames * hop_length + n_fft, dtype=np.float64)
-    window_sq = np.zeros_like(x_out)
-    win = np.hanning(n_fft)
-
-    frames = np.fft.irfft(X, n=n_fft, axis=1)
-    for i in range(n_frames):
-        start = i * hop_length
-        x_out[start : start + n_fft] += frames[i] * win
-        window_sq[start : start + n_fft] += win**2
-
-    mask = window_sq > 1e-10
-    x_out[mask] /= window_sq[mask]
-
-    return x_out[n_fft // 2 : n_fft // 2 + orig_len]
 
 
 def resolve_target_voicing(
@@ -221,11 +194,82 @@ def resolve_target_voicing(
     )
 
 
+@overload
+def simulate_instrument_voicing(
+    instrument: InstrumentConfig | str | Path | None = ...,
+    voicing: VoicingConfig | str = ...,
+    input_wav: Path | str | None = ...,
+    input_audio: np.ndarray | None = ...,
+    output_wav: Path | str | None = ...,
+    return_audio: Literal[False] = False,
+    max_samples: int | None = ...,
+    num_taps: int = ...,
+    apply_dither: bool = ...,
+    apply_saturation: bool = ...,
+    vol_pos: float | None = ...,
+    tone_pos: float | None = ...,
+    blend_pos: float | None = ...,
+    cable_pf: float | None = ...,
+    dc_block: bool = ...,
+    normalize: str = ...,
+    target_dbfs: float | None = ...,
+    force: bool = ...,
+) -> Path: ...
+
+
+@overload
+def simulate_instrument_voicing(
+    instrument: InstrumentConfig | str | Path | None = ...,
+    voicing: VoicingConfig | str = ...,
+    input_wav: Path | str | None = ...,
+    input_audio: np.ndarray | None = ...,
+    output_wav: None = None,
+    return_audio: Literal[True] = ...,
+    max_samples: int | None = ...,
+    num_taps: int = ...,
+    apply_dither: bool = ...,
+    apply_saturation: bool = ...,
+    vol_pos: float | None = ...,
+    tone_pos: float | None = ...,
+    blend_pos: float | None = ...,
+    cable_pf: float | None = ...,
+    dc_block: bool = ...,
+    normalize: str = ...,
+    target_dbfs: float | None = ...,
+    force: bool = ...,
+) -> np.ndarray: ...
+
+
+@overload
+def simulate_instrument_voicing(
+    instrument: InstrumentConfig | str | Path | None = ...,
+    voicing: VoicingConfig | str = ...,
+    input_wav: Path | str | None = ...,
+    input_audio: np.ndarray | None = ...,
+    output_wav: Path | str = ...,
+    return_audio: Literal[True] = ...,
+    max_samples: int | None = ...,
+    num_taps: int = ...,
+    apply_dither: bool = ...,
+    apply_saturation: bool = ...,
+    vol_pos: float | None = ...,
+    tone_pos: float | None = ...,
+    blend_pos: float | None = ...,
+    cable_pf: float | None = ...,
+    dc_block: bool = ...,
+    normalize: str = ...,
+    target_dbfs: float | None = ...,
+    force: bool = ...,
+) -> tuple[Path, np.ndarray]: ...
+
+
 def simulate_instrument_voicing(
     instrument: InstrumentConfig | str | Path | None = None,
     voicing: VoicingConfig | str = "default_voicing",
     input_wav: Path | str | None = None,
+    input_audio: np.ndarray | None = None,
     output_wav: Path | str | None = None,
+    return_audio: bool = False,
     max_samples: int | None = None,
     num_taps: int = NUM_TAPS,
     apply_dither: bool = True,
@@ -238,7 +282,7 @@ def simulate_instrument_voicing(
     normalize: str = "auto",
     target_dbfs: float | None = None,
     force: bool = False,
-) -> Path:
+) -> Path | tuple[Path, np.ndarray] | np.ndarray:
     """
     Simulates a physical instrument voicing digital twin directly from dry string excitation.
     Convolves:
@@ -260,35 +304,50 @@ def simulate_instrument_voicing(
     )
 
     # Resolve input audio
-    if not input_wav or not Path(input_wav).exists():
+    in_path: Path | None = None
+    if input_audio is not None:
+        raw_audio = np.asarray(input_audio, dtype=np.float64)
+        if max_samples is not None and len(raw_audio) > max_samples:
+            raw_audio = raw_audio[:max_samples]
+        sr = 48000
+    elif not input_wav or not Path(input_wav).exists():
         found = find_default_input_audio()
         if not found:
             raise FileNotFoundError(
                 f"Input audio '{input_wav}' not found, and no standard excitation audio (input.wav) was detected."
             )
         in_path = Path(found)
+        raw_audio, sr = read_wav(in_path, max_samples=max_samples, dtype=np.float64)
     else:
         in_path = Path(input_wav)
+        raw_audio, sr = read_wav(in_path, max_samples=max_samples, dtype=np.float64)
 
     # Resolve output path
+    out_path: Path | None = None
     if output_wav is not None:
         out_path = Path(output_wav)
-    elif isinstance(voicing, str) and (
-        voicing in inst.pickups or str(voicing).lower() in inst.pickups
-    ):
-        p_key = voicing if voicing in inst.pickups else str(voicing).lower()
-        out_path = WET_AUDIO_DIR / inst.id / f"{p_key}.wav"
-    else:
-        out_path = WET_AUDIO_DIR / inst.id / f"{voicing_id}.wav"
-    out_path.parent.mkdir(parents=True, exist_ok=True)
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+    elif not return_audio:
+        if isinstance(voicing, str) and (
+            voicing in inst.pickups or str(voicing).lower() in inst.pickups
+        ):
+            p_key = voicing if voicing in inst.pickups else str(voicing).lower()
+            out_path = WET_AUDIO_DIR / inst.id / f"{p_key}.wav"
+        else:
+            out_path = WET_AUDIO_DIR / inst.id / f"{voicing_id}.wav"
+        out_path.parent.mkdir(parents=True, exist_ok=True)
 
     # Cryptographic Bit-Provenance Cache Check
-    inst_ver = getattr(inst, "version", 1)
-    voice_ver = getattr(voicing_cfg, "version", 1)
-    v_tag = resolve_tri_part_version(DSP_GENERATION, inst_ver, voice_ver)
-    if not force and is_wet_stem_valid(out_path, base_dry_path=in_path, expected_version=v_tag):
-        print(f"[Forward Sim] Cached {inst.id}:{voicing_id} ({v_tag}) -> {out_path.name}")
-        return out_path
+    if in_path is not None and out_path is not None and not force:
+        inst_ver = getattr(inst, "version", 1)
+        voice_ver = getattr(voicing_cfg, "version", 1)
+        v_tag = resolve_tri_part_version(DSP_GENERATION, inst_ver, voice_ver)
+        if is_wet_stem_valid(out_path, base_dry_path=in_path, expected_version=v_tag):
+            print(f"[Forward Sim] Cached {inst.id}:{voicing_id} ({v_tag}) -> {out_path.name}")
+            if return_audio:
+                audio_cached, _ = read_wav(out_path)
+                return out_path, audio_cached
+            return out_path
 
     # Lookup physical pickup
     pickup_key = voicing_cfg.pickup
@@ -316,8 +375,6 @@ def simulate_instrument_voicing(
     scale_m = (scale_range[0] + scale_range[1]) / 2.0
     scale_in = inst.scale_length_in or (scale_m / 0.0254)
 
-    # Audio Loading
-    raw_audio, sr = read_wav(in_path, max_samples=max_samples, dtype=np.float64)
     input_mono = raw_audio[0] if raw_audio.ndim > 1 else raw_audio
     n_samples = len(input_mono)
 
@@ -582,32 +639,13 @@ def simulate_instrument_voicing(
 
                 M_blend = np.sqrt(gamma * P_coh_reg + (1.0 - gamma) * P_incoh) / dc_norm
 
-                n_fft = 4096
-                hop_length = 1024
-
-                # STFT Magnitude Forcing (Perfect physical realization of spatial incoherence without FIR ringing)
-                X_branches = [_stft(b, n_fft, hop_length) for b in branch_audios]
-                X_coh = np.sum(X_branches, axis=0)
-                P_incoh_stft = np.sum([np.abs(X) ** 2 for X in X_branches], axis=0)
-
-                f_stft = np.fft.rfftfreq(n_fft, d=1.0 / 48000.0)
-                gamma_stft = 0.5 * (1.0 - np.tanh((f_stft - f_mid) / f_sigma))
-                gamma_stft = gamma_stft[np.newaxis, :]
-
-                M_target = (
-                    np.sqrt(
-                        gamma_stft * (np.abs(X_coh) ** 2 + (eps_quad**2) * P_incoh_stft)
-                        + (1.0 - gamma_stft) * P_incoh_stft
-                    )
-                    / dc_norm
-                )
-
-                phase_ref = X_branches[0].copy()
-                mask = np.abs(X_coh) < 1e-6
-                phase_ref[mask] = X_branches[0][mask] if len(X_branches) > 0 else 0.0
-
-                X_out = M_target * np.exp(1j * np.angle(phase_ref))
-                composite_audio = _istft(X_out, n_fft, hop_length, n_samples)
+                # Homomorphic minimum-phase causal FIR synthesis
+                # Directly models the physical aperture magnitude response (coherent comb notch transitioning
+                # smoothly into incoherent high-frequency summation) without STFT phase-forcing pole artifacts.
+                fir_comp = synthesize_minimum_phase_fir(M_blend, num_taps=num_taps, normalize=False)
+                composite_audio = fft_convolve(
+                    input_mono, np.asarray(fir_comp, dtype=np.float64), mode="causal"
+                )[:n_samples]
 
                 mag_spectrum = M_blend
             elif len(H_channels_arr) > 1:
@@ -793,46 +831,54 @@ def simulate_instrument_voicing(
             filtered = filtered * (CALIBRATION_PEAK_CEILING / tp)
 
     # 12. 24-bit PCM Export
-    write_wav_24bit(out_path, filtered.astype(np.float32), sample_rate=sr)
+    if out_path is not None:
+        write_wav_24bit(out_path, filtered.astype(np.float32), sample_rate=sr)
 
-    final_tp_db = compute_true_peak_dbfs(filtered)
-    final_tp_lin = compute_true_peak(filtered)
-    final_rms_db = 20.0 * math.log10(max(float(np.sqrt(np.mean(filtered**2))), 1e-9))
-    final_lufs = compute_lufs(filtered, sample_rate=sr)
-    lufs_str = (
-        f"{final_lufs:.2f} LUFS"
-        if not (math.isinf(final_lufs) or math.isnan(final_lufs))
-        else "-inf LUFS"
-    )
-    print(
-        f"[Forward Sim] {inst.id}:{voicing_id} -> {out_path.name}: "
-        f"True Peak = {final_tp_db:.2f} dBFS (lin={final_tp_lin:.4f}), "
-        f"RMS = {final_rms_db:.2f} dBFS, Loudness = {lufs_str}"
-    )
-
-    # 13. Manifest Provenance Tracking (base dry SHA256)
-    try:
-        base_dry_sha = compute_file_sha256(in_path)
-        inst_ver = getattr(inst, "version", 1)
-        voice_ver = getattr(voicing_cfg, "version", 1)
-        v_tag = resolve_tri_part_version(
-            DSP_GENERATION,
-            inst_ver,
-            voice_ver,
+        final_tp_db = compute_true_peak_dbfs(filtered)
+        final_tp_lin = compute_true_peak(filtered)
+        final_rms_db = 20.0 * math.log10(max(float(np.sqrt(np.mean(filtered**2))), 1e-9))
+        final_lufs = compute_lufs(filtered, sample_rate=sr)
+        lufs_str = (
+            f"{final_lufs:.2f} LUFS"
+            if not (math.isinf(final_lufs) or math.isnan(final_lufs))
+            else "-inf LUFS"
         )
-        write_manifest(
-            output_dir=out_path.parent,
-            stage="voicing",
-            files=[out_path],
-            version_tag=v_tag,
-            base_dry_sha256=base_dry_sha,
-            base_dry_file=in_path.name,
-            instrument_version=inst_ver,
-            voicing_version=voice_ver,
+        print(
+            f"[Forward Sim] {inst.id}:{voicing_id} -> {out_path.name}: "
+            f"True Peak = {final_tp_db:.2f} dBFS (lin={final_tp_lin:.4f}), "
+            f"RMS = {final_rms_db:.2f} dBFS, Loudness = {lufs_str}"
         )
-    except OSError, ValueError, RuntimeError:
-        pass
 
+        # 13. Manifest Provenance Tracking (base dry SHA256)
+        if in_path is not None:
+            try:
+                base_dry_sha = compute_file_sha256(in_path)
+                inst_ver = getattr(inst, "version", 1)
+                voice_ver = getattr(voicing_cfg, "version", 1)
+                v_tag = resolve_tri_part_version(
+                    DSP_GENERATION,
+                    inst_ver,
+                    voice_ver,
+                )
+                write_manifest(
+                    output_dir=out_path.parent,
+                    stage="voicing",
+                    files=[out_path],
+                    version_tag=v_tag,
+                    base_dry_sha256=base_dry_sha,
+                    base_dry_file=in_path.name,
+                    instrument_version=inst_ver,
+                    voicing_version=voice_ver,
+                )
+            except OSError, ValueError, RuntimeError:
+                pass
+
+    if return_audio:
+        if out_path is not None:
+            return out_path, filtered
+        return filtered
+
+    assert out_path is not None
     return out_path
 
 

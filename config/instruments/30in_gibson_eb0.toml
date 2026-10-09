@@ -67,7 +67,6 @@ affinity = "neck"
 vol_pos = 1.0
 tone_pos = 1.0
 tone_cap_f = 2.2e-08
-gain_db = 6.2
 
 [voicings.neck_dub]
 version = 1

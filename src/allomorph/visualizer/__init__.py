@@ -92,7 +92,22 @@ def main(argv: Sequence[str] | None = None) -> None:
         default=None,
         help="Output HTML file or directory path (default: docs/frequency_responses/<instrument_id>.html)",
     )
+    parser.add_argument(
+        "--debug-stem",
+        "-d",
+        default=None,
+        help="Run comprehensive stem diagnostics for a target voice (e.g. --debug-stem jazz_bridge_open)",
+    )
     args = parser.parse_args(argv)
+
+    if args.debug_stem:
+        from allomorph.circuit.stem_debug import debug_voicing_stem, format_stem_report_table
+
+        inst_arg = None if args.instrument == "all" else args.instrument
+        report = debug_voicing_stem(voice_id=args.debug_stem, instrument=inst_arg)
+        print(format_stem_report_table(report))
+        return
+
     cli_cfg = VisualizerCliConfig(
         instrument=args.instrument,
         mode=args.mode,

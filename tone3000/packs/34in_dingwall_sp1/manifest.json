@@ -97,7 +97,7 @@
           "target_voicing_version": 1,
           "version": "v5.1.1",
           "tone_name": "Mudbucker Deep",
-          "sha256": "f23335e6f7a38590953628c595e9cef610c42bf7f2953930961e9224b5464b67"
+          "sha256": "1d090e6fd2f4a4ce5692111a89b6379b43a605d6ad2ab2d10213d752c4dcbb6f"
         },
         {
           "filename": "Upright Acoustic [Neck] v5.1.1.wav",
@@ -132,7 +132,7 @@
           "target_voicing_version": 1,
           "version": "v5.1.1",
           "tone_name": "Jazz Bridge Growl",
-          "sha256": "a040ad46e6ea42b994324ee6d9db778dd9231c68e98193cb11069348f9d89a3e"
+          "sha256": "6be5989bb92bacd2e5235e65b04b7fd56fbc5b418d76712e1616d2581c71ecc5"
         },
         {
           "filename": "Jazz Bridge Open [Bridge] v5.1.1.wav",
@@ -203,7 +203,7 @@
       "base_dry_sha256": "7b361f99d72cf978d39e28e5e8b461b168eaee31919f63e4153ba76ce0609401",
       "dry_file": "dry v5.1.1.wav",
       "dry_version": "v5.1.1",
-      "dry_sha256": "1148584ac9895383e78775eb2a0ed2f985f81a84644c90a455e409cb7fa1cb1d",
+      "dry_sha256": "b5eb847005a7bbc1485ab6ea506e80d331509c87120ffd08551eef74791e99b8",
       "instrument_id": "34in_dingwall_sp1",
       "instrument_version": 1,
       "source_voicing_version": 1,
@@ -217,7 +217,7 @@
           "target_voicing_version": 1,
           "version": "v5.1.1",
           "tone_name": "Jazz Pair Open",
-          "sha256": "09b50695de45fb856bbabefa88a0b2cf7d47d425643f94226dbed747ba0a94c6"
+          "sha256": "8531cd200306a2aa54e7985f5107d165de4288c275a58eb487f6f54fdb0f127f"
         },
         {
           "filename": "Jazz Pair Mids [Parallel] v5.1.1.wav",
@@ -227,7 +227,7 @@
           "target_voicing_version": 1,
           "version": "v5.1.1",
           "tone_name": "Jazz Pair Mids",
-          "sha256": "38131aa1217b3212a4eb7613581b807feb1146c4205b4246a752410bdb63acb9"
+          "sha256": "55dba29c62906107a64ca238ce32b26b159a426b172ebdedbd24a6819614c611"
         },
         {
           "filename": "Jazz Pair Active [Parallel] v5.1.1.wav",
@@ -237,7 +237,7 @@
           "target_voicing_version": 1,
           "version": "v5.1.1",
           "tone_name": "Jazz Pair Active",
-          "sha256": "f7d3caeaf89f29c393f28ac2a97cd367d7ae40e0b57ba6b23e2ffae65d3836ef"
+          "sha256": "ccbb92fa439f733acbe16670cc8247a2fc8c64580c98baa84461e5c8d954bcea"
         },
         {
           "filename": "Dingwall Parallel [Parallel] v5.1.1.wav",
@@ -247,7 +247,7 @@
           "target_voicing_version": 1,
           "version": "v5.1.1",
           "tone_name": "Dingwall Parallel",
-          "sha256": "33e6b6dcc020dc333c1af42215d31c8cb80e59ecc25297eed94ae91315407ddc"
+          "sha256": "05a0da030eaac728eefd2e07e4ab0d4c18477c74af020573395f09bd2bc96455"
         },
         {
           "filename": "PJ Passive [Parallel] v5.1.1.wav",
@@ -257,7 +257,7 @@
           "target_voicing_version": 1,
           "version": "v5.1.1",
           "tone_name": "PJ Passive",
-          "sha256": "fc6ae15cbd49733b6009ebe505bffed65f0c11863dbff10bf2977d133c3729ea"
+          "sha256": "67de56bd409c948ebfe9646791176cca60bf7b6071f49867ac2983725d506cd9"
         },
         {
           "filename": "PJ Active [Parallel] v5.1.1.wav",
@@ -267,7 +267,7 @@
           "target_voicing_version": 1,
           "version": "v5.1.1",
           "tone_name": "PJ Active",
-          "sha256": "725e599d83c2ffbca89911fbc7b6e6c4eb1bcba3dc20bbad5ba255d3babefcdc"
+          "sha256": "7449714d570a3165fb0cd92952c44f4aac73e256684e88edc2cd8d4c1e790972"
         },
         {
           "filename": "P\u2215MM Parallel [Parallel] v5.1.1.wav",
@@ -277,7 +277,7 @@
           "target_voicing_version": 1,
           "version": "v5.1.1",
           "tone_name": "P\u2215MM Parallel",
-          "sha256": "90307c4af722e90c760390fe4e93bcdf0ad66d4c0466be6064e8115ce57015f3"
+          "sha256": "e089014dd545062a460de9586e236c82cc455a4882589cac72d634975aafcada"
         },
         {
           "filename": "P\u2215MM Series [Parallel] v5.1.1.wav",
@@ -287,7 +287,7 @@
           "target_voicing_version": 1,
           "version": "v5.1.1",
           "tone_name": "P\u2215MM Series",
-          "sha256": "ed17794ce4510f7454c947688357aa3f5767aa5c88071c472468d8383e163361"
+          "sha256": "29215b4b0a1a3d92ff698298350eed5bba2cdac98b4b41c291ae584893311209"
         }
       ]
     }
