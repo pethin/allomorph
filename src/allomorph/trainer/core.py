@@ -5,6 +5,8 @@ NAM Architecture 2 model configuration, and model export with studio reference m
 """
 
 import os
+import platform
+import subprocess
 import sys
 from pathlib import Path
 from typing import Any, override
@@ -175,6 +177,56 @@ def get_hardware_device_name(engine: str = DEFAULT_ENGINE) -> str:
         return "CPU"
 
 
+def detect_apple_silicon_tier() -> str:
+    """Detects Apple Silicon processor tier: 'base', 'pro', 'max', 'ultra', or 'unknown'.
+
+    Tiers correspond to Apple Silicon cache and GPU core topologies:
+    - Base (M1-M4): 7-10 GPU cores, 8-16MB SLC, 68-150 GB/s bandwidth.
+    - Pro (M1-M4 Pro): 14-20 GPU cores, 24-32MB SLC, 150-273 GB/s bandwidth.
+    - Max (M1-M4 Max): 30-40 GPU cores, 48-64MB SLC, 300-410+ GB/s bandwidth.
+    - Ultra (M1-M2 Ultra): 60-80 GPU cores, 96-128MB SLC, 800+ GB/s bandwidth.
+    """
+    if platform.system() != "Darwin":
+        return "unknown"
+
+    brand = ""
+    try:
+        res = subprocess.run(
+            ["sysctl", "-n", "machdep.cpu.brand_string"],
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=1.0,
+        )
+        brand = res.stdout.strip().lower()
+    except (subprocess.SubprocessError, OSError):
+        pass
+
+    if brand:
+        if "ultra" in brand:
+            return "ultra"
+        if "max" in brand:
+            return "max"
+        if "pro" in brand:
+            return "pro"
+        if "apple" in brand:
+            return "base"
+
+    # Fallback to physical memory capacity and logical CPU core count
+    try:
+        ram_gb = (os.sysconf("SC_PAGE_SIZE") * os.sysconf("SC_PHYS_PAGES")) / (1024**3)
+        cpus = os.cpu_count() or 8
+        if ram_gb >= 60.0 and cpus >= 20:
+            return "ultra"
+        if ram_gb >= 30.0 and cpus >= 12:
+            return "max"
+        if ram_gb >= 16.0 and cpus >= 10:
+            return "pro"
+        return "base"
+    except (OSError, ValueError):
+        return "base"
+
+
 def resolve_hardware_batch_size(
     batch_size: int | str = DEFAULT_BATCH_SIZE,
     num_train_samples: int = 1350,
@@ -188,6 +240,13 @@ def resolve_hardware_batch_size(
 
     try:
         if engine == "mlx" or (engine == "auto" and is_mlx_available()):
+            tier = detect_apple_silicon_tier()
+            # Max (30-40 GPU cores, 48-64MB SLC) and Ultra (60-80 GPU cores, 96-128MB SLC)
+            # saturate workgroups at batch size 16 without cache spilling.
+            # Base (7-10 GPU cores) and Pro (14-20 GPU cores) remain at batch size 8
+            # to stay within their 8-24MB L2/SLC cache boundaries.
+            if tier in ("max", "ultra"):
+                return 16
             return 8
 
         import torch

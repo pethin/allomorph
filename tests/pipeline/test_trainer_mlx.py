@@ -202,3 +202,45 @@ def test_mlx_training_fast_dev_run_export(tmp_path: Path):
     assert other_meta["target_voice"]["id"] == "precision_active"
     assert "training" in other_meta
     assert other_meta["training"]["validation_esr_a2_full"] is not None
+
+
+def test_apple_silicon_tier_detection_and_batch_sizing():
+    """Verifies Apple Silicon tier classification and dynamic batch size scaling."""
+    from unittest.mock import MagicMock, patch
+
+    from allomorph.trainer.core import detect_apple_silicon_tier, resolve_hardware_batch_size
+
+    def mock_sysctl(brand: str):
+        mock_res = MagicMock()
+        mock_res.stdout = brand
+        return mock_res
+
+    with patch("platform.system", return_value="Darwin"):
+        with patch("subprocess.run", return_value=mock_sysctl("Apple M1")):
+            assert detect_apple_silicon_tier() == "base"
+            assert resolve_hardware_batch_size("auto", engine="mlx") == 8
+
+        with patch("subprocess.run", return_value=mock_sysctl("Apple M2 Pro")):
+            assert detect_apple_silicon_tier() == "pro"
+            assert resolve_hardware_batch_size("auto", engine="mlx") == 8
+
+        with patch("subprocess.run", return_value=mock_sysctl("Apple M3 Max")):
+            assert detect_apple_silicon_tier() == "max"
+            assert resolve_hardware_batch_size("auto", engine="mlx") == 16
+
+        with patch("subprocess.run", return_value=mock_sysctl("Apple M1 Ultra")):
+            assert detect_apple_silicon_tier() == "ultra"
+            assert resolve_hardware_batch_size("auto", engine="mlx") == 16
+
+        with patch("subprocess.run", return_value=mock_sysctl("Apple M2 Ultra")):
+            assert detect_apple_silicon_tier() == "ultra"
+            assert resolve_hardware_batch_size("auto", engine="mlx") == 16
+
+    # Test non-Darwin returns unknown
+    with patch("platform.system", return_value="Linux"):
+        assert detect_apple_silicon_tier() == "unknown"
+
+    # Explicit batch size overrides
+    assert resolve_hardware_batch_size(32, engine="mlx") == 32
+    assert resolve_hardware_batch_size("64", engine="mlx") == 64
+
