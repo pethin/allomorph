@@ -335,6 +335,91 @@ def _get_saturation_filter_pack(
     return H_pre, H_de, aa_mask, H_hp
 
 
+def apply_conformal_clearance_asymmetry(
+    x: np.ndarray, vsat: float, kappa_geom: float = 0.0
+) -> np.ndarray:
+    """Applies conformal geometric clearance asymmetry (rational proximity growl):
+    x_out = x / max(1.0 - kappa_geom * tanh(x / vsat), 1e-6)
+    """
+    if kappa_geom <= 0.0 or vsat <= 0.0 or len(x) == 0:
+        return x
+    return x / np.maximum(1.0 - kappa_geom * np.tanh(x / vsat), 1e-6)
+
+
+def apply_higher_order_magnetic_saturation(
+    x: np.ndarray, vsat: float, alpha: float = 0.20, alpha3: float = 0.08
+) -> np.ndarray:
+    """Applies higher-order magnetic dipole expansion and soft-knee tanh saturation:
+    v_asym = x * (1.0 + x * (alpha + alpha3 * x))
+    v_sat = vsat * tanh(v_asym / vsat)
+    """
+    if vsat <= 0.0 or len(x) == 0:
+        return x
+    v_asym = x * (1.0 + x * (alpha + alpha3 * x))
+    return vsat * np.tanh(v_asym / vsat)
+
+
+def apply_displacement_touch_tilt(
+    x_disp: np.ndarray, x_hp: np.ndarray, vsat: float, tau_touch: float = 0.0
+) -> np.ndarray:
+    """Applies touch-sensitive highpass displacement tilt on peak string excursions."""
+    if tau_touch <= 0.0 or vsat <= 0.0 or len(x_disp) == 0:
+        return x_disp
+    disp_norm = np.sqrt(x_disp**2 + 1e-8) - 1e-4
+    touch_mod = tau_touch * np.tanh(disp_norm / vsat) * x_hp
+    return x_disp + touch_mod
+
+
+def apply_velocity_drag_pitch_sag(
+    x: np.ndarray,
+    vsat: float,
+    k_sag: float = 0.08,
+    k_eddy: float = 0.0,
+    beta_curv: float = 0.0,
+    k_pull: float = 0.0,
+    k_stein: float = 0.0,
+    k_emf: float = 0.0,
+    lambda_L: float = 0.0,
+    kappa_ap: float = 0.0,
+    sr: float = 48000.0,
+) -> np.ndarray:
+    """Applies dynamic Lenz-law core flux sag, attack pitch sag, and electromechanical braking."""
+    if vsat <= 0.0 or len(x) == 0:
+        return x
+    if not (
+        k_sag > 0.0
+        or k_eddy > 0.0
+        or beta_curv > 0.0
+        or k_pull > 0.0
+        or k_stein > 0.0
+        or k_emf > 0.0
+        or lambda_L > 0.0
+        or kappa_ap > 0.0
+    ):
+        return x
+
+    tau_att = 0.006  # 6 ms fast attack on string strike
+    tau_rel = 0.045  # 45 ms smooth domain relaxation release
+    alpha_att = 1.0 - math.exp(-1.0 / (sr * tau_att))
+    alpha_rel = 1.0 - math.exp(-1.0 / (sr * tau_rel))
+    env = _lenz_envelope_core(x, alpha_att, alpha_rel)
+    alpha_c = 1.0 - math.exp(-2.0 * math.pi * 750.0 / sr)
+    return _lenz_velocity_drag_core(
+        x,
+        env,
+        vsat,
+        k_sag,
+        alpha_c,
+        k_eddy,
+        beta_curv,
+        k_pull,
+        k_stein,
+        k_emf,
+        lambda_L,
+        kappa_ap,
+    )
+
+
 def apply_oversampled_saturation(
     audio: np.ndarray,
     vsat: float = 0.50,
@@ -412,46 +497,24 @@ def apply_oversampled_saturation(
 
     # For unipolar test vectors (e.g. DC step tests), bypass differentiation and apply direct saturation
     if float(np.min(audio)) >= 0.0:
-        v_asym = x * (1.0 + x * (alpha + alpha3 * x))
-        return (vsat * np.tanh(v_asym / vsat)).astype(np.float32)
+        v_sat = apply_higher_order_magnetic_saturation(x, vsat=vsat, alpha=alpha, alpha3=alpha3)
+        return v_sat.astype(np.float32)
 
     # 1. Dynamic Lenz-Law Core Flux Sag on forte peak excursions (velocity-proportional high-frequency damping),
     # dynamic core inductance curvature wobble, localized magnetic string pull damping / pitch sag, Steinmetz loss,
     # electromechanical back-EMF string braking, dynamic reluctance inductance modulation, and aperture bloom
-    if (
-        magnet_drag
-        and vsat > 0
-        and (
-            k_sag > 0.0
-            or k_eddy > 0.0
-            or beta_curv > 0.0
-            or k_pull > 0.0
-            or k_stein > 0.0
-            or k_emf > 0.0
-            or lambda_L > 0.0
-            or kappa_ap > 0.0
-        )
-    ):
-        tau_att = 0.006  # 6 ms fast attack on string strike
-        tau_rel = 0.045  # 45 ms smooth domain relaxation release
-        alpha_att = 1.0 - math.exp(-1.0 / (48000.0 * tau_att))
-        alpha_rel = 1.0 - math.exp(-1.0 / (48000.0 * tau_rel))
-        env = _lenz_envelope_core(x, alpha_att, alpha_rel)
-        # 1-pole crossover at 750 Hz separating punchy bass fundamental from transient string clank
-        alpha_c = 1.0 - math.exp(-2.0 * math.pi * 750.0 / 48000.0)
-        x = _lenz_velocity_drag_core(
+    if magnet_drag:
+        x = apply_velocity_drag_pitch_sag(
             x,
-            env,
-            vsat,
-            k_sag,
-            alpha_c,
-            k_eddy,
-            beta_curv,
-            k_pull,
-            k_stein,
-            k_emf,
-            lambda_L,
-            kappa_ap,
+            vsat=vsat,
+            k_sag=k_sag,
+            k_eddy=k_eddy,
+            beta_curv=beta_curv,
+            k_pull=k_pull,
+            k_stein=k_stein,
+            k_emf=k_emf,
+            lambda_L=lambda_L,
+            kappa_ap=kappa_ap,
         )
 
     if oversample <= 1:
@@ -462,19 +525,17 @@ def apply_oversampled_saturation(
             x_disp = x_disp * scale
             if tau_touch > 0.0:
                 x_hp = np.fft.irfft(np.fft.rfft(x_disp) * H_hp, n_sig)
-                disp_norm = np.sqrt(x_disp**2 + 1e-8) - 1e-4
-                touch_mod = tau_touch * np.tanh(disp_norm / vsat) * x_hp
-                x_disp = x_disp + touch_mod
+                x_disp = apply_displacement_touch_tilt(x_disp, x_hp, vsat=vsat, tau_touch=tau_touch)
             if eta_hyst > 0.0:
                 x_disp = apply_dahl_hysteresis(x_disp, eta=eta_hyst)
             if kappa_orbit > 0.0:
                 x_disp = apply_elliptical_orbit_projection(
                     x_disp, vsat=vsat, kappa_orbit=kappa_orbit
                 )
-            if kappa_geom > 0.0 and vsat > 0.0:
-                x_disp = x_disp / np.maximum(1.0 - kappa_geom * np.tanh(x_disp / vsat), 1e-6)
-            v_asym = x_disp * (1.0 + x_disp * (alpha + alpha3 * x_disp))
-            v_sat = vsat * np.tanh(v_asym / vsat)
+            x_disp = apply_conformal_clearance_asymmetry(x_disp, vsat=vsat, kappa_geom=kappa_geom)
+            v_sat = apply_higher_order_magnetic_saturation(
+                x_disp, vsat=vsat, alpha=alpha, alpha3=alpha3
+            )
             if slew_limit and vsat > 0.0 and f_slew > 0.0:
                 max_delta = 2.0 * math.pi * f_slew * vsat / 48000.0
                 v_sat = _slew_limit_core(v_sat, max_delta)
@@ -484,13 +545,12 @@ def apply_oversampled_saturation(
                 x = apply_dahl_hysteresis(x, eta=eta_hyst)
             if kappa_orbit > 0.0:
                 x = apply_elliptical_orbit_projection(x, vsat=vsat, kappa_orbit=kappa_orbit)
-            if kappa_geom > 0.0 and vsat > 0.0:
-                x = x / np.maximum(1.0 - kappa_geom * np.tanh(x / vsat), 1e-6)
-            v_asym = x * (1.0 + x * (alpha + alpha3 * x))
-            out = vsat * np.tanh(v_asym / vsat)
+            x = apply_conformal_clearance_asymmetry(x, vsat=vsat, kappa_geom=kappa_geom)
+            v_sat = apply_higher_order_magnetic_saturation(x, vsat=vsat, alpha=alpha, alpha3=alpha3)
             if slew_limit and vsat > 0.0 and f_slew > 0.0:
                 max_delta = 2.0 * math.pi * f_slew * vsat / 48000.0
-                out = _slew_limit_core(out, max_delta)
+                v_sat = _slew_limit_core(v_sat, max_delta)
+            out = v_sat
         return out.astype(np.float32)
 
     # Oversampling (2x or 4x) with passband-constrained frequency weighting
@@ -513,19 +573,19 @@ def apply_oversampled_saturation(
             X_up_hp = np.zeros(n_up // 2 + 1, dtype=complex)
             X_up_hp[:n_half_pass] = (X * H_pre_pass) * H_hp_pass
             x_up_hp = np.fft.irfft(X_up_hp, n_up) * float(m)
-            up_disp_norm = np.sqrt(x_up_disp**2 + 1e-8) - 1e-4
-            touch_mod = tau_touch * np.tanh(up_disp_norm / vsat) * (x_up_hp * scale)
-            x_up_disp = x_up_disp + touch_mod
+            x_up_disp = apply_displacement_touch_tilt(
+                x_up_disp, x_up_hp * scale, vsat=vsat, tau_touch=tau_touch
+            )
         if eta_hyst > 0.0:
             x_up_disp = apply_dahl_hysteresis(x_up_disp, eta=eta_hyst)
         if kappa_orbit > 0.0:
             x_up_disp = apply_elliptical_orbit_projection(
                 x_up_disp, vsat=vsat, kappa_orbit=kappa_orbit
             )
-        if kappa_geom > 0.0 and vsat > 0.0:
-            x_up_disp = x_up_disp / np.maximum(1.0 - kappa_geom * np.tanh(x_up_disp / vsat), 1e-6)
-        v_asym = x_up_disp * (1.0 + x_up_disp * (alpha + alpha3 * x_up_disp))
-        v_sat = vsat * np.tanh(v_asym / vsat)
+        x_up_disp = apply_conformal_clearance_asymmetry(x_up_disp, vsat=vsat, kappa_geom=kappa_geom)
+        v_sat = apply_higher_order_magnetic_saturation(
+            x_up_disp, vsat=vsat, alpha=alpha, alpha3=alpha3
+        )
         if slew_limit and vsat > 0.0 and f_slew > 0.0:
             max_delta = 2.0 * math.pi * f_slew * vsat / float(sr_up)
             v_sat = _slew_limit_core(v_sat, max_delta)
@@ -539,10 +599,8 @@ def apply_oversampled_saturation(
             x_up = apply_dahl_hysteresis(x_up, eta=eta_hyst)
         if kappa_orbit > 0.0:
             x_up = apply_elliptical_orbit_projection(x_up, vsat=vsat, kappa_orbit=kappa_orbit)
-        if kappa_geom > 0.0 and vsat > 0.0:
-            x_up = x_up / np.maximum(1.0 - kappa_geom * np.tanh(x_up / vsat), 1e-6)
-        v_asym = x_up * (1.0 + x_up * (alpha + alpha3 * x_up))
-        v_sat = vsat * np.tanh(v_asym / vsat)
+        x_up = apply_conformal_clearance_asymmetry(x_up, vsat=vsat, kappa_geom=kappa_geom)
+        v_sat = apply_higher_order_magnetic_saturation(x_up, vsat=vsat, alpha=alpha, alpha3=alpha3)
         if slew_limit and vsat > 0.0 and f_slew > 0.0:
             max_delta = 2.0 * math.pi * f_slew * vsat / float(sr_up)
             v_sat = _slew_limit_core(v_sat, max_delta)
@@ -596,7 +654,11 @@ __all__ = [
     "_slew_limit_core",
     "apply_active_pickup_dynamics",
     "apply_algebraic_rail_limiter",
+    "apply_conformal_clearance_asymmetry",
     "apply_dahl_hysteresis",
+    "apply_displacement_touch_tilt",
     "apply_elliptical_orbit_projection",
+    "apply_higher_order_magnetic_saturation",
     "apply_oversampled_saturation",
+    "apply_velocity_drag_pitch_sag",
 ]
