@@ -268,3 +268,29 @@ def test_guardrail_5_6_tone_naming_pedalboard_budget():
             )
             assert "/" not in versioned
             assert "\\" not in versioned
+
+
+def test_guardrail_5_3_difference_high_frequency_ceiling():
+    """Guardrail 5.3: Differential voicing curves (Target - Source) must not exhibit
+    spurious high-frequency treble boost artifacts (> +2.0 dB relative to passband)
+    arising from deconvolution noise floor clamping when targeting darker/series voicings."""
+    from allomorph.visualizer.dataframe import _TARGET_DFS_CACHE, build_voice_dataframe
+
+    _TARGET_DFS_CACHE.clear()
+
+    # Specifically test P/MM Parallel (Source) -> P/MM Series (Target)
+    df_par = build_voice_dataframe("p_mm_parallel", VOICES["p_mm_parallel"])
+    df_ser = build_voice_dataframe("p_mm_series", VOICES["p_mm_series"])
+
+    freqs = np.array(df_par["frequency"])
+    mag_par = np.array(df_par["magnitude_db"])
+    mag_ser = np.array(df_ser["magnitude_db"])
+    diff = mag_ser - mag_par
+
+    # Across high frequencies (5 kHz - 20 kHz), Series targeting from Parallel must NOT
+    # produce a spurious treble spike. Difference must stay <= +2.0 dB across the upper band.
+    hf_mask = freqs >= 5000.0
+    max_hf_diff = float(np.max(diff[hf_mask]))
+    assert max_hf_diff <= 2.0, (
+        f"P/MM Series difference exhibited spurious treble boost: {max_hf_diff:.2f} dB (expected <= +2.0 dB)"
+    )

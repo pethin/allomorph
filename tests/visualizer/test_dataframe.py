@@ -227,10 +227,19 @@ def test_multi_pickup_pj_voicings_comb_null_decay():
         freqs = df["frequency"].to_numpy()
         mag = df["magnitude_db"].to_numpy()
 
-        # Find local minima deeper than -5 dB
+        # Find local minima deeper than -5 dB (accounting for 2-decimal-place rounding plateaus)
         minima_idx = [
-            i for i in range(1, len(mag) - 1)
-            if mag[i] < mag[i - 1] and mag[i] < mag[i + 1] and mag[i] < -5.0
+            i
+            for i in range(1, len(mag) - 1)
+            if mag[i] < -5.0
+            and (
+                (mag[i] < mag[i - 1] and mag[i] < mag[i + 1])
+                or (
+                    mag[i] < mag[i - 1]
+                    and mag[i] == mag[i + 1]
+                    and (i + 2 >= len(mag) or mag[i + 2] > mag[i])
+                )
+            )
         ]
         # Must have exactly 1 primary spatial notch (in the 500-1500 Hz range)
         notch_freqs = [freqs[idx] for idx in minima_idx]

@@ -498,8 +498,17 @@ def solve_mna_harness(
     def stamp_adm(na: str, nb: str, y_val: complex | np.ndarray) -> None:
         ra = ds.find(na)
         rb = ds.find(nb)
-        ia = node_map.get(ra, -1) if ra not in gnd_names else -1
-        ib = node_map.get(rb, -1) if rb not in gnd_names else -1
+        is_gnd_a = ra in gnd_names
+        is_gnd_b = rb in gnd_names
+        ia = node_map.get(ra, -1) if not is_gnd_a else -1
+        ib = node_map.get(rb, -1) if not is_gnd_b else -1
+
+        # If a terminal is neither in node_map nor ground, it is floating (open-circuit)
+        if not is_gnd_a and ia < 0:
+            return
+        if not is_gnd_b and ib < 0:
+            return
+
         if ia >= 0:
             Y[:, ia, ia] += y_val
         if ib >= 0:
@@ -800,8 +809,15 @@ def solve_mna_harness(
         I_vec = np.zeros((n_freqs, n_nodes), dtype=np.complex128)
         rh = ds.find(c_info.t_hot)
         rc = ds.find(c_info.t_cold)
-        ih = node_map.get(rh, -1) if rh not in gnd_names else -1
-        ic = node_map.get(rc, -1) if rc not in gnd_names else -1
+        is_gnd_h = rh in gnd_names
+        is_gnd_c = rc in gnd_names
+        ih = node_map.get(rh, -1) if not is_gnd_h else -1
+        ic = node_map.get(rc, -1) if not is_gnd_c else -1
+
+        # If either coil terminal is floating (not in node_map and not ground), the coil loop is open
+        if (not is_gnd_h and ih < 0) or (not is_gnd_c and ic < 0):
+            H_coils[k_coil] = np.zeros(n_freqs, dtype=np.complex128)
+            continue
 
         y_self = c_info.y_self if c_info.y_self is not None else c_info.Y_br
         scale_emf = c_info.h_internal if c_info.h_internal is not None else 1.0
@@ -817,12 +833,15 @@ def solve_mna_harness(
             y_m = c_info.y_mutual
             rh_c = ds.find(c_coup.t_hot)
             rc_c = ds.find(c_coup.t_cold)
-            ih_c = node_map.get(rh_c, -1) if rh_c not in gnd_names else -1
-            ic_c = node_map.get(rc_c, -1) if rc_c not in gnd_names else -1
-            if ih_c >= 0:
-                I_vec[:, ih_c] -= y_m
-            if ic_c >= 0:
-                I_vec[:, ic_c] += y_m
+            is_gnd_hc = rh_c in gnd_names
+            is_gnd_cc = rc_c in gnd_names
+            ih_c = node_map.get(rh_c, -1) if not is_gnd_hc else -1
+            ic_c = node_map.get(rc_c, -1) if not is_gnd_cc else -1
+            if not ((not is_gnd_hc and ih_c < 0) or (not is_gnd_cc and ic_c < 0)):
+                if ih_c >= 0:
+                    I_vec[:, ih_c] -= y_m
+                if ic_c >= 0:
+                    I_vec[:, ic_c] += y_m
 
         # Solve system across all frequencies simultaneously
         if n_nodes == 1:
@@ -923,7 +942,13 @@ def solve_mna_harness(
         if p_id not in H_coils:
             sub_coils = [v for k, v in H_coils.items() if k.startswith(f"{p_id}.")]
             if sub_coils:
-                H_coils[p_id] = np.sum(sub_coils, axis=0)
+                # For split coils (disjoint string coverage), each string only excites one coil half
+                if p_cfg.type == "split_coil" or any(
+                    c.strings and c.strings != ["all"] for c in p_cfg.coils
+                ):
+                    H_coils[p_id] = np.mean(sub_coils, axis=0)
+                else:
+                    H_coils[p_id] = np.sum(sub_coils, axis=0)
 
     if return_complex:
         return H_coils

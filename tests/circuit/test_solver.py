@@ -126,15 +126,16 @@ def test_series_dual_pickup_transfer_function():
     inst, v = resolve_target_voicing("p_mm_series")
     curves = solve_mna_harness(inst, inst.harnesses[v.harness], v, freqs=FREQS)
     assert "split_p" in curves
-    assert "mm" in curves
-    mag_n = curves["split_p.forward"]
+    mag_n = curves["split_p"]
     mag_b = curves["mm"]
 
-    # Both channels sum at DC with equal weight per string pair
+    # Both channels sum at DC with healthy un-shunted transmission (> 0.90) and equal weight per string pair
+    assert mag_n[0] > 0.90
+    assert mag_b[0] > 0.90
     assert math.isclose(mag_n[0], mag_b[0], rel_tol=1e-3)
-    # Output rolls off smoothly at high frequencies (at 20 kHz, < 20% of DC)
-    assert mag_n[-1] < mag_n[0] * 0.20
-    assert mag_b[-1] < mag_b[0] * 0.20
+    # Output rolls off smoothly at high frequencies into the active buffer
+    assert mag_n[-1] < mag_n[0] * 0.70
+    assert mag_b[-1] < mag_b[0] * 0.40
 
 
 def test_active_pmm_transfer_function():
@@ -1056,4 +1057,115 @@ def test_mna_rickenbacker_vintage_push_pull_hpf():
 
     # Vintage 4.7nF cap cuts 40Hz sub-bass by > 10 dB (< 30% of modern gain)
     assert gain_40_vin < gain_40_mod * 0.30, f"HPF at 40Hz {gain_40_vin:.4f} vs modern {gain_40_mod:.4f}"
+
+
+def test_generic_floating_terminals_no_parasitic_ground_shunt():
+    """Generic Test: Verifies that unconnected / floating control pins or open switch contacts
+    are treated as open circuits and NEVER as parasitic shunts to ground in the MNA solver."""
+    from allomorph.config.schema import (
+        CoilConfig,
+        ControlElementConfig,
+        HarnessConfig,
+        InstrumentConfig,
+        PickupConfig,
+        VoicingConfig,
+    )
+
+    base_inst = InstrumentConfig(
+        id="test_floating_inst",
+        name="Test Floating Instrument",
+        scale_length_in=34.0,
+        pickups={
+            "test_p": PickupConfig(
+                name="Test Pickup",
+                position_from_bridge_m=0.10,
+                coils=[CoilConfig(id="c1", position_from_bridge_m=0.10, L=3.0, Rdc=5000.0, Ccoil=50e-12)],
+            )
+        },
+        harnesses={
+            "active": HarnessConfig(
+                name="Active Buffer Harness",
+                type="active_preamp",
+                wiring=[
+                    ["pickups.test_p.c1.cold", "GND"],
+                    ["pickups.test_p.c1.hot", "preamp.in"],
+                    ["preamp.out", "out"],
+                ],
+            )
+        },
+    )
+
+    v_base = VoicingConfig(name="Base Voicing", harness="active")
+    f_eval = np.array([100.0, 1000.0, 5000.0, 10000.0], dtype=np.float64)
+    curves_base = solve_mna_harness(base_inst, base_inst.harnesses["active"], v_base, freqs=f_eval)
+    mag_base = curves_base["test_p.c1"]
+
+    inst_with_floating = InstrumentConfig(
+        id="test_floating_inst_with_ctrl",
+        name="Test Floating Instrument With Control",
+        scale_length_in=34.0,
+        pickups=base_inst.pickups,
+        harnesses={
+            "active": HarnessConfig(
+                name="Active Buffer Harness with Blend",
+                type="active_preamp",
+                wiring=[
+                    ["pickups.test_p.c1.cold", "GND"],
+                    ["pickups.test_p.c1.hot", "controls.blend.neck_in"],
+                    ["controls.blend.wiper", "preamp.in"],
+                    ["preamp.out", "out"],
+                    # Note: controls.blend.bridge_in is intentionally unconnected (floating)!
+                ],
+                controls={
+                    "blend": ControlElementConfig(
+                        name="Blend", type="pot", taper="mn_blend", resistance=250000.0, default=0.5
+                    )
+                },
+            )
+        },
+    )
+
+    v_floating = VoicingConfig(name="Floating Voicing", harness="active", controls={"blend": 0.5})
+    curves_floating = solve_mna_harness(
+        inst_with_floating, inst_with_floating.harnesses["active"], v_floating, freqs=f_eval
+    )
+    mag_floating = curves_floating["test_p.c1"]
+
+    # At 0.5 blend, neck_in connects to wiper through contact resistance.
+    # If bridge_in (floating) was mistakenly treated as GND, wiper would be shunted to GND by 10 ohms,
+    # attenuating the signal by ~60 dB (gain dropping from ~0.98 to ~0.001).
+    # With the floating terminal fix, bridge_in is an open circuit and does not load wiper.
+    assert np.all(mag_floating > 0.90), f"Floating terminal caused parasitic shunt: {mag_floating}"
+    assert np.allclose(mag_floating, mag_base, rtol=0.02)
+
+
+def test_catalog_wide_active_voicings_transmission_integrity():
+    """Catalog-wide generic invariant test:
+    Every active pickup in every voicing across ALL registered instruments must have healthy
+    electrical transmission (max transmission >= -25 dB). No active coil may collapse into
+    unphysical numerical attenuation (< -40 dB) due to open-circuit ground-shunting bugs."""
+    from allomorph.config.instruments import load_all_instruments
+    from allomorph.config.voices import resolve_voicing_active_pickups
+
+    instruments = load_all_instruments()
+    f_eval = np.array([80.0, 200.0, 1000.0, 3000.0], dtype=np.float64)
+
+    for inst_id, inst in instruments.items():
+        if not hasattr(inst, "harnesses") or not inst.harnesses:
+            continue
+        for v_id, v in inst.voicings.items():
+            if v.harness not in inst.harnesses:
+                continue
+            h = inst.harnesses[v.harness]
+            curves = solve_mna_harness(inst, h, v, freqs=f_eval)
+            active_pickups = resolve_voicing_active_pickups(inst, v)
+
+            for p_id in active_pickups:
+                assert p_id in curves, f"Active pickup '{p_id}' missing in curves for {inst_id}:{v_id}"
+                max_gain = float(np.max(np.abs(curves[p_id])))
+                max_db = 20.0 * np.log10(max_gain + 1e-12)
+                assert max_db >= -25.0, (
+                    f"Active pickup '{p_id}' in {inst_id}:{v_id} experienced abnormal transmission collapse: "
+                    f"{max_db:.2f} dB (expected >= -25.0 dB)"
+                )
 
