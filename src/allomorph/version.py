@@ -1,5 +1,4 @@
-"""
-Allomorph - Engine Versioning, Provenance & Sidecar Manifest System.
+"""Allomorph - Engine Versioning, Provenance & Sidecar Manifest System.
 
 Defines the tri-part semantic versioning specification v[dsp].[inst].[voice],
 Git commit provenance tracking, and authoritative sidecar manifest.json generation.
@@ -7,14 +6,11 @@ Git commit provenance tracking, and authoritative sidecar manifest.json generati
 
 from __future__ import annotations
 
-import contextlib
 import functools
 import hashlib
 import json
-import math
 import subprocess
 import threading
-import wave
 from collections.abc import Sequence
 from datetime import UTC, datetime
 from pathlib import Path
@@ -43,7 +39,7 @@ def get_git_commit() -> str | None:
             commit = res.stdout.strip()
             if commit:
                 return commit
-    except subprocess.SubprocessError, OSError:
+    except (subprocess.SubprocessError, OSError):
         pass
     return None
 
@@ -53,8 +49,8 @@ def resolve_tri_part_version(
     inst_version: int | None = DEFAULT_INST_VERSION,
     voice_version: int | None = DEFAULT_VOICE_VERSION,
 ) -> str:
-    """
-    Constructs the tri-part semantic version token v[dsp].[inst].[voice].
+    """Constructs the tri-part semantic version token v[dsp].[inst].[voice].
+
     If voice_version is None, formats as two-part: v[dsp].[inst].
     If both inst_version and voice_version are None, formats as single-part: v[dsp].
     Example: resolve_tri_part_version(2, 1, 1) -> 'v2.1.1'
@@ -114,121 +110,20 @@ def write_manifest(
 ) -> Path:
     """Emits an authoritative manifest.json sidecar file in the output directory.
 
-    Records file SHA256 digests, size in bytes, audio metrics (if applicable),
-    base dry excitation SHA256 provenance, engine metadata, and versioning provenance.
+    Delegates to allomorph.pipeline.manifest.write_manifest.
     """
-    out_p = Path(output_dir)
-    out_p.mkdir(parents=True, exist_ok=True)
-    manifest_path = out_p / "manifest.json"
+    from allomorph.pipeline.manifest import write_manifest as _write_manifest
 
-    tag = version_tag or resolve_tri_part_version()
-
-    with _MANIFEST_LOCK:
-        existing_manifest: dict[str, Any] = {}
-        if manifest_path.exists():
-            try:
-                with manifest_path.open("r", encoding="utf-8") as f:
-                    existing_manifest = json.load(f)
-            except json.JSONDecodeError, OSError:
-                existing_manifest = {}
-
-        file_entries: dict[str, Any] = existing_manifest.get("files", {})
-
-        eff_base_dry_sha = base_dry_sha256 or existing_manifest.get("base_dry_sha256")
-        eff_base_dry_file = base_dry_file or existing_manifest.get("base_dry_file")
-
-        if isinstance(files, dict):
-            for fname, meta in files.items():
-                f_path = out_p / fname if not Path(fname).is_absolute() else Path(fname)
-                entry: dict[str, Any] = dict(meta)
-                if f_path.exists():
-                    entry.setdefault("size_bytes", f_path.stat().st_size)
-                    entry.setdefault("sha256", compute_file_sha256(f_path))
-                if eff_base_dry_sha is not None:
-                    entry.setdefault("base_dry_sha256", eff_base_dry_sha)
-                if eff_base_dry_file is not None:
-                    entry.setdefault("base_dry_file", eff_base_dry_file)
-                if tag is not None:
-                    entry.setdefault("version", tag)
-                if instrument_version is not None:
-                    entry.setdefault("instrument_version", instrument_version)
-                if voicing_version is not None:
-                    entry.setdefault("voicing_version", voicing_version)
-                file_entries[f_path.name] = entry
-        else:
-            for f_item in files:
-                f_path = out_p / f_item if not Path(f_item).is_absolute() else Path(f_item)
-                if f_path.exists() and f_path.name != "manifest.json":
-                    entry = {
-                        "size_bytes": f_path.stat().st_size,
-                        "sha256": compute_file_sha256(f_path),
-                    }
-                    if eff_base_dry_sha is not None:
-                        entry["base_dry_sha256"] = eff_base_dry_sha
-                    if eff_base_dry_file is not None:
-                        entry["base_dry_file"] = eff_base_dry_file
-                    if tag is not None:
-                        entry["version"] = tag
-                    if instrument_version is not None:
-                        entry["instrument_version"] = instrument_version
-                    if voicing_version is not None:
-                        entry["voicing_version"] = voicing_version
-                    if f_path.suffix.lower() == ".wav":
-                        with contextlib.suppress(
-                            wave.Error, OSError, ValueError, RuntimeError, EOFError
-                        ):
-                            import numpy as np
-
-                            from allomorph.dsp import (
-                                compute_lufs,
-                                compute_true_peak_dbfs,
-                                read_wav,
-                            )
-
-                            audio, sr = read_wav(f_path)
-                            peak = float(np.max(np.abs(audio)))
-                            rms = float(np.sqrt(np.mean(audio**2)))
-                            mono = audio[0] if audio.ndim > 1 else audio
-                            entry["duration_s"] = (
-                                round(float(len(mono)) / float(sr), 3) if sr > 0 else 0.0
-                            )
-                            entry["sample_rate"] = sr
-                            entry["peak_dbfs"] = round(20.0 * np.log10(max(peak, 1e-9)), 2)
-                            entry["rms_dbfs"] = round(20.0 * np.log10(max(rms, 1e-9)), 2)
-                            entry["true_peak_dbfs"] = round(compute_true_peak_dbfs(audio), 2)
-                            lufs_val = compute_lufs(audio, sample_rate=sr)
-                            entry["lufs"] = (
-                                round(lufs_val, 2)
-                                if not (math.isinf(lufs_val) or math.isnan(lufs_val))
-                                else None
-                            )
-                            entry["dc_offset"] = round(float(np.mean(mono)), 6)
-                    file_entries[f_path.name] = entry
-
-        manifest_data: dict[str, Any] = {
-            "version": tag,
-            "stage": stage,
-            "allomorph_version": ALLOMORPH_VERSION,
-            "dsp_generation": DSP_GENERATION,
-            "git_commit": get_git_commit(),
-            "updated_at": datetime.now(UTC).isoformat(),
-            "file_count": len(file_entries),
-        }
-        if eff_base_dry_sha is not None:
-            manifest_data["base_dry_sha256"] = eff_base_dry_sha
-        if eff_base_dry_file is not None:
-            manifest_data["base_dry_file"] = eff_base_dry_file
-        if instrument_version is not None:
-            manifest_data["instrument_version"] = instrument_version
-        if voicing_version is not None:
-            manifest_data["voicing_version"] = voicing_version
-
-        manifest_data["files"] = dict(sorted(file_entries.items()))
-
-        with manifest_path.open("w", encoding="utf-8") as f:
-            json.dump(manifest_data, f, indent=2)
-
-    return manifest_path
+    return _write_manifest(
+        output_dir=output_dir,
+        stage=stage,
+        files=files,
+        version_tag=version_tag,
+        base_dry_sha256=base_dry_sha256,
+        base_dry_file=base_dry_file,
+        instrument_version=instrument_version,
+        voicing_version=voicing_version,
+    )
 
 
 def is_wet_stem_valid(
@@ -256,7 +151,7 @@ def is_wet_stem_valid(
     try:
         with manifest_p.open("r", encoding="utf-8") as f:
             manifest = json.load(f)
-    except json.JSONDecodeError, OSError:
+    except (json.JSONDecodeError, OSError):
         return False
 
     files = manifest.get("files", {})
@@ -290,3 +185,18 @@ def is_wet_stem_valid(
         return False
 
     return recorded_sha == expected_sha
+
+
+__all__ = [
+    "ALLOMORPH_VERSION",
+    "DEFAULT_INST_VERSION",
+    "DEFAULT_VOICE_VERSION",
+    "DSP_GENERATION",
+    "_MANIFEST_LOCK",
+    "compute_file_sha256",
+    "get_git_commit",
+    "get_version_info",
+    "is_wet_stem_valid",
+    "resolve_tri_part_version",
+    "write_manifest",
+]
