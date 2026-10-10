@@ -113,6 +113,6 @@ type = "double_bass"
 wrap = "chrome_steel"
 core = "spiral_rope"
 tension_lbs = 265.0              # Massive 41.5" acoustic string tension
-damping_cutoff_hz = 3800.0       # Coupled spruce soundboard acoustic damping
+damping_cutoff_hz = 3200.0       # Coupled spruce soundboard acoustic damping
 damping_order = 2.0
 k_long = 0.02

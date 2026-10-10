@@ -59,10 +59,21 @@ MEAN_BASS_F0 = (
 )
 
 
+# Sensor tension coupling exponents derived from spatial derivative order:
+# beta = 1.0 for transverse displacement/velocity (magnetic)
+# beta = 0.0 for boundary shear force (bridge piezo) and direct (DI)
+SENSOR_COMPLIANCE_EXPONENTS: dict[str, float] = {
+    "magnetic": 1.0,
+    "bridge_force": 0.0,
+    "direct": 0.0,
+}
+
+
 def compute_differential_string_transfer(
     freqs: Sequence[float] | np.ndarray,
     src_string: StringPresetConfig,
     tgt_string: StringPresetConfig,
+    sensor_type: str = "magnetic",
 ) -> np.ndarray:
     """
     Computes differential transfer function between source instrument strings
@@ -94,10 +105,12 @@ def compute_differential_string_transfer(
 
     # Fundamental plucking excursion compliance derived from tension:
     # Transverse displacement under plucking force F_p: y_max = F_p / T * (x_p * (L - x_p) / L)
-    # Excursion compliance ratio: g_compliance = T_src / T_tgt
+    # Boundary shear force on saddle: F_bridge = T * (y_max / x_p) = F_p * (1 - x_p / L) (T cancels identically)
+    # Excursion compliance ratio: g_compliance = (T_src / T_tgt)^beta
     t_src = float(src_string.tension_lbs)
     t_tgt = float(tgt_string.tension_lbs)
-    g_compliance = t_src / max(t_tgt, 1e-6)
+    beta = SENSOR_COMPLIANCE_EXPONENTS[sensor_type]
+    g_compliance = (t_src / max(t_tgt, 1e-6)) ** beta
     h_compliance = np.sqrt((g_compliance**2 + (f / 90.0) ** 2) / (1.0 + (f / 90.0) ** 2))
 
     return h_damp_ratio * h_compliance

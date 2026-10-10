@@ -228,10 +228,14 @@ $$|H_{\text{anti}}(f)| = \frac{\sqrt{\left(1 - \left(\frac{f}{f_r}\right)^2\righ
 
 Unlike magnetic pickups that sense string velocity across a spatial aperture ($H(x, w)$), an upright bass bridge transducer (e.g., Fishman Full Circle, David Gage Realist, Underwood piezo) senses mechanical downforce and shear rocking torque transmitted directly through the wooden bridge foot into the soundboard:
 
-### A. Boundary Force Condition & Regularized Spatial De-Combing ($H_{\text{decomb}}$)
+#### A. Boundary Force Condition, Tension Cancellation & De-Combing ($H_{\text{decomb}}$)
 The bridge saddle constitutes a fixed string termination boundary ($x = 0\text{ mm}$). From the wave equation $y(x, t) = A \sin(k x) \cos(\omega t)$, the transverse boundary shear force is:
 $$F(0, t) = T \left. \frac{\partial y}{\partial x} \right|_{x=0} = T k A \cos(k \cdot 0) \cos(\omega t) = T k A \cos(\omega t)$$
 Because $\cos(k \cdot 0) \equiv 1.0$ across all wavenumbers $k$, a bridge saddle sensor exhibits zero comb notches across the entire audio bandwidth.
+
+Furthermore, under plucking force $F_p$ at position $x_p$, transverse displacement scales as $y_{\max} = \frac{F_p}{T} \frac{x_p (L - x_p)}{L}$. The boundary slope at the bridge is $\left. \frac{\partial y}{\partial x} \right|_{x=0} = \frac{y_{\max}}{x_p} = \frac{F_p}{T} \left(1 - \frac{x_p}{L}\right)$. Consequently, the transverse force exerted on the saddle is:
+$$F(0, t) = T \cdot \left. \frac{\partial y}{\partial x} \right|_{x=0} = T \cdot \left[\frac{F_p}{T} \left(1 - \frac{x_p}{L}\right)\right] = F_p \left(1 - \frac{x_p}{L}\right)$$
+**String tension $T$ cancels out identically at the saddle boundary.** Transverse shear force does not suffer from the $1/T$ displacement excursion penalty of magnetic pickups. In the universal continuous exponent taxonomy, the tension compliance exponent is $\beta = 0.0$ ($g_{\text{compliance}} = (T_{\text{src}} / T_{\text{tgt}})^0 \equiv 1.000$), preserving full, warm acoustic double bass fundamental transmission without unphysical sub-bass cuts.
 
 To transform a magnetic source pickup into an authentic bridge force excitation, Allomorph deconvolves the source pickup's spatial comb notches $H_{\text{comb}}(f) = |\sin(2\pi f x_{\text{src}} / v)|$ using regularized Wiener spatial inversion:
 $$H_{\text{decomb}}(f) = \frac{H_{\text{src, acoustic}}(f)}{H_{\text{src, acoustic}}^2(f) + \epsilon_{\text{reg}}}, \quad \epsilon_{\text{reg}} = 0.08$$
@@ -239,13 +243,13 @@ The decombed response is normalized relative to its median passband gain and tra
 
 ### B. Maple Bridge Rocking Resonance ($H_{\text{rock}}$)
 Double bass maple bridges exhibit an in-plane transverse rocking mode around $800\text{ Hz}$ ($Q = 1.8$), producing a characteristic $+2.5\text{ dB}$ nasal acoustic presence that defines pizzicato punch:
-$$|H_{\text{rock}}(f)| = \sqrt{\frac{\left(1 - \left(\frac{f}{f_r}\right)^2\right)^2 + \left(\frac{f \cdot 10^{+2.5/20}}{Q_r \cdot f_r}\right)^2}{\left(1 - \left(\frac{f}{f_r}\right)^2\right)^2 + \left(\frac{f}{Q_r \cdot f_r}\right)^2}}, \quad f_r = 800\text{ Hz}, \; Q_r = 1.8$$
+$$|H_{\text{rock}}(f)| = \sqrt{\frac{\left(1 - \left(\frac{f}{f_r}\right)^2\right)^2 + \left(\frac{f \cdot 10^{+2.5/20}}{Q_r \cdot f_r}\right)^2}}{\left(1 - \left(\frac{f}{f_r}\right)^2\right)^2 + \left(\frac{f}{Q_r \cdot f_r}\right)^2}}, \quad f_r = 800\text{ Hz}, \; Q_r = 1.8$$
 At DC ($f \to 0$), $H_{\text{rock}}(0) \equiv 1.000$ ($0.00\text{ dB}$), preserving transparent sub-bass energy.
 
 ### C. Bridge Wood Mass Roll-off ($H_{\text{mass}}$)
-The physical mass of the maple bridge and mechanical elasticity of the bridge-body contact filter out high-frequency string vibrations above $3.8\text{ kHz}$ with a smooth 2nd-order Butterworth roll-off ($Q = 0.707$):
-$$|H_{\text{mass}}(f)| = \frac{1}{\sqrt{\left(1 - \left(\frac{f}{f_m}\right)^2\right)^2 + 2\left(\frac{f}{f_m}\right)^2}}, \quad f_m = 3,800\text{ Hz}$$
-This natural acoustic roll-off eliminates electric finger clank, fret buzz, and high-frequency transducer hash while preserving pure bow and pizzicato fundamentals.
+The physical mass of the maple bridge and mechanical elasticity of the bridge-body contact filter out high-frequency string vibrations above $3.2\text{ kHz}$ with a smooth 2nd-order Butterworth roll-off ($Q = 0.707$):
+$$|H_{\text{mass}}(f)| = \frac{1}{\sqrt{\left(1 - \left(\frac{f}{f_m}\right)^2\right)^2 + 2\left(\frac{f}{f_m}\right)^2}}, \quad f_m = 3,200\text{ Hz}$$
+Combined with Thomastik Spirocore rope-core wrap damping ($3.2\text{ kHz}$, order $2.0$), this natural acoustic roll-off eliminates electric finger clank, fret buzz, and high-frequency transducer hash while preserving pure bow and pizzicato fundamentals.
 
 ### D. Transparent DC-Blocking High-Pass ($H_{\text{dc\_block}}$)
 To eliminate sub-audible mechanical handling rumble below the bass musical register ($E_1 = 41.2\text{ Hz}$, $B_0 = 30.87\text{ Hz}$) without injecting phase distortion or passband loss, a transparent $8\text{ Hz}$ 2nd-order high-pass filter is applied:

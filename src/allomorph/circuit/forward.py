@@ -65,6 +65,15 @@ AUDIO_DIR = REPO_ROOT / "audio"
 WET_AUDIO_DIR = AUDIO_DIR / "wet"
 CALIBRATION_PEAK_CEILING = 0.9900  # -0.087 dBFS (matching optimal_bass_dry calibration ceiling)
 
+# Scale dynamic exponents parameterized by sensor class:
+# kappa_excursion = 1.0 for magnetic velocity/displacement; 0.0 for boundary force / direct
+# kappa_snap = 1.0 for multi-scale electric tension snap; 0.0 for boundary force / direct
+SENSOR_SCALE_EXPONENTS: dict[str, tuple[float, float]] = {
+    "magnetic": (1.0, 1.0),
+    "bridge_force": (0.0, 0.0),
+    "direct": (0.0, 0.0),
+}
+
 
 @functools.lru_cache(maxsize=4)
 def _get_white_noise_vector(n: int) -> np.ndarray:
@@ -426,19 +435,14 @@ def simulate_instrument_voicing(
     else:
         h_preamp = np.ones_like(f, dtype=np.float64)
 
-    # 3. Scale-Length Tension Dynamics H_tension(f)
+    # 3. Scale-Length Tension Dynamics H_tension(f) (Zero-Conditional Continuous Coupling)
     r_L = scale_in / 34.0
-    if voicing_cfg.sensor_type == "direct":
-        h_tension = np.ones_like(f, dtype=np.float64)
-    elif voicing_cfg.sensor_type == "bridge_force":
-        g_snap = r_L**1.5
-        h_tension = np.sqrt((1.0 + g_snap**2 * (f / 2800.0) ** 2) / (1.0 + (f / 2800.0) ** 2))
-    else:
-        g_excursion = 1.0 / r_L
-        g_snap = r_L**1.5
-        h_tension = np.sqrt(
-            (g_excursion**2 + (f / 100.0) ** 2) / (1.0 + (f / 100.0) ** 2)
-        ) * np.sqrt((1.0 + g_snap**2 * (f / 2800.0) ** 2) / (1.0 + (f / 2800.0) ** 2))
+    kappa_exc, kappa_snap = SENSOR_SCALE_EXPONENTS[voicing_cfg.sensor_type]
+    g_excursion = (1.0 / r_L) ** kappa_exc
+    g_snap = (r_L**1.5) ** kappa_snap
+    h_tension = np.sqrt(
+        (g_excursion**2 + (f / 100.0) ** 2) / (1.0 + (f / 100.0) ** 2)
+    ) * np.sqrt((1.0 + g_snap**2 * (f / 2800.0) ** 2) / (1.0 + (f / 2800.0) ** 2))
 
     # 4. Steel Core Longitudinal Clank Resonance H_long(f) & String Damping H_string(f)
     inst_string = get_instrument_string(inst)
@@ -449,7 +453,9 @@ def simulate_instrument_voicing(
         else inst_string
     )
     if voicing_cfg.sensor_type != "direct" and target_string != ref_string:
-        h_str_raw = compute_differential_string_transfer(f, ref_string, target_string)
+        h_str_raw = compute_differential_string_transfer(
+            f, ref_string, target_string, sensor_type=voicing_cfg.sensor_type
+        )
         h_string = np.asarray(h_str_raw, dtype=np.float64)
         h_long = compute_differential_longitudinal_transfer(
             f, ref_string, target_string, scale_length_inches=scale_in
@@ -481,8 +487,8 @@ def simulate_instrument_voicing(
             / (s**2 + (w0 / q_rock) * s + w0**2)
         )
 
-        # 2. Bridge structure wood mass inertial roll-off above 3.5 kHz
-        f_damp = 3800.0
+        # 2. Bridge structure wood mass inertial roll-off above 3.2 kHz
+        f_damp = 3200.0
         h_mass = 1.0 / np.sqrt(1.0 + (f / f_damp) ** 4)
 
         h_ac = h_rock * h_mass
