@@ -196,24 +196,36 @@ def test_34in_active_stingray_routing():
     assert "mm_parallel" in inst.pickups
     assert inst.default_pickup == "mm_parallel"
 
-    # MM pickup definition
+    # MM pickup definitions
+    assert "mm_series" in inst.pickups
     mm = inst.pickups["mm_parallel"]
-    assert mm.type == "dual_coil_parallel"
+    assert mm.type == "composite"
     assert mm.position_from_bridge_m is not None
     assert math.isclose(mm.position_from_bridge_m, 0.0660, abs_tol=1e-4)
-    assert mm.resonant_frequency_hz == 4200.0
+    assert mm.resonant_frequency_hz == 8500.0
     assert mm.q_factor == 1.60
-    assert len(mm.coils) == 2
+    assert len(mm.components) == 2
+
+    mm_s = inst.pickups["mm_series"]
+    assert mm_s.type == "composite"
+    assert mm_s.position_from_bridge_m is not None
+    assert math.isclose(mm_s.position_from_bridge_m, 0.0660, abs_tol=1e-4)
+    assert mm_s.resonant_frequency_hz == 4100.0
+    assert mm_s.q_factor == 1.60
+    assert len(mm_s.components) == 2
 
     # Shorthand aliases check
     assert load_instrument("active_stingray").id == "34in_active_stingray"
     assert load_instrument("stingray").id == "34in_active_stingray"
     assert load_instrument("ray").id == "34in_active_stingray"
 
-    # All target voices map to mm_parallel
+    # Target voices map to mm_parallel, except stingray_series which maps to mm_series
     for vid in VOICES:
         pickup = get_source_pickup(inst, vid)
-        assert pickup.id == "mm_parallel"
+        if vid == "stingray_series":
+            assert pickup.id == "mm_series"
+        else:
+            assert pickup.id == "mm_parallel"
 
 
 def test_34in_preamp_soapbar_routing():
@@ -346,7 +358,7 @@ def test_37in_multiscale_dingwall_routing():
     b = inst.pickups["bridge"]
     assert b.position_from_bridge_m is not None
     assert math.isclose(b.position_from_bridge_m, 0.0480, abs_tol=1e-4)
-    assert b.resonant_frequency_hz == 3400.0
+    assert b.resonant_frequency_hz == 7300.0
 
     # Middle pickup
     mid = inst.pickups["middle"]
@@ -385,6 +397,7 @@ def test_34in_dingwall_sp1_routing():
     assert "p" in inst.pickups
     assert "bridge" in inst.pickups
     assert "pair_parallel" in inst.pickups
+    assert "pair_series" in inst.pickups
 
     # Dual-P split coil
     p = inst.pickups["p"]
@@ -411,3 +424,4 @@ def test_34in_dingwall_sp1_routing():
     assert get_source_pickup(inst, "precision_vintage").id == "p"
     assert get_source_pickup(inst, "jazz_bridge_open").id == "bridge"
     assert get_source_pickup(inst, "pj_passive").id == "pair_parallel"
+    assert get_source_pickup(inst, "dingwall_series").id == "pair_series"

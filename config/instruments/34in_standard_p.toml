@@ -7,7 +7,7 @@
 #   - Standard Fender Split-Coil P: Centerline 125.0mm from bridge saddle
 #       - E/A half (forward towards neck): 139.0mm from bridge (292.8mm from 12th fret)
 #       - D/G half (rearward towards bridge): 111.0mm from bridge (320.8mm from 12th fret)
-#       - Aperture width: 1.00" (25.4mm) per coil half
+#       - Aperture width: 0.45" (11.4mm) magnetic sensing aperture per coil half (over 3/16" Alnico V rods)
 # Electronics:
 #   - Passive high-impedance circuit: 250k volume pot, 250k tone pot, 47nF capacitor.
 #   - Output: High-impedance passive 1/4" jack direct to audio interface / Anagram Block 1.
@@ -46,7 +46,7 @@ name = "Standard Split-Coil P"
 position_name = "Split"
 bundle_name = "split_p"
 position_from_bridge_m = 0.1250  # Centerline 125.0mm
-aperture_width_in = 1.00         # 1.00" aperture per split half
+aperture_width_in = 0.45         # 0.45" magnetic sensing aperture per split half
 coil_spacing_in = 0.0
 type = "split_coil"
 magnet_type = "alnico_v"
@@ -54,9 +54,9 @@ resonant_frequency_hz = 2800.0   # Standard Fender split-coil loaded resonance (
 q_factor = 1.40                  # Vintage Alnico V loaded Q factor
 coils = [
     # Strings 3 & 4 see forward coil half (warmer, deeper fundamental)
-    { strings = [3, 4], position_from_bridge_m = 0.1390, aperture_width_in = 1.00, weight = 1.0 },
+    { strings = [3, 4], position_from_bridge_m = 0.1390, aperture_width_in = 0.45, weight = 1.0 },
     # Strings 1 & 2 see rearward coil half (tighter, punchier mid bite)
-    { strings = [1, 2], position_from_bridge_m = 0.1110, aperture_width_in = 1.00, weight = 1.0 }
+    { strings = [1, 2], position_from_bridge_m = 0.1110, aperture_width_in = 0.45, weight = 1.0 }
 ]
 
 [pickups.split_p.circuit]
@@ -92,10 +92,8 @@ tone_name = "Precision Mids"
 pickup = "split_p"
 affinity = "neck"
 vol_pos = 1.0
-tone_pos = 1.0
+tone_pos = 0.0
 tone_cap_f = 2.2e-08
-Rtone = 3.3
-gain_db = 0.5
 string_preset_override = "roundwound_nickel_standard"
 
 [voicings.vintage_warm]
@@ -107,11 +105,7 @@ affinity = "neck"
 vol_pos = 1.0
 tone_pos = 0.0
 tone_cap_f = 4.7e-08
-Rtone = 3.3
-gain_db = -0.1
 string_preset_override = "flatwound_vintage_heavy"
-
-
 
 [voicings.slab_dub]
 version = 1
@@ -122,8 +116,6 @@ affinity = "neck"
 vol_pos = 1.0
 tone_pos = 0.0
 tone_cap_f = 1.0e-07
-Rtone = 3.3
-gain_db = -0.5
 string_preset_override = "flatwound_vintage_heavy"
 
 # ------------------------------------------------------------------------------

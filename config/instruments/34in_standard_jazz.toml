@@ -7,7 +7,7 @@
 #   - 60s/Modern Neck Single-Coil: 155.6mm from bridge saddle (276.2mm from 12th fret, 10 7/8")
 #   - 60s/Modern Bridge Single-Coil: 63.5mm from bridge saddle (368.3mm from 12th fret, 14 1/2")
 #   - Pickup Spacing: 92.1mm (3 5/8" center-to-center)
-#   - Coil Aperture: 0.75" (19.05mm) narrow single-coil magnetic sensing envelope
+#   - Coil Aperture: 0.45" (11.4mm) single-coil magnetic sensing aperture over 3/16" Alnico V rods
 # Electronics:
 #   - Passive high-impedance circuit: Dual 250k volume pots (V/V/T), 250k master tone (47nF cap).
 #   - Parallel summing loaded resonance: 3.90 kHz, Q = 1.30.
@@ -46,14 +46,14 @@ tension_lbs = 171.0
 name = "Jazz Neck Single-Coil"
 position_name = "Neck"
 position_from_bridge_m = 0.1556  # 155.6mm from bridge (10 7/8" from 12th fret)
-aperture_width_in = 0.75         # 0.75" narrow single-coil aperture
+aperture_width_in = 0.45         # 0.45" narrow single-coil sensing aperture
 coil_spacing_in = 0.0
 type = "single_coil"
 magnet_type = "alnico_v"
 resonant_frequency_hz = 3600.0   # Neck single-coil loaded resonance (3.6 kHz)
 q_factor = 1.50
 coils = [
-    { strings = ["all"], position_from_bridge_m = 0.1556, aperture_width_in = 0.75, weight = 1.0 }
+    { strings = ["all"], position_from_bridge_m = 0.1556, aperture_width_in = 0.45, weight = 1.0 }
 ]
 
 # ------------------------------------------------------------------------------
@@ -75,14 +75,14 @@ Ctone = 4.7000000000000004e-08
 name = "60s Jazz Bridge Single-Coil"
 position_name = "Bridge"
 position_from_bridge_m = 0.0635  # 63.5mm from bridge (14 1/2" from 12th fret)
-aperture_width_in = 0.75         # 0.75" narrow single-coil aperture
+aperture_width_in = 0.45         # 0.45" narrow single-coil sensing aperture
 coil_spacing_in = 0.0
 type = "single_coil"
 magnet_type = "alnico_v"
 resonant_frequency_hz = 3200.0   # Bridge single-coil loaded resonance (3.2 kHz)
 q_factor = 1.60
 coils = [
-    { strings = ["all"], position_from_bridge_m = 0.0635, aperture_width_in = 0.75, weight = 1.0 }
+    { strings = ["all"], position_from_bridge_m = 0.0635, aperture_width_in = 0.45, weight = 1.0 }
 ]
 
 # ------------------------------------------------------------------------------
@@ -104,7 +104,7 @@ Ctone = 4.7000000000000004e-08
 name = "Jazz Neck + Bridge Parallel"
 position_name = "Parallel"
 position_from_bridge_m = 0.1095  # Acoustic centroid
-aperture_width_in = 0.75
+aperture_width_in = 0.45
 coil_spacing_in = 0.0
 type = "composite"
 magnet_type = "alnico_v"
@@ -147,7 +147,7 @@ Ccoil = 7e-11
 name = "Modern Active Jazz Single-Coil (Neck)"
 position_name = "Neck"
 position_from_bridge_m = 0.1556
-aperture_width_in = 0.75
+aperture_width_in = 0.45
 coil_spacing_in = 0.0
 type = "single_coil"
 magnet_type = "alnico_v"
@@ -155,7 +155,7 @@ alpha = 0.25
 resonant_frequency_hz = 5200.0
 q_factor = 1.70
 coils = [
-    { strings = ["all"], position_from_bridge_m = 0.1556, aperture_width_in = 0.75, weight = 1.0 }
+    { strings = ["all"], position_from_bridge_m = 0.1556, aperture_width_in = 0.45, weight = 1.0 }
 ]
 
 [pickups.neck_active.circuit]
@@ -173,7 +173,7 @@ Rvol = 500000.0
 name = "Modern Active Jazz Single-Coil (Bridge)"
 position_name = "Bridge"
 position_from_bridge_m = 0.0635
-aperture_width_in = 0.75
+aperture_width_in = 0.45
 coil_spacing_in = 0.0
 type = "single_coil"
 magnet_type = "alnico_v"
@@ -181,7 +181,7 @@ alpha = 0.28
 resonant_frequency_hz = 4600.0
 q_factor = 1.80
 coils = [
-    { strings = ["all"], position_from_bridge_m = 0.0635, aperture_width_in = 0.75, weight = 1.0 }
+    { strings = ["all"], position_from_bridge_m = 0.0635, aperture_width_in = 0.45, weight = 1.0 }
 ]
 
 [pickups.bridge_active.circuit]
@@ -199,7 +199,7 @@ Rvol = 500000.0
 name = "Modern Active Jazz Pair (Neck + Bridge)"
 position_name = "Parallel"
 position_from_bridge_m = 0.1095
-aperture_width_in = 0.75
+aperture_width_in = 0.45
 coil_spacing_in = 0.0
 type = "composite"
 magnet_type = "alnico_v"
@@ -234,7 +234,7 @@ vsat = 0.6
 name = "Jazz Jaco Bridge Growl Bias (Neck 75%, Bridge 100%)"
 position_name = "Bridge"
 position_from_bridge_m = 0.0957
-aperture_width_in = 0.75
+aperture_width_in = 0.45
 coil_spacing_in = 0.0
 type = "composite"
 magnet_type = "alnico_v"
@@ -290,10 +290,8 @@ tone_name = "Jazz Pair Mids"
 pickup = "pair_parallel"
 affinity = "parallel"
 vol_pos = 1.0
-tone_pos = 1.0
+tone_pos = 0.0
 tone_cap_f = 2.2e-08
-Rtone = 3.3
-gain_db = -0.5
 
 [voicings.pair_active]
 version = 1
@@ -303,7 +301,6 @@ pickup = "pair_active"
 affinity = "parallel"
 vol_pos = 1.0
 tone_pos = 1.0
-gain_db = 1.0
 preamp_preset = "sadowsky_2band"
 
 [voicings.bridge_growl]
@@ -313,7 +310,6 @@ tone_name = "Jazz Bridge Growl"
 pickup = "pair_jaco_growl"
 affinity = "bridge"
 vol_pos = 1.0
-gain_db = -1.2
 
 [voicings.bridge_open]
 version = 1

@@ -7,9 +7,9 @@
 #   - Standard Fender Split-Coil P: Centerline 125.0mm from bridge saddle
 #       - E/A half (forward towards neck): 139.0mm from bridge (292.8mm from 12th fret)
 #       - D/G half (rearward towards bridge): 111.0mm from bridge (320.8mm from 12th fret)
-#       - Aperture width: 1.00" (25.4mm) per coil half
+#       - Aperture width: 0.45" (11.4mm) magnetic sensing aperture per coil half
 #   - 60s/Modern Bridge Single-Coil: 63.5mm from bridge saddle (368.3mm from 12th fret, 14 1/2")
-#       - Aperture width: 0.75" (19.05mm) narrow single-coil sensing envelope
+#       - Aperture width: 0.45" (11.4mm) narrow single-coil magnetic sensing aperture
 # Electronics:
 #   - Passive high-impedance circuit: Dual 250k audio volume pots (V/V/T), 250k master tone (47nF cap).
 #   - Parallel summing loaded resonance: 2.80 kHz, Q = 1.20 (125k net vol load + 750pF cable).
@@ -48,7 +48,7 @@ tension_lbs = 171.0
 name = "Vintage Split-Coil P (Neck)"
 position_name = "Neck"
 position_from_bridge_m = 0.1250  # Centerline 125.0mm
-aperture_width_in = 1.00         # 1.00" aperture per split half
+aperture_width_in = 0.45         # 0.45" magnetic sensing aperture per split half
 coil_spacing_in = 0.0
 type = "split_coil"
 magnet_type = "alnico_v"
@@ -56,9 +56,9 @@ resonant_frequency_hz = 2800.0   # Standard Fender split-coil loaded resonance (
 q_factor = 1.40                  # Vintage Alnico V loaded Q factor
 coils = [
     # Strings 3 & 4 see forward coil half (warmer, deeper fundamental)
-    { strings = [3, 4], position_from_bridge_m = 0.1390, aperture_width_in = 1.00, weight = 1.0 },
+    { strings = [3, 4], position_from_bridge_m = 0.1390, aperture_width_in = 0.45, weight = 1.0 },
     # Strings 1 & 2 see rearward coil half (tighter, punchier mid bite)
-    { strings = [1, 2], position_from_bridge_m = 0.1110, aperture_width_in = 1.00, weight = 1.0 }
+    { strings = [1, 2], position_from_bridge_m = 0.1110, aperture_width_in = 0.45, weight = 1.0 }
 ]
 
 # ------------------------------------------------------------------------------
@@ -80,14 +80,14 @@ Ctone = 4.7000000000000004e-08
 name = "60s Jazz Bridge Single-Coil"
 position_name = "Bridge"
 position_from_bridge_m = 0.0635  # 63.5mm from bridge (14 1/2" from 12th fret)
-aperture_width_in = 0.75         # 0.75" narrow single-coil aperture
+aperture_width_in = 0.45         # 0.45" narrow single-coil sensing aperture
 coil_spacing_in = 0.0
 type = "single_coil"
 magnet_type = "alnico_v"
 resonant_frequency_hz = 3200.0   # Bridge single-coil loaded resonance (3.2 kHz)
 q_factor = 1.60
 coils = [
-    { strings = ["all"], position_from_bridge_m = 0.0635, aperture_width_in = 0.75, weight = 1.0 }
+    { strings = ["all"], position_from_bridge_m = 0.0635, aperture_width_in = 0.45, weight = 1.0 }
 ]
 
 # ------------------------------------------------------------------------------
@@ -109,7 +109,7 @@ Ctone = 4.7000000000000004e-08
 name = "Vintage P/J Parallel (Both Volumes 100%)"
 position_name = "Parallel"
 position_from_bridge_m = 0.09425 # Acoustic centroid (125.0mm + 63.5mm) / 2
-aperture_width_in = 0.875        # Blended effective aperture
+aperture_width_in = 0.45         # Blended effective sensing aperture
 coil_spacing_in = 0.0
 type = "composite"
 magnet_type = "alnico_v"
@@ -124,7 +124,7 @@ components = [
 name = "Modern Ceramic Split-Coil (Neck)"
 position_name = "Split"
 position_from_bridge_m = 0.1250
-aperture_width_in = 1.00
+aperture_width_in = 0.45
 coil_spacing_in = 0.0
 type = "split_coil"
 magnet_type = "ceramic"
@@ -132,8 +132,8 @@ alpha = 0.12
 resonant_frequency_hz = 4800.0
 q_factor = 1.70
 coils = [
-    { strings = [3, 4], position_from_bridge_m = 0.1390, aperture_width_in = 1.00, weight = 1.0 },
-    { strings = [1, 2], position_from_bridge_m = 0.1110, aperture_width_in = 1.00, weight = 1.0 }
+    { strings = [3, 4], position_from_bridge_m = 0.1390, aperture_width_in = 0.45, weight = 1.0 },
+    { strings = [1, 2], position_from_bridge_m = 0.1110, aperture_width_in = 0.45, weight = 1.0 }
 ]
 
 [pickups.p_active.circuit]
@@ -151,7 +151,7 @@ Rvol = 500000.0
 name = "Modern Ceramic Single-Coil (Bridge)"
 position_name = "Bridge"
 position_from_bridge_m = 0.0635
-aperture_width_in = 0.75
+aperture_width_in = 0.45
 coil_spacing_in = 0.0
 type = "single_coil"
 magnet_type = "ceramic"
@@ -159,7 +159,7 @@ alpha = 0.12
 resonant_frequency_hz = 4600.0
 q_factor = 1.80
 coils = [
-    { strings = ["all"], position_from_bridge_m = 0.0635, aperture_width_in = 0.75, weight = 1.0 }
+    { strings = ["all"], position_from_bridge_m = 0.0635, aperture_width_in = 0.45, weight = 1.0 }
 ]
 
 [pickups.j_active.circuit]
@@ -177,7 +177,7 @@ Rvol = 500000.0
 name = "Modern Active P/J (Split P + J Bridge)"
 position_name = "Parallel"
 position_from_bridge_m = 0.09425
-aperture_width_in = 0.875
+aperture_width_in = 0.45
 coil_spacing_in = 0.0
 type = "composite"
 magnet_type = "ceramic"
@@ -249,7 +249,6 @@ affinity = "parallel"
 vol_pos = 1.0
 tone_pos = 1.0
 tone_cap_f = 4.7e-08
-gain_db = 0.5
 
 [voicings.pair_active]
 version = 1
@@ -259,7 +258,6 @@ pickup = "pair_active"
 affinity = "parallel"
 vol_pos = 1.0
 tone_pos = 1.0
-gain_db = 1.5
 preamp_preset = "sadowsky_2band"
 
 [voicings.p_solo]
@@ -280,7 +278,6 @@ pickup = "p_active"
 affinity = "neck"
 vol_pos = 1.0
 tone_pos = 1.0
-gain_db = 1.5
 preamp_preset = "sadowsky_2band"
 
 

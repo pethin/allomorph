@@ -7,9 +7,9 @@
 #   - Split-P Neck Pickup: Centerline 155.0mm from bridge saddle (226.0mm from 12th fret)
 #       - E/A half (forward towards neck): 167.0mm from bridge (214.0mm from 12th fret)
 #       - D/G half (rearward towards bridge): 143.0mm from bridge (238.0mm from 12th fret)
-#       - Aperture width: 1.00" (25.4mm) per coil half
+#       - Aperture width: 0.45" (11.4mm) magnetic sensing aperture per coil half
 #   - Jazz Bridge Single-Coil: Centerline 55.0mm from bridge saddle (326.0mm from 12th fret)
-#       - Aperture width: 0.75" (19.05mm)
+#       - Aperture width: 0.45" (11.4mm) magnetic sensing aperture
 #   - Parallel Summing (P + J): Acoustic centroid 105.0mm from bridge saddle
 # Electronics:
 #   - Passive high-impedance circuit: 250k volume pot, 250k tone pot (47nF cap), 3-way toggle.
@@ -49,7 +49,7 @@ tension_lbs = 145.0
 name = "Mustang PJ Split-P (Neck)"
 position_name = "Neck"
 position_from_bridge_m = 0.1550  # Centerline 155.0mm
-aperture_width_in = 1.00         # 1.00" aperture per split half
+aperture_width_in = 0.45         # 0.45" magnetic sensing aperture per split half
 coil_spacing_in = 0.0
 type = "split_coil"
 magnet_type = "alnico_v"
@@ -57,9 +57,9 @@ resonant_frequency_hz = 2800.0
 q_factor = 1.40
 coils = [
     # Strings 3 & 4 see forward coil half (deeper fundamental)
-    { strings = [3, 4], position_from_bridge_m = 0.1670, aperture_width_in = 1.00, weight = 1.0 },
+    { strings = [3, 4], position_from_bridge_m = 0.1670, aperture_width_in = 0.45, weight = 1.0 },
     # Strings 1 & 2 see rearward coil half (snappy transient bite)
-    { strings = [1, 2], position_from_bridge_m = 0.1430, aperture_width_in = 1.00, weight = 1.0 }
+    { strings = [1, 2], position_from_bridge_m = 0.1430, aperture_width_in = 0.45, weight = 1.0 }
 ]
 
 # ------------------------------------------------------------------------------
@@ -81,14 +81,14 @@ Ctone = 4.7000000000000004e-08
 name = "Mustang PJ Single-Coil J (Bridge)"
 position_name = "Bridge"
 position_from_bridge_m = 0.0550  # 55.0mm from bridge
-aperture_width_in = 0.75
+aperture_width_in = 0.45
 coil_spacing_in = 0.0
 type = "single_coil"
 magnet_type = "alnico_v"
 resonant_frequency_hz = 3200.0
 q_factor = 1.60
 coils = [
-    { strings = ["all"], position_from_bridge_m = 0.0550, aperture_width_in = 0.75, weight = 1.0 }
+    { strings = ["all"], position_from_bridge_m = 0.0550, aperture_width_in = 0.45, weight = 1.0 }
 ]
 
 # ------------------------------------------------------------------------------
@@ -110,7 +110,7 @@ Ctone = 4.7000000000000004e-08
 name = "Mustang P + J Parallel"
 position_name = "Parallel"
 position_from_bridge_m = 0.1050  # Centroid 105.0mm
-aperture_width_in = 0.85
+aperture_width_in = 0.45
 coil_spacing_in = 0.0
 type = "composite"
 magnet_type = "alnico_v"

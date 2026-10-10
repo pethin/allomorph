@@ -5,9 +5,9 @@
 # Physical Datums:
 #   - Scale Length: 34.0" (863.6mm total, 431.8mm 12th fret to bridge saddle)
 #   - Bridge Sweet Spot: Humbucker centerline 66.0mm from bridge saddle (365.8mm from 12th fret)
-#   - Coil Geometry: Dual-coil humbucker (0.75" coil spacing, 1.25" total sensing aperture)
-#       - Neck coil: 75.5mm from bridge (356.3mm from 12th fret)
-#       - Bridge coil: 56.5mm from bridge (375.3mm from 12th fret)
+#   - Coil Geometry: Dual-coil humbucker (0.875" coil spacing, 1.325" total sensing aperture)
+#       - Neck coil: 77.1mm from bridge (354.7mm from 12th fret)
+#       - Bridge coil: 54.9mm from bridge (376.9mm from 12th fret)
 #       - Oversized 3/8" (9.5mm) Alnico V or Ceramic pole pieces
 # Electronics:
 #   - Active 9V/18V onboard preamp (2-Band or 3-Band active boost/cut EQ buffer).
@@ -40,28 +40,50 @@ wrap = "nickel_round"
 tension_lbs = 171.0
 
 # ------------------------------------------------------------------------------
-# 1. MUSIC MAN DUAL-COIL HUMBUCKER (Parallel Mode)
+# 1. MUSIC MAN INDIVIDUAL COILS (Sub-Pickups)
 # ------------------------------------------------------------------------------
-[pickups.mm_parallel]
-name = "Music Man Dual-Coil Humbucker (Parallel)"
-position_name = "Parallel"
-bundle_name = "parallel"
-position_from_bridge_m = 0.0660  # Sweet spot centerline 66.0mm
-aperture_width_in = 1.25         # 1.25" overall aperture envelope
-coil_spacing_in = 0.75           # 0.75" (19.05mm) spacing between coil centers
-type = "dual_coil_parallel"
+[pickups.mm_neck]
+name = "Music Man Neck Coil"
+position_name = "Neck Coil"
+position_from_bridge_m = 0.0771  # 77.1mm from bridge
+aperture_width_in = 0.45
+coil_spacing_in = 0.0
+type = "single_coil"
 magnet_type = "alnico_v"
-resonant_frequency_hz = 4200.0   # Active 2-band buffered resonance (cable isolated)
-q_factor = 1.60                  # Resonant peak Q
+resonant_frequency_hz = 8500.0   # Active 2-band buffered single coil resonance
+q_factor = 1.60
 coils = [
-    { strings = ["all"], position_from_bridge_m = 0.0755, aperture_width_in = 0.75, weight = 0.5 }, # Neck coil
-    { strings = ["all"], position_from_bridge_m = 0.0565, aperture_width_in = 0.75, weight = 0.5 }  # Bridge coil
+    { strings = ["all"], position_from_bridge_m = 0.0771, aperture_width_in = 0.45, weight = 1.0 }
 ]
 
-[pickups.mm_parallel.circuit]
+[pickups.mm_neck.circuit]
 topology = "single"
-L = 1.2
-Rdc = 2200.0
+L = 2.4
+Rdc = 4400.0
+Reddy = 75000.0
+Ccoil = 1.8e-10
+active = true
+preamp = "stingray_2band"
+Rvol = 500000.0
+
+[pickups.mm_bridge]
+name = "Music Man Bridge Coil"
+position_name = "Bridge Coil"
+position_from_bridge_m = 0.0549  # 54.9mm from bridge
+aperture_width_in = 0.45
+coil_spacing_in = 0.0
+type = "single_coil"
+magnet_type = "alnico_v"
+resonant_frequency_hz = 8500.0   # Active 2-band buffered single coil resonance
+q_factor = 1.60
+coils = [
+    { strings = ["all"], position_from_bridge_m = 0.0549, aperture_width_in = 0.45, weight = 1.0 }
+]
+
+[pickups.mm_bridge.circuit]
+topology = "single"
+L = 2.4
+Rdc = 4400.0
 Reddy = 75000.0
 Ccoil = 1.8e-10
 active = true
@@ -69,7 +91,81 @@ preamp = "stingray_2band"
 Rvol = 500000.0
 
 # ------------------------------------------------------------------------------
-# 2. NATIVE INSTRUMENT VOICINGS
+# 2. MUSIC MAN DUAL-COIL HUMBUCKER (Parallel Mode)
+# ------------------------------------------------------------------------------
+[pickups.mm_parallel]
+name = "Music Man Dual-Coil Humbucker (Parallel)"
+position_name = "Parallel"
+bundle_name = "parallel"
+position_from_bridge_m = 0.0660  # Sweet spot centerline 66.0mm
+aperture_width_in = 1.25         # 1.25" overall aperture envelope
+coil_spacing_in = 0.875          # 0.875" (22.225mm) spacing between coil centers
+type = "composite"
+magnet_type = "alnico_v"
+resonant_frequency_hz = 8500.0   # Active 2-band buffered resonance (cable isolated)
+q_factor = 1.60                  # Resonant peak Q
+components = [
+    { pickup = "mm_neck", weight = 0.5 },
+    { pickup = "mm_bridge", weight = 0.5 }
+]
+
+[pickups.mm_parallel.circuit]
+topology = "parallel"
+active = true
+preamp = "stingray_2band"
+Rvol = 500000.0
+
+[pickups.mm_parallel.circuit.neck]
+L = 2.4
+Rdc = 4400.0
+Reddy = 75000.0
+Ccoil = 1.8e-10
+
+[pickups.mm_parallel.circuit.bridge]
+L = 2.4
+Rdc = 4400.0
+Reddy = 75000.0
+Ccoil = 1.8e-10
+
+# ------------------------------------------------------------------------------
+# 3. MUSIC MAN DUAL-COIL HUMBUCKER (Series Mode)
+# ------------------------------------------------------------------------------
+[pickups.mm_series]
+name = "Music Man Dual-Coil Humbucker (Series)"
+position_name = "Series"
+bundle_name = "series"
+position_from_bridge_m = 0.0660  # Sweet spot centerline 66.0mm
+aperture_width_in = 1.25         # 1.25" overall aperture envelope
+coil_spacing_in = 0.875          # 0.875" (22.225mm) spacing between coil centers
+type = "composite"
+magnet_type = "alnico_v"
+resonant_frequency_hz = 4100.0   # Active 2-band buffered series resonance
+q_factor = 1.60                  # Resonant peak Q
+components = [
+    { pickup = "mm_neck", weight = 0.5 },
+    { pickup = "mm_bridge", weight = 0.5 }
+]
+
+[pickups.mm_series.circuit]
+topology = "series"
+active = true
+preamp = "stingray_2band"
+Rvol = 500000.0
+
+[pickups.mm_series.circuit.neck]
+L = 2.4
+Rdc = 4400.0
+Reddy = 75000.0
+Ccoil = 1.8e-10
+
+[pickups.mm_series.circuit.bridge]
+L = 2.4
+Rdc = 4400.0
+Reddy = 75000.0
+Ccoil = 1.8e-10
+
+# ------------------------------------------------------------------------------
+# 4. NATIVE INSTRUMENT VOICINGS
 # ------------------------------------------------------------------------------
 
 [voicings.parallel_classic]
@@ -85,31 +181,24 @@ preamp_preset = "stingray_2band"
 version = 1
 name = "High-Output Muscular Series Punch"
 tone_name = "StingRay Series"
-pickup = "mm_parallel"
+pickup = "mm_series"
 affinity = "bridge"
 alpha = 0.22
 resonant_frequency_hz = 4100.0
 q_factor = 1.60
 vol_pos = 1.0
-gain_db = 5.6
 preamp_preset = "stingray_2band"
 
-[voicings.series_punch.circuit]
-topology = "single"
-L = 4.8
-Rdc = 8800.0
-Reddy = 150000.0
-Ccoil = 2.1e-10
-active = true
-preamp = "stingray_2band"
-preamp_gain = 1.9
-Rvol = 500000.0
-
 # ------------------------------------------------------------------------------
-# 3. PICKUP AFFINITY ROUTING
+# 4. PICKUP AFFINITY ROUTING
 # ------------------------------------------------------------------------------
 [pickup_mapping]
 neck = "mm_parallel"
 bridge = "mm_parallel"
 parallel = "mm_parallel"
+series = "mm_series"
 direct = "mm_parallel"
+"stingray_parallel" = "mm_parallel"
+"stingray_series" = "mm_series"
+"34in_active_stingray:parallel_classic" = "mm_parallel"
+"34in_active_stingray:series_punch" = "mm_series"

@@ -20,8 +20,7 @@ from allomorph.config.schema import CoilConfig, PickupConfig
 from allomorph.dsp import FREQS
 from allomorph.physics.aperture import (
     CALIBRATION_EXCURSION_ETA,
-    CALIBRATION_EXCURSION_POS_M,
-    CALIBRATION_EXCURSION_SCALE_M,
+    FRACTIONAL_EXCURSION_CALIBRATION_ETA,
     aperture_response,
     compute_body_microphonic_coupling,
     compute_coil_aperture,
@@ -378,7 +377,7 @@ def test_compute_displacement_proximity_shelf():
     freqs = np.asarray(FREQS, dtype=np.float64)
 
     # 1. Invalid positions return exact 1.0
-    assert np.all(compute_displacement_proximity_shelf(freqs, pos_m=0.0) == 1.0)
+    assert np.all(compute_displacement_proximity_shelf(freqs, pos_m=0.0, scale_m=0.8636) == 1.0)
     assert np.all(compute_displacement_proximity_shelf(freqs, pos_m=0.1, scale_m=0.0) == 1.0)
 
     # 2. High frequencies asymptotically approach 1.0 (0.00 dB)
@@ -388,7 +387,7 @@ def test_compute_displacement_proximity_shelf():
 
     # 3. Low frequencies reflect displacement ratio
     idx_20 = int(np.argmin(np.abs(freqs - 20.0)))
-    assert h_pos[idx_20] > 1.0  # 125mm is further from bridge than calibration 93.5mm -> boost
+    assert h_pos[idx_20] > 1.0  # 125mm is further from bridge than calibration eta -> boost
 
 
 def test_body_microphonic_coupling():
@@ -436,9 +435,8 @@ def test_get_coil_register():
 
 def test_calibration_excursion_constants():
     """Verify module-level calibration excursion reference constants."""
-    assert math.isclose(CALIBRATION_EXCURSION_POS_M, 0.0935, abs_tol=1e-6)
-    assert math.isclose(CALIBRATION_EXCURSION_SCALE_M, 0.8636, abs_tol=1e-6)
-    assert math.isclose(CALIBRATION_EXCURSION_ETA, 0.0935 / 0.8636, abs_tol=1e-6)
+    assert math.isclose(FRACTIONAL_EXCURSION_CALIBRATION_ETA, 0.1082677, abs_tol=1e-6)
+    assert math.isclose(CALIBRATION_EXCURSION_ETA, 0.1082677, abs_tol=1e-6)
 
 
 def test_multiscale_acoustic_response_range():

@@ -129,7 +129,6 @@ class NamTargetVoiceMeta(AllomorphBaseModel):
     topology: str = ""
     resonant_frequency_hz: float = 0.0
     q_factor: float = 0.0
-    target_position_34_m: float = 0.0
     effective_position_m: float = 0.0
     pickups: list[VoicePickupConfig] = Field(default_factory=list)
     coils: list[VoiceCoilConfig] = Field(default_factory=list)

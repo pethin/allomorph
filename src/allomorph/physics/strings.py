@@ -10,7 +10,6 @@ from typing import overload
 
 import numpy as np
 
-from allomorph.circuit.solver import smooth_soft_knee_db
 from allomorph.config.scales import SCALES, resolve_scale_range
 from allomorph.config.schema import InstrumentConfig, ScaleConfig, StringPresetConfig
 from allomorph.config.strings import get_voice_string
@@ -21,11 +20,11 @@ __all__ = [
     "INHARMONICITY_ANCHORS_F0",
     "MEAN_BASS_F0",
     "NOTE_NAMES",
+    "SENSOR_SCALE_EXPONENTS",
     "STRING_FUNDAMENTALS",
     "WaveSpeedContinuumPoint",
-    "compute_differential_longitudinal_transfer",
-    "compute_differential_string_transfer",
     "compute_dispersive_wave_speed",
+    "compute_forward_string_transfer",
     "generate_wave_speed_continuum",
     "get_inharmonicity_for_f0",
     "get_voice_string",
@@ -59,92 +58,36 @@ MEAN_BASS_F0 = (
 )
 
 
-# Sensor tension coupling exponents derived from spatial derivative order:
-# beta = 1.0 for transverse displacement/velocity (magnetic)
-# beta = 0.0 for boundary shear force (bridge piezo) and direct (DI)
-SENSOR_COMPLIANCE_EXPONENTS: dict[str, float] = {
-    "magnetic": 1.0,
-    "bridge_force": 0.0,
-    "direct": 0.0,
+# Sensor scale and compliance coupling exponents derived from spatial derivative order:
+# (kappa_exc, kappa_snap) = (1.0, 1.0) for transverse displacement/velocity (magnetic)
+# (0.0, 0.0) for boundary shear force (bridge piezo) and direct (DI)
+SENSOR_SCALE_EXPONENTS: dict[str, tuple[float, float]] = {
+    "magnetic": (1.0, 1.0),
+    "bridge_force": (0.0, 0.0),
+    "direct": (0.0, 0.0),
 }
 
 
-def compute_differential_string_transfer(
+def compute_forward_string_transfer(
     freqs: Sequence[float] | np.ndarray,
-    src_string: StringPresetConfig,
-    tgt_string: StringPresetConfig,
+    string_cfg: StringPresetConfig,
+    scale_length_inches: float = 34.0,
     sensor_type: str = "magnetic",
 ) -> np.ndarray:
-    """
-    Computes differential transfer function between source instrument strings
-    and target voicing goal strings using NumPy:
-      H_string_transfer(f) = H_damp_ratio(f) * H_compliance(f)
-    Prevents double-damping when source bass already uses flatwounds, while
-    providing authentic acoustic upright/fanned-fret damping and compliance.
-    """
-    f = np.asarray(freqs, dtype=np.float64)
+    """Computes absolute forward viscoelastic string wrap damping transfer function H_wrap(f).
 
-    f_damp_src = float(src_string.damping_cutoff_hz)
-    n_src = float(src_string.damping_order)
-
-    f_damp_tgt = float(tgt_string.damping_cutoff_hz)
-    n_tgt = float(tgt_string.damping_order)
-
-    # Calculate fused magnitude damping curve ratio
-    u_src = (f / f_damp_src) ** (2.0 * n_src)
-    u_tgt = (f / f_damp_tgt) ** (2.0 * n_tgt)
-    ratio = np.sqrt((1.0 + u_src) / (1.0 + u_tgt))
-    r_db = 20.0 * np.log10(np.maximum(ratio, 1e-6))
-    g_max_db = 8.0
-    g_min_db = -36.0
-    sigma = 0.5 * (1.0 + np.tanh(0.5 * r_db))
-    f_pos = smooth_soft_knee_db(r_db, thresh=5.0, ceiling=g_max_db, alpha=2.0)
-    f_neg = -smooth_soft_knee_db(-r_db, thresh=24.0, ceiling=abs(g_min_db), alpha=2.0)
-    r_soft_db = sigma * f_pos + (1.0 - sigma) * f_neg
-    h_damp_ratio = 10.0 ** (r_soft_db / 20.0)
-
-    # Fundamental plucking excursion compliance derived from tension:
-    # Transverse displacement under plucking force F_p: y_max = F_p / T * (x_p * (L - x_p) / L)
-    # Boundary shear force on saddle: F_bridge = T * (y_max / x_p) = F_p * (1 - x_p / L) (T cancels identically)
-    # Excursion compliance ratio: g_compliance = (T_src / T_tgt)^beta
-    t_src = float(src_string.tension_lbs)
-    t_tgt = float(tgt_string.tension_lbs)
-    beta = SENSOR_COMPLIANCE_EXPONENTS[sensor_type]
-    g_compliance = (t_src / max(t_tgt, 1e-6)) ** beta
-    h_compliance = np.sqrt((g_compliance**2 + (f / 90.0) ** 2) / (1.0 + (f / 90.0) ** 2))
-
-    return h_damp_ratio * h_compliance
-
-
-def compute_differential_longitudinal_transfer(
-    freqs: Sequence[float] | np.ndarray,
-    src_string: StringPresetConfig,
-    tgt_string: StringPresetConfig,
-    scale_length_inches: float = 34.0,
-) -> np.ndarray:
-    """
-    Computes differential longitudinal wave transmission and core percussion (H_long(f)).
-    Steel core longitudinal compression waves (cL ≈ 5100 m/s) produce an instantaneous
-    resonant clank peak around f_L = cL / (2 * L) (≈ 2.7 - 3.3 kHz).
-    When target voicing has higher longitudinal clank than source, injects regularized
-    percussive clank resonance. Returns 1.0 when matching source or delta <= 0.
+    Direct DI sensors define flat unity transfer (H_wrap = 1.0).
+    Longitudinal core compression clank is an instantaneous mechanical attack transient,
+    not a static linear frequency-domain filter, preserving pure aperture comb filtering.
     """
     f = np.asarray(freqs, dtype=np.float64)
-    k_long_src = float(src_string.k_long)
-    k_long_tgt = float(tgt_string.k_long)
-    delta_k_long = max(k_long_tgt - k_long_src, 0.0)
-    if delta_k_long <= 0.0:
+    if sensor_type == "direct":
         return np.ones_like(f)
 
-    L_meters = float(scale_length_inches) * 0.0254
-    c_L = 5100.0
-    f_L = c_L / (2.0 * max(L_meters, 0.50))
-    Q_L = 8.0
-    denom_L = Q_L * np.sqrt((1.0 - (f / f_L) ** 2) ** 2 + (f / (Q_L * f_L)) ** 2)
-    h_long = 1.0 + delta_k_long * (f / f_L) / np.maximum(denom_L, 1e-6) * np.exp(
-        -((f / 6000.0) ** 2)
-    )
-    return h_long
+    # Forward Wrap Damping
+    f_damp = float(string_cfg.damping_cutoff_hz)
+    n_order = float(string_cfg.damping_order)
+    return 1.0 / np.sqrt(1.0 + (f / max(f_damp, 100.0)) ** (2.0 * n_order))
 
 
 def pitch_to_note_name(f0: float) -> str:

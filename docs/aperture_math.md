@@ -24,8 +24,8 @@ $$H_{\text{aperture}}(f) = \left| \frac{\sin\left(\frac{\pi f w}{v}\right)}{\fra
 #### First Aperture Null:
 $$f_{\text{null}} = \frac{v}{w}$$
 
-* **Narrow Aperture (Jazz Bass single-coil, $w \approx 0.75''$):** The first null sits higher up in the frequency spectrum, preserving harmonic transients, "snap," and pick attack.
-* **Wide Aperture (Precision Bass / Music Man, $w \approx 1.00''\text{ to }1.50''$):** The null pulls down into the upper treble ($4\text{--}6\text{ kHz}$), creating a naturally warmer, thicker, low-pass characteristic.
+* **Physical Magnetic Sensing Aperture ($w \approx 0.40''\text{--}0.45''$ / $10\text{--}11.5\text{ mm}$):** In single-coil (Jazz Bass, Hi-Gain) and split-coil (Precision Bass) configurations, cylindrical Alnico rod poles ($3/16''$ to $3/8''$ diameter) with 3D fringing establish an effective magnetic sensing aperture of $w \approx 0.45''$. This places the first aperture null well above the audible passband ($> 8\text{--}15\text{ kHz}$ across registers), preserving genuine pickup RLC resonant peaks, pick snap, and vocal articulation without artificial sinc smothering.
+* **Dual-Coil Humbucker Envelopes & Spacing ($d \approx 0.65''\text{--}0.875''$):** In dual-coil humbuckers (Music Man StingRay, soapbars), the overall envelope is governed by coil spacing $d$ ($0.875''$ on MM, $0.65''$ on soapbars) with individual coil sensing apertures $w_{\text{coil}} \approx 0.40''\text{--}0.45''$. Modeling individual coil apertures rather than outer plastic bobbin cover dimensions ($1.00''\text{--}1.50''$) ensures exact physical fidelity.
 
 ---
 
@@ -182,13 +182,13 @@ $$H_{\text{pos}}(f) = \sqrt{\frac{g_0^2 + (f / 220\text{ Hz})^2}{1 + (f / 220\te
   the forward simulation engine models bridge proximity excursion bit-exact.
 * **Proportional Sweet Spot Invariance:** Identical proportional locations across scales (e.g. 32" MM @ $62.2\text{ mm} \implies \eta = 7.65\%$ vs 34" MM @ $66.0\text{ mm} \implies \eta = 7.64\%$) have $\eta_{\text{tgt}} / \eta_{\text{src}} \approx 1.0$ and receive **exact zero spurious scaling** ($0.00\text{ dB}$ flat).
 
-#### Proportional Scale Tension Snap ($H_{\text{tension}}$):
-When converting from shorter scales to longer scales ($L_{\text{src}} < L_{\text{tgt}}$), Allomorph applies a high-frequency tension snap shelf ($f_0 = 2,800\text{ Hz}$). When $L_{\text{src}} \ge L_{\text{tgt}}$ ($\Delta L \le 0$), tension snap evaluates to bit-exact $1.0000$ ($0.00\text{ dB}$ identity across all bins). When $L_{\text{src}} < L_{\text{tgt}}$:
-$$\Delta L = L_{\text{tgt}} - L_{\text{src}}$$
-$$\text{snap}_{\text{dB}} = 3.5 \cdot \tanh\left(\frac{1.8 \Delta L}{4.0 \times 3.5}\right)$$
-$$H_{\text{tension}}(f) = \sqrt{\frac{1 + 10^{\text{snap}_{\text{dB}} / 10.0} \cdot (f / 2800\text{ Hz})^2}{1 + (f / 2800\text{ Hz})^2}}$$
-
-Yields $+1.8\text{ dB}$ for 30" short scale into 34", $+0.9\text{ dB}$ for 32" medium scale into 34", and exact $0.00\text{ dB}$ for standard 34"-to-34" scale transformations, restoring the tight piano-like high-frequency snap of higher string tension without introducing unphysical zero-offset shelves.
+#### Absolute Forward Continuum Scaling (Zero Artificial EQ Shelves):
+In Allomorph's forward digital twin architecture, string scale dynamics are not evaluated through artificial high-shelf EQ filters ($H_{\text{tension}}$) or arbitrary baseline references. Instead, the brighter harmonic extension, piano-like clarity, and punch of longer scale lengths are modeled directly through first-principles physics:
+1. **Wave Speed Continuum Sinc Widening:** Wave speeds ($v = 2 L f_0$) scale with vibrating length $L$, directly widening the spatial aperture sinc passband ($\text{sinc}(w f / v)$) and shifting comb filter nulls upward.
+2. **Inharmonicity Dispersion ($B_s$):** The Gaussian RBF solver accelerates phase velocity for higher string tension.
+3. **Longitudinal Core Clank ($f_L = c_L / 2L$):** Naturally shifts clank resonance with scale length $L$ ($c_L = 5,100\text{ m/s}$) and core coupling $k_{\text{long}}$.
+4. **Viscoelastic Wrap Damping ($H_{\text{wrap}}$):** Low-pass cutoff set by wrap alloy ($12.0\text{ kHz}$ for stainless steel, $8.5\text{ kHz}$ for nickel, $1.8\text{--}3.2\text{ kHz}$ for flatwounds).
+5. **Standing-Wave Displacement Excursion ($\eta = x / L$):** Governed by dimensionless fractional excursion relative to the nominal sweet-spot calibration datum ($\eta_0 = 0.1082677$).
 
 ---
 
@@ -348,23 +348,16 @@ $$H_{\text{saddle, eff}}(f) = \min\left( \frac{H_{\text{saddle, tgt}}(f)}{\max(H
 
 ---
 
-## 10. Longitudinal Core Compression Waves & Percussive Clank ($H_{\text{long}}$)
+## 10. Transient Longitudinal Core Compression Waves & Clank Dynamics
 
 Plucking a wound bass string excites two distinct acoustic wave modes:
-1. **Transverse Shear Waves:** The primary musical pitch ($v_T = \sqrt{T/\mu} \approx 60\text{--}170\text{ m/s}$).
+1. **Transverse Shear Waves:** The primary musical pitch ($v_T = \sqrt{T/\mu} \approx 60\text{--}170\text{ m/s}$), which produce transverse velocity ($\partial y / \partial t$) directly sensed by electromagnetic pickups.
 2. **Longitudinal Compression Waves:** Compression-dilation pulses propagating through the solid steel core wire with longitudinal speed:
    $$c_L = \sqrt{\frac{E}{\rho_{\text{steel}}}} \approx 5,100\text{ m/s}$$
 
-The longitudinal compression wave reflects back and forth between the bridge saddle and nut/fret, generating an instantaneous resonant metallic clank at:
+The longitudinal compression wave reflects between bridge saddle and nut/fret ($f_L = c_L / 2L \approx 2.7\text{--}3.3\text{ kHz}$). In musical acoustics, magnetic pickups do not sense longitudinal displacement as a linear steady-state resonance; rather, longitudinal clank is an **instantaneous non-linear attack transient** launched at string release via non-linear tension surge ($\Delta T \propto (\partial y/\partial x)^2$) that rapidly decays ($< 50\text{ ms}$) from internal wrap friction and bridge saddle absorption.
 
-$$f_L = \frac{c_L}{2 L} \approx 2.7\text{--}3.3\text{ kHz}, \quad Q_L = 8.0$$
-
-When the target voicing strings (such as Dingwall stainless-steel roundwounds) have higher longitudinal coupling than the source instrument strings ($\Delta k_{\text{long}} = \max(k_{\text{long, tgt}} - k_{\text{long, src}}, 0) > 0$):
-
-$$H_{\text{long}}(f) = 1.0 + \Delta k_{\text{long}} \cdot \frac{f / f_L}{Q_L \sqrt{\left(1 - \left(\frac{f}{f_L}\right)^2\right)^2 + \left(\frac{f}{Q_L f_L}\right)^2}} \cdot e^{-\left(\frac{f}{6000\text{ Hz}}\right)^2}$$
-
-* **Musical Feel:** Reproduces the distinct metallic "piano clank" that cuts through heavy Darkglass drive engines without adding sterile high-frequency EQ boost.
-* Returns exact $1.0000$ ($0.00\text{ dB}$) when source strings match target strings.
+To preserve authentic electromagnetic spatial aperture comb filtering and prevent artificial parametric EQ bumps (such as $Q=8$ resonant spikes protruding through dual-coil comb nulls), the steady-state linear transfer pipeline strictly omits static frequency-domain $H_{\text{long}}$ filters. Scale snap and harmonic brilliance are governed strictly by the wave-speed continuum ($v_0 = 2 L f_0$), flexural inharmonicity ($B_s$), and viscoelastic wrap damping ($H_{\text{wrap}}$).
 
 ---
 

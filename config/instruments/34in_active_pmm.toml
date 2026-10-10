@@ -7,11 +7,11 @@
 #   - Precision Split-Coil P: Centerline 125.0mm from bridge saddle
 #       - E/A half (forward towards neck): 139.0mm from bridge (292.8mm from 12th fret)
 #       - D/G half (rearward towards bridge): 111.0mm from bridge (320.8mm from 12th fret)
-#       - Aperture width: 1.00" (25.4mm) per coil half
+#       - Aperture width: 0.45" (11.4mm) magnetic sensing aperture per coil half
 #   - Music Man Bridge Humbucker: Centerline 66.0mm from bridge saddle (sweet spot)
-#       - Forward neck coil: 75.5mm from bridge
-#       - Rearward bridge coil: 56.5mm from bridge (coil spacing 0.75" / 19.05mm)
-#       - Aperture width: 1.50" (38.1mm) dual-coil housing
+#       - Forward neck coil: 77.1mm from bridge (354.7mm from 12th fret)
+#       - Rearward bridge coil: 54.9mm from bridge (376.9mm from 12th fret) (coil spacing 0.875" / 22.225mm)
+#       - Aperture width: 1.25" (31.75mm) dual-coil housing
 # Electronics:
 #   - Active high-impedance buffer stage (Rin = 1.0 MOhm, Cin = 25 pF, low-Z Rout = 100 Ohm)
 #     isolating high-impedance coils from cable capacitance drag.
@@ -46,7 +46,7 @@ name = "Precision Split-Coil (Neck)"
 position_name = "Neck"
 bundle_name = "neck"
 position_from_bridge_m = 0.1250
-aperture_width_in = 1.00
+aperture_width_in = 0.45
 coil_spacing_in = 0.0
 type = "split_coil"
 magnet_type = "alnico_v"
@@ -54,8 +54,8 @@ alpha = 0.26
 resonant_frequency_hz = 3200.0
 q_factor = 1.60
 coils = [
-    { strings = [3, 4], position_from_bridge_m = 0.1390, aperture_width_in = 1.00, weight = 1.0 },
-    { strings = [1, 2], position_from_bridge_m = 0.1110, aperture_width_in = 1.00, weight = 1.0 }
+    { strings = [3, 4], position_from_bridge_m = 0.1390, aperture_width_in = 0.45, weight = 1.0 },
+    { strings = [1, 2], position_from_bridge_m = 0.1110, aperture_width_in = 0.45, weight = 1.0 }
 ]
 
 [pickups.p.circuit]
@@ -74,16 +74,16 @@ name = "Music Man Dual-Coil Parallel (Bridge)"
 position_name = "Bridge"
 bundle_name = "bridge"
 position_from_bridge_m = 0.0660
-aperture_width_in = 1.50
-coil_spacing_in = 0.75
+aperture_width_in = 1.25
+coil_spacing_in = 0.875
 type = "dual_coil_parallel"
 magnet_type = "alnico_v"
 alpha = 0.20
 resonant_frequency_hz = 3500.0
 q_factor = 1.50
 coils = [
-    { strings = ["all"], position_from_bridge_m = 0.0755, aperture_width_in = 0.75, weight = 0.5 },
-    { strings = ["all"], position_from_bridge_m = 0.0565, aperture_width_in = 0.75, weight = 0.5 }
+    { strings = ["all"], position_from_bridge_m = 0.0771, aperture_width_in = 0.45, weight = 0.5 },
+    { strings = ["all"], position_from_bridge_m = 0.0549, aperture_width_in = 0.45, weight = 0.5 }
 ]
 
 [pickups.mm.circuit]
@@ -118,7 +118,6 @@ components = [
 topology = "parallel"
 active = true
 preamp = "none"
-preamp_gain = 1.5
 Rvol = 500000.0
 
 [pickups.pair_parallel.circuit.neck]
@@ -156,7 +155,6 @@ components = [
 topology = "series"
 active = true
 preamp = "none"
-preamp_gain = 1.5
 Rvol = 500000.0
 
 [pickups.pair_series.circuit.neck]
@@ -184,7 +182,6 @@ tone_name = "P∕MM Parallel"
 pickup = "pair_parallel"
 affinity = "parallel"
 vol_pos = 1.0
-gain_db = 1.0
 alpha = 0.22
 
 [voicings.pmm_series]
@@ -194,7 +191,6 @@ tone_name = "P∕MM Series"
 pickup = "pair_series"
 affinity = "parallel"
 vol_pos = 1.0
-gain_db = 5.8
 alpha = 0.24
 
 [voicings.p_solo]

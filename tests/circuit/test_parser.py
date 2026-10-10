@@ -58,6 +58,7 @@ def test_load_all_voice_circuits():
             "pj_active",
             "pj_passive",
             "p_mm_parallel",
+            "stingray_parallel",
             "dingwall_parallel",
             "soapbar_pair",
             "active_emg_pair",
@@ -65,7 +66,7 @@ def test_load_all_voice_circuits():
             assert model.topology == "parallel"
             assert model.L_b > 0
             assert model.Rdc_b > 0
-        elif vid in ["p_mm_series", "p_mm_series"]:
+        elif vid in ["p_mm_series", "stingray_series", "dingwall_series"]:
             assert model.topology == "series"
             assert model.L_b > 0
             assert model.Rdc_b > 0

@@ -10,7 +10,7 @@ This document serves as the master living registry tracking every clamp, limit, 
 
 | ID | Parameter / Mechanism | Location | Formulation | Catalog Extrema | Status |
 |---|---|---|---|---|---|
-| **CL-01** | Scale Tension Snap Zero-Center | `prefilter.py:456`, `dataframe.py:221` | `if ΔL <= 0: H=1.0` else `3.5*tanh(1.8*ΔL/14.0)` | $[0.00\text{ dB}, +2.51\text{ dB}]$ | ✅ **Evaluated & Verified** (Bit-exact $0.000\text{ dB}$ on $\Delta L \le 0$) |
+| **CL-01** | Scale Tension Snap Zero-Center | Retired (formerly `prefilter.py:456`) | Retired in favor of pure forward first-principles scale dynamics (aperture sinc widening, RBF dispersion, and scale clank) | N/A (Retired) | 🛑 **Retired** (Eliminated artificial EQ shelf and 34"/155 lb constants) |
 | **CL-02** | Circuit Deconvolution Headroom | `solver.py:879` | `smooth_soft_knee_db(h_db, thresh=5.5, ceiling=8.0)` | $[0.00\text{ dB}, +6.77\text{ dB}]$ | ✅ **Evaluated & Verified** (Passive split-P reaches $+6.77\text{ dB}$) |
 | **CL-03** | Differential Prefilter & Output Limiter | `solver.py:879`, `prefilter.py:253, 433` | `smooth_soft_knee_db(raw_db, thresh=6.0, ceiling=8.0)` | $[0.00\text{ dB}, +8.00\text{ dB}]$ | ✅ **Evaluated & Verified** (100% linear $< +6.0\text{ dB}$) |
 | **CL-04** | Spatial Bridge Displacement (`alg4`) | `aperture.py:115` | Unified $C^\infty$ Partition-of-Unity Algebraic Limiter (`alg4`) | $[-9.11\text{ dB}, +9.11\text{ dB}]$ | ✅ **Evaluated & Verified** ($< 0.004\text{ dB}$ deviation from legacy piecewise curve, zero kinks) |
@@ -106,8 +106,8 @@ This document serves as the master living registry tracking every clamp, limit, 
 
 The following mechanisms have been fully audited and verified against the complete catalog matrix:
 
-1. **Scale Tension Snap Zero-Center:**
-   Verified bit-exact $1.0000$ ($0.000\text{ dB}$) across all frequencies whenever $L_{\text{src}} \ge L_{\text{tgt}}$. Bounded at $+2.51\text{ dB}$ for the maximum 30"-to-37" transformation.
+1. **Scale Tension Snap Zero-Center (Retired):**
+   Retired completely in favor of pure forward first-principles scale dynamics. Wave-speed continuum aperture passband widening ($v = 2 L f_0$), inharmonicity stiffness dispersion ($B_s$), and forward viscoelastic wrap damping ($H_{\text{wrap}}$) naturally produce the authentic snap and brilliance of long scales without empirical EQ shelves, arbitrary reference baselines, or static filter bumps.
 2. **Circuit Deconvolution Headroom:**
    $6.0\text{ dB} \to 8.0\text{ dB}$ expansion allows passive split-P pickups to authentically reach their $+6.77\text{ dB}$ resonance peak when deconvolved against active or wideband reference circuits without premature clipping.
 3. **Differential Prefilter & Output Limiter:**

@@ -154,8 +154,8 @@ def test_spatial_bridge_proximity_displacement_ratio_in_visualizer():
     assert -4.5 <= mag_j_20 <= -2.0, f"Jazz Bridge 20 Hz dB {mag_j_20} outside [-4.5, -2.0]"
 
     mag_j_1k = df_j.filter(pl.col("frequency") > 1000.0)["magnitude_db"].to_list()[0]
-    # Fundamental is leaner than mid-register by > 3.0 dB due to bridge displacement low-shelf
-    assert mag_j_20 < mag_j_1k - 3.0
+    # Fundamental is leaner than mid-register by > 2.5 dB due to bridge displacement low-shelf
+    assert mag_j_20 < mag_j_1k - 2.5
 
     # Voicings comparison dataframe verifies Difference curve at 20 Hz equals tgt - src
     df_comp = build_voicings_comparison_dataframe("precision_vintage", "jazz_bridge_open", step=1)

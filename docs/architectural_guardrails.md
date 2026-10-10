@@ -54,9 +54,14 @@ $$\Delta G_{\text{soft}}(dg) = \frac{dg}{\left(1 + \left(\frac{dg}{g_{\text{eff}
 where $g_{\text{pos}} = 12.0\text{ dB}$, $g_{\text{neg}} = 16.0\text{ dB}$, and $\beta = 1.0$. This formulation is strictly $C^\infty$ (infinitely differentiable) everywhere, matches catalog excursion to within $< 0.004\text{ dB}$ of legacy curves, guarantees absolute DC stability within $[-5.85\text{ dB}, +7.10\text{ dB}] \subset [-12\text{ dB}, +12\text{ dB}]$ across all 735 catalog pairs, and smoothly transitions between neck-ward fundamental boost and bridge-ward excursion cut without artificial symmetric truncation.
 
 
-### 1.6 Dynamic Target Scale Resolution & Tension Snap
-Dynamically resolve effective target scale length ($L_{\text{tgt}} = 37.0''$ for multiscale, $34.0''$ otherwise) and apply proportional tension snap whenever $L_{\text{src}} < L_{\text{tgt}}$:
-$$\text{snap\_db} = \min\left(3.5\text{ dB}, 1.8 \cdot \frac{L_{\text{tgt}} - L_{\text{src}}}{4.0''}\right)$$
+### 1.6 Absolute Forward Scale & String Continuum Physics (Zero Empirical EQ Shelves)
+In a true forward digital twin, an excitation string does not possess an empirical high-shelf EQ filter ($f_0 = 2,800\text{ Hz}$) or arbitrary baseline-relative tension snap. The snappy attack, piano-like clarity, and tight low-end of longer scales and high-tension strings are produced entirely through first-principles physical mechanisms:
+1. **Aperture Sinc Passband Widening ($v = 2 L f_0$):** Higher wave speeds naturally widen the aperture sinc passband ($\text{sinc}(w f / v)$) and shift comb filter nulls upward.
+2. **Inharmonicity Stiffness Dispersion ($B_s$):** Gaussian RBF stiffness dispersion accelerates phase velocity at high frequencies.
+3. **Longitudinal Steel Core Clank Resonance ($f_L = c_L / 2L$):** Naturally shifts clank resonance dynamically with exact scale length $L$ ($c_L = 5,100\text{ m/s}$) and core coupling $k_{\text{long}}$.
+4. **Viscoelastic Wrap Damping ($H_{\text{wrap}}(f)$):** Absolute material low-pass attenuation governed by wrap metallurgy ($12.0\text{ kHz}$ for stainless steel, $8.5\text{ kHz}$ for nickel roundwounds, $1.8\text{--}3.2\text{ kHz}$ for flatwounds).
+5. **Fractional Standing-Wave Excursion ($\eta = x / L$):** Governed by dimensionless fractional coordinate $\eta$ relative to the nominal sweet-spot calibration datum ($\eta_0 = 0.1082677$), without double-counted scale denominators.
+Artificial empirical tension snap filters ($H_{\text{tension}} / H_{\text{snap}}$) and hardcoded 34.0" / 155.0 lb reference constants are strictly prohibited.
 
 ### 1.7 Continuous Wave-Speed Continuum ($f_0 \in [30.87, 100]\text{ Hz}$)
 Never constrain acoustic spatial filtering to 4 discrete open-string wave speeds or note-name strings (`["E", "A"]`). Integrate acoustic aperture responses ($H_{\text{composite}}$) across a continuous, log-spaced distribution ($N \ge 24$ points, uniform $1/N$ weight) spanning Low B ($30.87\text{ Hz}$) to open G ($100.00\text{ Hz}$). Route continuum points geometrically via register halves (`[1, 2]` treble vs `[3, 4]` bass), never note names. On multi-scale instruments (e.g. 34"-37" Dingwall NG, 32"-35" Dingwall SP1), vibrating string length $L(f_0)$ smoothly interpolates logarithmically from $L_{\text{max}}$ at Low B ($30.87\text{ Hz}$) down to $L_{\text{min}}$ at High G ($100.0\text{ Hz}$):
@@ -69,10 +74,10 @@ To eliminate nested scalar iterations across frequency bins and registers, conti
 $$\mathbf{V}_{\text{disp}} = \mathbf{v}_0 \odot \sqrt{1 + \mathbf{B}_s \odot \frac{(\mathbf{F} \oslash \mathbf{f}_0)^2}{1 + (\mathbf{F} / 3500\text{ Hz})^2}}$$
 evaluating all aperture and spatial standing-wave responses across all continuum registers in a single SIMD vector pass.
 
-### 1.8 Longitudinal Wave Transmission & Core Percussion ($H_{\text{long}}(f)$)
-Plucking an electric bass string excites longitudinal compression waves propagating through the steel core wire ($c_L \approx 5100\text{ m/s}$), producing a distinct resonant clank at $f_L = c_L / (2L) \approx 2.7\text{--}3.3\text{ kHz}$. When target voicing string has higher longitudinal coupling than source ($\Delta k_{\text{long}} = \max(k_{\text{long,tgt}} - k_{\text{long,src}}, 0) > 0$):
-$$H_{\text{long}}(f) = 1.0 + \Delta k_{\text{long}} \cdot \frac{f / f_L}{Q_L \sqrt{(1 - (f/f_L)^2)^2 + (f / (Q_L f_L))^2}} \cdot e^{-(f/6000.0)^2}, \quad Q_L = 8.0$$
-Returns exact $1.0000$ ($0.00\text{ dB}$) when source matches target.
+### 1.8 Transient Mechanical Attack Clank vs Steady-State Linear Invariance
+Plucking an electric bass string excites longitudinal compression waves propagating through the steel core wire ($c_L \approx 5,100\text{ m/s}$). In musical acoustics, magnetic pickups sense transverse velocity ($\partial y / \partial t$); longitudinal compression is an instantaneous mechanical attack transient excited at pluck impact via non-linear tension modulation ($\Delta T \propto (\partial y/\partial x)^2$) that damps out rapidly ($< 50\text{ ms}$) through wrap friction and bridge saddle absorption.
+
+To preserve authentic electromagnetic spatial comb filtering and eliminate artificial parametric EQ bumps (such as $Q=8$ resonant peaks protruding through dual-coil aperture comb nulls at $2.8\text{ kHz}$), steady-state linear transfer modeling ($H_{\text{downstream}}$) strictly omits static frequency-domain longitudinal resonance filters. Scale brilliance and attack dynamics are governed completely by first-principles wave speeds ($v = 2 L f_0$), flexural inharmonicity dispersion ($B_s$), and viscoelastic wrap damping ($H_{\text{wrap}}$).
 
 ### 1.9 Cylindrical Rod vs Blade 2D Sensing Aperture
 Differentiate magnetic pole geometry across sensing coils using a unified geometric sensing aperture kernel:
@@ -235,7 +240,7 @@ In physical multi-pickup bass systems (e.g. Jazz Bass neck + bridge, PJ split + 
 3. **Current Summation & Spatial Coherence:** The saturated branch signals are summed in the time domain ($x_{\text{sum}}[n] = \sum_i x_i[n]$). If cross-coherence arrival delay is active ($\Delta\text{samples} > 0$), the cross-coherence filter:
    $$H_{\text{spatial}}(f) = \frac{\sqrt{\gamma(f) P_{\text{coh}}(f) + (1 - \gamma(f)) P_{\text{incoh}}(f)}}{\max(|H_{\text{coh}}(f)|, 10^{-4})}$$
    is synthesized into a causal minimum-phase FIR ($N = 1024$) and applied to the summed audio.
-4. **Downstream Staging:** Active preamp EQ ($H_{\text{preamp}}$), scale tension snap ($H_{\text{tension}}$), and string mechanics ($H_{\text{long}} \cdot H_{\text{string}}$) are applied downstream of the summed, saturated signal.
+4. **Downstream Staging:** Active preamp EQ ($H_{\text{preamp}}$) and viscoelastic string wrap damping ($H_{\text{wrap}}$) are applied downstream of the summed, saturated signal.
 5. **Linear Small-Signal Invariant:** On small signals ($\le 0.10$ peak), saturation kernels bypass non-linearity bit-exactly, guaranteeing that branch-wise simulation reduces mathematically to the unified linear convolution.
 
 #### 3.8.2 Psychoacoustic Invariant: EBU R128 / ITU-R BS.1770-4 Gated LUFS Matching

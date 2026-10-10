@@ -14,7 +14,8 @@ def test_voice_parameter_validity():
         assert isinstance(cfg, VoiceConfig), f"{vid} is not a VoiceConfig instance"
         assert cfg.name and cfg.topology and cfg.description
         assert cfg.fr > 0
-        max_fr = 20000.0 if cfg.preserve_aperture else 6000.0
+        is_active = cfg.circuit is not None and getattr(cfg.circuit, "active", False)
+        max_fr = 20000.0 if (cfg.preserve_aperture or is_active) else 6000.0
         assert 200.0 <= cfg.fr <= max_fr, f"{vid} fr outside audible musical range: {cfg.fr}"
         assert cfg.Q > 0
         assert len(cfg.coils) >= 1

@@ -26,7 +26,7 @@ This catalog details the physical parameters, equivalent RLC circuit values, aco
 | **11** | `p_mm_parallel` | Modern Active P/MM | Active Buffer | Studio Active Buffer ($R_{\text{in}}=1\text{M}\Omega, R_{\text{out}}=100\,\Omega$) | $0.96\text{ H}$ (isolated) | $1.79\text{ k}\Omega$ | $3.4\text{ kHz}$ | Authentic active parallel P/MM (Sandberg California VM / Lakland 44-02); Split-P neck and MM parallel bridge into high-Z buffer with zero cable drag; articulate punch and modern slap growl. |
 | **11b**| `p_mm_series` | Modern Active P/MM (Series)| Active Buffer | Studio Active Buffer ($R_{\text{in}}=1\text{M}\Omega, R_{\text{out}}=100\,\Omega$) | $8.40\text{ H}$ (isolated) | $16.90\text{ k}\Omega$ | $3.2\text{ kHz}$ | Split P and MM parallel humbucker wired in series before active buffer; $+5.8\text{ dB}$ inductive boost with punchy authority and zero cable drag. |
 | **12** | `mudbucker_deep` | Overwound Series| Ultra Series | Gibson $500\text{k}\Omega$ Vol, $500\text{k}\Omega$ Tone, $22\text{nF}$ Cap | $14.40\text{ H}$| $27.90\text{ k}\Omega$ | $1.2\text{ kHz}$ | Extreme dual-coil series network; subterranean low-end focus, steep natural top-end rolloff. |
-| **13** | `dingwall_bridge` | Multi-Scale MM | Angled Parallel | Dingwall Active Onboard Buffer ($1\text{ M}\Omega \parallel 25\text{ pF}$, low-Z out) | $2.30\text{ H}$ (isolated)| $4.40\text{ k}\Omega$ | $7.3\text{ kHz}$ | 34"-37" fanned-fret bridge position ($48.0\text{ mm}$) with high-tension wave speeds and active buffered FD3 parallel dual-coil sparkle. |
+| **13** | `dingwall_bridge` | Multi-Scale MM | Angled Parallel | Dingwall Active Onboard Buffer ($1\text{ M}\Omega \parallel 25\text{ pF}$, low-Z out) | $2.30\text{ H}$ (isolated)| $4.40\text{ k}\Omega$ | $7.3\text{ kHz}$ | 34"-37" fanned-fret bridge position ($48.0\text{ mm}$) with high-tension wave speeds and active buffered FD3n neodymium reverse split-P sparkle. |
 | **14** | `upright_piezo` | Upright Bridge Piezo | Transducer | High-Z Piezo Buffer ($R_{\text{in}}=100\text{ M}\Omega$) | $0.00\text{ H}$ | $100.0\text{ M}\Omega$ | Woody Acoustic | Authentic double bass bridge-wing piezo sensor; captures bridge rocking resonance, Spirocore string damping, and pizzicato attack bite. |
 
 ---
@@ -153,10 +153,10 @@ This catalog details the physical parameters, equivalent RLC circuit values, aco
 
 ### 10. `rickenbacker_clank` (Rickenbacker 4003 Bridge with 4.7nF HPF)
 * **Archetype:** Rickenbacker 4001/4003 Bridge Pickup with Vintage High-Pass Push-Pull
-* **Coil Model:** High-output single coil with $4.7\text{ nF}$ series capacitor
+* **Coil Model:** High-output single coil located $108.0\text{ mm}$ ($4.25''$) from bridge with $4.7\text{ nF}$ series capacitor
 * **Control Harness:** Factory Rickenbacker $330\text{k}\Omega$ volume pot, $330\text{k}\Omega$ tone pot, $47\text{ nF}$ tone cap, $4.7\text{ nF}$ vintage series capacitor.
 * **Electrical Parameters:** $L = 3.80\text{ H}$, $R_{\text{dc}} = 8.40\text{ k}\Omega$, $C_{\text{series}} = 4.7\text{ nF}$, $C_{\text{coil}} = 90\text{ pF}$. Loaded $f_r = 2.2\text{ kHz}$.
-* **Acoustic Character:** The series capacitor acts as a high-pass filter, rolling off sub-bass below $150\text{ Hz}$ while focusing midrange punch ($1.5\text{--}2.5\text{ kHz}$). Produces an aggressive, gritty pick attack.
+* **Acoustic Character:** Positioned at $108.0\text{ mm}$ ($4.25''$) from the bridge (the $2.5$-fret harmonic node), capturing punchy low-mids before the vintage $4.7\text{ nF}$ series capacitor rolls off sub-bass below $150\text{ Hz}$. Produces the aggressive, gritty pick clang favored by Chris Squire and Geddy Lee.
 * **32" Bass Setting:** ABCX Blend **100% Bridge** (MMTWX in Single-Coil Mode - Push/Pull Down).
 
 ### 11. `p_mm_parallel` (Modern Active P/MM Bass)
@@ -190,10 +190,10 @@ This catalog details the physical parameters, equivalent RLC circuit values, aco
 
 ### 13. `dingwall_bridge` (Fanned-Fret Multi-Scale Bridge)
 * **Archetype:** Dingwall NG Multi-Scale Angled Bridge Position
-* **Coil Model:** Dual-coil humbucker in parallel positioned $48.0\text{ mm}$ from bridge
+* **Coil Model:** Neodymium reverse split-P pickup positioned $48.0\text{ mm}$ from bridge (treble strings forward $57.5\text{ mm}$, bass strings rearward $38.5\text{ mm}$)
 * **Control Harness:** Dingwall Combustion/NG active onboard buffer ($1\text{ M}\Omega \parallel 25\text{ pF}$ input, $100\,\Omega$ low-Z output driver isolating coils from cable capacitance).
 * **Electrical Parameters:** $L = 2.30\text{ H}$, $R_{\text{dc}} = 4.40\text{ k}\Omega$, $R_{\text{eddy}} = 150\text{ k}\Omega$, $C_{\text{coil}} = 120\text{ pF}$. Active buffered $f_r = 7.3\text{ kHz}$.
-* **Acoustic Character:** 34"-37" fanned-fret wave-speed scaling with high string tension, angled bridge sweet spot ($48.0\text{ mm}$), active buffered FD3 dual-coil parallel sparkle ($7.3\text{ kHz}$), and stainless-steel string harmonic extension.
+* **Acoustic Character:** 34"-37" fanned-fret wave-speed scaling with high string tension, angled bridge sweet spot ($48.0\text{ mm}$), active buffered FD3n reverse split-P sparkle ($7.3\text{ kHz}$), and stainless-steel string harmonic extension.
 * **32" Bass Setting:** ABCX Blend **100% Bridge** (MMTWX in Dual-Coil Mode - Push/Pull Up).
 
 ### 14. `upright_piezo` (Upright Piezo Bridge Transducer)
@@ -248,10 +248,10 @@ $$\Delta x_{\text{norm\_in}} = \Delta\eta \times 34.0'', \quad \text{tilt}_{\tex
 | **`pj_passive`** | P/J Parallel Center | $94.3\text{ mm}$ | $34.0''$ | $10.91\%$ | $+0.25''$ | $+0.4\text{ dB}$ forward tilt, vintage dual-volume warmth |
 | **`stingray_parallel`** | StingRay Centerline| $66.0\text{ mm}$ | $34.0''$ | $7.64\%$ | $-0.86''$ | $-1.3\text{ dB}$ bridge bite, active 2-band boost, comb notch |
 | **`stingray_series`** | StingRay Centerline| $66.0\text{ mm}$ | $34.0''$ | $7.64\%$ | $-0.86''$ | $-1.3\text{ dB}$ bridge bite, $+4.5\text{ dB}$ series inductive surge |
-| **`rickenbacker_clank`** | 4003 Bridge Coil | $50.8\text{ mm}$ | $34.0''$ | $5.88\%$ | $-1.46''$ | $-2.2\text{ dB}$ bite tilt, 4.7nF series HPF clank bite |
+| **`rickenbacker_clank`** | 4003 Bridge Coil | $108.0\text{ mm}$ | $33.25''$ | $12.79\%$ | $+0.80''$ | $+1.4\text{ dB}$ low-mid foundation, 4.7nF series HPF clank bite |
 | **`p_mm_parallel`** | P + MM Parallel Center| $95.5\text{ mm}$ | $34.0''$ | $11.06\%$ | $+0.30''$ | $+0.5\text{ dB}$ forward tilt, active buffer cable isolation, slap punch |
 | **`p_mm_series`** | P + MM Series Center| $95.5\text{ mm}$ | $34.0''$ | $11.06\%$ | $+0.30''$ | $+0.5\text{ dB}$ forward tilt, active series surge and buffer clarity |
-| **`mudbucker_deep`** | Sidewinder Center | $95.5\text{ mm}$ | $34.0''$ | $11.06\%$ | $+0.30''$ | Extreme $14.4\text{ H}$ series foundation, $1.25''$ aperture |
+| **`mudbucker_deep`** | Neck Heel Sidewinder| $266.8\text{ mm}$ | $30.5''$ | $34.44\%$ | $+7.45''$ | Extreme $14.4\text{ H}$ series foundation, $1.25''$ aperture |
 | **`dingwall_bridge`** | Angled Sweet Spot | $48.0\text{ mm}$ | $37.0''$ | $5.11\%$ | $-1.72''$ | $-2.6\text{ dB}$ bite tilt, multiscale continuum clank |
 
 

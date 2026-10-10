@@ -6,10 +6,10 @@
 #   - Scale Length: 34.0" (863.6mm total, 431.8mm 12th fret to bridge saddle)
 #   - Modern Neck Soapbar: Centerline 135.0mm from bridge saddle (296.8mm from 12th fret)
 #       - Dual round pole coils: forward coil 143.25mm, rearward coil 126.75mm (spacing d = 0.65" / 16.51mm)
-#       - Cylindrical rod aperture width: 0.65" (16.51mm) per coil
+#       - Cylindrical rod aperture width: 0.40" (10.16mm) per coil
 #   - Modern Bridge Soapbar: Centerline 55.0mm from bridge saddle (376.8mm from 12th fret)
 #       - Dual round pole coils: forward coil 63.25mm, rearward coil 46.75mm (spacing d = 0.65" / 16.51mm)
-#       - Cylindrical rod aperture width: 0.65" (16.51mm) per coil
+#       - Cylindrical rod aperture width: 0.40" (10.16mm) per coil
 # Electronics:
 #   - Dual passive Alnico V dual-coil soapbars with exposed cylindrical round pole pieces
 #     (Nordstrand Big Break/Single, Yamaha YGD H5, Sire Marcus Miller Pure-H, Ibanez PowerSpan).
@@ -21,8 +21,8 @@
 #   - Set to center detents (flat 0 dB EQ response, finite DC transmission H(0) >= 1.0).
 #   - Low output impedance (< 100 Ω) direct to output jack / Anagram Block 1.
 # Circuit Parameters:
-#   - Neck Soapbar: L = 3.8H, Rdc = 8.6kΩ, Reddy = 95kΩ, Ccoil = 95pF (loaded fr = 3.80 kHz, Q = 1.45).
-#   - Bridge Soapbar: L = 4.2H, Rdc = 9.4kΩ, Reddy = 90kΩ, Ccoil = 95pF (loaded fr = 4.10 kHz, Q = 1.40).
+#   - Neck Soapbar: L = 3.8H, Rdc = 8.6kΩ, Reddy = 95kΩ, Ccoil = 245pF (loaded fr = 3.80 kHz, Q = 1.45).
+#   - Bridge Soapbar: L = 4.2H, Rdc = 9.4kΩ, Reddy = 90kΩ, Ccoil = 116pF (loaded fr = 4.10 kHz, Q = 1.40).
 #   - Parallel center blend: 500k volume/blend pot, loaded fr = 3.95 kHz, Q = 1.35.
 
 id = "34in_preamp_soapbar"
@@ -65,8 +65,8 @@ pole_type = "rod"
 resonant_frequency_hz = 3800.0   # Active buffered loaded resonance
 q_factor = 1.45
 coils = [
-    { strings = ["all"], position_from_bridge_m = 0.14325, aperture_width_in = 0.65, weight = 0.5, pole_type = "rod" },
-    { strings = ["all"], position_from_bridge_m = 0.12675, aperture_width_in = 0.65, weight = 0.5, pole_type = "rod" }
+    { strings = ["all"], position_from_bridge_m = 0.14325, aperture_width_in = 0.40, weight = 0.5, pole_type = "rod" },
+    { strings = ["all"], position_from_bridge_m = 0.12675, aperture_width_in = 0.40, weight = 0.5, pole_type = "rod" }
 ]
 
 [pickups.neck.circuit]
@@ -74,7 +74,7 @@ topology = "single"
 L = 3.8
 Rdc = 8600.0
 Reddy = 95000.0
-Ccoil = 9.5e-11
+Ccoil = 2.45e-10
 active = true
 preamp = "none"
 Rvol = 500000.0
@@ -94,8 +94,8 @@ pole_type = "rod"
 resonant_frequency_hz = 4100.0   # Active buffered loaded resonance
 q_factor = 1.40
 coils = [
-    { strings = ["all"], position_from_bridge_m = 0.06325, aperture_width_in = 0.65, weight = 0.5, pole_type = "rod" },
-    { strings = ["all"], position_from_bridge_m = 0.04675, aperture_width_in = 0.65, weight = 0.5, pole_type = "rod" }
+    { strings = ["all"], position_from_bridge_m = 0.06325, aperture_width_in = 0.40, weight = 0.5, pole_type = "rod" },
+    { strings = ["all"], position_from_bridge_m = 0.04675, aperture_width_in = 0.40, weight = 0.5, pole_type = "rod" }
 ]
 
 [pickups.bridge.circuit]
@@ -103,7 +103,7 @@ topology = "single"
 L = 4.2
 Rdc = 9400.0
 Reddy = 90000.0
-Ccoil = 9.5e-11
+Ccoil = 1.16e-10
 active = true
 preamp = "none"
 Rvol = 500000.0
@@ -137,13 +137,13 @@ Rvol = 500000.0
 L = 3.8
 Rdc = 8600.0
 Reddy = 95000.0
-Ccoil = 9.5e-11
+Ccoil = 2.45e-10
 
 [pickups.pair_parallel.circuit.bridge]
 L = 4.2
 Rdc = 9400.0
 Reddy = 90000.0
-Ccoil = 9.5e-11
+Ccoil = 1.16e-10
 
 # ------------------------------------------------------------------------------
 # 4. NATIVE INSTRUMENT VOICINGS

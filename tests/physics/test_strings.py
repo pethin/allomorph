@@ -27,9 +27,8 @@ from allomorph.physics.strings import (
     MEAN_BASS_F0,
     NOTE_NAMES,
     STRING_FUNDAMENTALS,
-    compute_differential_longitudinal_transfer,
-    compute_differential_string_transfer,
     compute_dispersive_wave_speed,
+    compute_forward_string_transfer,
     generate_wave_speed_continuum,
     get_inharmonicity_for_f0,
     infer_string_names,
@@ -107,135 +106,55 @@ def test_target_voice_strings():
     assert str_v04.type == "roundwound"
 
 
-def test_differential_damping_anti_double_muffling():
-    """
-    Verify that Voice 14 avoids double-damping on flatwounds:
-    When evaluated on 32in fretless (flatwound source), the differential string transfer
-    preserves more upper treble energy around 3.5 kHz relative to a roundwound
-    source where harsh clank must be rolled off.
-    """
-    freqs = np.asarray(FREQS, dtype=np.float64)
-    inst_fretless = load_instrument("32in_fretless_pmm")
-    src_fretless = get_instrument_string(inst_fretless)
-    inst_30 = load_instrument("30in_emg_mmtw")
-    src_round = get_instrument_string(inst_30)
-    tgt_upright = get_voice_string(VOICES["upright_piezo"])
+def test_forward_string_wrap_damping():
+    """Verify forward viscoelastic wrap damping: flatwounds roll off early (3.2 kHz),
 
-    h_fretless = compute_differential_string_transfer(freqs, src_fretless, tgt_upright)
-    h_round = compute_differential_string_transfer(freqs, src_round, tgt_upright)
-
-    assert len(h_fretless) == len(freqs)
-    assert len(h_round) == len(freqs)
-    assert np.all(np.isfinite(h_fretless))
-    assert np.all(np.isfinite(h_round))
-
-    # In the 3 kHz to 4.5 kHz range, the filter for the flatwound source should not
-    # excessively attenuate (anti-double-damping compensation)
-    idx_3k = np.argmin(np.abs(freqs - 3500.0))
-
-    # The flatwound string transfer preserves greater 3.5 kHz transmission than the roundwound transfer
-    assert h_fretless[idx_3k] > h_round[idx_3k], (
-        "Flatwound string transfer should preserve more 3.5 kHz transmission to prevent double-muffling"
-    )
-
-
-def test_tension_compliance_derivation():
-    """Verify that fundamental compliance derives strictly from tension ratio (T_src / T_tgt)."""
-    s_std = STRINGS["roundwound_nickel_standard"]
-    s_ltf = STRINGS["flatwound_low_tension"]
-    s_stainless = STRINGS["roundwound_stainless_clank"]
-
-    # Lower tension (132 lbs vs 155 lbs) yields higher excursion compliance (> 1.0)
-    g_ltf = float(s_std.tension_lbs) / float(s_ltf.tension_lbs)
-    assert g_ltf > 1.0
-    assert math.isclose(g_ltf, 155.0 / 132.0, rel_tol=1e-5)
-
-    # Higher tension (180 lbs vs 155 lbs) yields tighter compliance (< 1.0)
-    g_stainless = float(s_std.tension_lbs) / float(s_stainless.tension_lbs)
-    assert g_stainless < 1.0
-    assert math.isclose(g_stainless, 155.0 / 180.0, rel_tol=1e-5)
-
-
-def test_standard_magnetic_string_identity_for_roundwounds():
-    """Verify that standard magnetic voices for standard roundwound instruments remain pure identity on string transfer."""
-    freqs = np.asarray(FREQS)
-    s_std = STRINGS["roundwound_nickel_standard"]
-    h_diff = compute_differential_string_transfer(freqs, s_std, s_std)
-    assert np.allclose(h_diff, 1.0, atol=1e-5), (
-        "String transfer between identical standard strings must be exactly 1.0"
-    )
-
-
-def test_all_strings_identity():
-    """Verify that comparing ANY string preset to itself yields exact 1.0 (0.00 dB) across all frequencies."""
-    freqs = np.asarray(FREQS, dtype=np.float64)
-    for name, s_cfg in STRINGS.items():
-        h_diff = compute_differential_string_transfer(freqs, s_cfg, s_cfg)
-        assert np.allclose(h_diff, 1.0, atol=1e-5), (
-            f"String transfer for identical string '{name}' must be exactly 1.0, "
-            f"got min={np.min(h_diff):.4f}, max={np.max(h_diff):.4f}"
-        )
-
-
-def test_string_transfer_smooth_saturation():
-    """
-    Verify that extreme string transitions (vintage flats <-> stainless roundwounds)
-    saturate smoothly without hard horizontal clipping plateaus or derivative kinks.
+    nickel roundwounds at 8.5 kHz, and stainless steel extends to 12.0 kHz.
     """
     freqs = np.asarray(FREQS, dtype=np.float64)
     s_flats = STRINGS["flatwound_vintage_heavy"]
+    s_nickel = STRINGS["roundwound_nickel_standard"]
     s_stainless = STRINGS["roundwound_stainless_clank"]
 
-    # Flats -> Stainless (Treble boost)
-    h_boost = compute_differential_string_transfer(freqs, s_flats, s_stainless)
-    h_boost_db = 20.0 * np.log10(h_boost)
-    # Must be bounded by +8.0 dB without tabletop clipping
-    assert np.max(h_boost_db) <= 8.01
-    # Check that high frequencies in the active damping transition band are strictly monotonic
-    idx_boost = (freqs >= 1000.0) & (freqs <= 6000.0)
-    assert np.all(np.diff(h_boost_db[idx_boost]) > 0.0)
-    assert not np.any(np.diff(h_boost_db[idx_boost]) == 0.0)
+    h_wrap_flats = compute_forward_string_transfer(freqs, s_flats)
+    h_wrap_nickel = compute_forward_string_transfer(freqs, s_nickel)
+    h_wrap_stainless = compute_forward_string_transfer(freqs, s_stainless)
 
-    # Stainless -> Flats (Treble cut)
-    h_cut = compute_differential_string_transfer(freqs, s_stainless, s_flats)
-    h_cut_db = 20.0 * np.log10(h_cut)
-    # Must roll off naturally below -16.5 dB without a hard tabletop shelf
-    assert np.min(h_cut_db) < -20.0
-    idx_cut = freqs >= 1500.0
-    assert np.all(np.diff(h_cut_db[idx_cut]) < 0.0)
-    assert not np.any(np.diff(h_cut_db[idx_cut]) == 0.0)
+    # All wrap damping curves must be finite, real, and <= 1.0
+    for h_w in (h_wrap_flats, h_wrap_nickel, h_wrap_stainless):
+        assert len(h_w) == len(freqs)
+        assert np.all(np.isfinite(h_w))
+        assert np.all(h_w <= 1.0)
+        assert math.isclose(h_w[0], 1.0, abs_tol=1e-5)
+
+    # At 10 kHz, transmission order must strictly reflect wrap metallurgy:
+    # stainless > nickel > flatwounds
+    idx_10k = np.argmin(np.abs(freqs - 10000.0))
+    assert h_wrap_stainless[idx_10k] > h_wrap_nickel[idx_10k] > h_wrap_flats[idx_10k]
+
+    # At its cutoff frequency f_damp, wrap damping must be at -3 dB (1 / sqrt(2) ≈ 0.707)
+    f_damp_flats = float(s_flats.damping_cutoff_hz)
+    idx_damp = np.argmin(np.abs(freqs - f_damp_flats))
+    assert math.isclose(h_wrap_flats[idx_damp], 1.0 / math.sqrt(2.0), abs_tol=0.08)
 
 
-def test_differential_longitudinal_transfer():
-    """Verify longitudinal wave transmission clank resonance peak around ~2.95 kHz for 34in and identity when identical."""
+def test_forward_sensor_compliance_bypass():
+    """Verify that direct DI bypasses viscoelastic string wrap damping."""
     freqs = np.asarray(FREQS, dtype=np.float64)
-    s_std = STRINGS["roundwound_nickel_standard"]
     s_clank = STRINGS["roundwound_stainless_clank"]
 
-    # 1. Matching string preset: exact 1.0 identity
-    h_ident = compute_differential_longitudinal_transfer(
-        freqs, s_std, s_std, scale_length_inches=34.0
+    # Direct DI must evaluate bit-exact 1.0000 across all frequencies
+    h_direct = compute_forward_string_transfer(
+        freqs, s_clank, scale_length_inches=34.0, sensor_type="direct"
     )
-    assert np.allclose(h_ident, 1.0, atol=1e-5), (
-        "Longitudinal transfer between identical strings must be exact 1.0"
-    )
+    assert np.allclose(h_direct, 1.0, atol=1e-12)
 
-    # 2. Nickel -> Stainless (higher k_long = 0.35 vs 0.20): resonant clank peak around ~2.95 kHz
-    h_clank = compute_differential_longitudinal_transfer(
-        freqs, s_std, s_clank, scale_length_inches=34.0
+    # Magnetic sensors apply wrap damping (passband <= 1.0, rolling off at high frequencies)
+    h_mag = compute_forward_string_transfer(
+        freqs, s_clank, scale_length_inches=34.0, sensor_type="magnetic"
     )
-    assert np.all(h_clank >= 1.0), "Longitudinal clank should be additive excitation"
-    peak_idx = int(np.argmax(h_clank))
-    peak_freq = freqs[peak_idx]
-    assert 2700.0 <= peak_freq <= 3200.0, (
-        f"Expected clank peak around 2.95 kHz, got {peak_freq:.1f} Hz"
-    )
-
-    # 3. Stainless -> Nickel (delta <= 0): returns 1.0 without false anti-resonance
-    h_reverse = compute_differential_longitudinal_transfer(
-        freqs, s_clank, s_std, scale_length_inches=34.0
-    )
-    assert np.allclose(h_reverse, 1.0, atol=1e-5)
+    assert np.all(h_mag <= 1.0)
+    assert h_mag[-1] < 0.90
 
 
 def test_per_string_acoustic_dispersion():

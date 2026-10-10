@@ -176,6 +176,7 @@ VOICE_AFFINITIES: dict[str, str] = {
     "dingwall_bridge": "bridge",
     "dingwall_middle": "neck",
     "dingwall_parallel": "parallel",
+    "dingwall_series": "parallel",
     "rickenbacker_clank": "bridge",
     "rickenbacker_open": "bridge",
     "pj_passive": "parallel",

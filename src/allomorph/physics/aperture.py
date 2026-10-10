@@ -140,21 +140,18 @@ def soft_clamp_displacement_ratio(
     return soft
 
 
-# Nominal string excursion calibration reference constants
-# Represents the nominal mechanical pickup displacement coordinate (~10.83% of vibrating scale length)
+# Nominal string excursion calibration reference constant
+# Represents the dimensionless nominal mechanical pickup fractional displacement coordinate (~10.83% of vibrating scale length)
 # where standing-wave fundamental vibration amplitude is calibrated to 0.00 dB unity in forward simulation.
-CALIBRATION_EXCURSION_POS_M: float = 0.0935  # Nominal 93.5mm calibration coordinate on 34" scale
-CALIBRATION_EXCURSION_SCALE_M: float = 0.8636  # Standard 34.0" scale
-CALIBRATION_EXCURSION_ETA: float = (
-    CALIBRATION_EXCURSION_POS_M / CALIBRATION_EXCURSION_SCALE_M
-)  # 0.1082677...
+FRACTIONAL_EXCURSION_CALIBRATION_ETA: float = 0.1082677
+CALIBRATION_EXCURSION_ETA: float = FRACTIONAL_EXCURSION_CALIBRATION_ETA
 
 
 def compute_displacement_proximity_shelf(
     freqs: Sequence[float] | np.ndarray,
     pos_m: float,
-    scale_m: float = CALIBRATION_EXCURSION_SCALE_M,
-    ref_eta: float = CALIBRATION_EXCURSION_ETA,
+    scale_m: float,
+    ref_eta: float = FRACTIONAL_EXCURSION_CALIBRATION_ETA,
 ) -> np.ndarray:
     """Computes the scale-normalized bridge proximity low-shelf filter H_pos(f)
     governed by the standing-wave fractional displacement ratio (eta = pos_m / scale_m)
@@ -174,7 +171,7 @@ def compute_displacement_proximity_shelf(
 
 def compute_pickup_isolation_leveling(
     pos_m: float,
-    scale_m: float = CALIBRATION_EXCURSION_SCALE_M,
+    scale_m: float,
     ref_pos_m: float | None = None,
     max_boost_db: float = 6.0,
     alpha: float = 2.0,

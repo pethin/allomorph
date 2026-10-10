@@ -60,8 +60,8 @@ pole_type = "blade"
 resonant_frequency_hz = 4150.0   # Active EMG buffered resonance (Option C midpoint)
 q_factor = 1.40
 coils = [
-    { strings = ["all"], position_from_bridge_m = 0.14325, aperture_width_in = 0.65, weight = 0.5, pole_type = "blade" },
-    { strings = ["all"], position_from_bridge_m = 0.12675, aperture_width_in = 0.65, weight = 0.5, pole_type = "blade" }
+    { strings = ["all"], position_from_bridge_m = 0.14325, aperture_width_in = 0.40, weight = 0.5, pole_type = "blade" },
+    { strings = ["all"], position_from_bridge_m = 0.12675, aperture_width_in = 0.40, weight = 0.5, pole_type = "blade" }
 ]
 
 [pickups.neck.circuit]
@@ -95,8 +95,8 @@ pole_type = "blade"
 resonant_frequency_hz = 4150.0   # Active EMG buffered resonance (Option C midpoint)
 q_factor = 1.40
 coils = [
-    { strings = ["all"], position_from_bridge_m = 0.06325, aperture_width_in = 0.65, weight = 0.5, pole_type = "blade" },
-    { strings = ["all"], position_from_bridge_m = 0.04675, aperture_width_in = 0.65, weight = 0.5, pole_type = "blade" }
+    { strings = ["all"], position_from_bridge_m = 0.06325, aperture_width_in = 0.40, weight = 0.5, pole_type = "blade" },
+    { strings = ["all"], position_from_bridge_m = 0.04675, aperture_width_in = 0.40, weight = 0.5, pole_type = "blade" }
 ]
 
 [pickups.bridge.circuit]

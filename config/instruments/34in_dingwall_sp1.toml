@@ -52,7 +52,7 @@ tension_lbs = 205.0
 name = "Dingwall Dual-P Neodymium (Neck)"
 position_name = "Neck"
 position_from_bridge_m = 0.1250  # Centerline 125.0mm
-aperture_width_in = 1.00         # 1.00" aperture per split half
+aperture_width_in = 0.45         # 0.45" aperture per split half
 coil_spacing_in = 0.0
 type = "split_coil"
 magnet_type = "neodymium"
@@ -60,9 +60,9 @@ resonant_frequency_hz = 3200.0   # Loaded resonance
 q_factor = 1.35
 coils = [
     # Strings 3, 4 & 5 see forward coil half
-    { strings = [3, 4, 5], position_from_bridge_m = 0.1380, aperture_width_in = 1.00, weight = 1.0 },
+    { strings = [3, 4, 5], position_from_bridge_m = 0.1380, aperture_width_in = 0.45, weight = 1.0 },
     # Strings 1 & 2 see rearward coil half
-    { strings = [1, 2], position_from_bridge_m = 0.1120, aperture_width_in = 1.00, weight = 1.0 }
+    { strings = [1, 2], position_from_bridge_m = 0.1120, aperture_width_in = 0.45, weight = 1.0 }
 ]
 
 # ------------------------------------------------------------------------------
@@ -84,15 +84,16 @@ Ctone = 4.7000000000000004e-08
 name = "Dingwall FD3n Neodymium (Bridge)"
 position_name = "Bridge"
 position_from_bridge_m = 0.0580  # Bridge placement 58.0mm
-aperture_width_in = 0.85
-coil_spacing_in = 0.65
-type = "dual_coil_parallel"
+aperture_width_in = 0.45
+coil_spacing_in = 0.0
+type = "split_coil"
 magnet_type = "neodymium"
 resonant_frequency_hz = 3600.0
 q_factor = 1.45
 coils = [
-    { strings = ["all"], position_from_bridge_m = 0.06625, aperture_width_in = 0.65, weight = 0.5 },
-    { strings = ["all"], position_from_bridge_m = 0.04975, aperture_width_in = 0.65, weight = 0.5 }
+    # Reverse split-P: treble strings (1, 2) forward half, bass strings (3, 4, 5) rearward half
+    { strings = [1, 2], position_from_bridge_m = 0.06625, aperture_width_in = 0.40, weight = 1.0 },
+    { strings = [3, 4, 5], position_from_bridge_m = 0.04975, aperture_width_in = 0.40, weight = 1.0 }
 ]
 
 # ------------------------------------------------------------------------------
@@ -114,7 +115,7 @@ Ctone = 4.7000000000000004e-08
 name = "Dingwall Dual-P + Bridge Parallel"
 position_name = "Parallel"
 position_from_bridge_m = 0.0915  # Centroid 91.5mm
-aperture_width_in = 0.85
+aperture_width_in = 0.45
 coil_spacing_in = 0.0
 type = "composite"
 magnet_type = "neodymium"
@@ -130,6 +131,7 @@ components = [
 # ------------------------------------------------------------------------------
 # Directs the player to select the closest rotary switch position on the SP1:
 #   - Pos 4: Dual-P Solo (Precision Bass, Mudbucker, Upright)
+#   - Pos 3: Dual-P + Bridge Series (Dingwall Series, Massive output, wall of sound)
 #   - Pos 2: Dual-P + Bridge Parallel (Jazz Bass pair, Modern P/J, Vintage P/J, P/MM)
 #   - Pos 1: FD3n Bridge Solo (60s Jazz Bridge, StingRay, Rickenbacker, Multi-Scale)
 
@@ -137,7 +139,7 @@ components = [
 [pickups.pair_parallel.circuit]
 topology = "parallel"
 Rtop = 10.0
-Rbot = 125000.0
+Rbot = 250000.0
 Rtone = 250000.0
 Ctone = 4.7000000000000004e-08
 
@@ -154,6 +156,44 @@ Reddy = 150000.0
 Ccoil = 1.2e-10
 
 # ------------------------------------------------------------------------------
+# 4. DINGWALL DUAL-P + BRIDGE SERIES (Rotary Pos 3)
+# ------------------------------------------------------------------------------
+[pickups.pair_series]
+name = "Dingwall Dual-P + Bridge Series"
+position_name = "Series"
+bundle_name = "series"
+position_from_bridge_m = 0.0915  # Centroid 91.5mm
+aperture_width_in = 0.45
+coil_spacing_in = 0.0
+type = "composite"
+magnet_type = "neodymium"
+resonant_frequency_hz = 3100.0
+q_factor = 1.45
+components = [
+    { pickup = "p", weight = 0.5 },
+    { pickup = "bridge", weight = 0.5 }
+]
+
+[pickups.pair_series.circuit]
+topology = "series"
+Rtop = 10.0
+Rbot = 250000.0
+Rtone = 250000.0
+Ctone = 4.7000000000000004e-08
+
+[pickups.pair_series.circuit.neck]
+L = 3.8
+Rdc = 10500.0
+Reddy = 180000.0
+Ccoil = 6e-11
+
+[pickups.pair_series.circuit.bridge]
+L = 2.3
+Rdc = 4400.0
+Reddy = 150000.0
+Ccoil = 1.2e-10
+
+# ------------------------------------------------------------------------------
 # 2. NATIVE INSTRUMENT VOICINGS
 # ------------------------------------------------------------------------------
 
@@ -164,6 +204,15 @@ tone_name = "Dingwall SP1 Parallel"
 pickup = "pair_parallel"
 affinity = "parallel"
 vol_pos = 1.0
+
+[voicings.super_p_series]
+version = 1
+name = "Dingwall Super P + Bridge Series Wall of Sound"
+tone_name = "Dingwall SP1 Series"
+pickup = "pair_series"
+affinity = "parallel"
+vol_pos = 1.0
+tone_pos = 1.0
 
 [voicings.super_p_solo]
 version = 1
@@ -188,4 +237,6 @@ vol_pos = 1.0
 neck = "p"
 bridge = "bridge"
 parallel = "pair_parallel"
+series = "pair_series"
 direct = "pair_parallel"
+dingwall_series = "pair_series"

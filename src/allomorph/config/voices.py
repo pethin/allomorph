@@ -185,14 +185,18 @@ def voicing_to_voice_config(
         for p in instrument.pickups.values()
         if not p.components and p.position_from_bridge_m is not None
     ]
-    max_p_pos = max(single_positions, default=0.0935)
-    ref_pos = max(max_p_pos, 0.0935)
+    ref_pos = max(single_positions) if len(single_positions) > 1 else None
+
+    topo_type = pickup.type
+    if is_series and "parallel" in topo_type:
+        topo_type = topo_type.replace("parallel", "series")
+    topology = f"{topo_type.replace('_', ' ').title()} ({instrument.name})"
 
     return VoiceConfig(
         id=target_slug,
         name=voicing.tone_name or voicing.name,
         tone_name=voicing.tone_name,
-        topology=f"{pickup.type.replace('_', ' ').title()} ({instrument.name})",
+        topology=topology,
         description=f"{voicing.name} ({instrument.name})",
         blend_mode=blend_mode,
         magnet_type=magnet_type,

@@ -30,8 +30,8 @@ tension_lbs = 168.0
 name = "Rickenbacker Hi-Gain Bridge Single-Coil"
 position_name = "Bridge"
 bundle_name = "bridge"
-position_from_bridge_m = 0.0570  # 57.0mm datum
-aperture_width_in = 0.75
+position_from_bridge_m = 0.1080  # 4.25" (108.0mm) datum from bridge saddles
+aperture_width_in = 0.45
 coil_spacing_in = 0.0
 type = "single_coil"
 magnet_type = "ceramic"
@@ -39,7 +39,7 @@ alpha = 0.12
 resonant_frequency_hz = 3800.0
 q_factor = 1.70
 coils = [
-    { strings = ["all"], position_from_bridge_m = 0.0570, aperture_width_in = 0.75, weight = 1.0 }
+    { strings = ["all"], position_from_bridge_m = 0.1080, aperture_width_in = 0.45, weight = 1.0 }
 ]
 
 [pickups.bridge.circuit]
@@ -49,16 +49,16 @@ Rdc = 8400.0
 Reddy = 110000.0
 Ccoil = 8.5e-11
 Rtop = 10.0
-Rbot = 250000.0
-Rtone = 250000.0
+Rbot = 330000.0
+Rtone = 330000.0
 Ctone = 4.7e-08
 
 [pickups.bridge_hpf]
 name = "Rickenbacker Bridge Single-Coil with 4.7nF HPF"
 position_name = "Bridge"
 bundle_name = "bridge"
-position_from_bridge_m = 0.0570  # 57.0mm datum (shared physical position with standard bridge)
-aperture_width_in = 0.75
+position_from_bridge_m = 0.1080  # 4.25" (108.0mm) datum (shared physical position with standard bridge)
+aperture_width_in = 0.45
 coil_spacing_in = 0.0
 type = "single_coil"
 magnet_type = "ceramic"
@@ -66,7 +66,7 @@ alpha = 0.12
 resonant_frequency_hz = 3800.0
 q_factor = 1.70
 coils = [
-    { strings = ["all"], position_from_bridge_m = 0.0570, aperture_width_in = 0.75, weight = 1.0 }
+    { strings = ["all"], position_from_bridge_m = 0.1080, aperture_width_in = 0.45, weight = 1.0 }
 ]
 
 [pickups.bridge_hpf.circuit]
@@ -85,8 +85,8 @@ Crick = 4.7e-09
 name = "Rickenbacker Hi-Gain Neck Single-Coil"
 position_name = "Neck"
 bundle_name = "neck"
-position_from_bridge_m = 0.1680  # 168.0mm datum
-aperture_width_in = 0.75
+position_from_bridge_m = 0.2100  # 8.25" (210.0mm) datum (24th fret harmonic node)
+aperture_width_in = 0.45
 coil_spacing_in = 0.0
 type = "single_coil"
 magnet_type = "ceramic"
@@ -94,7 +94,7 @@ alpha = 0.12
 resonant_frequency_hz = 3600.0
 q_factor = 1.50
 coils = [
-    { strings = ["all"], position_from_bridge_m = 0.1680, aperture_width_in = 0.75, weight = 1.0 }
+    { strings = ["all"], position_from_bridge_m = 0.2100, aperture_width_in = 0.45, weight = 1.0 }
 ]
 
 [pickups.neck.circuit]
@@ -104,32 +104,32 @@ Rdc = 8000.0
 Reddy = 120000.0
 Ccoil = 8.0e-11
 Rtop = 10.0
-Rbot = 250000.0
-Rtone = 250000.0
+Rbot = 330000.0
+Rtone = 330000.0
 Ctone = 4.7e-08
 
 [pickups.pair_stereo]
 name = "Rickenbacker Dual Pickups Parallel (Rick-O-Sound)"
 position_name = "Parallel"
 bundle_name = "parallel"
-position_from_bridge_m = 0.1125
-aperture_width_in = 0.75
-coil_spacing_in = 4.37
-type = "multi_pickup_parallel"
+position_from_bridge_m = 0.1590  # Acoustic centroid (210.0mm + 108.0mm) / 2
+aperture_width_in = 0.45
+coil_spacing_in = 4.02           # 4.02" (102.0mm) spacing between pickup centers
+type = "composite"
 magnet_type = "ceramic"
 alpha = 0.12
 resonant_frequency_hz = 3900.0
 q_factor = 1.40
-coils = [
-    { strings = ["all"], position_from_bridge_m = 0.1680, aperture_width_in = 0.75, weight = 0.5 },
-    { strings = ["all"], position_from_bridge_m = 0.0570, aperture_width_in = 0.75, weight = 0.5 }
+components = [
+    { pickup = "neck", weight = 0.5 },
+    { pickup = "bridge", weight = 0.5 }
 ]
 
 [pickups.pair_stereo.circuit]
 topology = "parallel"
 Rtop = 10.0
-Rbot = 125000.0
-Rtone = 250000.0
+Rbot = 165000.0
+Rtone = 165000.0
 Ctone = 4.7e-08
 
 [pickups.pair_stereo.circuit.neck]
@@ -156,8 +156,6 @@ pickup = "bridge_hpf"
 affinity = "bridge"
 vol_pos = 1.0
 tone_pos = 1.0
-hpf = 150.0
-gain_db = -1.5
 
 [voicings.bridge_open]
 version = 1

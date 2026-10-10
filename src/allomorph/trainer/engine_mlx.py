@@ -928,7 +928,6 @@ def train_voice_mlx(
             topology=vcfg.topology,
             resonant_frequency_hz=float(vcfg.fr),
             q_factor=float(vcfg.Q),
-            target_position_34_m=compute_effective_position(resolve_voice_coils(vcfg)),
             effective_position_m=compute_effective_position(resolve_voice_coils(vcfg)),
             pickups=resolve_voice_pickups(vcfg),
             coils=resolve_voice_coils(vcfg),
