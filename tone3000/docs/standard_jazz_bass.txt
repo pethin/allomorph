@@ -102,7 +102,7 @@ The legendary Gibson "Mudbucker": a dark, colossal wall of pure vintage bass rum
 
 Acoustic Transducers
 
-15. Upright Acoustic [Neck]
+15. Upright Piezo [Neck]
 Acoustic upright double bass: transforms your electric bass into a woody, resonant acoustic upright with natural body thump and organic finger feel. Pair with 3 Sigma Audio "Acoustic Upright Standard" AST IRs in your cabinet loader for authentic soundboard acoustic bloom.
 
 

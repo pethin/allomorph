@@ -119,7 +119,7 @@ components = [
 # 4. SMART VOICE MAPPING
 # ------------------------------------------------------------------------------
 # Directs the player to select the closest physical pickup state on the Jazz Bass:
-#   - Neck Solo: P-Bass styles, Mudbucker, and Upright acoustic fullness
+#   - Neck Solo: P-Bass styles, Mudbucker, and Upright piezo fullness
 #   - Bridge Solo: 60s Bridge growl, StingRay bite, and Rickenbacker clank
 #   - Both Parallel: Classic dual-single scooped slap and modern hybrid tones
 

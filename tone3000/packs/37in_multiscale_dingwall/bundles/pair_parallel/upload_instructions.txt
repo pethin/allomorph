@@ -8,15 +8,15 @@ Tone Knob Setting: 100% (Wide Open)
 
 STEP-BY-STEP UPLOAD INSTRUCTIONS (Tone3000 Studio Trainer):
 1. Open Tone3000 Trainer in your browser or local batch tool.
-2. DRAG DRY FILE: Drag 'dry v5.1.1.wav' from this directory into the '1 Dry File' slot.
+2. DRAG DRY FILE: Drag 'dry v6.1.1.wav' from this directory into the '1 Dry File' slot.
 3. DRAG WET STEMS: Select and drag the following 7 .wav files into the 'Wet Stems' slot:
-   • Jazz Pair Open [Parallel] v5.1.1.wav
-   • Jazz Pair Mids [Parallel] v5.1.1.wav
-   • Jazz Pair Active [Parallel] v5.1.1.wav
-   • PJ Passive [Parallel] v5.1.1.wav
-   • PJ Active [Parallel] v5.1.1.wav
-   • P∕MM Parallel [Parallel] v5.1.1.wav
-   • P∕MM Series [Parallel] v5.1.1.wav
+   • Jazz Pair Open [Parallel] v6.1.1.wav
+   • Jazz Pair Mids [Parallel] v6.1.1.wav
+   • Jazz Pair Active [Parallel] v6.1.1.wav
+   • PJ Passive [Parallel] v6.1.1.wav
+   • PJ Active [Parallel] v6.1.1.wav
+   • P∕MM Parallel [Parallel] v6.1.1.wav
+   • P∕MM Series [Parallel] v6.1.1.wav
 
 4. START TRAINING: Tone3000 will batch-train all models against this single dry baseline.
 ==============================================================================

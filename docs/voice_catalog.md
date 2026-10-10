@@ -27,7 +27,7 @@ This catalog details the physical parameters, equivalent RLC circuit values, aco
 | **11b**| `p_mm_series` | Modern Active P/MM (Series)| Active Buffer | Studio Active Buffer ($R_{\text{in}}=1\text{M}\Omega, R_{\text{out}}=100\,\Omega$) | $8.40\text{ H}$ (isolated) | $16.90\text{ k}\Omega$ | $3.2\text{ kHz}$ | Split P and MM parallel humbucker wired in series before active buffer; $+5.8\text{ dB}$ inductive boost with punchy authority and zero cable drag. |
 | **12** | `mudbucker_deep` | Overwound Series| Ultra Series | Gibson $500\text{k}\Omega$ Vol, $500\text{k}\Omega$ Tone, $22\text{nF}$ Cap | $14.40\text{ H}$| $27.90\text{ k}\Omega$ | $1.2\text{ kHz}$ | Extreme dual-coil series network; subterranean low-end focus, steep natural top-end rolloff. |
 | **13** | `dingwall_bridge` | Multi-Scale MM | Angled Parallel | Dingwall Active Onboard Buffer ($1\text{ M}\Omega \parallel 25\text{ pF}$, low-Z out) | $2.30\text{ H}$ (isolated)| $4.40\text{ k}\Omega$ | $7.3\text{ kHz}$ | 34"-37" fanned-fret bridge position ($48.0\text{ mm}$) with high-tension wave speeds and active buffered FD3 parallel dual-coil sparkle. |
-| **14** | `upright_acoustic` | Upright Bridge Piezo | Transducer | High-Z Piezo Buffer ($R_{\text{in}}=10\text{ M}\Omega$) | $0.00\text{ H}$ | $10.0\text{ M}\Omega$ | Woody Acoustic | Authentic double bass bridge-wing piezo sensor; captures body wood resonance, bow bite, and organic finger thump. |
+| **14** | `upright_piezo` | Upright Bridge Piezo | Transducer | High-Z Piezo Buffer ($R_{\text{in}}=100\text{ M}\Omega$) | $0.00\text{ H}$ | $100.0\text{ M}\Omega$ | Woody Acoustic | Authentic double bass bridge-wing piezo sensor; captures bridge rocking resonance, Spirocore string damping, and pizzicato attack bite. |
 
 ---
 
@@ -196,16 +196,17 @@ This catalog details the physical parameters, equivalent RLC circuit values, aco
 * **Acoustic Character:** 34"-37" fanned-fret wave-speed scaling with high string tension, angled bridge sweet spot ($48.0\text{ mm}$), active buffered FD3 dual-coil parallel sparkle ($7.3\text{ kHz}$), and stainless-steel string harmonic extension.
 * **32" Bass Setting:** ABCX Blend **100% Bridge** (MMTWX in Dual-Coil Mode - Push/Pull Up).
 
-### 14. `upright_acoustic` (Upright Acoustic Bridge Transducer)
-* **Archetype:** Direct Bridge Force Transducer on 3/4 Double Bass (41.5" Scale, Underwood / David Gage Realist style)
-* **Target String Archetype:** 3/4 Double Bass spiral rope-core strings (`double_bass_spirocore`, $265\text{ lbs}$ tension, coupled spruce soundboard damping)
-* **Sensor Model:** Direct bridge saddle force sensor ($x = 5.0\text{ mm}$) with velocity-to-force leaky integration ($+6\text{ dB/oct}$ from $70\text{ Hz}$ to $250\text{ Hz}$)
-* **Dynamic Compliance:** Soft-knee bridge rocking saturation ($V_{\text{sat}} \cdot \tanh(v / V_{\text{sat}})$), dynamically scaled for lower-tension strings ($V_{\text{sat}} = 0.336\text{ V}$ on 32" fretless with La Bella LTF vs $0.42\text{ V}$ baseline)
-* **Anti-Double-Damping:** Automatically matches source string damping ($f_{\text{damp, src}}$) to target double-bass damping ($f_{\text{damp, tgt}}$). When evaluated from flatwound instruments (La Bella LTF), the filter avoids double-muffling the high frequencies while preserving woody bridge bite.
-* **Electrical Parameters:** Pure capacitive piezo sensor ($C_{\text{piezo}} = 1.2\text{ nF}$), direct $100\text{ M}\Omega$ buffer, $15\text{ nF}$ subsonic rumble decoupling @ $32\text{ Hz}$
-* **Acoustic Character:** Eliminates magnetic pickup comb filtering; delivers smooth, woody double-bass pizzicato bloom with deep sub-bass body resonance.
+### 14. `upright_piezo` (Upright Piezo Bridge Transducer)
+* **Archetype:** Direct Bridge Force Transducer on 3/4 Double Bass (41.25" Scale, Underwood / David Gage Realist style)
+* **Target String Archetype:** 3/4 Double Bass spiral rope-core strings (`double_bass_spirocore`, $265\text{ lbs}$ tension, coupled maple bridge damping)
+* **Sensor Model:** Direct bridge saddle force sensor ($x = 5.0\text{ mm}$) sensing boundary shear force ($F(0, t)$) with zero magnetic comb filtering notches ($\cos(k \cdot 0) = 1$).
+* **Bridge Mechanics ($H_{\text{bridge}}$):** Formulates in-plane maple bridge rocking resonance ($f_{\text{rock}} = 800\text{ Hz}$, $Q = 1.8$, peak gain $+2.5\text{ dB}$) and bridge wood mass inertial roll-off above $3.8\text{ kHz}$ with exact $0.00\text{ dB}$ DC transmission. Deliberately omits acoustic body/soundboard modes ($A_0$, $T_1$) to prevent double-body muddiness when paired with downstream IRs.
+* **Dynamic Piezo Strain Compliance:** Soft-knee PZT compressive strain saturation ($V_{\text{sat}} \cdot \tanh(v / V_{\text{sat}})$ with $V_{\text{sat}} = 0.42\text{ V}$, $\alpha_p = 0.15$) and small-signal linear bypass ($\le 0.10$).
+* **Differential String Mechanics:** Automatically evaluates differential damping and tension compliance between source strings and Spirocore spiral rope-core strings. When evaluated on flatwound instruments, prevents double-muffling while taming electric roundwound clank.
+* **Electrical Parameters:** Pure capacitive piezo sensor ($C_{\text{piezo}} = 1.2\text{ nF}$), direct $100\text{ M}\Omega$ buffer, transparent sub-audible $8\text{ Hz}$ DC blocking.
+* **Acoustic Character:** Eliminates magnetic pickup comb filtering; delivers smooth, woody double-bass pizzicato bloom with authentic bridge bite.
 * **Downstream Acoustic Soundboard Radiation (Recommended AST IRs):** Upright Piezo synthesizes the authentic mechanical force directly at the bridge saddle. To radiate this raw transducer signal into realistic 3/4 double bass acoustic body and soundboard resonance, it is **strongly recommended to pair this model with 3 Sigma Audio Upright Bass AST (Acoustic Sound Technology) IRs** in Block 3 (Cab IR loader) or your DAW host. Specifically, select impulses from the **`Acoustic Upright Standard`** folder (identified by the **`AST`** file tag), which 3 Sigma Audio designed specifically for acoustic upright basses with a standard piezo pickup.
-* **32" Fretless Setting:** ABCX Blend to **Upright Blend** (85% PCSX + 15% MMTWX Single - Push/Pull Down: J Mode). Pair with **3 Sigma Upright Bass AST IR** in Anagram Block 3.
+* **Source Instrument Routing:** Multi-pickup instruments route to the **Neck pickup** (e.g. Reverse PX on 32" P/MM, Neck single on Jazz Bass, Split-coil on PJ) for maximum fundamental wave excursion and single-window phase coherence.
 
 ---
 

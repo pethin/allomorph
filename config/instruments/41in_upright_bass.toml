@@ -55,10 +55,10 @@ Rbot = 100000000.0
 # 2. NATIVE INSTRUMENT VOICINGS
 # ------------------------------------------------------------------------------
 
-[voicings.bridge_piezo_acoustic]
+[voicings.bridge_piezo]
 version = 1
-name = "Acoustic Double Bass Bridge Force"
-tone_name = "Upright Acoustic"
+name = "Acoustic Double Bass Bridge Piezo Force"
+tone_name = "Upright Piezo"
 pickup = "bridge_piezo"
 affinity = "neck"
 sensor_type = "bridge_force"

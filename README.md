@@ -160,7 +160,7 @@ Allomorph includes pre-configured physical and electrical parameters for **24 di
 | `p_mm_parallel` | P/MM Parallel | Modern Active P/MM | Active Buffer | Studio Active Buffer ($R_{\text{in}}=1\text{M}\Omega, R_{\text{out}}=100\,\Omega$) | $0.96\text{ H}$ | $3.4\text{ kHz}$ | Authentic active parallel P/MM (Sandberg VM / Lakland 44-02); Split-P neck + MM parallel bridge into buffer. |
 | `p_mm_series` | P/MM Series | Modern Active P/MM (Series) | Active Series Buffer | Studio Active Buffer ($R_{\text{in}}=1\text{M}\Omega, R_{\text{out}}=100\,\Omega$) | $8.40\text{ H}$ | $3.2\text{ kHz}$ | Split P and MM parallel humbucker wired in series before active buffer; $+5.8\text{ dB}$ inductive boost. |
 | `mudbucker_deep` | Mudbucker Deep | Heavy Series MM | Ultra Series | Gibson $500\text{k}\Omega$ Vol/Tone, $22\text{nF}$ Cap | $14.40\text{ H}$| $1.2\text{ kHz}$ | Overwound dual-coil series humbucker; subterranean low end with natural high-frequency rolloff. |
-| `upright_acoustic` | Upright Acoustic | Upright Transducer | Bridge Force | Direct $100\text{ M}\Omega$ Buffer, $15\text{ nF}$ Subsonic Cap | — | $4.5\text{ kHz}$ | Direct bridge force sensor (Underwood / Realist style); leaky integration, 32 Hz rumble cut, bridge compliance. |
+| `upright_piezo` | Upright Piezo | Double Bass Transducer | Bridge Force | High-Impedance PZT Piezo Buffer, $8\text{ Hz}$ DC Block | — | $800\text{ Hz}$ / $3.8\text{ kHz}$ | Bridge saddle force transducer; maple rocking resonance, wood mass rolloff, Spirocore compliance (pair with 3 Sigma AST IRs). |
 
 ---
 

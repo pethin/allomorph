@@ -89,7 +89,8 @@ def test_resolve_target_affinity():
     assert resolve_target_affinity("pair_open") == "parallel"
 
     # Direct / acoustic affinities
-    assert resolve_target_affinity("bridge_piezo_acoustic") in ("direct", "neck")
+    assert resolve_target_affinity("bridge_piezo") in ("direct", "neck")
+    assert resolve_target_affinity("upright_piezo") in ("direct", "neck")
 
 
 def test_partition_instrument_bundles_single_pickup():

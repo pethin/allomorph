@@ -448,7 +448,7 @@ def simulate_instrument_voicing(
         if voicing_cfg.string_preset_override and voicing_cfg.string_preset_override in STRINGS
         else inst_string
     )
-    if voicing_cfg.sensor_type not in ("bridge_force", "direct") and target_string != ref_string:
+    if voicing_cfg.sensor_type != "direct" and target_string != ref_string:
         h_str_raw = compute_differential_string_transfer(f, ref_string, target_string)
         h_string = np.asarray(h_str_raw, dtype=np.float64)
         h_long = compute_differential_longitudinal_transfer(
@@ -469,8 +469,23 @@ def simulate_instrument_voicing(
         else:
             h_base = np.ones_like(f, dtype=np.float64)
     elif voicing_cfg.sensor_type == "bridge_force":
+        # 1. Double bass maple bridge rocking resonance (Woodhouse/Guettler: 800 Hz, Q ~ 1.8, +2.5 dB)
+        f_rock = 800.0
+        q_rock = 1.8
+        g_rock = 10.0 ** (2.5 / 20.0)
+        w = 2.0 * np.pi * f
+        w0 = 2.0 * np.pi * f_rock
+        s = 1j * w
+        h_rock = np.abs(
+            (s**2 + (g_rock * w0 / q_rock) * s + w0**2)
+            / (s**2 + (w0 / q_rock) * s + w0**2)
+        )
+
+        # 2. Bridge structure wood mass inertial roll-off above 3.5 kHz
         f_damp = 3800.0
-        h_ac = 1.0 / np.sqrt(1.0 + (f / f_damp) ** 4)
+        h_mass = 1.0 / np.sqrt(1.0 + (f / f_damp) ** 4)
+
+        h_ac = h_rock * h_mass
         if curves is not None:
             h_elec = np.asarray(curves[0], dtype=np.float64)
             h_base = h_ac * h_elec
@@ -794,6 +809,25 @@ def simulate_instrument_voicing(
                 displacement_weighting=True,
                 magnet_drag=True,
             ).astype(np.float64)
+        elif apply_saturation and voicing_cfg.sensor_type == "bridge_force":
+            p_vsat = (
+                float(voicing_cfg.vsat)
+                if voicing_cfg.vsat is not None
+                else (
+                    float(circ_model.vsat)
+                    if (circ_model is not None and circ_model.vsat is not None)
+                    else 0.42
+                )
+            )
+            drive_db = float(getattr(voicing_cfg, "gain_db", 0.0) or 0.0)
+            drive_in = v_ac if drive_db == 0.0 else v_ac * (10.0 ** (drive_db / 20.0))
+            max_in = float(np.max(np.abs(drive_in))) if len(drive_in) > 0 else 0.0
+            if max_in > 0.10 and p_vsat > 0.0:
+                alpha_p = float(voicing_cfg.alpha) if voicing_cfg.alpha is not None else 0.15
+                v_piezo = drive_in * (1.0 + alpha_p * np.tanh(drive_in / p_vsat))
+                emf = (p_vsat * np.tanh(v_piezo / p_vsat)).astype(np.float64)
+            else:
+                emf = drive_in
         else:
             emf = v_ac
 

@@ -118,7 +118,7 @@ def test_32in_fretless_pmm_routing():
     assert math.isclose(pcsx.coils[1].position_from_bridge_m, 0.1264, abs_tol=1e-4)
 
     # Upright voice routes to solo reverse PCSX neck split-coil (100%)
-    up_pickup = get_source_pickup(inst, "upright_acoustic")
+    up_pickup = get_source_pickup(inst, "upright_piezo")
     assert up_pickup.name == "Reverse EMG PCSX Split-Coil (Neck)"
     assert up_pickup.type == "split_coil"
 
@@ -171,7 +171,7 @@ def test_34in_standard_pj_routing():
     assert get_source_pickup(inst, "precision_vintage").id == "p"
     assert get_source_pickup(inst, "precision_warm").id == "p"
     assert get_source_pickup(inst, "mudbucker_deep").id == "p"
-    assert get_source_pickup(inst, "upright_acoustic").id == "p"
+    assert get_source_pickup(inst, "upright_piezo").id == "p"
 
     # Routing checks: Bridge voices
     assert get_source_pickup(inst, "jazz_bridge_open").id == "j"
@@ -279,7 +279,7 @@ def test_34in_preamp_soapbar_routing():
     assert get_source_pickup(inst, "precision_active").id == "neck"
     assert get_source_pickup(inst, "precision_vintage").id == "neck"
     assert get_source_pickup(inst, "mudbucker_deep").id == "neck"
-    assert get_source_pickup(inst, "upright_acoustic").id == "neck"
+    assert get_source_pickup(inst, "upright_piezo").id == "neck"
 
     # Bridge voices route to bridge soapbar
     assert get_source_pickup(inst, "jazz_bridge_open").id == "bridge"

@@ -445,7 +445,7 @@ def generate_voicings_page(target_html: Path | str | None = None) -> Path:
         <button class="preset-chip" onclick="applyPreset('precision_vintage', 'stingray_parallel')">P vs StingRay</button>
         <button class="preset-chip" onclick="applyPreset('stingray_parallel', 'jazz_bridge_growl')">StingRay vs J Bridge</button>
         <button class="preset-chip" onclick="applyPreset('pj_passive', 'pj_active')">Passive vs Active PJ</button>
-        <button class="preset-chip" onclick="applyPreset('precision_vintage', 'upright_acoustic')">P vs Upright</button>
+        <button class="preset-chip" onclick="applyPreset('precision_vintage', 'upright_piezo')">P vs Upright</button>
         <button class="preset-chip" onclick="applyPreset('soapbar_neck', 'precision_vintage')">Soapbar Neck vs P</button>
         <button class="preset-chip" onclick="applyPreset('active_emg_neck', 'precision_vintage')">EMG Neck vs P</button>
         <button class="preset-chip" onclick="applyPreset('precision_vintage', 'precision_vintage')">Identity (Reset)</button>

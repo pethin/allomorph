@@ -238,7 +238,8 @@ def test_tone3000_t3k_pack_basename_alignment():
 
 
 def test_generated_pack_storefront_descriptions():
-    """Verify that all generated pack storefront descriptions strictly conform to:
+    """Verify that generate_storefront_description strictly conforms to Tone3000 constraints
+    dynamically across all catalog instruments without requiring pre-generated files on disk:
     1. Raw text (no markdown underlines === or ---, no markdown headings ###).
     2. No Technical Specifications section.
     3. Essential sections present: OVERVIEW, RECOMMENDED SIGNAL CHAIN, QUICK INSTRUMENT SETUP,
@@ -246,74 +247,91 @@ def test_generated_pack_storefront_descriptions():
     4. Exact License and Trademark Disclaimer text.
     5. Word-wrap friendliness: descriptions and paragraphs are single continuous lines.
     6. Tone3000 character limit (<= 10,000 chars).
+    7. All target voicings are enumerated in order with valid version tags.
     """
-    packs_dir = TONE3000_DIR / "packs"
-    assert packs_dir.exists(), f"Packs directory missing: {packs_dir}"
+    from allomorph.config.instruments import INSTRUMENTS, partition_instrument_bundles
+    from allomorph.naming import get_t3k_basename
+    from allomorph.pipeline.pack import generate_storefront_description
 
-    desc_files = list(packs_dir.glob("*/storefront_description.txt"))
-    assert len(desc_files) >= 16, f"Expected at least 16 pack descriptions, found {len(desc_files)}"
-
-    for desc_file in desc_files:
-        content = desc_file.read_text(encoding="utf-8")
-        pack_id = desc_file.parent.name
+    for inst_id, inst in INSTRUMENTS.items():
+        bundles = partition_instrument_bundles(inst)
+        content = generate_storefront_description(inst, bundles)
 
         # 1. No Technical Specifications
         assert "TECHNICAL SPECIFICATIONS" not in content, (
-            f"Pack {pack_id} contains forbidden TECHNICAL SPECIFICATIONS section."
+            f"Instrument {inst_id} description contains forbidden TECHNICAL SPECIFICATIONS section."
         )
 
         # 2. No markdown underlines or headings
         for line in content.splitlines():
             assert not re.match(r"^={3,}$", line), (
-                f"Pack {pack_id} contains markdown underline: '{line}'"
+                f"Instrument {inst_id} contains markdown underline: '{line}'"
             )
             assert not re.match(r"^-{3,}$", line), (
-                f"Pack {pack_id} contains markdown underline: '{line}'"
+                f"Instrument {inst_id} contains markdown underline: '{line}'"
             )
-            assert not line.startswith("###"), f"Pack {pack_id} contains markdown heading: '{line}'"
+            assert not line.startswith("###"), (
+                f"Instrument {inst_id} contains markdown heading: '{line}'"
+            )
 
         # 3. Essential sections
-        assert "OVERVIEW" in content, f"Pack {pack_id} missing OVERVIEW"
+        assert "OVERVIEW" in content, f"Instrument {inst_id} missing OVERVIEW"
         assert "RECOMMENDED SIGNAL CHAIN" in content, (
-            f"Pack {pack_id} missing RECOMMENDED SIGNAL CHAIN"
+            f"Instrument {inst_id} missing RECOMMENDED SIGNAL CHAIN"
         )
-        assert "QUICK INSTRUMENT SETUP" in content, f"Pack {pack_id} missing QUICK INSTRUMENT SETUP"
-        assert "DIGITAL TWIN VOICINGS" in content, f"Pack {pack_id} missing DIGITAL TWIN VOICINGS"
-        assert "LICENSE & DISCLAIMER" in content, f"Pack {pack_id} missing LICENSE & DISCLAIMER"
+        assert "QUICK INSTRUMENT SETUP" in content, (
+            f"Instrument {inst_id} missing QUICK INSTRUMENT SETUP"
+        )
+        assert "DIGITAL TWIN VOICINGS" in content, (
+            f"Instrument {inst_id} missing DIGITAL TWIN VOICINGS"
+        )
+        assert "LICENSE & DISCLAIMER" in content, (
+            f"Instrument {inst_id} missing LICENSE & DISCLAIMER"
+        )
 
         # 4. License & Trademark Disclaimer
-        assert "License:" in content, f"Pack {pack_id} missing 'License:'"
+        assert "License:" in content, f"Instrument {inst_id} missing 'License:'"
         assert "Licensed for personal and commercial musical performances" in content, (
-            f"Pack {pack_id} missing standard License text"
+            f"Instrument {inst_id} missing standard License text"
         )
-        assert "Trademark Disclaimer:" in content, f"Pack {pack_id} missing 'Trademark Disclaimer:'"
+        assert "Trademark Disclaimer:" in content, (
+            f"Instrument {inst_id} missing 'Trademark Disclaimer:'"
+        )
         assert (
             "Allomorph is an independent project and is not affiliated with or endorsed" in content
-        ), f"Pack {pack_id} missing standard Trademark Disclaimer text"
+        ), f"Instrument {inst_id} missing standard Trademark Disclaimer text"
 
         # 5. Character limit
-        assert len(content) <= 10000, f"Pack {pack_id} exceeds 10,000 characters: {len(content)}"
+        assert len(content) <= 10000, (
+            f"Instrument {inst_id} exceeds 10,000 characters: {len(content)}"
+        )
 
-        # 6. Voicing entries match file names and have versions
+        # 6. Voicing entries match bundle targets and have valid version tags
         voicing_lines = [
             line.strip() for line in content.splitlines() if re.match(r"^\d{2}\.", line.strip())
         ]
-        assert len(voicing_lines) >= 15, (
-            f"Pack {pack_id} has fewer than 15 voicings: {len(voicing_lines)}"
+        total_targets = sum(len(b.targets) for b in bundles.values())
+        assert len(voicing_lines) == total_targets, (
+            f"Instrument {inst_id} expected {total_targets} voicing lines, found {len(voicing_lines)}"
         )
 
-        bundle_base_stems = {
-            re.sub(r" v\d+\.\d+\.\d+$", "", f.stem)
-            for f in desc_file.parent.glob("bundles/*/*.wav")
-            if not f.name.startswith("dry")
-        }
+        expected_basenames = set()
+        for b in bundles.values():
+            for tref in b.targets:
+                vcfg = tref.voicing
+                pos = b.pickup.position_name if len(bundles) > 1 else None
+                tone = vcfg.tone_name or vcfg.name
+                expected_basenames.add(
+                    get_t3k_basename(tone, pos, preserve_aperture=vcfg.preserve_aperture)
+                )
+
         for vline in voicing_lines:
             assert re.match(r"^\d{2}\. .+ v\d+\.\d+\.\d+$", vline), (
-                f"Pack {pack_id} voicing line missing version tag: '{vline}'"
+                f"Instrument {inst_id} voicing line missing version tag: '{vline}'"
             )
             tone_entry = re.sub(r"^\d{2}\. ", "", vline)
             tone_base = re.sub(r" v\d+\.\d+\.\d+$", "", tone_entry)
-            if bundle_base_stems:
-                assert tone_base in bundle_base_stems, (
-                    f"Pack {pack_id} voicing '{tone_base}' does not match any bundle stem base name"
-                )
+            assert tone_base in expected_basenames, (
+                f"Instrument {inst_id} voicing '{tone_base}' does not match any bundle target base name"
+            )
+

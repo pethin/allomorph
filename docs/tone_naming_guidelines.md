@@ -96,7 +96,7 @@ Describes the musical tone contour or circuit state. Replaces all raw electronic
 | `Growl` | Bridge-biased blend for singing fretless tone | `Jaco Bridge Growl` | Decoupled volume pot blend (100% bridge, 75% neck) |
 | `Clank` | Aggressive pick bite and high-pass clank | `4.7nF HPF`, `4003` | In-line series 4.7nF capacitor rolling off sub-bass |
 | `Deep` | Maximum low-end sidewinder sub resonance | `Ultra Series` | 14.4H high-inductance sidewinder coil |
-| `Acoustic` | Wood body resonance & bridge force response | `Piezo`, `Transducer` | Bridge force sensor simulation on 41.5" upright scale |
+| `Piezo` | Bridge force response & rocking compliance | `Transducer`, `Wing` | Bridge force sensor simulation on 41.25" upright scale |
 | `Direct` | Pure, transparent studio DI transmission | `DI`, `Studio DI` | Transparent bypass preserving source aperture |
 
 ---
@@ -142,7 +142,7 @@ Below is the definitive catalog of all 24 Allomorph target voices under the syst
 | `p_mm_series` | `P∕MM Series` | `[Series]` | `P∕MM Series [Series] v2.1.1` | 27 | **Zero-Scroll** | Split-P + MM bridge in series with active buffer |
 | `mudbucker_deep` | `Mudbucker Deep` | `[Neck]` | `Mudbucker Deep [Neck] v2.1.1` | 29 | **Zero-Scroll** | Massive 14.4H sidewinder neck sub-bass rumble |
 | `dingwall_bridge` | `Dingwall Bridge` | `[Bridge]` | `Dingwall Bridge [Bridge] v2.1.1` | 32 | **Zero-Scroll** | High-tension fanned-fret progressive clarity |
-| `upright_acoustic` | `Upright Acoustic` | — | `Upright Acoustic v2.1.1` | 23 | **Zero-Scroll** | Woody double-bass piezo bridge transducer |
+| `upright_piezo` | `Upright Piezo` | — | `Upright Piezo v2.1.1` | 20 | **Zero-Scroll** | Woody double-bass piezo bridge transducer |
 
 ---
 

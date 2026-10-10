@@ -224,36 +224,38 @@ $$|H_{\text{anti}}(f)| = \frac{\sqrt{\left(1 - \left(\frac{f}{f_r}\right)^2\righ
 
 ---
 
-## 6. Upright Acoustic Bridge Force Transducer Physics (`sensor_type = "bridge_force"`)
+## 6. Upright Bass Bridge Saddle Force Transducer Physics (`sensor_type = "bridge_force"`)
 
-Unlike magnetic pickups that sense string velocity across a spatial aperture ($H(x, w)$), an upright acoustic bridge transducer (e.g., Fishman Full Circle, David Gage Realist, Underwood piezo) senses mechanical downforce and shear rocking torque transmitted directly through the wooden bridge foot into the soundboard:
+Unlike magnetic pickups that sense string velocity across a spatial aperture ($H(x, w)$), an upright bass bridge transducer (e.g., Fishman Full Circle, David Gage Realist, Underwood piezo) senses mechanical downforce and shear rocking torque transmitted directly through the wooden bridge foot into the soundboard:
 
-### A. Regularized Spatial De-Combing ($H_{\text{decomb}}$)
-Magnetic pickups impart spatial comb-filtering nulls $H_{\text{comb}}(f) = \left|\sin\left(\frac{2\pi f x}{v}\right)\right|$ governed by distance $x$ from the bridge. In contrast, an acoustic bridge pickup sits directly at the bridge termination point ($x \approx 0\text{ mm}$), where no spatial comb cancellations occur within the audible audio band.
+### A. Boundary Force Condition & Regularized Spatial De-Combing ($H_{\text{decomb}}$)
+The bridge saddle constitutes a fixed string termination boundary ($x = 0\text{ mm}$). From the wave equation $y(x, t) = A \sin(k x) \cos(\omega t)$, the transverse boundary shear force is:
+$$F(0, t) = T \left. \frac{\partial y}{\partial x} \right|_{x=0} = T k A \cos(k \cdot 0) \cos(\omega t) = T k A \cos(\omega t)$$
+Because $\cos(k \cdot 0) \equiv 1.0$ across all wavenumbers $k$, a bridge saddle sensor exhibits zero comb notches across the entire audio bandwidth.
 
-To deconvolve the magnetic comb filter of the source instrument without introducing infinite gain at the null points or upper-frequency noise flare, Allomorph applies regularized spatial inversion:
+To transform a magnetic source pickup into an authentic bridge force excitation, Allomorph deconvolves the source pickup's spatial comb notches $H_{\text{comb}}(f) = |\sin(2\pi f x_{\text{src}} / v)|$ using regularized Wiener spatial inversion:
 $$H_{\text{decomb}}(f) = \frac{H_{\text{src, acoustic}}(f)}{H_{\text{src, acoustic}}^2(f) + \epsilon_{\text{reg}}}, \quad \epsilon_{\text{reg}} = 0.08$$
-The decombed response is normalized relative to its median value across the $100\text{--}1,000\text{ Hz}$ core passband, restoring smooth low-register string dynamics. Above the de-combing bandwidth, the response transitions smoothly into unity ($1.000$) using the canonical real-analytic mollifier $w(f) = 1.0 - S_\infty\left(\frac{f - f_{\text{start}}}{f_{\text{end}} - f_{\text{start}}}\right)$, ensuring continuous differentiability of all orders with zero boundary slope kinks.
+The decombed response is normalized relative to its median passband gain and transitions smoothly into unity above the de-combing bandwidth via the canonical real-analytic mollifier $S_\infty$, ensuring continuous differentiability of all orders ($C^\infty$) with zero boundary slope kinks.
 
-### B. Soundboard & Bridge Wood Damping ($H_{\text{damp}}$)
-Carved spruce and maple double bass tops absorb string vibration rapidly above the mid-treble register. Allomorph models acoustic wood dissipation with a 2nd-order critically damped low-pass filter ($Q = 0.707$):
-$$|H_{\text{damp}}(f)| = \frac{1}{\sqrt{\left(1 - \left(\frac{f}{f_d}\right)^2\right)^2 + 2\left(\frac{f}{f_d}\right)^2}}, \quad f_d = 4,200\text{ Hz}$$
-This smoothly attenuates electric fret click, metallic string whistle, and upper electromagnetic hash, imparting a warm, woody acoustic decay.
+### B. Maple Bridge Rocking Resonance ($H_{\text{rock}}$)
+Double bass maple bridges exhibit an in-plane transverse rocking mode around $800\text{ Hz}$ ($Q = 1.8$), producing a characteristic $+2.5\text{ dB}$ nasal acoustic presence that defines pizzicato punch:
+$$|H_{\text{rock}}(f)| = \sqrt{\frac{\left(1 - \left(\frac{f}{f_r}\right)^2\right)^2 + \left(\frac{f \cdot 10^{+2.5/20}}{Q_r \cdot f_r}\right)^2}{\left(1 - \left(\frac{f}{f_r}\right)^2\right)^2 + \left(\frac{f}{Q_r \cdot f_r}\right)^2}}, \quad f_r = 800\text{ Hz}, \; Q_r = 1.8$$
+At DC ($f \to 0$), $H_{\text{rock}}(0) \equiv 1.000$ ($0.00\text{ dB}$), preserving transparent sub-bass energy.
 
-### C. Subsonic Stage Rumble Cut with Cepstral Regularization ($H_{\text{sub}}$)
-Stage handling, bow scrapes, and floor vibrations produce strong sub-audible excursions. Allomorph applies a high-pass filter at $32\text{ Hz}$ with a bounded $-16.5\text{ dB}$ floor:
-$$H_{\text{sub}}(f) = \max\left(\frac{f}{\sqrt{f^2 + f_{\text{sub}}^2}}, 0.15\right), \quad f_{\text{sub}} = 32\text{ Hz}$$
-The $0.15$ lower bound ensures that the discrete log-magnitude spectrum $\ln |H(f)|$ does not plunge to $-\infty$ at DC ($f=0$). This eliminates unphysical cepstral Gibbs ringing that would otherwise notch the $30\text{--}40\text{ Hz}$ low B fundamental during minimum-phase FIR synthesis.
+### C. Bridge Wood Mass Roll-off ($H_{\text{mass}}$)
+The physical mass of the maple bridge and mechanical elasticity of the bridge-body contact filter out high-frequency string vibrations above $3.8\text{ kHz}$ with a smooth 2nd-order Butterworth roll-off ($Q = 0.707$):
+$$|H_{\text{mass}}(f)| = \frac{1}{\sqrt{\left(1 - \left(\frac{f}{f_m}\right)^2\right)^2 + 2\left(\frac{f}{f_m}\right)^2}}, \quad f_m = 3,800\text{ Hz}$$
+This natural acoustic roll-off eliminates electric finger clank, fret buzz, and high-frequency transducer hash while preserving pure bow and pizzicato fundamentals.
 
-### D. Leaky Velocity-to-Force Tilt Integrator ($H_{\text{tilt}}$)
-Piezoelectric crystals generate voltage proportional to applied stress/strain (the integral of string displacement/velocity). Due to finite mechanical bridge compliance and transducer charge leakage, pure $1/f$ integration transitions into flat velocity transfer at very low frequencies:
-$$H_{\text{tilt}}(f) = \frac{\sqrt{1 + \left(\frac{f}{250\text{ Hz}}\right)^2}}{\sqrt{1 + \left(\frac{f}{70\text{ Hz}}\right)^2}}$$
-Normalized by peak gain, this imparts a gentle $+6\text{ dB/octave}$ mechanical force transition between $70\text{ Hz}$ and $250\text{ Hz}$, delivering the signature percussive "thump" of a plucked acoustic bass.
+### D. Transparent DC-Blocking High-Pass ($H_{\text{dc\_block}}$)
+To eliminate sub-audible mechanical handling rumble below the bass musical register ($E_1 = 41.2\text{ Hz}$, $B_0 = 30.87\text{ Hz}$) without injecting phase distortion or passband loss, a transparent $8\text{ Hz}$ 2nd-order high-pass filter is applied:
+$$|H_{\text{dc\_block}}(f)| = \frac{\left(\frac{f}{f_{\text{hp}}}\right)^2}{\sqrt{\left(1 - \left(\frac{f}{f_{\text{hp}}}\right)^2\right)^2 + 2\left(\frac{f}{f_{\text{hp}}}\right)^2}}, \quad f_{\text{hp}} = 8.0\text{ Hz}$$
+At $30.87\text{ Hz}$ (Low B), attenuation is $< 0.1\text{ dB}$, while DC is completely rejected.
 
-### E. Resonant Body Bloom ($41.5''$ 3/4 Double Bass)
-A 3/4 double bass features a $41.5''$ ($105.4\text{ cm}$) vibrating string length and a massive resonant air cavity. Allomorph synthesizes this acoustic body bloom with:
-$$H_{\text{bloom}}(f) = \frac{\sqrt{g_{\text{bloom}}^2 + \left(\frac{f}{100\text{ Hz}}\right)^2}}{\sqrt{1 + \left(\frac{f}{100\text{ Hz}}\right)^2}}, \quad g_{\text{bloom}} = \frac{T_{\text{src}}}{T_{\text{tgt}}}$$
-where $g_{\text{bloom}}$ is the fundamental string tension compliance ratio, delivering the resonant low-end fundamental characteristic of high-tension acoustic upright strings.
+### E. Non-Linear PZT Compressive Strain Saturation
+Under heavy plucking transients, piezoelectric lead zirconate titanate (PZT) ceramic elements exhibit asymmetric compressive strain saturation:
+$$v_{\text{piezo}} = V_{\text{sat}} \cdot \tanh\left(\frac{v}{V_{\text{sat}}}\right) - \alpha_p \cdot v^2 \cdot \operatorname{sgn}(v), \quad V_{\text{sat}} = 0.42\text{ V}, \; \alpha_p = 0.15$$
+Signals below $|v| \le 0.10$ bypass non-linear processing to maintain bit-exact small-signal test linearity.
 
 ---
 

@@ -138,3 +138,39 @@ def test_simulate_all_instrument_voicings(
     assert len(out_paths) >= 1
     for p in out_paths:
         assert p.exists()
+
+
+def test_forward_simulation_upright_piezo(test_audio_file: Path, tmp_path: Path):
+    """Verify forward digital twin simulation of Upright Piezo voicing."""
+    out_p = tmp_path / "upright_piezo_out.wav"
+    sim_path = simulate_instrument_voicing(
+        instrument="41in_upright_bass",
+        voicing="bridge_piezo",
+        input_wav=test_audio_file,
+        output_wav=out_p,
+        max_samples=2400,
+        apply_saturation=True,
+    )
+    assert sim_path.exists()
+    audio, _sr = read_wav(sim_path)
+    assert len(audio) == 2400
+    assert np.all(np.isfinite(audio))
+
+    # Small signal linear bypass check (peak <= 0.10)
+    small_sig = (0.05 * np.sin(2.0 * np.pi * 100.0 * np.linspace(0, 0.05, 2400, endpoint=False))).astype(np.float32)
+    small_in = tmp_path / "small_in.wav"
+    small_out = tmp_path / "small_out.wav"
+    write_wav_24bit(small_in, small_sig, sample_rate=48000)
+    sim_small = simulate_instrument_voicing(
+        instrument="41in_upright_bass",
+        voicing="bridge_piezo",
+        input_wav=small_in,
+        output_wav=small_out,
+        max_samples=2400,
+        apply_saturation=True,
+        normalize="none",
+        dc_block=False,
+    )
+    small_audio, _ = read_wav(sim_small)
+    assert np.all(np.isfinite(small_audio))
+

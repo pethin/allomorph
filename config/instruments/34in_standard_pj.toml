@@ -212,7 +212,7 @@ vsat = 0.6
 # 4. SMART VOICE MAPPING
 # ------------------------------------------------------------------------------
 # Directs the player to select the closest physical pickup state on the P/J Bass:
-#   - Neck Solo (P): Precision bass voicings, Mudbucker, and Upright acoustic depth
+#   - Neck Solo (P): Precision bass voicings, Mudbucker, and Upright piezo depth
 #   - Bridge Solo (J): 60s Jazz bridge growl, StingRay bite, and Rickenbacker clank
 #   - Both Parallel (P/J): Authentic P/J hybrid, scooped Jazz slap, and modern punch
 

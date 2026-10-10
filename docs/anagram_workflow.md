@@ -99,7 +99,7 @@ Allomorph models are calibrated with RMS loudness matching, bounded by a $-0.09\
 | **`p_mm_series`** | P∕MM Series | $+5.8\text{ dB}$ | $-4.0\text{ dB}$ (Prevents clipping downstream drives)|
 | **`mudbucker_deep`** | Mudbucker Deep | $+6.2\text{ dB}$ | $-4.5\text{ dB}$ (Controls high-inductance surge) |
 | **`dingwall_bridge`** | Dingwall Bridge | $+1.0\text{ dB}$ | $+0.5\text{ dB}$ |
-| **`upright_acoustic`** | Upright Acoustic | $0.0\text{ dB}$ | $0.0\text{ dB}$ (Unity acoustic baseline; pair with 3 Sigma AST IRs) |
+| **`upright_piezo`** | Upright Piezo | $0.0\text{ dB}$ | $0.0\text{ dB}$ (Unity transducer baseline; pair with 3 Sigma AST IRs) |
 
 ---
 
@@ -130,7 +130,7 @@ Group the pickup profiles into dedicated 3-button banks on the Anagram hardware:
 ### Bank 5: Multi-Scale, Acoustic & Vintage Filtered
 * **Footswitch A:** `Rickenbacker Clank [Bridge] v2.1.1.nam` (Rickenbacker 4003 Bridge with HPF Clank)
 * **Footswitch B:** `Dingwall Bridge [Bridge] v2.1.1.nam` (Dingwall Multi-Scale Bridge)
-* **Footswitch C:** `Upright Acoustic v2.1.1.nam` (Upright Acoustic Bridge Transducer)
+* **Footswitch C:** `Upright Piezo v2.1.1.nam` (Upright Piezo Bridge Saddle Transducer)
 
 ### Bank 6: Studio Voicings & Pure Dynamics
 * **Footswitch A:** `Studio Direct v2.1.1.nam` (Pure Acoustic Aperture / Studio DI)

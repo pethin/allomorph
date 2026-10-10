@@ -21,7 +21,7 @@ Among the non-native/transformative voicings, tones are ranked according to **re
 - **Tier 1 (Universal Workhorses):** Jazz Bass dual-single scooped slap and active Sadowsky NYC 2-band; Music Man StingRay active parallel bite and series punch.
 - **Tier 2 (Modern Boutique & Rock Legends):** Lakland/Sandberg P/MM active hybrids, Rickenbacker 4003 prog-rock clank with HPF, Dingwall multi-scale modern metal clank.
 - **Tier 3 (Specialty & Historical Archetypes):** Gibson EB-0 Mudbucker ultra-low series humbucker.
-- **Tier 4 (Acoustic Transducers):** Upright Acoustic Double Bass bridge force sensor simulation.
+- **Tier 4 (Acoustic Transducers):** Upright Piezo double bass bridge saddle force sensor simulation.
 
 ### 1.3 Strict Modular Topology Separation
 Storefront categories must accurately reflect analog electrical topologies and physical coil arrangements. Arbitrary "catch-all" groupings are strictly forbidden:

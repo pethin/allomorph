@@ -183,7 +183,7 @@ VOICE_AFFINITIES: dict[str, str] = {
     "p_mm_parallel": "parallel",
     "p_mm_series": "parallel",
     "mudbucker_deep": "neck",
-    "upright_acoustic": "neck",
+    "upright_piezo": "neck",
     "soapbar_pair": "parallel",
     "soapbar_neck": "neck",
     "soapbar_bridge": "bridge",
@@ -308,7 +308,7 @@ STANDARD_CATALOG_TARGETS: list[tuple[str, str]] = [
     ("34in_active_pmm", "pmm_parallel"),
     ("34in_active_pmm", "pmm_series"),
     ("30in_gibson_eb0", "neck_deep"),
-    ("41in_upright_bass", "bridge_piezo_acoustic"),
+    ("41in_upright_bass", "bridge_piezo"),
 ]
 
 # Additional source instrument voicings available in the visualizer suite

@@ -11,7 +11,7 @@ With this pack, your 34" Preamp Soapbar Bass (Dual Humbuckers) can instantly del
 • The iconic scoop of vintage '60s Jazz Basses and aggressive punch of Music Man StingRays
 • Modern active slap preamps, boutique P/MM hybrids, and cutting progressive rock clank
 • Warm Motown flatwound thump, deep reggae dub sub-bass, and pristine modern ceramic punch
-• Acoustic upright double bass resonance for jazz and acoustic sessions
+• Acoustic upright double bass bridge piezo bite for jazz and acoustic sessions
 • Pure studio buffer clarity or organic vintage tube-friendly passive warmth
 
 Calibrated specifically for the 34" Preamp Soapbar Bass (Dual Humbuckers). Plug in, select a model, and hear your 34" Preamp Soapbar Bass (Dual Humbuckers) transform into a completely different instrument in real time with zero latency.
@@ -46,95 +46,95 @@ THE 24 DIGITAL TWIN VOICINGS
 
 Precision Bass & Tone Shaper Family
 
-01. Precision Vintage [Neck] v5.1.1
+01. Precision Vintage [Neck] v6.1.1
 The gold standard: a vintage 1962 Precision Bass with tone wide open. Warm, woody low-mids, open harmonic bloom, and organic touch sensitivity that sits perfectly in any mix.
 
-02. Precision Active [Neck] v5.1.1
+02. Precision Active [Neck] v6.1.1
 Modern active ceramic split-coil P-bass tone with 2-band preamp. Punchy, articulate, and wideband with authoritative low-end weight and bright transient clarity—built for modern rock, gospel, and mix cutting authority.
 
-03. Precision Mids [Neck] v5.1.1
+03. Precision Mids [Neck] v6.1.1
 Vintage P-bass with a modern vocal low-mid punch. Cuts finger clatter and high-end sizzle while keeping a muscular, forward presence in a busy mix.
 
-04. Precision Warm [Neck] v5.1.1
+04. Precision Warm [Neck] v6.1.1
 The legendary Motown flatwound sound (James Jamerson / Pino Palladino). Fat, pillowy sub-bass thump with rolled-off highs that glues the groove together.
 
-05. Precision Dub [Neck] v5.1.1
+05. Precision Dub [Neck] v6.1.1
 Ultra-deep vintage '50s dub spec. Pure, earth-shaking sub-bass thump with zero top-end click—perfect for reggae, dub, hip-hop, and classic R&B.
 
 
 Jazz Bass Family
 
-06. Jazz Pair Active [Parallel] v5.1.1
+06. Jazz Pair Active [Parallel] v6.1.1
 The quintessential NYC active slap tone: tight, massive sub-bass and crisp, glassy highs with a scooped midrange that pops right out of a dense mix.
 
-07. Jazz Pair Open [Parallel] v5.1.1
+07. Jazz Pair Open [Parallel] v6.1.1
 The golden-era '60s Jazz Bass sound. Both pickups wide open deliver that iconic hollow midrange scoop, warm low-mids, and smooth, singing top-end.
 
-08. Jazz Pair Mids [Parallel] v5.1.1
+08. Jazz Pair Mids [Parallel] v6.1.1
 Jazz Bass pair with a vocal midrange punch. Thickens up your fingerstyle attack and smooths out harsh fret clank while keeping every note articulate.
 
-09. Jazz Bridge Growl [Bridge] v5.1.1
+09. Jazz Bridge Growl [Bridge] v6.1.1
 The unmistakable Jaco Pastorius tone: rolling the neck volume back just a touch unlocks that singing, vocal, honky bridge growl without losing low-end body.
 
-10. Jazz Bridge Open [Bridge] v5.1.1
+10. Jazz Bridge Open [Bridge] v6.1.1
 Solo '60s bridge single-coil. Tight, laser-focused midrange bite and percussive attack, perfect for 16th-note funk and fast staccato fingerstyle.
 
-11. Jazz Neck Warm [Neck] v5.1.1
+11. Jazz Neck Warm [Neck] v6.1.1
 Solo '60s neck single-coil. Deep, warm, and round with a woody low-end bloom that rivals a P-bass while retaining single-coil openness.
 
 
 Music Man StingRay Family
 
-12. StingRay Parallel [Bridge] v5.1.1
+12. StingRay Parallel [Bridge] v6.1.1
 The iconic Music Man StingRay sound: thunderous low end, aggressive metallic slap clank, and that hollow midrange scoop heard on thousands of hit records.
 
-13. StingRay Series [Bridge] v5.1.1
+13. StingRay Series [Bridge] v6.1.1
 StingRay wired in series for a hotter, thicker signal with punchy low-mids and an aggressive, in-your-face rock bark.
 
 
 P/J Bass Family
 
-14. PJ Active [Parallel] v5.1.1
+14. PJ Active [Parallel] v6.1.1
 Modern active P/J punch (Sadowsky/Spector style). Combines thick split-coil body with bridge single-coil cut, boosted by a powerful active 2-band EQ.
 
-15. PJ Passive [Parallel] v5.1.1
+15. PJ Passive [Parallel] v6.1.1
 Classic '80s rock P/J tone (Fender Precision Special / Yamaha BB). Thick hard-rock punch with aggressive midrange bite and authoritative low-end grunt.
 
 
 P/MM Modern Hybrids
 
-16. P∕MM Parallel [Parallel] v5.1.1
+16. P∕MM Parallel [Parallel] v6.1.1
 Modern boutique session hybrid (Sandberg California / Lakland style). Blends the warm body of a P-bass neck with the punchy slap bite of a Music Man bridge humbucker.
 
-17. P∕MM Series [Parallel] v5.1.1
+17. P∕MM Series [Parallel] v6.1.1
 P-bass neck and Music Man bridge wired in series for a massive wall of sound with immense low-mid thrust and heavy overdrive sustain.
 
 
 Progressive & Classic Rock Legends
 
-18. Rickenbacker Clank [Bridge] v5.1.1
+18. Rickenbacker Clank [Bridge] v6.1.1
 The quintessential prog-rock clank (Chris Squire / Geddy Lee). Tight, lean low end with biting, aggressive pick attack and cutting upper-mid grit.
 
-19. Rickenbacker Open [Bridge] v5.1.1
+19. Rickenbacker Open [Bridge] v6.1.1
 Modern 4003 bridge tone with the vintage capacitor bypassed. Fuller low-end body and punch while retaining that signature biting Rickenbacker top-end cut.
 
-20. Dingwall Bridge [Bridge] v5.1.1
+20. Dingwall Bridge [Bridge] v6.1.1
 Modern progressive metal tone: razor-sharp pick clank, extreme note clarity, and piano-like low-B definition tailored for drop tunings and heavy distortion.
 
-21. Dingwall Middle [Neck] v5.1.1
+21. Dingwall Middle [Neck] v6.1.1
 FD3 middle pickup solo: focused, aggressive low-mid grunt and punchy growl with exceptional articulation across all registers.
 
-22. Dingwall Parallel [Parallel] v5.1.1
+22. Dingwall Parallel [Parallel] v6.1.1
 FD3 bridge and middle coils in parallel: modern scooped aggression with ultra-fast transient attack, tight sub-bass, and pristine harmonic sparkle.
 
-23. Mudbucker Deep [Neck] v5.1.1
+23. Mudbucker Deep [Neck] v6.1.1
 The legendary Gibson "Mudbucker": a dark, colossal wall of pure vintage bass rumble with zero top-end harshness—pure '60s and '70s British blues-rock.
 
 
 Acoustic Transducers
 
-24. Upright Acoustic [Neck] v5.1.1
-Acoustic upright double bass: transforms your electric bass into a woody, resonant acoustic upright with natural body thump and organic finger feel. Pair with 3 Sigma Audio "Acoustic Upright Standard" AST IRs in your cabinet loader for authentic soundboard acoustic bloom.
+24. Upright Piezo [Neck] v6.1.1
+Acoustic upright double bass bridge piezo: captures the authentic high-tension attack bite, bridge rocking compliance, and wood-mass roll-off of an acoustic double bass bridge piezo transducer, designed specifically as an ultra-high-Z front-end before acoustic IRs (such as 3 Sigma Audio AST Double Bass IRs) and preamp stages.
 
 
 LICENSE & DISCLAIMER

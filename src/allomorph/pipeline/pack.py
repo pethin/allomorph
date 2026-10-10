@@ -243,14 +243,14 @@ VOICE_CATALOG_DESCRIPTIONS: dict[str, dict[str, str]] = {
         ),
     },
     # Acoustic Transducers
-    "upright_acoustic": {
+    "upright_piezo": {
         "family": "Acoustic Transducers",
-        "name": "Upright Acoustic",
+        "name": "Upright Piezo",
         "desc": (
-            "Acoustic upright double bass: transforms your electric bass into a woody, "
-            "resonant acoustic upright with natural body thump and organic finger feel. "
-            'Pair with 3 Sigma Audio "Acoustic Upright Standard" AST IRs in your cabinet '
-            "loader for authentic soundboard acoustic bloom."
+            "Acoustic upright double bass bridge piezo: captures the authentic high-tension attack bite, "
+            "bridge rocking compliance, and wood-mass roll-off of an acoustic double bass bridge piezo transducer, "
+            'designed specifically as an ultra-high-Z front-end before acoustic IRs (such as 3 Sigma Audio AST '
+            "Double Bass IRs) and preamp stages."
         ),
     },
 }
@@ -273,7 +273,7 @@ VOICE_SLUG_ALIASES: dict[str, str] = {
     "pmm_parallel": "p_mm_parallel",
     "pmm_series": "p_mm_series",
     "neck_deep": "mudbucker_deep",
-    "bridge_piezo_acoustic": "upright_acoustic",
+    "bridge_piezo": "upright_piezo",
 }
 
 FAMILY_ORDER: list[str] = [
@@ -324,7 +324,7 @@ VOICE_ORDER_IN_FAMILY: dict[str, list[str]] = {
         "mudbucker_deep",
     ],
     "Acoustic Transducers": [
-        "upright_acoustic",
+        "upright_piezo",
     ],
     "Studio Buffers & Dynamics": [
         "active_character",
@@ -425,7 +425,7 @@ def generate_storefront_description(
             "• The iconic scoop of vintage '60s Jazz Basses and aggressive punch of Music Man StingRays\n"
             "• Modern active slap preamps, boutique P/MM hybrids, and cutting progressive rock clank\n"
             "• Warm Motown flatwound thump, deep reggae dub sub-bass, and pristine modern ceramic punch\n"
-            "• Acoustic upright double bass resonance for jazz and acoustic sessions\n"
+            "• Acoustic upright double bass bridge piezo bite for jazz and acoustic sessions\n"
             "• Pure studio buffer clarity or organic vintage tube-friendly passive warmth"
         ),
         "",

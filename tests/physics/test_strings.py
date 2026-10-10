@@ -87,7 +87,7 @@ def test_instrument_string_resolution():
 
 def test_target_voice_strings():
     """Verify target voice goal string mappings."""
-    v14 = VOICES["upright_acoustic"]
+    v14 = VOICES["upright_piezo"]
     str_v14 = get_voice_string(v14)
     assert str_v14.type == "double_bass"
     assert str_v14.tension_lbs == 265.0
@@ -119,7 +119,7 @@ def test_differential_damping_anti_double_muffling():
     src_fretless = get_instrument_string(inst_fretless)
     inst_30 = load_instrument("30in_emg_mmtw")
     src_round = get_instrument_string(inst_30)
-    tgt_upright = get_voice_string(VOICES["upright_acoustic"])
+    tgt_upright = get_voice_string(VOICES["upright_piezo"])
 
     h_fretless = compute_differential_string_transfer(freqs, src_fretless, tgt_upright)
     h_round = compute_differential_string_transfer(freqs, src_round, tgt_upright)
