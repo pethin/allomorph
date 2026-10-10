@@ -1,5 +1,5 @@
 """
-Allomorph - Tone3000 Tone Pack Pipeline (DSP Gen 5)
+Allomorph - Tone3000 Tone Pack Pipeline
 Automates creation, partitioning, packaging, and local training of Tone3000 upload bundles
 respecting Tone3000's strict '1 Dry File + Multiple Wet Stems' batch upload constraint.
 """
@@ -924,7 +924,9 @@ def _populate_manifest_model_entry(
                 if field in training_meta and training_meta[field] is not None:
                     entry[field] = training_meta[field]
     except (json.JSONDecodeError, OSError) as e:
-        print(f"[Tone Pack Trainer] Warning: Could not read training metadata from {nam_path.name}: {e}")
+        print(
+            f"[Tone Pack Trainer] Warning: Could not read training metadata from {nam_path.name}: {e}"
+        )
 
     models_dict[nam_path.name] = entry
 
@@ -972,7 +974,9 @@ def train_tone_pack(
 
     manifest_path = pack_dir / "manifest.json"
     if not manifest_path.exists():
-        print(f"[Tone Pack Trainer] Manifest missing for '{inst.name}' at '{pack_dir}'. Auto-exporting pack...")
+        print(
+            f"[Tone Pack Trainer] Manifest missing for '{inst.name}' at '{pack_dir}'. Auto-exporting pack..."
+        )
         export_tone_pack(inst, output_dir=pack_dir, overwrite=overwrite)
 
     with open(manifest_path, "r", encoding="utf-8") as f:
@@ -999,7 +1003,9 @@ def train_tone_pack(
                 break
 
     if missing_stems:
-        print(f"[Tone Pack Trainer] Pack bundles missing or incomplete in '{pack_dir}'. Auto-exporting...")
+        print(
+            f"[Tone Pack Trainer] Pack bundles missing or incomplete in '{pack_dir}'. Auto-exporting..."
+        )
         export_tone_pack(inst, output_dir=pack_dir, overwrite=True)
         with open(manifest_path, "r", encoding="utf-8") as f:
             manifest_data = json.load(f)
@@ -1061,7 +1067,7 @@ def train_tone_pack(
                     submodels = data.get("config", {}).get("submodels", [])
                     if len(submodels) < 2:
                         is_legacy = True
-                except (json.JSONDecodeError, OSError):
+                except json.JSONDecodeError, OSError:
                     is_legacy = True
 
                 if is_legacy:
@@ -1076,12 +1082,16 @@ def train_tone_pack(
                     print(f"[Tone Pack Trainer] Model already exists, skipping: {target_nam.name}")
                     total_skipped += 1
                     if target_nam.name not in manifest_data["models"]:
-                        _populate_manifest_model_entry(manifest_data["models"], target_nam, s_info, b_name)
+                        _populate_manifest_model_entry(
+                            manifest_data["models"], target_nam, s_info, b_name
+                        )
                         with open(manifest_path, "w", encoding="utf-8") as f:
                             json.dump(manifest_data, f, indent=2)
                     continue
 
-            print(f"\n[Tone Pack Trainer] Training model for {model_basename} (Bundle: {b_name})...")
+            print(
+                f"\n[Tone Pack Trainer] Training model for {model_basename} (Bundle: {b_name})..."
+            )
             ok = train_voice(
                 instrument=inst,
                 voice=canonical_voice if canonical_voice in VOICES else target_voicing,

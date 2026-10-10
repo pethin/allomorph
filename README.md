@@ -295,7 +295,7 @@ allomorph/
 │   └── anagram_workflow.md                # Darkglass Anagram Block 1 routing & gain staging
 ├── config/                                # Modular TOML configuration files
 │   ├── instruments/                       # Source bass geometries, pickups & embedded circuits
-│   │   ├── 30in_emg_mmtw.toml             # 30" active EMG MMTW dual-mode bass
+│   │   ├── 30in_emg_mmtw.toml             # 30" active EMG MMTWX dual-mode bass
 │   │   ├── 34in_active_stingray.toml      # 34" active Music Man StingRay bass
 │   │   ├── 34in_standard_p.toml           # 34" standard P-bass template
 │   │   └── 34in_standard_jazz.toml        # 34" standard Jazz bass template

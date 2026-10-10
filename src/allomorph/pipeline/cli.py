@@ -354,7 +354,9 @@ def main(argv: Sequence[str] | None = None):
                 return
             except (ImportError, RuntimeError) as e:
                 print(f"Error: 'neural-amp-modeler' GUI could not be loaded ({e}).")
-                print("Note: The desktop GUI requires system Tkinter (e.g., `sudo apt install python3-tk`).")
+                print(
+                    "Note: The desktop GUI requires system Tkinter (e.g., `sudo apt install python3-tk`)."
+                )
                 sys.exit(1)
 
         from allomorph.pipeline.schema import NamTrainingConfig

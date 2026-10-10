@@ -20,13 +20,13 @@ def test_30in_mmtw_routing():
 
     # 60s Jazz Bridge should route to single-coil mode
     j_pickup = get_source_pickup(inst, "jazz_bridge_open")
-    assert j_pickup.name == "EMG MMTW Single-Coil (Bridge Coil)"
+    assert j_pickup.name == "EMG MMTWX Single-Coil (Bridge Coil)"
     assert j_pickup.position_from_bridge_m is not None
     assert math.isclose(j_pickup.position_from_bridge_m, 0.06607, abs_tol=1e-4)
 
     # StingRay should route to dual-coil mode
     mm_pickup = get_source_pickup(inst, "stingray_parallel")
-    assert mm_pickup.name == "EMG MMTW Dual-Coil (Centerline)"
+    assert mm_pickup.name == "EMG MMTWX Dual-Coil (Centerline)"
     assert mm_pickup.position_from_bridge_m is not None
     assert math.isclose(mm_pickup.position_from_bridge_m, 0.0775, abs_tol=1e-4)
     assert mm_pickup.coil_spacing_in is not None
@@ -37,7 +37,7 @@ def test_30in_mm_legacy_routing():
     inst = load_instrument("30in_emg_mm")
     assert inst.id == "30in_emg_mmtw"
     pickup = get_source_pickup(inst, "stingray_parallel")
-    assert pickup.name == "EMG MMTW Dual-Coil (Centerline)"
+    assert pickup.name == "EMG MMTWX Dual-Coil (Centerline)"
     assert pickup.position_from_bridge_m is not None
     assert math.isclose(pickup.position_from_bridge_m, 0.0775, abs_tol=1e-4)
     assert pickup.coil_spacing_in is not None

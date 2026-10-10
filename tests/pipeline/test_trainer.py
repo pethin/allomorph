@@ -317,7 +317,9 @@ def test_linear_warmup_monotonic_floor_clamp():
         lr_t_max=35,
     )
     callbacks = nam_core.get_callbacks(threshold_esr=0.00020)
-    warmup_cb: Any = next((c for c in callbacks if "LinearWarmupCallback" in type(c).__name__), None)
+    warmup_cb: Any = next(
+        (c for c in callbacks if "LinearWarmupCallback" in type(c).__name__), None
+    )
     assert warmup_cb is not None
 
     class DummyOptimizer:
@@ -373,10 +375,14 @@ def test_esr_progress_callback_hook():
     assert cb is not None
     assert cb.min_epochs == 5
 
-    warmup_cb: Any = next((c for c in callbacks if "LinearWarmupCallback" in type(c).__name__), None)
+    warmup_cb: Any = next(
+        (c for c in callbacks if "LinearWarmupCallback" in type(c).__name__), None
+    )
     assert warmup_cb is not None
 
-    stopping_cb: Any = next((c for c in callbacks if "AllomorphAdaptiveStopping" in type(c).__name__), None)
+    stopping_cb: Any = next(
+        (c for c in callbacks if "AllomorphAdaptiveStopping" in type(c).__name__), None
+    )
     assert stopping_cb is not None
     assert stopping_cb.monitor == "val_loss"
     assert stopping_cb.warmup_floor == 5
@@ -446,21 +452,27 @@ def test_adaptive_stopping_composite_val_loss_plateau():
             }
 
     # 1. Warmup floor: epoch 3 (< 5) suppresses stopping even if loss is completely flat
-    t_warmup = EarlyStoppingTestTrainer(current_epoch=3, esr_val=0.001, esr_ch3_val=0.002, val_loss=0.003)
+    t_warmup = EarlyStoppingTestTrainer(
+        current_epoch=3, esr_val=0.001, esr_ch3_val=0.002, val_loss=0.003
+    )
     vs_cb._run_early_stopping_check(t_warmup)
     assert t_warmup.should_stop is False
 
     # 2. Steady improvement post-warmup: loss continues dropping significantly
     losses = [0.0020, 0.0015, 0.0012, 0.0010, 0.0008, 0.0006]
     for ep, l in enumerate(losses, start=4):
-        t_prog = EarlyStoppingTestTrainer(current_epoch=ep, esr_val=l * 0.4, esr_ch3_val=l * 0.6, val_loss=l)
+        t_prog = EarlyStoppingTestTrainer(
+            current_epoch=ep, esr_val=l * 0.4, esr_ch3_val=l * 0.6, val_loss=l
+        )
         vs_cb._run_early_stopping_check(t_prog)
         assert t_prog.should_stop is False
 
     # 3. Plateau: 5 epochs with virtually identical composite loss (< min_delta improvement)
     plateau_losses = [0.000500, 0.000499, 0.000501, 0.000500, 0.000499]
     for ep, l in enumerate(plateau_losses, start=10):
-        t_plat = EarlyStoppingTestTrainer(current_epoch=ep, esr_val=l * 0.4, esr_ch3_val=l * 0.6, val_loss=l)
+        t_plat = EarlyStoppingTestTrainer(
+            current_epoch=ep, esr_val=l * 0.4, esr_ch3_val=l * 0.6, val_loss=l
+        )
         vs_cb._run_early_stopping_check(t_plat)
         if ep == 14:
             # 5th plateau epoch triggers diminishing-returns exit

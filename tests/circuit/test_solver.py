@@ -14,7 +14,6 @@ from allomorph.circuit import (
     CircuitModel,
     compute_circuit_transfer_functions,
     compute_core_impedance,
-    compute_differential_circuit_transfer_functions,
     load_circuit,
 )
 from allomorph.circuit.schema import CircuitConfig
@@ -229,12 +228,13 @@ def test_tonestyler_p_bass_progression_transfer_functions():
     idx_500 = min(range(len(FREQS)), key=lambda i: abs(FREQS[i] - 500.0))
     assert c05d[idx_500] < c05c[idx_500] < c05b[idx_500]
 
-    # Differential transfer function verification against standard P source:
+    # Ratio verification against standard P source:
     p_circ = INSTRUMENTS["34in_standard_p"].pickups["split_p"].circuit
     assert p_circ is not None
     src_p = load_circuit(p_circ)
-    diff_05b = compute_differential_circuit_transfer_functions(m05b, src_p, freqs=FREQS)[0]
-    diff_05d = compute_differential_circuit_transfer_functions(m05d, src_p, freqs=FREQS)[0]
+    c_src_p = compute_circuit_transfer_functions(src_p, freqs=FREQS)[0]
+    diff_05b = [t / s for t, s in zip(c05b, c_src_p)]
+    diff_05d = [t / s for t, s in zip(c05d, c_src_p)]
 
     idx_440 = min(range(len(FREQS)), key=lambda i: abs(FREQS[i] - 440.0))
     db_05b_440 = 20.0 * math.log10(diff_05b[idx_440] / diff_05b[0])
@@ -332,19 +332,21 @@ def test_voice_09b_series_netlist_and_transfer():
 def test_dingwall_composite_source_circuit():
     """
     Verify Vector 2: 37in_multiscale_dingwall pair_parallel declares source circuit
-    and computes differential SPICE transfer functions without falling back to generic RLC.
+    and evaluates circuit transfer functions cleanly without falling back to generic RLC.
     """
     inst = load_instrument("37in_multiscale_dingwall")
     pair_pickup = inst.pickups["pair_parallel"]
     assert pair_pickup.circuit is not None
     assert isinstance(pair_pickup.circuit, CircuitConfig)
 
-    # Differential SPICE transfer functions evaluate cleanly
+    # Circuit transfer functions evaluate cleanly
     tgt_model = load_circuit("jazz_pair_open")
     src_model = load_circuit(pair_pickup.circuit)
-    diff_curves = compute_differential_circuit_transfer_functions(tgt_model, src_model, freqs=FREQS)
-    assert len(diff_curves) == 2
-    for c in diff_curves:
+    tgt_curves = compute_circuit_transfer_functions(tgt_model, freqs=FREQS)
+    src_curves = compute_circuit_transfer_functions(src_model, freqs=FREQS)
+    assert len(tgt_curves) == 2
+    assert len(src_curves) == 2
+    for c in src_curves:
         assert len(c) == len(FREQS)
         assert np.all(np.isfinite(c))
         assert np.all(np.array(c) > 0.0)

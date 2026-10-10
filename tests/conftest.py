@@ -17,6 +17,7 @@ if "tkinter" not in sys.modules:
     try:
         import tkinter  # noqa: F401
     except ModuleNotFoundError:
+
         def _dummy_mainloop(*args: object, **kwargs: object) -> None:
             pass
 

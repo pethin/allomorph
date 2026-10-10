@@ -179,7 +179,6 @@ def test_fast_sweep_smoothness_in_visualizer():
     assert roughness < 0.05, f"High-frequency roughness {roughness} exceeds 0.05 dB"
 
 
-
 def test_compute_curve_rms_db():
     """Validates broadband RMS calculation on arrays, lists, and Polars Series."""
     # Flat 0 dB response must yield exact 0.0 dB RMS
@@ -215,4 +214,3 @@ def test_precision_mids_vs_vintage_distinctness():
     # Treble rolloff at 3 kHz must attenuate by > 15 dB
     idx_3k = int(np.argmin(np.abs(freqs - 3000.0)))
     assert s3[idx_3k] < -15.0
-

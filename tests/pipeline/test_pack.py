@@ -175,7 +175,7 @@ def test_export_tone_pack_parallel_bundles_and_cached_stems(
                 p.parent,
                 "sim",
                 [p],
-                version_tag="v5.1.1",
+                version_tag="v6.1.1",
                 base_dry_file=mini_dry_audio.name,
                 base_dry_sha256=_sha256_file(mini_dry_audio),
             )
@@ -234,7 +234,9 @@ def test_train_tone_pack_flat_structure_mocked(
         voice: str = "",
         **kwargs: Any,
     ) -> bool:
-        mock_train_calls.append({"models_dir": Path(models_dir), "basename": basename, "voice": voice})
+        mock_train_calls.append(
+            {"models_dir": Path(models_dir), "basename": basename, "voice": voice}
+        )
         out_dir = Path(models_dir)
         out_dir.mkdir(parents=True, exist_ok=True)
         nam_file = out_dir / f"{basename}.nam"
@@ -289,7 +291,7 @@ def test_train_tone_pack_flat_structure_mocked(
     for nf in nam_files:
         assert nf.parent == nam_dir
         # Filename matches stem without .wav
-        assert " v5.1.1.nam" in nf.name
+        assert " v6.1.1.nam" in nf.name
 
     assert len(mock_train_calls) == 2
 

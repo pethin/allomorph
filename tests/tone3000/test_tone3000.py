@@ -302,15 +302,18 @@ def test_generated_pack_storefront_descriptions():
             f"Pack {pack_id} has fewer than 15 voicings: {len(voicing_lines)}"
         )
 
-        bundle_wav_stems = {
-            f.stem for f in desc_file.parent.glob("bundles/*/*.wav") if not f.name.startswith("dry")
+        bundle_base_stems = {
+            re.sub(r" v\d+\.\d+\.\d+$", "", f.stem)
+            for f in desc_file.parent.glob("bundles/*/*.wav")
+            if not f.name.startswith("dry")
         }
         for vline in voicing_lines:
             assert re.match(r"^\d{2}\. .+ v\d+\.\d+\.\d+$", vline), (
                 f"Pack {pack_id} voicing line missing version tag: '{vline}'"
             )
             tone_entry = re.sub(r"^\d{2}\. ", "", vline)
-            if bundle_wav_stems:
-                assert tone_entry in bundle_wav_stems, (
-                    f"Pack {pack_id} voicing '{tone_entry}' does not match any bundle stem file name"
+            tone_base = re.sub(r" v\d+\.\d+\.\d+$", "", tone_entry)
+            if bundle_base_stems:
+                assert tone_base in bundle_base_stems, (
+                    f"Pack {pack_id} voicing '{tone_base}' does not match any bundle stem base name"
                 )

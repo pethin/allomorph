@@ -57,12 +57,27 @@ magnet_type = "ceramic_steel"
 pole_type = "blade"
 resonant_frequency_hz = 2610.0   # Ceramic/steel active X-series resonance
 q_factor = 1.35
+
 coils = [
     # Strings 1 & 2 see forward coil half (closer to neck for warm acoustic bloom)
     { strings = [1, 2], position_from_bridge_m = 0.1544, aperture_width_in = 1.10, weight = 1.0, pole_type = "blade" },
     # Strings 3 & 4 see rearward coil half (closer to bridge for tight fundamental definition)
     { strings = [3, 4], position_from_bridge_m = 0.1264, aperture_width_in = 1.10, weight = 1.0, pole_type = "blade" }
 ]
+
+[pickups.pcsx.circuit]
+topology = "single"
+L = 0.80
+Rdc = 2800.0
+Reddy = 150000.0
+Ccoil = 4.46e-9
+active = true
+active_variant = "x_series"
+k_level = 0.0
+vsat = 2.40
+R_out = 2000.0
+tau_att_level = 0.003
+tau_rel_level = 0.045
 
 # ------------------------------------------------------------------------------
 # 2. EMG MMTWX SINGLE-COIL (Bridge Solo - Push/Pull Down: J Mode)
@@ -80,9 +95,24 @@ magnet_type = "ceramic_steel"
 pole_type = "blade"
 resonant_frequency_hz = 3500.0   # High single-coil active resonance
 q_factor = 1.40
+
 coils = [
     { strings = ["all"], position_from_bridge_m = 0.0508, aperture_width_in = 0.75, weight = 1.0, pole_type = "blade" }
 ]
+
+[pickups.mmtwx_single.circuit]
+topology = "single"
+L = 0.80
+Rdc = 2800.0
+Reddy = 150000.0
+Ccoil = 2.49e-9
+active = true
+active_variant = "x_series"
+k_level = 0.0
+vsat = 2.40
+R_out = 2000.0
+tau_att_level = 0.003
+tau_rel_level = 0.045
 
 # ------------------------------------------------------------------------------
 # 3. EMG MMTWX DUAL-COIL (Bridge Solo - Push/Pull Up: MM Mode)
@@ -100,10 +130,25 @@ magnet_type = "ceramic_steel"
 pole_type = "blade"
 resonant_frequency_hz = 2500.0   # Active dual-coil resonance
 q_factor = 1.35
+
 coils = [
     { strings = ["all"], position_from_bridge_m = 0.0737, aperture_width_in = 0.75, weight = 0.5, pole_type = "blade" }, # Neck coil
     { strings = ["all"], position_from_bridge_m = 0.0508, aperture_width_in = 0.75, weight = 0.5, pole_type = "blade" }  # Bridge coil
 ]
+
+[pickups.mmtwx_dual.circuit]
+topology = "single"
+L = 0.80
+Rdc = 2800.0
+Reddy = 150000.0
+Ccoil = 4.86e-9
+active = true
+active_variant = "x_series"
+k_level = 0.0
+vsat = 2.40
+R_out = 2000.0
+tau_att_level = 0.003
+tau_rel_level = 0.045
 
 # ------------------------------------------------------------------------------
 # 4. ACTIVE PARALLEL P/MM BLEND (EMG ABCX Center Detent - Push/Pull Up: MM Mode)

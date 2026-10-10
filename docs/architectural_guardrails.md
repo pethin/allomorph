@@ -254,7 +254,7 @@ To prevent inter-sample clipping when 24-bit PCM digital twin audio is reconstru
 2. **Linear Headroom Ceiling:** If the 4x true peak exceeds $0.9900$ ($-0.087\text{ dBFS}$), the entire file is scaled transparently by $(0.9900 / \text{tp})$. Peak-based whole-file linear scaling preserves dynamic punch without introducing non-linear limiter pumping.
 
 #### 3.8.4 Provenance Invariant: Cryptographic Bit-Provenance & Telemetry Audit
-1. **DSP Gen 5 Tri-Part Semantic Versioning:** All compiled wet stems, Tone3000 upload packs, and models embed the DSP Generation 5 semantic token `v5.[inst].[voice]`.
+1. **DSP Tri-Part Semantic Versioning:** All compiled wet stems, Tone3000 upload packs, and models embed the DSP Generation 5 semantic token `v5.[inst].[voice]`.
 2. **Sidecar Manifest Telemetry:** Sidecar `manifest.json` files record `sample_rate`, `peak_dbfs`, `rms_dbfs`, `true_peak_dbfs`, `lufs`, `base_dry_sha256`, and `version`.
 3. **Automated Verification:** The `allomorph --stage audit` command programmatically audits 100% of wet files in the catalog, verifying zero clipping ($\text{true\_peak} \le 0.9900$) and uniform loudness compliance.
 

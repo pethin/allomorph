@@ -1,6 +1,5 @@
 """
-Tests for differential circuit deconvolution, Wiener regularization,
-dielectric absorption, and Jordan permeability relaxation.
+Tests for circuit dielectric absorption, cable losses, and Jordan permeability relaxation.
 """
 
 import math
@@ -10,147 +9,9 @@ import numpy as np
 from allomorph.circuit import (
     compute_circuit_transfer_functions,
     compute_core_impedance,
-    compute_differential_circuit_transfer_functions,
     load_circuit,
 )
-from allomorph.config import INSTRUMENTS
 from allomorph.dsp import FREQS
-
-
-def test_passive_identity_differential_flatness():
-    """Verify that identity differential response is flat, and pot unloading is accurately modeled."""
-    f_arr = np.asarray(FREQS)
-    passband_mask = (f_arr >= 40.0) & (f_arr <= 4500.0)
-
-    # 1. Precision Bass true identity: Standard P source against Voice 05 Vintage '62 P (< 0.10 dB)
-    p_circ = INSTRUMENTS["34in_standard_p"].pickups["split_p"].circuit
-    assert p_circ is not None
-    m_src_p = load_circuit(p_circ)
-    m_tgt_p = load_circuit("precision_vintage")
-    diff_p = compute_differential_circuit_transfer_functions(m_tgt_p, m_src_p, freqs=FREQS)
-    h_p = np.asarray(diff_p[0])
-    h_p_db = 20.0 * np.log10(h_p / h_p[0])
-    assert np.all(np.abs(h_p_db[passband_mask]) < 0.10), "P-Bass identity differential not flat!"
-
-    # 2. Jazz Bass true identity: Standard Jazz source against Voice 02 Jazz Bass Pair (< 0.10 dB)
-    j_circ = INSTRUMENTS["34in_standard_jazz"].pickups["pair_parallel"].circuit
-    assert j_circ is not None
-    m_src_j = load_circuit(j_circ)
-    m_tgt_j = load_circuit("jazz_pair_open")
-    diff_j = compute_differential_circuit_transfer_functions(m_tgt_j, m_src_j, freqs=FREQS)
-    for ch_idx, ch in enumerate(diff_j):
-        h_j = np.asarray(ch)
-        h_j_db = 20.0 * np.log10(h_j / h_j[0])
-        assert np.all(np.abs(h_j_db[passband_mask]) < 0.10), (
-            f"Jazz channel {ch_idx} identity differential not flat!"
-        )
-
-    # 3. Active Split-P: Source Standard P (250k V/T) vs Target Modern Active Ceramic P (Sadowsky 2-band)
-    m_tgt_act = load_circuit("precision_active")
-    diff_act = compute_differential_circuit_transfer_functions(m_tgt_act, m_src_p, freqs=FREQS)
-    h_act = np.asarray(diff_act[0])
-    h_act_db = 20.0 * np.log10(h_act / h_act[0])
-    assert -5.0 <= np.min(h_act_db[passband_mask])
-    assert np.max(h_act_db[passband_mask]) <= 6.0
-
-
-def test_active_source_differential_deconvolution_and_identity():
-    """Verify that commercial active sources (StingRay, Dingwall) have valid source circuits,
-    yield exact 0.0 dB on identity, and properly deconvolve active preamps on cross-voicings."""
-    # 1. Source netlist existence & parsing
-    ray_circ = INSTRUMENTS["34in_active_stingray"].pickups["mm_parallel"].circuit
-    assert ray_circ is not None
-    m_src_ray = load_circuit(ray_circ)
-    assert m_src_ray.has_active_buffer is True
-    assert m_src_ray.preamp_type == "stingray_2band"
-
-    ding_circ = INSTRUMENTS["37in_multiscale_dingwall"].pickups["bridge"].circuit
-    assert ding_circ is not None
-    m_src_ding = load_circuit(ding_circ)
-    assert m_src_ding.has_active_buffer is True
-    assert m_src_ding.preamp_type == "none"
-    assert m_src_ding.L == 2.3
-
-    # SP1 Passive Dingwall bridge source verification
-    sp1_circ = INSTRUMENTS["34in_dingwall_sp1"].pickups["bridge"].circuit
-    assert sp1_circ is not None
-    m_src_sp1 = load_circuit(sp1_circ)
-    assert m_src_sp1.has_active_buffer is False
-    assert m_src_sp1.L == 2.3
-    assert m_src_sp1.Rtop == 10
-    assert m_src_sp1.Rbot == 250000.0
-
-    # 2. Mathematical identity flatness (exact 0.00 dB everywhere, including DC and 20 kHz)
-    m_tgt_ray = load_circuit("stingray_parallel")
-    diff_ray = compute_differential_circuit_transfer_functions(m_tgt_ray, m_src_ray, freqs=FREQS)
-    assert np.all(np.array(diff_ray[0]) == 1.0)
-
-    m_tgt_ding = load_circuit("dingwall_bridge")
-    assert m_tgt_ding.has_active_buffer is True
-    assert m_tgt_ding.preamp_type == "none"
-    diff_ding = compute_differential_circuit_transfer_functions(m_tgt_ding, m_src_ding, freqs=FREQS)
-    assert np.all(np.array(diff_ding[0]) == 1.0)
-
-    # 3. Cross-deconvolution: Active StingRay -> Vintage '62 P-Bass
-    m_tgt_p = load_circuit("precision_vintage")
-    diff_cross = compute_differential_circuit_transfer_functions(m_tgt_p, m_src_ray, freqs=FREQS)
-    h_cross = np.asarray(diff_cross[0])
-    f_arr = np.asarray(FREQS)
-    # The StingRay has a +2.2 dB active treble boost around 5-7 kHz.
-    # When converting to a darker vintage P-bass, high frequencies must be rolled off (< -10 dB @ 8 kHz)
-    idx_8k = np.argmin(np.abs(f_arr - 8000.0))
-    cross_db_8k = 20.0 * np.log10(h_cross[idx_8k])
-    assert cross_db_8k < -10.0, (
-        f"Expected active treble shelf deconvolution (< -10 dB), got {cross_db_8k:.2f} dB"
-    )
-
-
-def test_wiener_clamping_prevents_noise_explosion():
-    """Verify that differential top-end boost is strictly clamped <= +6.0 dB above 4.5 kHz."""
-    # Convert high-inductance P (3.8H) to brighter Jazz Bridge (3.6H)
-    p_circ = INSTRUMENTS["34in_standard_p"].pickups["split_p"].circuit
-    assert p_circ is not None
-    m_src = load_circuit(p_circ)
-    m_tgt = load_circuit("jazz_bridge_open")
-
-    diff_curves = compute_differential_circuit_transfer_functions(
-        m_tgt, m_src, freqs=FREQS, max_boost_db=6.0
-    )
-    h_diff = np.asarray(diff_curves[0])
-
-    f_arr = np.asarray(FREQS)
-    ref_idx = int(np.argmin(np.abs(f_arr - 1000.0)))
-    h_diff_rel_db = 20.0 * np.log10(h_diff / h_diff[ref_idx])
-
-    hi_mask = f_arr >= 4500.0
-    max_hi_boost = np.max(h_diff_rel_db[hi_mask])
-    assert max_hi_boost <= 6.05  # Within 0.05 dB of +6.0 dB ceiling
-
-
-def test_differential_circuit_hf_limiter_smoothness():
-    """
-    Verify that differential circuit transfer functions crossing 0.0 dB above 8 kHz
-    transition smoothly with strictly continuous first derivative and zero slope kinks.
-    """
-    tgt_model = load_circuit("jazz_bridge_open")
-    src_circ = INSTRUMENTS["34in_standard_p"].pickups["split_p"].circuit
-    assert src_circ is not None
-    src_model = load_circuit(src_circ)
-
-    curves = compute_differential_circuit_transfer_functions(tgt_model, src_model, freqs=FREQS)
-    assert len(curves) > 0
-    h_c = np.asarray(curves[0], dtype=np.float64)
-    h_db = 20.0 * np.log10(h_c / h_c[0])
-
-    f_arr = np.asarray(FREQS, dtype=np.float64)
-    hf_mask = f_arr >= 8000.0
-    # Check that the derivative d(h_db)/df does not have sudden jump steps across 0 dB
-    dh = np.gradient(h_db[hf_mask], f_arr[hf_mask])
-    # The rate of change of derivative should be well-behaved
-    d2h = np.gradient(dh, f_arr[hf_mask])
-    assert np.max(np.abs(d2h)) < 1e-4, (
-        "Derivative of differential curve should be smooth without piecewise kinks"
-    )
 
 
 def test_cable_dielectric_loss():
@@ -242,7 +103,7 @@ def test_fractional_order_dielectric_absorption():
 
 
 def test_complex_magnetic_permeability_dispersion():
-    """Verify causal Jordan complex permeability dispersion provides midrange core loss and preserves differential identity."""
+    """Verify causal Jordan complex permeability dispersion provides midrange core loss."""
     omega = 2.0 * np.pi * np.array([400.0, 800.0, 1200.0, 2400.0], dtype=np.float64)
     s = 1j * omega
 
@@ -256,13 +117,11 @@ def test_complex_magnetic_permeability_dispersion():
     )
     assert not np.any(np.isnan(Z_dispersive))
 
-    # 2. Differential transfer function of matching model must be exact identity (0.00 dB)
+    # 2. Transfer functions of matching model must be identical
     m1 = load_circuit("precision_vintage")
     m2 = load_circuit("precision_vintage")
     m1.chi_mu = 0.04
     m2.chi_mu = 0.04
-    diff_curves = compute_differential_circuit_transfer_functions(m1, m2, freqs=FREQS)
-    for curve in diff_curves:
-        assert np.allclose(curve, 1.0, atol=1e-4), (
-            "Matching complex permeability models must yield exact 0.00 dB identity"
-        )
+    c1 = compute_circuit_transfer_functions(m1, freqs=FREQS)
+    c2 = compute_circuit_transfer_functions(m2, freqs=FREQS)
+    assert np.allclose(c1, c2, atol=1e-4)

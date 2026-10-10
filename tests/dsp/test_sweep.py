@@ -16,7 +16,9 @@ def test_sweep_loopback_identity():
     """Validates that deconvolving an unperturbed logarithmic sweep yields exact 0.00 dB flat response."""
     sr = 48000
     n_samples = 16384
-    x = synthesize_fast_log_sweep(n_samples=n_samples, f_start=10.0, f_end=24000.0, sr=sr, target_dbfs=-20.5)
+    x = synthesize_fast_log_sweep(
+        n_samples=n_samples, f_start=10.0, f_end=24000.0, sr=sr, target_dbfs=-20.5
+    )
 
     f_bins, H_complex, h_time = deconvolve_log_sweep(x, x, sr=sr, gate_taps=4096)
 
@@ -38,7 +40,9 @@ def test_sweep_known_filter_accuracy():
     """Validates that deconvolving a known linear filter reproduces the analytical response to < 0.05 dB."""
     sr = 48000
     n_samples = 16384
-    x = synthesize_fast_log_sweep(n_samples=n_samples, f_start=10.0, f_end=24000.0, sr=sr, target_dbfs=-20.5)
+    x = synthesize_fast_log_sweep(
+        n_samples=n_samples, f_start=10.0, f_end=24000.0, sr=sr, target_dbfs=-20.5
+    )
 
     # First-order Butterworth low-pass filter at fc = 2000 Hz
     fc = 2000.0
@@ -52,7 +56,9 @@ def test_sweep_known_filter_accuracy():
     # Filter sweep in time domain
     y = np.zeros_like(x)
     for i in range(len(x)):
-        y[i] = b[0] * x[i] + (b[1] * x[i - 1] if i > 0 else 0.0) - (a[1] * y[i - 1] if i > 0 else 0.0)
+        y[i] = (
+            b[0] * x[i] + (b[1] * x[i - 1] if i > 0 else 0.0) - (a[1] * y[i - 1] if i > 0 else 0.0)
+        )
 
     f_bins, H_complex, _ = deconvolve_log_sweep(y, x, sr=sr, gate_taps=4096)
     measured_mags = 20.0 * np.log10(np.abs(H_complex))
@@ -66,14 +72,18 @@ def test_sweep_known_filter_accuracy():
     # Compare across 50 Hz - 20 kHz
     eval_mask = (f_bins >= 50.0) & (f_bins <= 20000.0)
     diff = measured_mags[eval_mask] - analytical_mags[eval_mask]
-    assert np.allclose(diff, 0.0, atol=0.05), f"Max discrepancy from analytical: {np.max(np.abs(diff)):.3f} dB"
+    assert np.allclose(diff, 0.0, atol=0.05), (
+        f"Max discrepancy from analytical: {np.max(np.abs(diff)):.3f} dB"
+    )
 
 
 def test_farina_harmonic_separation():
     """Validates that non-linear tanh saturation generates 3rd harmonic distortion at the predicted arrival time."""
     sr = 48000
     n_samples = 16384
-    x = synthesize_fast_log_sweep(n_samples=n_samples, f_start=10.0, f_end=24000.0, sr=sr, target_dbfs=-12.0)
+    x = synthesize_fast_log_sweep(
+        n_samples=n_samples, f_start=10.0, f_end=24000.0, sr=sr, target_dbfs=-12.0
+    )
 
     # Odd-symmetric tanh saturation generates strong 3rd harmonic
     v_sat = 0.25
@@ -81,11 +91,17 @@ def test_farina_harmonic_separation():
 
     _, _, h_time = deconvolve_log_sweep(y_distorted, x, sr=sr, gate_taps=None)
 
-    harmonics = extract_farina_harmonics(h_time, n_samples=n_samples, f_start=10.0, f_end=24000.0, sr=sr)
+    harmonics = extract_farina_harmonics(
+        h_time, n_samples=n_samples, f_start=10.0, f_end=24000.0, sr=sr
+    )
 
     # 3rd harmonic must be detected and larger than 2nd harmonic (due to odd-symmetry tanh)
-    assert harmonics["thd3_percent"] > 0.5, f"Expected 3rd harmonic > 0.5%, got {harmonics['thd3_percent']}%"
-    assert harmonics["thd_percent"] > harmonics["thd2_percent"], "Expected THD to exceed 2nd harmonic alone"
+    assert harmonics["thd3_percent"] > 0.5, (
+        f"Expected 3rd harmonic > 0.5%, got {harmonics['thd3_percent']}%"
+    )
+    assert harmonics["thd_percent"] > harmonics["thd2_percent"], (
+        "Expected THD to exceed 2nd harmonic alone"
+    )
 
 
 def test_stem_debug_api():

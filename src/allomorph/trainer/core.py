@@ -131,7 +131,7 @@ def is_mlx_available() -> bool:
         from allomorph.trainer.engine_mlx import is_mlx_available as _check
 
         return bool(_check())
-    except (ImportError, RuntimeError, OSError):
+    except ImportError, RuntimeError, OSError:
         return False
 
 
@@ -162,7 +162,7 @@ def get_hardware_device_name(engine: str = DEFAULT_ENGINE) -> str:
         resolved = resolve_trainer_engine(engine)
         if resolved == "mlx":
             return "Apple Silicon (MLX Metal)"
-    except (RuntimeError, ValueError):
+    except RuntimeError, ValueError:
         pass
 
     try:
@@ -173,7 +173,7 @@ def get_hardware_device_name(engine: str = DEFAULT_ENGINE) -> str:
         if hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
             return "Apple Silicon (MPS)"
         return "CPU"
-    except (ImportError, RuntimeError):
+    except ImportError, RuntimeError:
         return "CPU"
 
 
@@ -199,7 +199,7 @@ def detect_apple_silicon_tier() -> str:
             timeout=1.0,
         )
         brand = res.stdout.strip().lower()
-    except (subprocess.SubprocessError, OSError):
+    except subprocess.SubprocessError, OSError:
         pass
 
     if brand:
@@ -223,7 +223,7 @@ def detect_apple_silicon_tier() -> str:
         if ram_gb >= 16.0 and cpus >= 10:
             return "pro"
         return "base"
-    except (OSError, ValueError):
+    except OSError, ValueError:
         return "base"
 
 
@@ -265,7 +265,7 @@ def resolve_hardware_batch_size(
             total_ram_gb = (os.sysconf("SC_PAGE_SIZE") * os.sysconf("SC_PHYS_PAGES")) / (1024**3)
             return 32 if total_ram_gb >= 32.0 else 16
         return 8
-    except (ImportError, RuntimeError, OSError):
+    except ImportError, RuntimeError, OSError:
         return 16
 
 
@@ -290,7 +290,7 @@ def resolve_hardware_precision(precision: str = DEFAULT_PRECISION) -> str:
         if hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
             return "32-true"
         return "32-true"
-    except (ImportError, RuntimeError):
+    except ImportError, RuntimeError:
         return "32-true"
 
 
@@ -359,7 +359,7 @@ def compute_baseline_delta_ratio(
         delta_energy = float(np.sum((y - x) ** 2))
         ratio = delta_energy / y_energy
         return max(ratio, 1e-6)
-    except (FileNotFoundError, ValueError, RuntimeError, KeyError, OSError, TypeError):
+    except FileNotFoundError, ValueError, RuntimeError, KeyError, OSError, TypeError:
         return 0.015
 
 
@@ -406,7 +406,7 @@ def compute_baseline_mrstft(
         with torch.no_grad():
             res = float(loss_fn(x_t, y_t))
         return max(float(res), 1e-6)
-    except (FileNotFoundError, ValueError, RuntimeError, KeyError, OSError, TypeError):
+    except FileNotFoundError, ValueError, RuntimeError, KeyError, OSError, TypeError:
         return 0.400
 
 
@@ -415,7 +415,6 @@ def configure_a2_architecture(*args: Any, **kwargs: Any) -> None:
     from allomorph.trainer.engine_torch import configure_a2_architecture as _cfg
 
     _cfg(*args, **kwargs)
-
 
 
 def train_voice(

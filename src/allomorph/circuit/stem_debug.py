@@ -96,7 +96,7 @@ def debug_voicing_stem(
     )
 
     # Fundamental impulse response onset and peak sample indices
-    h_eval = np.abs(h_time[:gate_taps if gate_taps else len(h_time)])
+    h_eval = np.abs(h_time[: gate_taps if gate_taps else len(h_time)])
     peak_sample = int(np.argmax(h_eval))
     peak_val = float(h_eval[peak_sample]) if len(h_eval) > 0 else 1.0
     # Onset threshold set at -40 dBc (1% of peak) to reliably detect acoustic onset
@@ -143,7 +143,11 @@ def debug_voicing_stem(
         out_wav_path = p_dir / f"stem_{inst.id}_{voice_id}.wav"
         ir_wav_path = p_dir / f"ir_{inst.id}_{voice_id}.wav"
         write_wav_24bit(out_wav_path, y_wet.astype(np.float32), sr)
-        write_wav_24bit(ir_wav_path, (h_time[:4096] / np.max(np.abs(h_time[:4096])) * 0.95).astype(np.float32), sr)
+        write_wav_24bit(
+            ir_wav_path,
+            (h_time[:4096] / np.max(np.abs(h_time[:4096])) * 0.95).astype(np.float32),
+            sr,
+        )
 
     return StemDiagnosticReport(
         voice_id=voice_id,
@@ -201,5 +205,7 @@ def format_stem_report_table(report: StemDiagnosticReport) -> str:
     ]
     if report.output_wav or report.ir_wav:
         lines.append(f" Exported Artifacts: stem -> {report.output_wav}, ir -> {report.ir_wav}")
-        lines.append("================================================================================")
+        lines.append(
+            "================================================================================"
+        )
     return "\n".join(lines)

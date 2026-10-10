@@ -189,16 +189,16 @@ class AllomorphAdaptiveStopping(EarlyStopping):
 
         # Rolling least-squares regression slopes
         if len(self.val_loss_history) >= 2:
-            pts = self.val_loss_history[-max(self.patience, 5):]
+            pts = self.val_loss_history[-max(self.patience, 5) :]
             self.last_val_loss_slope = compute_linear_slope(pts)
         if len(self.esr_history) >= 2:
-            window_pts = self.esr_history[-max(self.patience, 5):]
+            window_pts = self.esr_history[-max(self.patience, 5) :]
             self.last_esr_slope = compute_linear_slope(window_pts)
         if len(self.esr_ch3_history) >= 2:
-            window_pts_ch3 = self.esr_ch3_history[-max(self.patience, 5):]
+            window_pts_ch3 = self.esr_ch3_history[-max(self.patience, 5) :]
             self.last_esr_ch3_slope = compute_linear_slope(window_pts_ch3)
         if len(self.mrstft_history) >= 2:
-            mr_window = self.mrstft_history[-max(self.patience, 5):]
+            mr_window = self.mrstft_history[-max(self.patience, 5) :]
             self.last_mrstft_slope = compute_linear_slope(mr_window)
 
         if epoch < self.warmup_floor:
@@ -210,9 +210,11 @@ class AllomorphAdaptiveStopping(EarlyStopping):
             and len(self.val_loss_history) >= self.patience
             and epoch >= (self.warmup_floor + self.patience)
         ):
-            recent_losses = self.val_loss_history[-self.patience:]
+            recent_losses = self.val_loss_history[-self.patience :]
             loss_improvement = recent_losses[0] - val_loss
-            loss_flat = (self.last_val_loss_slope >= -5.0e-7) and (loss_improvement < self.min_delta)
+            loss_flat = (self.last_val_loss_slope >= -5.0e-7) and (
+                loss_improvement < self.min_delta
+            )
 
             if loss_flat:
                 print(
@@ -337,4 +339,3 @@ __all__ = [
     "LinearWarmupCallback",
     "compute_linear_slope",
 ]
-

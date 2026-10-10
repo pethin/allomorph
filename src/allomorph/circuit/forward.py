@@ -1,5 +1,5 @@
 """
-Allomorph - Direct Unified Forward Simulation Engine (DSP Gen 5)
+Allomorph - Direct Unified Forward Simulation Engine (DSP Gen 6)
 Convolves dry string excitation audio with authentic instrument physical aperture,
 loaded RLC circuit, active preamps, and string mechanics into 24-bit PCM wet stems.
 """
@@ -15,7 +15,10 @@ import pedalboard
 
 from allomorph.circuit.audio import find_default_input_audio
 from allomorph.circuit.parser import MAGNET_PROPERTIES, CircuitModel
-from allomorph.circuit.saturation import apply_oversampled_saturation
+from allomorph.circuit.saturation import (
+    apply_active_pickup_dynamics,
+    apply_oversampled_saturation,
+)
 from allomorph.circuit.schema import CircuitConfig
 from allomorph.circuit.solver import (
     apply_magnet_properties_to_model,
@@ -68,7 +71,6 @@ def _get_white_noise_vector(n: int) -> np.ndarray:
     """Generates and caches deterministic Gaussian white noise for Johnson-Nyquist thermal dither."""
     rng = np.random.RandomState(42)
     return rng.normal(0.0, 1.0, n).astype(np.float64)
-
 
 
 def resolve_target_voicing(
@@ -458,6 +460,8 @@ def simulate_instrument_voicing(
 
     is_composite_sim = False
     composite_audio = np.zeros(n_samples, dtype=np.float64)
+    h_ac: np.ndarray = np.ones_like(f, dtype=np.float64)
+    h_elec: np.ndarray = np.ones_like(f, dtype=np.float64)
 
     if voicing_cfg.sensor_type == "direct":
         if curves is not None:
@@ -467,9 +471,6 @@ def simulate_instrument_voicing(
     elif voicing_cfg.sensor_type == "bridge_force":
         f_damp = 3800.0
         h_ac = 1.0 / np.sqrt(1.0 + (f / f_damp) ** 4)
-        f_sub = 10.0
-        h_sub = np.sqrt(f**2 / (f_sub**2 + f**2))
-        h_ac = h_ac * h_sub
         if curves is not None:
             h_elec = np.asarray(curves[0], dtype=np.float64)
             h_base = h_ac * h_elec
@@ -553,14 +554,11 @@ def simulate_instrument_voicing(
                 H_circ_fft = np.fft.rfft(fir_circ, N)
                 H_channels.append(H_ac_fft * H_circ_fft)
 
-                fir_branch = fft_convolve(
-                    np.asarray(fir_ac, dtype=np.float64),
-                    np.asarray(fir_circ, dtype=np.float64),
-                    mode="causal",
-                )
-                b_audio = fft_convolve(input_mono, fir_branch, mode="causal")[:n_samples]
+                # Block 1: Transducer Stage for this branch
+                v_ac = fft_convolve(
+                    input_mono, np.asarray(fir_ac, dtype=np.float64), mode="causal"
+                )[:n_samples]
 
-                # Branch-wise magnetic saturation
                 if apply_saturation:
                     sp = branch_sub_pickups[i][0]
                     sp_mag = sp.magnet_type or (
@@ -572,11 +570,7 @@ def simulate_instrument_voicing(
                     sp_vsat = (
                         float(voicing_cfg.vsat)
                         if voicing_cfg.vsat is not None
-                        else (
-                            float(circ_model.vsat)
-                            if (circ_model is not None and circ_model.vsat is not None)
-                            else float(sp_props.vsat)
-                        )
+                        else float(sp_props.vsat)
                     )
                     sp_alpha = (
                         float(voicing_cfg.alpha)
@@ -584,8 +578,8 @@ def simulate_instrument_voicing(
                         else (float(sp.alpha) if sp.alpha is not None else float(sp_props.alpha))
                     )
                     drive_db = float(getattr(voicing_cfg, "gain_db", 0.0) or 0.0)
-                    drive_in = b_audio if drive_db == 0.0 else b_audio * (10.0 ** (drive_db / 20.0))
-                    b_audio = apply_oversampled_saturation(
+                    drive_in = v_ac if drive_db == 0.0 else v_ac * (10.0 ** (drive_db / 20.0))
+                    emf = apply_oversampled_saturation(
                         drive_in.astype(np.float32),
                         vsat=sp_vsat,
                         alpha=sp_alpha,
@@ -608,6 +602,52 @@ def simulate_instrument_voicing(
                         displacement_weighting=True,
                         magnet_drag=True,
                     ).astype(np.float64)
+                else:
+                    emf = v_ac
+
+                # Block 2: Coil Output Stage for this branch
+                v_coil = fft_convolve(emf, np.asarray(fir_circ, dtype=np.float64), mode="causal")[
+                    :n_samples
+                ]
+
+                # Check if sub-pickup defines its own active circuit
+                sub_circ = branch_sub_pickups[i][0].circuit
+                sub_active_var = (
+                    sub_circ.active_variant
+                    if sub_circ is not None
+                    else (circ_model.active_variant if circ_model is not None else None)
+                )
+                if sub_active_var is not None and apply_saturation:
+                    sub_vsat = (
+                        float(sub_circ.vsat)
+                        if (sub_circ is not None and sub_circ.vsat is not None)
+                        else (float(circ_model.vsat) if circ_model is not None else 2.40)
+                    )
+                    sub_k_level = (
+                        float(sub_circ.k_level)
+                        if (sub_circ is not None and sub_circ.k_level is not None)
+                        else (float(circ_model.k_level) if circ_model is not None else 0.0)
+                    )
+                    sub_tau_att = (
+                        float(sub_circ.tau_att_level)
+                        if (sub_circ is not None and sub_circ.tau_att_level is not None)
+                        else 0.003
+                    )
+                    sub_tau_rel = (
+                        float(sub_circ.tau_rel_level)
+                        if (sub_circ is not None and sub_circ.tau_rel_level is not None)
+                        else 0.045
+                    )
+                    b_audio = apply_active_pickup_dynamics(
+                        v_coil.astype(np.float32),
+                        vsat=sub_vsat,
+                        k_level=sub_k_level,
+                        tau_att=sub_tau_att,
+                        tau_rel=sub_tau_rel,
+                        sr=sr,
+                    ).astype(np.float64)
+                else:
+                    b_audio = v_coil
 
                 branch_audios.append(b_audio)
 
@@ -702,11 +742,12 @@ def simulate_instrument_voicing(
         else:
             filtered = composite_audio
     else:
-        fir_base = synthesize_minimum_phase_fir(h_base, num_taps=num_taps, normalize=False)
-        fir_base_np = np.asarray(fir_base, dtype=np.float64)
-        filtered = fft_convolve(input_mono, fir_base_np, mode="causal")[:n_samples]
+        # Block 1: Transducer Stage (Spatial Macro-Aperture -> Induced Open-Circuit EMF)
+        fir_ac = synthesize_minimum_phase_fir(np.abs(h_ac), num_taps=num_taps, normalize=False)
+        fir_ac_np = np.asarray(fir_ac, dtype=np.float64)
+        v_ac = fft_convolve(input_mono, fir_ac_np, mode="causal")[:n_samples]
 
-        # Single-pickup Oversampled Magnetic Saturation & Core Dynamics (All 16 Parameters)
+        # Magnetic core saturation produces open-circuit coil EMF
         has_direct_dynamics = (
             voicing_cfg.sensor_type == "direct"
             and circ_model is not None
@@ -720,14 +761,8 @@ def simulate_instrument_voicing(
             if sp_mag not in MAGNET_PROPERTIES:
                 raise KeyError(f"Unrecognized magnet type: '{sp_mag}'")
             sp_props = MAGNET_PROPERTIES[sp_mag]
-            sp_vsat = (
-                float(voicing_cfg.vsat)
-                if voicing_cfg.vsat is not None
-                else (
-                    float(circ_model.vsat)
-                    if (circ_model is not None and circ_model.vsat is not None)
-                    else float(sp_props.vsat)
-                )
+            mag_vsat = (
+                float(voicing_cfg.vsat) if voicing_cfg.vsat is not None else float(sp_props.vsat)
             )
             sp_alpha = (
                 float(voicing_cfg.alpha)
@@ -735,10 +770,10 @@ def simulate_instrument_voicing(
                 else (float(sp.alpha) if sp.alpha is not None else float(sp_props.alpha))
             )
             drive_db = float(getattr(voicing_cfg, "gain_db", 0.0) or 0.0)
-            drive_in = filtered if drive_db == 0.0 else filtered * (10.0 ** (drive_db / 20.0))
-            filtered = apply_oversampled_saturation(
+            drive_in = v_ac if drive_db == 0.0 else v_ac * (10.0 ** (drive_db / 20.0))
+            emf = apply_oversampled_saturation(
                 drive_in.astype(np.float32),
-                vsat=sp_vsat,
+                vsat=mag_vsat,
                 alpha=sp_alpha,
                 alpha3=float(sp_props.alpha3),
                 eta_hyst=float(sp_props.eta_hyst),
@@ -759,7 +794,33 @@ def simulate_instrument_voicing(
                 displacement_weighting=True,
                 magnet_drag=True,
             ).astype(np.float64)
+        else:
+            emf = v_ac
 
+        # Block 2: Pickup Output Stage (Coil RLC & Active Pickup Dynamics)
+        fir_elec = synthesize_minimum_phase_fir(np.abs(h_elec), num_taps=num_taps, normalize=False)
+        fir_elec_np = np.asarray(fir_elec, dtype=np.float64)
+        v_coil = fft_convolve(emf, fir_elec_np, mode="causal")[:n_samples]
+
+        # Active pickup internal op-amp dynamics
+        active_var = circ_model.active_variant if circ_model is not None else None
+        if active_var is not None and apply_saturation:
+            v_sat = float(circ_model.vsat) if circ_model is not None else 2.40
+            k_level = float(circ_model.k_level) if circ_model is not None else 0.0
+            tau_att = float(circ_model.tau_att_level) if circ_model is not None else 0.003
+            tau_rel = float(circ_model.tau_rel_level) if circ_model is not None else 0.045
+            filtered = apply_active_pickup_dynamics(
+                v_coil.astype(np.float32),
+                vsat=v_sat,
+                k_level=k_level,
+                tau_att=tau_att,
+                tau_rel=tau_rel,
+                sr=sr,
+            ).astype(np.float64)
+        else:
+            filtered = v_coil
+
+        # Block 3: Downstream Electronics & Cable Stage
         if not np.allclose(H_downstream, 1.0, atol=1e-4):
             fir_down = synthesize_minimum_phase_fir(
                 H_downstream, num_taps=num_taps, normalize=False
@@ -1090,6 +1151,16 @@ def simulate_circuit_audio(
             displacement_weighting=displacement_weighting,
             magnet_drag=magnet_drag,
         ).astype(np.float64)
+
+        if model.active_variant is not None:
+            filtered = apply_active_pickup_dynamics(
+                filtered.astype(np.float32),
+                vsat=float(model.vsat),
+                k_level=float(model.k_level),
+                tau_att=float(model.tau_att_level),
+                tau_rel=float(model.tau_rel_level),
+                sr=sr,
+            ).astype(np.float64)
 
     # 5. DC Blocking
     in_peak = float(np.max(np.abs(audio_mono)))

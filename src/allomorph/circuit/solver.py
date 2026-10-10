@@ -32,7 +32,7 @@ from allomorph.config.schema import (
     VoiceConfig,
     VoicePickupConfig,
 )
-from allomorph.dsp import FREQS, cinf_smoothstep
+from allomorph.dsp import FREQS
 
 
 def compute_core_impedance(
@@ -894,65 +894,3 @@ def smooth_soft_knee_db(
     if isinstance(x_db, (float, int)):
         return float(res)
     return res
-
-
-def compute_differential_circuit_transfer_functions(
-    target_model: CircuitModel,
-    source_model: CircuitModel,
-    freqs: Sequence[float] | np.ndarray = FREQS,
-    max_boost_db: float = 8.0,
-    eps: float = 0.05,
-) -> list[list[float]]:
-    """
-    Computes regularized differential AC transfer functions for passive-to-passive modeling:
-    |H_diff(s)| = (|H_target(s)| * |H_source(s)|) / (|H_source(s)|^2 + eps^2)
-    with Wiener regularization and frequency-dependent high-frequency gain clamping (<= max_boost_db
-    above 4.5 kHz) to prevent amplifying passive coil hum, Johnson noise, or cable hiss.
-    """
-    tgt_curves = compute_circuit_transfer_functions(target_model, freqs=freqs)
-    src_curves = compute_circuit_transfer_functions(source_model, freqs=freqs)
-
-    f_arr = np.asarray(freqs, dtype=np.float64)
-
-    diff_curves = []
-    for ch_idx, tgt_c in enumerate(tgt_curves):
-        if len(tgt_curves) == 1 and len(src_curves) > 1:
-            # Parallel multi-pickup source summing into single-channel canonical/target stage:
-            # Net source electrical transfer function is the sum of parallel branch currents
-            src_arr = np.sum(src_curves, axis=0)
-        else:
-            src_c = src_curves[ch_idx] if len(src_curves) > ch_idx else src_curves[0]
-            src_arr = np.asarray(src_c, dtype=np.float64)
-
-        tgt_arr = np.asarray(tgt_c, dtype=np.float64)
-
-        if np.allclose(tgt_arr, src_arr, rtol=1e-4):
-            diff_curves.append(np.ones_like(tgt_arr).tolist())
-            continue
-
-        # Wiener regularized quotient
-        h_diff = (tgt_arr * src_arr) / (src_arr**2 + eps**2)
-
-        # Convert to absolute dB (linear ratio between target and source circuits)
-        h_db = 20.0 * np.log10(np.maximum(h_diff, 1e-6))
-
-        # Strictly C^inf soft-knee limiting: smoothly saturate boost towards max_boost_db
-        knee_width = min(2.5, max_boost_db / 2.0)
-        thresh = max_boost_db - knee_width
-        h_db_soft = smooth_soft_knee_db(h_db, thresh=thresh, ceiling=max_boost_db, alpha=2.0)
-
-        # Smooth C^inf high-frequency mollifier taper above 8.0 kHz to 20.0 kHz
-        # Eliminates unnatural flat horizontal ceilings and suppresses extreme ultrasonic noise
-        f_start = 8000.0
-        f_end = 20000.0
-        t = (f_arr - f_start) / (f_end - f_start)
-        w = 1.0 - cinf_smoothstep(t)
-        s = 0.25 + 0.75 * w
-        # Smooth C^inf transition: softplus ensures strictly monotonic, C^1 smooth blending across 0 dB
-        excess_boost = (1.0 / 1.2) * np.logaddexp(0.0, 1.2 * h_db_soft)
-        h_db_final = h_db_soft - (1.0 - s) * excess_boost
-
-        h_diff_smooth = 10.0 ** (h_db_final / 20.0)
-        diff_curves.append(h_diff_smooth.tolist())
-
-    return diff_curves

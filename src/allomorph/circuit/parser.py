@@ -357,6 +357,10 @@ class CircuitModel(AllomorphBaseModel):
 
     # Active preamp buffer & EQ
     has_active_buffer: bool = False
+    active_variant: Literal["x_series", "classic"] | None = None
+    k_level: float = 0.0
+    tau_att_level: float = 0.003
+    tau_rel_level: float = 0.045
     preamp_type: str = "none"  # "sadowsky_2band", "stingray_2band", or "none"
     preamp_bands: list[PreampBandConfig] | None = None
     preamp_gain: float = 1.0
@@ -604,11 +608,20 @@ class CircuitModel(AllomorphBaseModel):
             model.Rpot_b = cfg.Rpot_b
 
         # Active preamp & buffer
-        active = bool(cfg.active or cfg.has_active_buffer)
+        active = bool(cfg.active or cfg.has_active_buffer or cfg.active_variant is not None)
         preamp_val = cfg.preamp or cfg.preamp_type or "none"
         if preamp_val != "none" or active:
             model.has_active_buffer = True
             model.preamp_type = preamp_val
+
+        if cfg.active_variant is not None:
+            model.active_variant = cfg.active_variant
+        if cfg.k_level is not None:
+            model.k_level = cfg.k_level
+        if cfg.tau_att_level is not None:
+            model.tau_att_level = cfg.tau_att_level
+        if cfg.tau_rel_level is not None:
+            model.tau_rel_level = cfg.tau_rel_level
 
         if cfg.preamp_gain is not None:
             model.preamp_gain = cfg.preamp_gain

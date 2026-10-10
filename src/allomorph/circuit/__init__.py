@@ -35,6 +35,7 @@ from allomorph.circuit.saturation import (
     _lenz_envelope_core,
     _lenz_velocity_drag_core,
     _slew_limit_core,
+    apply_active_pickup_dynamics,
     apply_algebraic_rail_limiter,
     apply_dahl_hysteresis,
     apply_elliptical_orbit_projection,
@@ -49,7 +50,6 @@ from allomorph.circuit.solver import (
     compute_active_preamp_eq,
     compute_circuit_transfer_functions,
     compute_core_impedance,
-    compute_differential_circuit_transfer_functions,
     smooth_soft_knee_db,
 )
 from allomorph.circuit.sweeps import (
@@ -76,6 +76,7 @@ __all__ = [
     "_lenz_envelope_core",
     "_lenz_velocity_drag_core",
     "_slew_limit_core",
+    "apply_active_pickup_dynamics",
     "apply_algebraic_rail_limiter",
     "apply_dahl_hysteresis",
     "apply_elliptical_orbit_projection",
@@ -86,7 +87,6 @@ __all__ = [
     "compute_active_preamp_eq",
     "compute_circuit_transfer_functions",
     "compute_core_impedance",
-    "compute_differential_circuit_transfer_functions",
     "compute_parametric_sweep",
     "ensure_input_audio_wav",
     "eval_pot_taper",

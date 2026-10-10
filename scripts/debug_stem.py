@@ -93,7 +93,9 @@ def main() -> None:
                 print()
                 if report.is_causal_zero_latency and report.peak_dbfs <= -0.09:
                     pass_count += 1
-        print(f"Summary: {pass_count}/{total_count} instrument voicings passed all telemetry invariants.")
+        print(
+            f"Summary: {pass_count}/{total_count} instrument voicings passed all telemetry invariants."
+        )
         return
 
     target_voices: list[str] = []
@@ -121,7 +123,9 @@ def main() -> None:
             pass_count += 1
 
     if len(target_voices) > 1:
-        print(f"Summary: {pass_count}/{len(target_voices)} voices passed causal zero-latency validation.")
+        print(
+            f"Summary: {pass_count}/{len(target_voices)} voices passed causal zero-latency validation."
+        )
 
 
 if __name__ == "__main__":

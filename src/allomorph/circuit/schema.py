@@ -71,6 +71,22 @@ class CircuitConfig(AllomorphBaseModel):
     Rpot_n: SpiceFloat | None = None
     Rpot_b: SpiceFloat | None = None
     active: bool | None = None
+    active_variant: Literal["x_series", "classic"] | None = Field(
+        default=None,
+        description="Integrated active pickup architecture: 'x_series' | 'classic' | None (passive)",
+    )
+    k_level: float = Field(
+        default=0.0,
+        ge=0.0,
+        le=1.0,
+        description="Active pickup dynamic leveling factor",
+    )
+    tau_att_level: float = Field(
+        default=0.003, gt=0.0, description="Active leveling attack time in seconds"
+    )
+    tau_rel_level: float = Field(
+        default=0.045, gt=0.0, description="Active leveling release time in seconds"
+    )
     has_active_buffer: bool | None = None
     preamp: str | None = None
     preamp_type: str | None = None
@@ -217,6 +233,8 @@ class SaturationConfig(AllomorphBaseModel):
     lambda_L: float = Field(default=0.0, ge=0.0)
     k_core: float = Field(default=0.0, ge=0.0)
     kappa_ap: float = Field(default=0.0, ge=0.0)
+    k_level: float = Field(default=0.0, ge=0.0, le=1.0)
+    active_variant: Literal["x_series", "classic"] | None = None
     slew_limit: bool = True
     f_slew: float = Field(default=16000.0, gt=0.0)
     oversample: Literal[1, 2, 4] = 2
@@ -252,6 +270,10 @@ class SimulationConfig(AllomorphBaseModel):
     k_emf: float | None = None
     lambda_L: float | None = None
     kappa_ap: float | None = None
+    k_level: float | None = None
+    active_variant: Literal["x_series", "classic"] | None = None
+    tau_att_level: float | None = None
+    tau_rel_level: float | None = None
     vol_pos: float | None = Field(default=None, ge=0.0, le=1.0)
     tone_pos: float | None = Field(default=None, ge=0.0, le=1.0)
     blend_pos: float | None = Field(default=None, ge=0.0, le=1.0)
@@ -307,6 +329,14 @@ class SimulationConfig(AllomorphBaseModel):
             "k_stein": self.k_stein if self.k_stein is not None else (s.k_stein if s else None),
             "k_emf": self.k_emf if self.k_emf is not None else (s.k_emf if s else None),
             "lambda_L": self.lambda_L if self.lambda_L is not None else (s.lambda_L if s else None),
+            "k_level": self.k_level if self.k_level is not None else (s.k_level if s else None),
+            "active_variant": (
+                self.active_variant
+                if self.active_variant is not None
+                else (s.active_variant if s else None)
+            ),
+            "tau_att_level": self.tau_att_level,
+            "tau_rel_level": self.tau_rel_level,
             "vol_pos": self.vol_pos if self.vol_pos is not None else (h.vol_pos if h else None),
             "tone_pos": self.tone_pos if self.tone_pos is not None else (h.tone_pos if h else None),
             "blend_pos": self.blend_pos

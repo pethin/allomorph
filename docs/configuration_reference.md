@@ -11,7 +11,7 @@ Allomorph organizes instrument models, target voices, and physical scale wave sp
 ```
 config/
 ├── instruments/              # Unified instrument catalog & native target voicings
-│   ├── 30in_emg_mmtw.toml    # 30" Short scale with EMG MMTW dual-mode pickup
+│   ├── 30in_emg_mmtw.toml    # 30" Short scale with EMG MMTWX dual-mode pickup
 │   ├── 30in_mustang_pj.toml  # 30" Short scale Fender Mustang Bass PJ (passive split-P + single J)
 │   ├── 32in_custom_pmm.toml  # 32" Medium scale with Reverse PX + MMTWX + ABCX active blend
 │   ├── 32in_fretless_pmm.toml # 32" Fretless Medium scale with PCSX + MMTWX
@@ -41,7 +41,7 @@ An instrument configuration represents a **physical source bass** whose active s
 | Field | Type | Units | Required | Description |
 | :--- | :--- | :--- | :---: | :--- |
 | `id` | `string` | — | **Yes** | Unique identifier (e.g. `"30in_emg_mmtw"`). Used by CLI `--instrument <id>`. |
-| `name` | `string` | — | **Yes** | Human-readable label (e.g. `"30\" Short Scale MM (EMG MMTW)"`). Embedded in NAM metadata. |
+| `name` | `string` | — | **Yes** | Human-readable label (e.g. `"30\" Short Scale MM (EMG MMTWX)"`). Embedded in NAM metadata. |
 | `scale_length_in` | `float` | Inches | **Yes** | Vibrating string scale length in inches (e.g. `30.0`, `32.0`, `34.0`). |
 | `scale_length_m` | `float` | Meters | **Yes** | Scale length in meters ($L_{\text{m}} = L_{\text{in}} \times 0.0254$). |
 | `string_wave_speeds`| `array[float]`| m/s | **Yes** | Array of 4 (or 5) wave speeds from low to high string ($v = 2 \cdot L \cdot f_0$). |
@@ -50,7 +50,7 @@ An instrument configuration represents a **physical source bass** whose active s
 #### Example:
 ```toml
 id = "30in_emg_mmtw"
-name = "30\" Short Scale MM (EMG MMTW)"
+name = "30\" Short Scale MM (EMG MMTWX)"
 scale_length_in = 30.0
 scale_length_m = 0.762
 string_wave_speeds = [62.79, 83.82, 111.89, 149.35]
@@ -67,7 +67,7 @@ Each entry defines a **physically selectable state** on the instrument (e.g., so
 > **Active Electronics Constraint:**
 > All defined pickups must reflect **physically real switch/potentiometer states** on the actual instrument. For example:
 > * Active pickups (EMG) cannot be wired in series. Active blends (e.g. EMG ABCX) operate strictly in **parallel**.
-> * An EMG MMTW push/pull switch activates coils **L1 + L2** (dual-coil) or **L2 + L3** (bridge single-coil). There is no neck-coil-only mode.
+> * An EMG MMTWX push/pull switch activates coils **L1 + L2** (dual-coil) or **L2 + L3** (bridge single-coil). There is no neck-coil-only mode.
 
 | Field | Type | Units | Default | Description |
 | :--- | :--- | :--- | :---: | :--- |
@@ -99,10 +99,10 @@ When a pickup consists of multiple or staggered coils (such as a split-coil Prec
 | `polarity` | `float` | — | `1.0` | Phase polarity (`1.0` for in-phase, `-1.0` for reverse phase). |
 | `pole_type` | `string` | — | `"rod"` | Coil-specific spatial geometry override: `"rod"` or `"blade"`. |
 
-#### Example: EMG MMTW Dual-Coil vs. Single-Coil
+#### Example: EMG MMTWX Dual-Coil vs. Single-Coil
 ```toml
 [pickups.mmtw_dual]
-name = "EMG MMTW Dual-Coil (Centerline)"
+name = "EMG MMTWX Dual-Coil (Centerline)"
 position_from_bridge_m = 0.0775
 aperture_width_in = 1.50
 coil_spacing_in = 0.90
@@ -115,7 +115,7 @@ coils = [
 ]
 
 [pickups.mmtw_single]
-name = "EMG MMTW Single-Coil (Bridge Coil)"
+name = "EMG MMTWX Single-Coil (Bridge Coil)"
 position_from_bridge_m = 0.06607
 aperture_width_in = 0.75
 coil_spacing_in = 0.0

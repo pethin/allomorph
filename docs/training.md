@@ -53,7 +53,7 @@ Allomorph includes an automated trainer targeting Apple Silicon Metal (MPS) and 
 ### A. Train Direct NAM Models
 Trains a monolithic A2 model mapping directly from the source instrument pickup to the target voice (wet $\to$ wet paired modeling):
 ```bash
-# Train direct model from 30" EMG MMTW to Precision Active:
+# Train direct model from 30" EMG MMTWX to Precision Active:
 uv run python scripts/train_nam.py --instrument 30in_emg_mmtw --voice precision_active
 
 # Train all target voices for an instrument:

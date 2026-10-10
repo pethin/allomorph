@@ -141,9 +141,7 @@ def configure_a2_architecture(
 
     nam_core._check_data = patched_check_data
 
-    orig_get_data_config = getattr(
-        nam_core, "_orig_get_data_config", nam_core._get_data_config
-    )
+    orig_get_data_config = getattr(nam_core, "_orig_get_data_config", nam_core._get_data_config)
     nam_core._orig_get_data_config = orig_get_data_config
 
     def patched_get_data_config(*args: Any, **kwargs: Any) -> dict[str, Any]:
@@ -312,7 +310,7 @@ def train_voice_torch(
         inst_cfg = (
             instrument if isinstance(instrument, InstrumentConfig) else load_instrument(instrument)
         )
-    except (FileNotFoundError, KeyError, ValueError, OSError):
+    except FileNotFoundError, KeyError, ValueError, OSError:
         inst_cfg = InstrumentConfig(
             id=str(instrument),
             name=str(instrument),
@@ -339,7 +337,7 @@ def train_voice_torch(
         src_pickup = get_source_pickup(inst_cfg, voice)
         src_pickup_name = src_pickup.name
         src_pos_mm = (src_pickup.position_from_bridge_m or 0.0) * 1000.0
-    except (KeyError, ValueError):
+    except KeyError, ValueError:
         src_pickup = PickupConfig(name="Pickup", position_from_bridge_m=0.0)
         src_pickup_name = "Pickup"
         src_pos_mm = 0.0
@@ -475,8 +473,12 @@ def train_voice_torch(
     print(f"  Workers:     {resolved_num_workers} (zero-copy in-memory)")
     print(f"  Input Audio: {input_path.name}")
     print(f"  Output Audio:{output_path.name}")
-    print(f"  Schedule:    {lr_scheduler} (epochs={epochs}, T_max={lr_t_max}, eta_min={eta_min:.1e})")
-    print(f"  Convergence: Adaptive plateau patience={patience} on composite val_loss (min_delta={min_delta:.1e})")
+    print(
+        f"  Schedule:    {lr_scheduler} (epochs={epochs}, T_max={lr_t_max}, eta_min={eta_min:.1e})"
+    )
+    print(
+        f"  Convergence: Adaptive plateau patience={patience} on composite val_loss (min_delta={min_delta:.1e})"
+    )
     if pre_emph_weight > 0:
         print(f"  Pre-Emph:    weight={pre_emph_weight:.2f}, coef={pre_emph_coef:.2f}")
     if mrstft_weight > 0:
@@ -534,9 +536,7 @@ def train_voice_torch(
 
     raw_meta = train_output.metadata.model_dump()
     vesr = raw_meta.get("validation_esr")
-    best_studio_esr = (
-        cb.best_esr if (cb is not None and cb.best_esr < float("inf")) else vesr
-    )
+    best_studio_esr = cb.best_esr if (cb is not None and cb.best_esr < float("inf")) else vesr
     best_lite_esr = (
         cb.best_ch3_esr
         if (cb is not None and cb.best_ch3_esr is not None and cb.best_ch3_esr < float("inf"))

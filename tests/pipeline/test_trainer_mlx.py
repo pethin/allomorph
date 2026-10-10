@@ -112,8 +112,12 @@ def test_mlx_mrstft_loss():
     from nam._dependencies.auraloss.freq import MultiResolutionSTFTLoss
 
     torch_fn = MultiResolutionSTFTLoss()
-    torch_loss = float(torch_fn(torch.from_numpy(y_pred[None, None, :]), torch.from_numpy(y_target[None, None, :])))
-    assert abs(loss_val - torch_loss) < 0.05, f"MLX MRSTFT ({loss_val}) differs from PyTorch ({torch_loss})"
+    torch_loss = float(
+        torch_fn(torch.from_numpy(y_pred[None, None, :]), torch.from_numpy(y_target[None, None, :]))
+    )
+    assert abs(loss_val - torch_loss) < 0.05, (
+        f"MLX MRSTFT ({loss_val}) differs from PyTorch ({torch_loss})"
+    )
 
     # Identity should yield very small loss
     loss_ident = float(mrstft(batch_y, batch_y))
@@ -243,4 +247,3 @@ def test_apple_silicon_tier_detection_and_batch_sizing():
     # Explicit batch size overrides
     assert resolve_hardware_batch_size(32, engine="mlx") == 32
     assert resolve_hardware_batch_size("64", engine="mlx") == 64
-

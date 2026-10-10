@@ -96,7 +96,7 @@ def test_nam_export_metadata_validation():
             scale_length_in=30.0,
             scale_length_m=0.762,
             string_wave_speeds=[58.0, 75.0, 99.0, 130.0],
-            pickup=NamSourcePickupMeta(name="EMG MMTW", position_from_bridge_m=0.0775),
+            pickup=NamSourcePickupMeta(name="EMG MMTWX", position_from_bridge_m=0.0775),
         ),
         target_voice=NamTargetVoiceMeta(
             id="precision_vintage",
@@ -115,7 +115,7 @@ def test_nam_export_metadata_validation():
     assert meta.training.mrstft_loss == 0.0008
     assert meta.training.epochs_trained == 85
     assert meta.training.stop_reason == "Dual-Gate ESR & Delta Met"
-    assert meta.source_instrument.pickup.name == "EMG MMTW"
+    assert meta.source_instrument.pickup.name == "EMG MMTWX"
 
     # Rejection of missing required fields
     with pytest.raises(ValidationError):

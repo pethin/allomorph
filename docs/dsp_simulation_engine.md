@@ -147,10 +147,10 @@ $$H_{\text{diff}}(\omega) = \frac{H_{\text{target}}(\omega)}{H_{\text{source}}(\
 
 ### 3.1 Source Instrument Declarative Circuit Models (`config/instruments/*.toml`)
 Source instruments are represented by exact declarative circuit tables configured per pickup:
-* `30in_emg_mmtw` (`mmtw_dual`): 18V active EMG MMTW dual-coil mode ($f_r = 2.8\text{ kHz}, Q = 1.35$).
-* `30in_emg_mmtw` (`mmtw_single`): Active EMG MMTW single-coil mode ($f_r = 4.2\text{ kHz}, Q = 1.50$).
+* `30in_emg_mmtw` (`mmtw_dual`): 18V active EMG MMTWX dual-coil mode ($f_r = 2.5\text{ kHz}, Q = 1.35$).
+* `30in_emg_mmtw` (`mmtw_single`): Active EMG MMTWX single-coil mode ($f_r = 3.5\text{ kHz}, Q = 1.40$).
 * `32in_custom_pmm` (`px_split`): Active EMG PX reverse-split configuration ($f_r = 3.2\text{ kHz}, Q = 1.40$).
-* `32in_custom_pmm` (`mmtwx_dual`): Active EMG MMTWX bridge humbucker ($f_r = 2.9\text{ kHz}, Q = 1.30$).
+* `32in_custom_pmm` (`mmtwx_dual`): Active EMG MMTWX bridge humbucker ($f_r = 2.5\text{ kHz}, Q = 1.35$).
 * `34in_standard_p` (`split_p`): Standard passive P-Bass baseline ($f_r = 3.0\text{ kHz}, Q = 1.40$).
 * `34in_standard_jazz` (`pair_parallel`): Standard passive 60s Jazz Bass baseline ($f_r = 3.9\text{ kHz}, Q = 1.30$).
 * `34in_active_stingray` (`mm_parallel`): Active 2-band StingRay humbucker ($f_r = 4.2\text{ kHz}, Q = 1.60$).

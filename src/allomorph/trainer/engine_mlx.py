@@ -65,16 +65,54 @@ MODELS_DIR = REPO_ROOT / "models"
 
 # Architectural definitions for Architecture 2 (A2) PackedWaveNet
 DILATIONS: tuple[int, ...] = (
-    1, 3, 7, 17, 41, 101, 239,
-    1, 3, 7, 17, 41, 101, 239,
-    1, 13,
-    1, 3, 7, 17, 41, 101, 239,
+    1,
+    3,
+    7,
+    17,
+    41,
+    101,
+    239,
+    1,
+    3,
+    7,
+    17,
+    41,
+    101,
+    239,
+    1,
+    13,
+    1,
+    3,
+    7,
+    17,
+    41,
+    101,
+    239,
 )
 KERNEL_SIZES: tuple[int, ...] = (
-    6, 6, 6, 6, 6, 6, 6,
-    6, 6, 6, 6, 6, 6, 6,
-    15, 15,
-    6, 6, 6, 6, 6, 6, 6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    15,
+    15,
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
 )
 HEAD_KERNEL_SIZE: int = 16
 HEAD_SCALE_INIT: float = 0.01
@@ -99,7 +137,7 @@ def is_mlx_available() -> bool:
         return False
     try:
         return bool(mx.metal.is_available())
-    except (ImportError, AttributeError, OSError):
+    except ImportError, AttributeError, OSError:
         return False
 
 
@@ -133,9 +171,7 @@ class MLXWaveNetLayer(nn.Module):
         self.input_mixer_weight = _uniform_init((TOTAL_CHANNELS, 1, 1), 1)
 
         # 1x1 Residual projection
-        self.layer1x1_weight = _uniform_init(
-            (TOTAL_CHANNELS, 1, TOTAL_CHANNELS), TOTAL_CHANNELS
-        )
+        self.layer1x1_weight = _uniform_init((TOTAL_CHANNELS, 1, TOTAL_CHANNELS), TOTAL_CHANNELS)
         self.layer1x1_bias = _uniform_init((TOTAL_CHANNELS,), TOTAL_CHANNELS)
 
         # Block-diagonal masks: non-zero only within [0:3, 0:3] and [3:11, 3:11]
@@ -163,7 +199,10 @@ class MLXWaveNetLayer(nn.Module):
         :return: (residual, post_activation)
         """
         # Dilated 1D convolution with block-diagonal masked weights
-        z_conv = mx.conv1d(x, self.conv_weight * self._mask_conv, dilation=self.dilation) + self.conv_bias
+        z_conv = (
+            mx.conv1d(x, self.conv_weight * self._mask_conv, dilation=self.dilation)
+            + self.conv_bias
+        )
         # Condition mixer
         z_mix = mx.conv1d(c, self.input_mixer_weight)
         z1 = z_conv + z_mix[:, -z_conv.shape[1] :, :]
@@ -186,9 +225,7 @@ class MLXPackedWaveNet(nn.Module):
         self.rechannel_weight = _uniform_init((TOTAL_CHANNELS, 1, 1), 1)
 
         # 23 Residual Layers
-        self.layers = [
-            MLXWaveNetLayer(k, d) for k, d in zip(KERNEL_SIZES, DILATIONS)
-        ]
+        self.layers = [MLXWaveNetLayer(k, d) for k, d in zip(KERNEL_SIZES, DILATIONS)]
 
         # Head rechannel: 11 channels -> 2 channels (Lite + Full) with kernel_size 16
         self.head_weight = _uniform_init(
@@ -282,7 +319,9 @@ class MLXMRSTFTLoss:
             self._idx_cache[key] = _to_mx_array(idx)
         return self._idx_cache[key]
 
-    def _stft_mag(self, x: mx.array, n_fft: int, hop: int, pad_size: int, win_mx: mx.array) -> mx.array:
+    def _stft_mag(
+        self, x: mx.array, n_fft: int, hop: int, pad_size: int, win_mx: mx.array
+    ) -> mx.array:
         x_pad = mx.pad(x, [(0, 0), (pad_size, pad_size)], mode="reflect")
         idx = self._get_idx(x_pad.shape[1], n_fft, hop)
         frames = x_pad[:, idx] * win_mx
@@ -338,7 +377,9 @@ def pre_emphasis_filter(x: mx.array, coef: float = DEFAULT_PRE_EMPH_COEF) -> mx.
     return x[:, 1:] - coef * x[:, :-1]
 
 
-def pre_emphasis_loss(y_true: mx.array, y_pred: mx.array, coef: float = DEFAULT_PRE_EMPH_COEF) -> mx.array:
+def pre_emphasis_loss(
+    y_true: mx.array, y_pred: mx.array, coef: float = DEFAULT_PRE_EMPH_COEF
+) -> mx.array:
     """ESR on pre-emphasized waveforms."""
     return esr_loss(pre_emphasis_filter(y_true, coef), pre_emphasis_filter(y_pred, coef))
 
@@ -429,6 +470,7 @@ def train_voice_mlx(
 
     # 1. Resolve Instrument and Target Voice Configs
     from allomorph.config import VOICES
+
     if voice not in VOICES:
         raise KeyError(f"Target voice '{voice}' not found in catalog.")
     vcfg = VOICES[voice]
@@ -438,7 +480,7 @@ def train_voice_mlx(
         inst_cfg = (
             instrument if isinstance(instrument, InstrumentConfig) else load_instrument(instrument)
         )
-    except (FileNotFoundError, KeyError, ValueError, OSError):
+    except FileNotFoundError, KeyError, ValueError, OSError:
         inst_cfg = InstrumentConfig(
             id=str(instrument),
             name=str(instrument),
@@ -466,8 +508,9 @@ def train_voice_mlx(
         src_pickup = get_source_pickup(inst_cfg, voice)
         src_pickup_name = src_pickup.name
         src_pos_mm = (src_pickup.position_from_bridge_m or 0.0) * 1000.0
-    except (KeyError, ValueError):
+    except KeyError, ValueError:
         from allomorph.config import PickupConfig
+
         src_pickup = PickupConfig(name="Pickup", position_from_bridge_m=0.0)
         src_pickup_name = "Pickup"
         src_pos_mm = 0.0
@@ -482,6 +525,7 @@ def train_voice_mlx(
 
     # 2. Resolve Audio Stems
     from allomorph.trainer.core import find_sweep_input
+
     resolved_input = find_sweep_input(input_wav)
     if not resolved_input or not resolved_input.exists():
         print(f"Error: Could not find training input file '{resolved_input}'.")
@@ -497,7 +541,9 @@ def train_voice_mlx(
             else (tgt_v.id or voice)
         )
         target_wet = AUDIO_DIR / "wet" / tgt_inst.id / f"{target_slug}.wav"
-        if not (target_wet.exists() and is_wet_stem_valid(target_wet, base_dry_path=resolved_input)):
+        if not (
+            target_wet.exists() and is_wet_stem_valid(target_wet, base_dry_path=resolved_input)
+        ):
             try:
                 from allomorph.circuit import simulate_instrument_voicing
 
@@ -591,6 +637,7 @@ def train_voice_mlx(
 
     # 4. Resolve Dynamic Hardware Batch Sizing
     from allomorph.trainer.core import resolve_hardware_batch_size
+
     resolved_batch_size = resolve_hardware_batch_size(batch_size, engine="mlx")
     if fast_dev_run:
         epochs = 1
@@ -619,9 +666,15 @@ def train_voice_mlx(
     print(f"  Batch Size:  {resolved_batch_size} (auto, {num_train_batches} updates/epoch)")
     print(f"  Input Audio: {resolved_input.name}")
     print(f"  Output Audio:{resolved_output.name}")
-    print(f"  Target Gain: {gain_scale:.4f} (-18 dBFS calibration, {rms_db:+.1f} dBFS -> -18.0 dBFS)")
-    print(f"  Schedule:    {lr_scheduler} (epochs={epochs}, T_max={lr_t_max}, eta_min={eta_min:.1e})")
-    print(f"  Convergence: Adaptive plateau patience={patience} on composite val_loss (min_delta={min_delta:.1e})")
+    print(
+        f"  Target Gain: {gain_scale:.4f} (-18 dBFS calibration, {rms_db:+.1f} dBFS -> -18.0 dBFS)"
+    )
+    print(
+        f"  Schedule:    {lr_scheduler} (epochs={epochs}, T_max={lr_t_max}, eta_min={eta_min:.1e})"
+    )
+    print(
+        f"  Convergence: Adaptive plateau patience={patience} on composite val_loss (min_delta={min_delta:.1e})"
+    )
     print(f"  Destination: {target_nam}")
     print("========================================\n")
 
@@ -703,7 +756,9 @@ def train_voice_mlx(
         elif lr_scheduler == "cosine" and epoch < lr_t_max:
             t_curr = epoch - min_epochs
             t_span = lr_t_max - min_epochs
-            current_lr = eta_min + 0.5 * (initial_lr - eta_min) * (1.0 + math.cos(math.pi * t_curr / t_span))
+            current_lr = eta_min + 0.5 * (initial_lr - eta_min) * (
+                1.0 + math.cos(math.pi * t_curr / t_span)
+            )
         else:
             current_lr = eta_min
         optimizer.learning_rate = current_lr
@@ -1122,4 +1177,3 @@ __all__ = [
     "is_mlx_available",
     "train_voice_mlx",
 ]
-

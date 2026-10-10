@@ -331,7 +331,9 @@ def main(argv: Sequence[str] | None = None) -> int:
             return 0
         except (ImportError, RuntimeError) as e:
             print(f"Error: 'neural-amp-modeler' GUI could not be loaded ({e}).")
-            print("Note: The desktop GUI requires system Tkinter (e.g., `sudo apt install python3-tk`).")
+            print(
+                "Note: The desktop GUI requires system Tkinter (e.g., `sudo apt install python3-tk`)."
+            )
             return 1
 
     ok = train_voices_from_config(cli_cfg)

@@ -69,11 +69,16 @@ topology = "single"
 L = 2.0
 Rdc = 4500.0
 Reddy = 72000.0
-Ccoil = 5.1e-10
+Ccoil = 5.18e-10
 vsat = 0.50
 active = true
+active_variant = "classic"
+k_level = 0.25
+R_out = 10000.0
 preamp = "none"
 Rvol = 25000.0
+tau_att_level = 0.003
+tau_rel_level = 0.045
 
 # ------------------------------------------------------------------------------
 # 2. ACTIVE EMG SOAPBAR (Bridge Solo)
@@ -99,11 +104,16 @@ topology = "single"
 L = 2.0
 Rdc = 4500.0
 Reddy = 72000.0
-Ccoil = 5.1e-10
+Ccoil = 5.18e-10
 vsat = 0.50
 active = true
+active_variant = "classic"
+k_level = 0.25
+R_out = 10000.0
 preamp = "none"
 Rvol = 25000.0
+tau_att_level = 0.003
+tau_rel_level = 0.045
 
 # ------------------------------------------------------------------------------
 # 3. ACTIVE EMG SOAPBARS PARALLEL (Center Detent / 50-50 Mix)
@@ -127,21 +137,27 @@ components = [
 [pickups.pair_parallel.circuit]
 topology = "parallel"
 active = true
+active_variant = "classic"
+k_level = 0.25
+vsat = 0.50
+R_out = 10000.0
 preamp = "none"
 Rvol = 25000.0
+tau_att_level = 0.003
+tau_rel_level = 0.045
 
 [pickups.pair_parallel.circuit.neck]
 L = 2.0
 Rdc = 4500.0
 Reddy = 72000.0
-Ccoil = 5.1e-10
+Ccoil = 5.18e-10
 vsat = 0.50
 
 [pickups.pair_parallel.circuit.bridge]
 L = 2.0
 Rdc = 4500.0
 Reddy = 72000.0
-Ccoil = 5.1e-10
+Ccoil = 5.18e-10
 vsat = 0.50
 
 # ------------------------------------------------------------------------------

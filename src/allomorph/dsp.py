@@ -893,7 +893,6 @@ def extract_farina_harmonics(
     }
 
 
-
 def _calc_inharmonicity_b(f0: float) -> float:
     """Calculates physical string inharmonicity coefficient B as a function of fundamental frequency f0.
 

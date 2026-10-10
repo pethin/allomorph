@@ -1,7 +1,7 @@
 """
 Cross-cutting Property-Based Tests for Allomorph Universal Modeling Pipeline.
 
-Verifies end-to-end mathematical identities, analytical circuit deconvolution,
+Verifies end-to-end mathematical identities,
 minimum-phase FIR causality, and schema invariants using Hypothesis and Hypothesis-JSONSchema.
 """
 
@@ -11,31 +11,8 @@ import numpy as np
 from hypothesis import given
 from hypothesis import strategies as st
 
-from allomorph.circuit import (
-    compute_differential_circuit_transfer_functions,
-    load_circuit,
-)
 from allomorph.config.schema import CoilConfig
-from allomorph.dsp import FREQS, synthesize_minimum_phase_fir
-
-
-def test_differential_circuit_deconvolution_identity():
-    """Verify that differential circuit transfer function of identical models evaluates to exact 0.00 dB."""
-    for voice_id in ["precision_vintage", "jazz_pair_open", "stingray_parallel"]:
-        model = load_circuit(voice_id)
-        # Compute differential against itself
-        diff_curves = compute_differential_circuit_transfer_functions(
-            target_model=model,
-            source_model=model,
-            freqs=FREQS,
-        )
-        for curve in diff_curves:
-            curve_arr = np.asarray(curve, dtype=np.float64)
-            # Linear ratio must evaluate to exactly 1.0 (0.00 dB)
-            max_dev = float(np.max(np.abs(curve_arr - 1.0)))
-            assert max_dev < 1e-3, (
-                f"Identity deconvolution for {voice_id} deviated by {max_dev:.6f} from unity gain (expected 1.0000)"
-            )
+from allomorph.dsp import synthesize_minimum_phase_fir
 
 
 @given(st.lists(st.floats(min_value=0.01, max_value=2.0), min_size=64, max_size=64))

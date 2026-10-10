@@ -8,7 +8,7 @@
 #   - Single-Coil Mode: Coils L2 + L3 (bridge-side stacked hum-canceler, 3.50 kHz fr, Ceramic & Steel).
 
 id = "30in_emg_mmtw"
-name = "30\" Short Scale MM (EMG MMTW)"
+name = "30\" Short Scale MM (EMG MMTWX)"
 scale_length_in = 30.0
 scale_length_m = 0.762
 electronics = "active"
@@ -37,7 +37,7 @@ tension_lbs = 145.0
 # 1. DUAL-COIL MODE (Push/Pull Down: Humbucking Music Man Sound)
 # ------------------------------------------------------------------------------
 [pickups.mmtw_dual]
-name = "EMG MMTW Dual-Coil (Centerline)"
+name = "EMG MMTWX Dual-Coil (Centerline)"
 position_name = "Dual"
 bundle_name = "dual"
 position_from_bridge_m = 0.0775  # 77.5mm centerline
@@ -55,13 +55,27 @@ coils = [
     { strings = ["all"], position_from_bridge_m = 0.06607, aperture_width_in = 0.75, weight = 0.5, pole_type = "blade" }  # L2 (Bridge)
 ]
 
+[pickups.mmtw_dual.circuit]
+topology = "single"
+L = 0.80
+Rdc = 2800.0
+Reddy = 150000.0
+Ccoil = 4.86e-9
+active = true
+active_variant = "x_series"
+k_level = 0.0
+vsat = 2.40
+R_out = 2000.0
+tau_att_level = 0.003
+tau_rel_level = 0.045
+
 # ------------------------------------------------------------------------------
 # 2. SINGLE-COIL MODE (Push/Pull Up: J-Style Single-Coil Sound)
 # ------------------------------------------------------------------------------
 # Note: EMG MMTW switches strictly to the bridge-side stacked coils (L2 + L3).
 # L2 is the active sensing coil; L3 is a phantom dummy coil underneath for hum cancellation.
 [pickups.mmtw_single]
-name = "EMG MMTW Single-Coil (Bridge Coil)"
+name = "EMG MMTWX Single-Coil (Bridge Coil)"
 position_name = "Single"
 bundle_name = "single"
 position_from_bridge_m = 0.06607 # 66.07mm (L2 coil center)
@@ -72,9 +86,24 @@ magnet_type = "ceramic_steel"
 pole_type = "blade"
 resonant_frequency_hz = 3500.0   # Higher active X-series JCSX resonance (equivalent to 35TWX)
 q_factor = 1.40
+
 coils = [
     { strings = ["all"], position_from_bridge_m = 0.06607, aperture_width_in = 0.75, weight = 1.0, pole_type = "blade" }
 ]
+
+[pickups.mmtw_single.circuit]
+topology = "single"
+L = 0.80
+Rdc = 2800.0
+Reddy = 150000.0
+Ccoil = 2.49e-9
+active = true
+active_variant = "x_series"
+k_level = 0.0
+vsat = 2.40
+R_out = 2000.0
+tau_att_level = 0.003
+tau_rel_level = 0.045
 
 # ------------------------------------------------------------------------------
 # 3. NATIVE INSTRUMENT VOICINGS

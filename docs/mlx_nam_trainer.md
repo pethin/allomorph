@@ -56,8 +56,8 @@ The model exactly replicates the NAM Architecture 2 specification:
 MLX operates natively in channels-last layout `(Batch, Sequence, Channels)`. To ensure zero cross-talk between the 3-channel Lite submodel and the 8-channel Full submodel during the unified 11-channel forward pass, layer weights and gradients maintain strict block-diagonal isolation:
 ```python
 mask = np.zeros((11, 11), dtype=np.float32)
-mask[:3, :3] = 1.0   # Lite submodel
-mask[3:, 3:] = 1.0   # Full submodel
+mask[:3, :3] = 1.0  # Lite submodel
+mask[3:, 3:] = 1.0  # Full submodel
 ```
 Before step updates and after initialization, all off-diagonal blocks are zeroed.
 

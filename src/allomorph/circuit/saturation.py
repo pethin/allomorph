@@ -189,6 +189,34 @@ if _HAS_NUMBA:
             denom = math.sqrt(math.sqrt(math.sqrt(1.0 + u8)))
             out[i] = val / denom
         return out
+
+    @njit(fastmath=True, nogil=True)
+    def _active_preamp_leveling_core(
+        x_arr: np.ndarray,
+        env: np.ndarray,
+        vsat: float,
+        k_level: float,
+    ) -> np.ndarray:
+        n = len(x_arr)
+        out = np.empty(n, dtype=np.float64)
+        if vsat <= 0.0 or k_level <= 0.0:
+            return x_arr.copy()
+        for i in range(n):
+            val = x_arr[i]
+            e = env[i]
+            if e > vsat * 0.75:
+                u = e - vsat
+                if u * 16.0 > 20.0:
+                    excess = u
+                elif u * 16.0 < -40.0:
+                    excess = 0.0
+                else:
+                    excess = (1.0 / 16.0) * math.log1p(math.exp(16.0 * u))
+                g = 1.0 / (1.0 + k_level * math.tanh(excess / vsat))
+            else:
+                g = 1.0
+            out[i] = val * g
+        return out
 else:
 
     def _dahl_core(x_arr: np.ndarray, eta: float, r: float) -> np.ndarray:
@@ -343,6 +371,33 @@ else:
             u8 = u4 * u4
             denom = math.sqrt(math.sqrt(math.sqrt(1.0 + u8)))
             out[i] = val / denom
+        return out
+
+    def _active_preamp_leveling_core(
+        x_arr: np.ndarray,
+        env: np.ndarray,
+        vsat: float,
+        k_level: float,
+    ) -> np.ndarray:
+        n = len(x_arr)
+        out = np.empty(n, dtype=np.float64)
+        if vsat <= 0.0 or k_level <= 0.0:
+            return x_arr.copy()
+        for i in range(n):
+            val = x_arr[i]
+            e = env[i]
+            if e > vsat * 0.75:
+                u = e - vsat
+                if u * 16.0 > 20.0:
+                    excess = u
+                elif u * 16.0 < -40.0:
+                    excess = 0.0
+                else:
+                    excess = (1.0 / 16.0) * math.log1p(math.exp(16.0 * u))
+                g = 1.0 / (1.0 + k_level * math.tanh(excess / vsat))
+            else:
+                g = 1.0
+            out[i] = val * g
         return out
 
 
@@ -691,3 +746,53 @@ def apply_oversampled_saturation(
 
     out = np.fft.irfft(Y_down, n_sig)
     return out.astype(np.float32)
+
+
+def apply_active_pickup_dynamics(
+    audio: np.ndarray,
+    vsat: float = 2.40,
+    k_level: float = 0.0,
+    tau_att: float = 0.003,
+    tau_rel: float = 0.045,
+    sr: int = 48000,
+) -> np.ndarray:
+    """Applies active pickup internal preamp dynamics:
+
+    1. Full-wave peak detection with fast 3ms attack and smooth 45ms release.
+    2. Dynamic leveling compression (for classic non-X pickups with k_level > 0).
+    3. Soft-knee rail headroom bounding (vsat).
+
+    Small signals (peak <= 0.10) bypass for bit-exact linearity.
+    X-Series pickups (k_level = 0.0, vsat = 2.40) evaluate with 100% linear dynamics.
+    """
+    max_in = float(np.max(np.abs(audio))) if len(audio) > 0 else 0.0
+    if max_in <= 0.10 or (k_level <= 0.0 and max_in < vsat * 0.75):
+        return audio.copy().astype(np.float32)
+
+    x = audio.astype(np.float64)
+    if k_level > 0.0 and vsat > 0.0:
+        alpha_att = 1.0 - math.exp(-1.0 / (float(sr) * tau_att))
+        alpha_rel = 1.0 - math.exp(-1.0 / (float(sr) * tau_rel))
+        env = _lenz_envelope_core(x, alpha_att, alpha_rel)
+        x = _active_preamp_leveling_core(x, env, vsat, k_level)
+
+    if vsat > 0.0 and max_in > vsat * 0.75:
+        x = vsat * np.tanh(x / vsat)
+
+    return x.astype(np.float32)
+
+
+__all__ = [
+    "_HAS_NUMBA",
+    "_active_preamp_leveling_core",
+    "_algebraic_limiter_p8_core",
+    "_dahl_core",
+    "_lenz_envelope_core",
+    "_lenz_velocity_drag_core",
+    "_slew_limit_core",
+    "apply_active_pickup_dynamics",
+    "apply_algebraic_rail_limiter",
+    "apply_dahl_hysteresis",
+    "apply_elliptical_orbit_projection",
+    "apply_oversampled_saturation",
+]
