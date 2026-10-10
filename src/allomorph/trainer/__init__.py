@@ -13,6 +13,9 @@ from allomorph.trainer.callbacks import (
     EsrProgressCallback,
     LinearWarmupCallback,
     compute_linear_slope,
+    compute_window_improvement,
+    evaluate_plateau_stopping_condition,
+    extract_trainer_metrics,
 )
 from allomorph.trainer.constants import (
     DEFAULT_ARCHITECTURE,
@@ -374,8 +377,11 @@ __all__ = [
     "compute_baseline_delta_ratio",
     "compute_baseline_mrstft",
     "compute_linear_slope",
+    "compute_window_improvement",
     "configure_a2_architecture",
     "detect_apple_silicon_tier",
+    "evaluate_plateau_stopping_condition",
+    "extract_trainer_metrics",
     "find_sweep_input",
     "get_hardware_device_name",
     "is_mlx_available",

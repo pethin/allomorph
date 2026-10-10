@@ -5,7 +5,7 @@ real-time dual-tier terminal logging, and multi-domain triple-gate early stoppin
 """
 
 import math
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from typing import Any, override
 
 from pytorch_lightning.callbacks import Callback, EarlyStopping
@@ -27,6 +27,84 @@ def compute_linear_slope(y_vals: Sequence[float]) -> float:
     denom = (n * (n * n - 1)) / 12.0
     num = sum((i - x_mean) * (y - y_mean) for i, y in enumerate(y_vals))
     return num / denom if denom > 0.0 else 0.0
+
+
+def _to_float(val: Any) -> float | None:
+    if val is None:
+        return None
+    if hasattr(val, "item"):
+        return float(val.item())
+    return float(val)
+
+
+def extract_trainer_metrics(metrics: Mapping[str, Any]) -> dict[str, float | None]:
+    """Extracts validation metrics from trainer callback metrics dictionary.
+
+    Extracts float metrics (esr, mrstft, esr_ch3, mrstft_ch3, val_loss) unpacking
+    tensors with .item() or raw scalars, and falling back to composite loss if
+    explicit val_loss is absent.
+    """
+    raw_esr: Any = metrics.get("ESR_packed_1")
+    if raw_esr is None:
+        raw_esr = metrics.get("ESR")
+    if raw_esr is None:
+        raw_esr = metrics.get("val_loss")
+    esr_val = _to_float(raw_esr)
+
+    raw_mrstft: Any = metrics.get("MRSTFT_packed_1")
+    if raw_mrstft is None:
+        raw_mrstft = metrics.get("MRSTFT")
+    mrstft_val = _to_float(raw_mrstft)
+
+    raw_esr_ch3: Any = metrics.get("ESR_packed_0")
+    esr_ch3_val = _to_float(raw_esr_ch3)
+
+    raw_mrstft_ch3: Any = metrics.get("MRSTFT_packed_0")
+    mrstft_ch3_val = _to_float(raw_mrstft_ch3)
+
+    raw_val_loss: Any = metrics.get("val_loss")
+    if raw_val_loss is not None:
+        val_loss = _to_float(raw_val_loss)
+    elif esr_val is not None:
+        val_loss = esr_val + (esr_ch3_val if esr_ch3_val is not None else 0.0)
+    else:
+        val_loss = None
+
+    return {
+        "esr": esr_val,
+        "mrstft": mrstft_val,
+        "esr_ch3": esr_ch3_val,
+        "mrstft_ch3": mrstft_ch3_val,
+        "val_loss": val_loss,
+    }
+
+
+def compute_window_improvement(val_loss_history: Sequence[float], patience: int) -> float:
+    """Computes improvement in loss between start of patience window and latest epoch."""
+    if patience <= 0 or len(val_loss_history) < patience:
+        return 0.0
+    return float(val_loss_history[-patience] - val_loss_history[-1])
+
+
+def evaluate_plateau_stopping_condition(
+    val_loss_history: Sequence[float],
+    val_loss_slope: float,
+    epoch: int,
+    warmup_floor: int,
+    patience: int,
+    min_delta: float,
+) -> tuple[bool, str | None]:
+    """Pure function evaluating diminishing-returns early exit based on history, slope, and window delta."""
+    if epoch < warmup_floor:
+        return (False, None)
+    if patience <= 0 or len(val_loss_history) < patience or epoch < (warmup_floor + patience):
+        return (False, None)
+
+    improvement = compute_window_improvement(val_loss_history, patience)
+    is_flat = (val_loss_slope >= -5.0e-7) and (improvement < min_delta)
+    if is_flat:
+        return (True, "diminishing_returns_plateau")
+    return (False, None)
 
 
 class LinearWarmupCallback(Callback):
@@ -76,12 +154,13 @@ class AllomorphAdaptiveStopping(EarlyStopping):
     def __init__(
         self,
         *cb_args: Any,
+        monitor: str = "val_loss",
         warmup_floor: int = DEFAULT_MIN_EPOCHS,
         patience: int = DEFAULT_PATIENCE,
         min_delta: float = DEFAULT_MIN_DELTA,
         **cb_kwargs: Any,
     ) -> None:
-        super().__init__(*cb_args, **cb_kwargs)
+        super().__init__(*cb_args, monitor=monitor, **cb_kwargs)
         self.warmup_floor = warmup_floor
         self.min_epochs = warmup_floor
         self.patience = patience
@@ -127,21 +206,12 @@ class AllomorphAdaptiveStopping(EarlyStopping):
         metrics: dict[str, Any] = getattr(trainer, "callback_metrics", {})
         epoch: int = getattr(trainer, "current_epoch", 0)
 
-        # Studio tier metrics (channels_8)
-        raw_esr: Any = metrics.get("ESR_packed_1") or metrics.get("ESR")
-        if raw_esr is None:
-            raw_esr = metrics.get("val_loss")
-        if raw_esr is None:
+        extracted = extract_trainer_metrics(metrics)
+        esr_val = extracted["esr"]
+        if esr_val is None:
             return
-        esr_val = float(raw_esr.item() if hasattr(raw_esr, "item") else raw_esr)
 
-        raw_mrstft = metrics.get("MRSTFT_packed_1") or metrics.get("MRSTFT")
-        mrstft_val = (
-            float(raw_mrstft.item() if hasattr(raw_mrstft, "item") else raw_mrstft)
-            if raw_mrstft is not None
-            else None
-        )
-
+        mrstft_val = extracted["mrstft"]
         self.best_esr = min(self.best_esr, esr_val)
         if mrstft_val is not None:
             self.best_mrstft = min(
@@ -153,19 +223,8 @@ class AllomorphAdaptiveStopping(EarlyStopping):
             self.mrstft_history.append(mrstft_val)
 
         # A2 Lite tier metrics (channels_3)
-        raw_esr_ch3: Any = metrics.get("ESR_packed_0")
-        esr_ch3_val = (
-            float(raw_esr_ch3.item() if hasattr(raw_esr_ch3, "item") else raw_esr_ch3)
-            if raw_esr_ch3 is not None
-            else None
-        )
-
-        raw_mrstft_ch3 = metrics.get("MRSTFT_packed_0")
-        mrstft_ch3_val = (
-            float(raw_mrstft_ch3.item() if hasattr(raw_mrstft_ch3, "item") else raw_mrstft_ch3)
-            if raw_mrstft_ch3 is not None
-            else None
-        )
+        esr_ch3_val = extracted["esr_ch3"]
+        mrstft_ch3_val = extracted["mrstft_ch3"]
 
         if esr_ch3_val is not None:
             self.best_ch3_esr = min(self.best_ch3_esr, esr_ch3_val)
@@ -178,10 +237,8 @@ class AllomorphAdaptiveStopping(EarlyStopping):
             self.mrstft_ch3_history.append(mrstft_ch3_val)
 
         # Composite validation loss (val_loss)
-        raw_val_loss = metrics.get("val_loss")
-        if raw_val_loss is not None:
-            val_loss = float(raw_val_loss.item() if hasattr(raw_val_loss, "item") else raw_val_loss)
-        else:
+        val_loss = extracted["val_loss"]
+        if val_loss is None:
             val_loss = esr_val + (esr_ch3_val if esr_ch3_val is not None else 0.0)
 
         self.best_val_loss = min(self.best_val_loss, val_loss)
@@ -204,28 +261,26 @@ class AllomorphAdaptiveStopping(EarlyStopping):
         if epoch < self.warmup_floor:
             return
 
-        # Adaptive Diminishing-Returns Early Exit on Composite val_loss
-        if (
-            self.patience > 0
-            and len(self.val_loss_history) >= self.patience
-            and epoch >= (self.warmup_floor + self.patience)
-        ):
-            recent_losses = self.val_loss_history[-self.patience :]
-            loss_improvement = recent_losses[0] - val_loss
-            loss_flat = (self.last_val_loss_slope >= -5.0e-7) and (
-                loss_improvement < self.min_delta
-            )
+        should_stop, reason = evaluate_plateau_stopping_condition(
+            val_loss_history=self.val_loss_history,
+            val_loss_slope=self.last_val_loss_slope,
+            epoch=epoch,
+            warmup_floor=self.warmup_floor,
+            patience=self.patience,
+            min_delta=self.min_delta,
+        )
 
-            if loss_flat:
-                print(
-                    f"\n[Early Stopping] Diminishing returns plateau reached at epoch {epoch:03d}: "
-                    f"val_loss slope {self.last_val_loss_slope:+.1e}, improvement {loss_improvement:.2e} < {self.min_delta:.2e} "
-                    f"over {self.patience} epochs. Terminating with optimal checkpoint restore.",
-                    flush=True,
-                )
-                trainer.should_stop = True
-                self.stop_reason = "diminishing_returns_plateau"
-                return
+        if should_stop:
+            loss_improvement = compute_window_improvement(self.val_loss_history, self.patience)
+            print(
+                f"\n[Early Stopping] Diminishing returns plateau reached at epoch {epoch:03d}: "
+                f"val_loss slope {self.last_val_loss_slope:+.1e}, improvement {loss_improvement:.2e} < {self.min_delta:.2e} "
+                f"over {self.patience} epochs. Terminating with optimal checkpoint restore.",
+                flush=True,
+            )
+            trainer.should_stop = True
+            self.stop_reason = reason or "diminishing_returns_plateau"
+            return
 
 
 class EsrProgressCallback(Callback):
@@ -254,24 +309,16 @@ class EsrProgressCallback(Callback):
         self.last_epoch = epoch
         max_epochs: Any = getattr(trainer, "max_epochs", "?")
 
-        raw_mrstft = metrics.get("MRSTFT_packed_1") or metrics.get("MRSTFT")
-        mrstft_val = (
-            float(raw_mrstft.item() if hasattr(raw_mrstft, "item") else raw_mrstft)
-            if raw_mrstft is not None
-            else None
-        )
+        extracted = extract_trainer_metrics(metrics)
+
+        mrstft_val = extracted["mrstft"]
         if mrstft_val is not None:
             self.best_mrstft = min(
                 self.best_mrstft if self.best_mrstft is not None else float("inf"), mrstft_val
             )
         mrstft_str = f" | MRSTFT: {mrstft_val:.4f}" if mrstft_val is not None else ""
 
-        raw_mrstft_ch3 = metrics.get("MRSTFT_packed_0")
-        mrstft_ch3_val = (
-            float(raw_mrstft_ch3.item() if hasattr(raw_mrstft_ch3, "item") else raw_mrstft_ch3)
-            if raw_mrstft_ch3 is not None
-            else None
-        )
+        mrstft_ch3_val = extracted["mrstft_ch3"]
         if mrstft_ch3_val is not None:
             self.best_ch3_mrstft = min(
                 self.best_ch3_mrstft if self.best_ch3_mrstft is not None else float("inf"),
@@ -291,19 +338,13 @@ class EsrProgressCallback(Callback):
             patience_str = f" | {self.stopping_callback.get_status_str(epoch)}"
 
         # Primary Studio Tier (channels_8)
-        raw_ch8: Any = metrics.get("ESR_packed_1") or metrics.get("ESR") or metrics.get("val_loss")
-        if raw_ch8 is None:
+        ch8_val = extracted["esr"]
+        if ch8_val is None:
             return
-        ch8_val: float = float(raw_ch8.item() if hasattr(raw_ch8, "item") else raw_ch8)
         self.best_esr = min(self.best_esr, ch8_val)
 
         # A2 Lite Tier (channels_3)
-        raw_ch3: Any = metrics.get("ESR_packed_0")
-        ch3_val: float | None = (
-            float(raw_ch3.item() if hasattr(raw_ch3, "item") else raw_ch3)
-            if raw_ch3 is not None
-            else None
-        )
+        ch3_val = extracted["esr_ch3"]
         if ch3_val is not None:
             self.best_ch3_esr = min(
                 self.best_ch3_esr if self.best_ch3_esr is not None else float("inf"), ch3_val
@@ -338,4 +379,7 @@ __all__ = [
     "EsrProgressCallback",
     "LinearWarmupCallback",
     "compute_linear_slope",
+    "compute_window_improvement",
+    "evaluate_plateau_stopping_condition",
+    "extract_trainer_metrics",
 ]
