@@ -178,8 +178,61 @@ def test_load_tone_pack_and_errors():
     assert isinstance(tp, TonePackConfig)
     assert load_tone_pack(tp) is tp
 
+    # Alias resolution
+    tp_alias = load_tone_pack("stingray")
+    assert tp_alias.id == "34in_active_stingray"
+
     with pytest.raises(FileNotFoundError, match="Tone pack configuration not found"):
         load_tone_pack("nonexistent_tone_pack_999")
+
+
+def test_load_all_tone_packs_catalog():
+    """Verify load_all_tone_packs loads all defined tone packs in config/packs/."""
+    from allomorph.config.instruments import TONE_PACKS, load_all_tone_packs
+
+    packs = load_all_tone_packs()
+    assert len(packs) == 7
+    assert set(packs.keys()) == set(TONE_PACKS.keys())
+    assert "30in_mustang_pj" in packs
+    assert "34in_standard_p" in packs
+    for pid, pcfg in packs.items():
+        assert pcfg.id == pid
+        assert len(pcfg.bundles) > 0
+
+
+def test_resolve_packs_selection():
+    """Verify resolve_packs only selects packs that exist when all packs are selected."""
+    from allomorph.config.instruments import TONE_PACKS
+    from allomorph.naming import resolve_packs
+
+    expected_existing = sorted(TONE_PACKS.keys())
+
+    # 1. No pack specified, instrument is "all" -> only existing packs
+    assert resolve_packs(None, "all") == expected_existing
+    assert resolve_packs(None, None) == expected_existing
+
+    # 2. Pack specified as "all" -> only existing packs
+    assert resolve_packs("all", None) == expected_existing
+    assert resolve_packs("all", "30in") == expected_existing
+
+    # 3. Explicit pack by ID and alias
+    assert resolve_packs("34in_standard_p") == ["34in_standard_p"]
+    assert resolve_packs("stingray") == ["34in_active_stingray"]
+    assert resolve_packs("30in") == ["30in_mustang_pj"]
+
+    # 4. Explicit comma-separated packs
+    assert resolve_packs("34in_standard_p,34in_standard_jazz") == [
+        "34in_standard_p",
+        "34in_standard_jazz",
+    ]
+
+    # 5. Explicit pack for instrument without pack raises FileNotFoundError
+    with pytest.raises(FileNotFoundError, match="Tone pack configuration not found"):
+        resolve_packs("30in_emg_mmtw")
+
+    # 6. Unknown pack raises FileNotFoundError
+    with pytest.raises(FileNotFoundError, match="Unknown tone pack identifier"):
+        resolve_packs("nonexistent_xyz")
 
 
 def test_partition_instrument_bundles_target_variants():

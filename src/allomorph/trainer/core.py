@@ -521,26 +521,29 @@ def train_voice(
 def train_voices_from_config(cli_cfg: NamTrainingConfig) -> bool:
     """Executes NAM model training across configured instruments and voices in-process."""
     if cli_cfg.pack:
+        from allomorph.naming import resolve_packs
         from allomorph.pipeline.pack import train_tone_pack
 
-        train_tone_pack(
-            pack=cli_cfg.pack,
-            voice=cli_cfg.voice or "all",
-            overwrite=cli_cfg.overwrite,
-            epochs=cli_cfg.epochs,
-            min_epochs=cli_cfg.min_epochs,
-            patience=cli_cfg.patience,
-            min_delta=cli_cfg.min_delta,
-            batch_size=cli_cfg.batch_size,
-            precision=cli_cfg.precision,
-            num_workers=cli_cfg.num_workers,
-            lr_scheduler=cli_cfg.lr_scheduler,
-            eta_min=cli_cfg.eta_min,
-            lr_t_max=cli_cfg.lr_t_max,
-            fast_dev_run=cli_cfg.fast_dev_run,
-            engine=cli_cfg.engine,
-            seed=cli_cfg.seed,
-        )
+        packs_to_train = resolve_packs(cli_cfg.pack)
+        for p in packs_to_train:
+            train_tone_pack(
+                pack=p,
+                voice=cli_cfg.voice or "all",
+                overwrite=cli_cfg.overwrite,
+                epochs=cli_cfg.epochs,
+                min_epochs=cli_cfg.min_epochs,
+                patience=cli_cfg.patience,
+                min_delta=cli_cfg.min_delta,
+                batch_size=cli_cfg.batch_size,
+                precision=cli_cfg.precision,
+                num_workers=cli_cfg.num_workers,
+                lr_scheduler=cli_cfg.lr_scheduler,
+                eta_min=cli_cfg.eta_min,
+                lr_t_max=cli_cfg.lr_t_max,
+                fast_dev_run=cli_cfg.fast_dev_run,
+                engine=cli_cfg.engine,
+                seed=cli_cfg.seed,
+            )
         return True
 
     input_wav_path = cli_cfg.input_wav

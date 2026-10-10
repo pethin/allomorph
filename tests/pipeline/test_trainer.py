@@ -646,6 +646,10 @@ def test_main_entrypoints(monkeypatch: pytest.MonkeyPatch) -> None:
     import runpy
 
     # allomorph.__main__
+    def _mock_cli_main(*args: object, **kwargs: object) -> int:
+        return 0
+
+    monkeypatch.setattr("allomorph.cli.main", _mock_cli_main)
     with pytest.raises(SystemExit) as exc_info:
         runpy.run_module("allomorph.__main__", run_name="__main__")
     assert exc_info.value.code in (0, 2)  # 0 or 2 depending on default CLI args

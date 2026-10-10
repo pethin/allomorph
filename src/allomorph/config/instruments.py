@@ -251,10 +251,16 @@ def load_tone_pack(pack_id_or_path: str | Path | TonePackConfig) -> TonePackConf
     """Loads a declarative TonePackConfig from config/packs/<pack_id>.toml or a direct path."""
     if isinstance(pack_id_or_path, TonePackConfig):
         return pack_id_or_path
+    raw = str(pack_id_or_path).strip()
+    key = INSTRUMENT_ALIASES.get(raw, raw)
     p = Path(pack_id_or_path)
     if not p.is_file():
-        if (PACKS_CONFIG_DIR / f"{pack_id_or_path}.toml").is_file():
+        if (PACKS_CONFIG_DIR / f"{key}.toml").is_file():
+            p = PACKS_CONFIG_DIR / f"{key}.toml"
+        elif (PACKS_CONFIG_DIR / f"{pack_id_or_path}.toml").is_file():
             p = PACKS_CONFIG_DIR / f"{pack_id_or_path}.toml"
+        elif (PACKS_CONFIG_DIR / key).is_file():
+            p = PACKS_CONFIG_DIR / key
         elif (PACKS_CONFIG_DIR / pack_id_or_path).is_file():
             p = PACKS_CONFIG_DIR / pack_id_or_path
     if not p.is_file():
@@ -264,6 +270,22 @@ def load_tone_pack(pack_id_or_path: str | Path | TonePackConfig) -> TonePackConf
     with open(p, "rb") as f:
         data = tomllib.load(f)
     return TonePackConfig.model_validate(data)
+
+
+def load_all_tone_packs(packs_dir: str | Path | None = None) -> dict[str, TonePackConfig]:
+    """Loads all tone pack definitions found in packs_dir into validated TonePackConfig models."""
+    pdir = Path(packs_dir) if packs_dir else PACKS_CONFIG_DIR
+    packs: dict[str, TonePackConfig] = {}
+    if pdir.exists():
+        for p in sorted(pdir.glob("*.toml")):
+            with open(p, "rb") as f:
+                cfg = tomllib.load(f)
+                pack = TonePackConfig.model_validate(cfg)
+                packs[pack.id] = pack
+    return packs
+
+
+TONE_PACKS: dict[str, TonePackConfig] = load_all_tone_packs()
 
 
 def partition_instrument_bundles(

@@ -15,17 +15,28 @@ from allomorph.config.geometry import (
 )
 from allomorph.config.instruments import (
     INSTRUMENTS,
+    TONE_PACKS,
 )
 from allomorph.config.scales import REPO_ROOT
 from allomorph.config.voices import VOICES
 from allomorph.naming import (
     resolve_instruments,
+    resolve_packs,
     resolve_voices,
 )
 from allomorph.pipeline.schema import PipelineCliConfig
 from allomorph.pipeline.stages import (
     run_visualization,
 )
+
+
+def list_packs():
+    """Lists all configured Tone3000 storefront tone packs."""
+    print("Available Allomorph Tone3000 Tone Packs:")
+    for pid, pcfg in TONE_PACKS.items():
+        print(f"  - {pid}: {pcfg.name} (Source: {pcfg.instrument}, Bundles: {len(pcfg.bundles)})")
+        for b in pcfg.bundles:
+            print(f"      * [{b.name}] Source: {b.source_voicing} -> Targets: {len(b.targets)}")
 
 
 def list_instruments():
@@ -157,6 +168,11 @@ def build_pipeline_arg_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="List all target pickup voices and their SPICE netlists",
     )
+    parser.add_argument(
+        "--list-packs",
+        action="store_true",
+        help="List all configured Tone3000 storefront tone packs",
+    )
     return parser
 
 
@@ -229,12 +245,20 @@ def main(argv: Sequence[str] | None = None) -> None:
         list_voices()
         return
 
+    if getattr(args, "list_packs", False):
+        list_packs()
+        return
+
     instruments_to_run, voices_to_run, effective_jobs = resolve_execution_targets(config)
     samples_str = str(config.max_samples) if config.max_samples is not None else "full"
 
     print("========================================")
     print("  ALLOMORPH SPICE -> NAM PIPELINE")
-    print(f"  Instruments ({len(instruments_to_run)}): {', '.join(instruments_to_run)}")
+    if config.stage == "pack":
+        packs_to_run = resolve_packs(config.pack, config.instrument)
+        print(f"  Packs ({len(packs_to_run)}):       {', '.join(packs_to_run)}")
+    else:
+        print(f"  Instruments ({len(instruments_to_run)}): {', '.join(instruments_to_run)}")
     print(f"  Stage:       {config.stage}")
     print(f"  Max Samples: {samples_str}")
     print(f"  Voices ({len(voices_to_run)}): {', '.join(voices_to_run)}")
@@ -325,7 +349,7 @@ def main(argv: Sequence[str] | None = None) -> None:
     if args.stage == "pack":
         from allomorph.pipeline.pack import export_tone_pack
 
-        packs_to_run = [args.pack] if args.pack else instruments_to_run
+        packs_to_run = resolve_packs(args.pack, args.instrument)
         for inst in packs_to_run:
             print(f"\n[Tone Pack] Exporting tone pack bundles for {inst}...")
             export_tone_pack(
@@ -423,7 +447,7 @@ def main(argv: Sequence[str] | None = None) -> None:
         print("\n--- Step 2: Tone Pack Bundles Export ---")
         from allomorph.pipeline.pack import export_tone_pack
 
-        packs_to_run = [args.pack] if args.pack else instruments_to_run
+        packs_to_run = resolve_packs(args.pack, args.instrument)
         for inst in packs_to_run:
             export_tone_pack(
                 inst,
@@ -446,6 +470,7 @@ def main(argv: Sequence[str] | None = None) -> None:
 __all__ = [
     "build_pipeline_arg_parser",
     "list_instruments",
+    "list_packs",
     "list_voices",
     "main",
     "parse_and_validate_pipeline_args",

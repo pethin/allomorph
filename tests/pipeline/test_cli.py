@@ -31,6 +31,93 @@ def test_pipeline_cli_pack_input_wav_propagation(tmp_path: Path, monkeypatch: py
     assert kwargs.get("overwrite") is True
 
 
+def test_pipeline_cli_stage_pack_all_packs_selected(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    """Verify that when all packs are selected (--stage pack --force without specific instrument/pack),
+    only existing packs in config/packs/ are exported, and undeclared instruments are never called.
+    """
+    from allomorph.config.instruments import TONE_PACKS
+
+    calls: list[str] = []
+
+    def _mock_export_tone_pack(instrument: Any, **kwargs: Any) -> Path:
+        calls.append(str(instrument.id if hasattr(instrument, "id") else instrument))
+        return tmp_path
+
+    monkeypatch.setattr("allomorph.pipeline.pack.export_tone_pack", _mock_export_tone_pack)
+
+    main(argv=["--stage", "pack", "--force"])
+
+    assert len(calls) == len(TONE_PACKS)
+    assert calls == sorted(TONE_PACKS.keys())
+    assert "30in_emg_mmtw" not in calls
+
+
+def test_pipeline_cli_stage_pack_pack_all_flag(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    """Verify that --pack all exports all existing packs and does not raise FileNotFoundError."""
+    from allomorph.config.instruments import TONE_PACKS
+
+    calls: list[str] = []
+
+    def _mock_export_tone_pack(instrument: Any, **kwargs: Any) -> Path:
+        calls.append(str(instrument.id if hasattr(instrument, "id") else instrument))
+        return tmp_path
+
+    monkeypatch.setattr("allomorph.pipeline.pack.export_tone_pack", _mock_export_tone_pack)
+
+    main(argv=["--stage", "pack", "--pack", "all", "--force"])
+
+    assert calls == sorted(TONE_PACKS.keys())
+
+
+def test_pipeline_cli_stage_pack_explicit_pack_alias(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    """Verify that --pack with an alias resolves to the target pack."""
+    calls: list[str] = []
+
+    def _mock_export_tone_pack(instrument: Any, **kwargs: Any) -> Path:
+        calls.append(str(instrument.id if hasattr(instrument, "id") else instrument))
+        return tmp_path
+
+    monkeypatch.setattr("allomorph.pipeline.pack.export_tone_pack", _mock_export_tone_pack)
+
+    main(argv=["--stage", "pack", "--pack", "stingray"])
+
+    assert calls == ["34in_active_stingray"]
+
+
+def test_pipeline_cli_stage_pack_undeclared_instrument_fails():
+    """Verify that explicitly selecting an instrument without a pack configuration raises FileNotFoundError."""
+    with pytest.raises(FileNotFoundError, match="Tone pack configuration not found"):
+        main(argv=["--stage", "pack", "--instrument", "30in_emg_mmtw"])
+
+
+def test_pipeline_cli_stage_all_all_packs_selected(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    """Verify that --stage all exports only existing packs in step 2 when all instruments are run."""
+    from allomorph.config.instruments import TONE_PACKS
+
+    sim_calls: list[Any] = []
+    pack_calls: list[str] = []
+
+    def _mock_sim(inst: Any, **kwargs: Any) -> None:
+        sim_calls.append(inst)
+
+    def _mock_pack(instrument: Any, **kwargs: Any) -> Path:
+        pack_calls.append(str(instrument.id if hasattr(instrument, "id") else instrument))
+        return tmp_path
+
+    def _mock_viz(*args: Any, **kwargs: Any) -> None:
+        pass
+
+    monkeypatch.setattr("allomorph.pipeline.batch.simulate_all_instrument_voicings", _mock_sim)
+    monkeypatch.setattr("allomorph.pipeline.pack.export_tone_pack", _mock_pack)
+    monkeypatch.setattr("allomorph.pipeline.cli.run_visualization", _mock_viz)
+
+    main(argv=["--stage", "all", "--force"])
+
+    assert len(sim_calls) == 16  # all instruments simulated
+    assert pack_calls == sorted(TONE_PACKS.keys())  # only existing packs exported
+    assert "30in_emg_mmtw" not in pack_calls
+
+
 def test_pipeline_cli_all_input_wav_propagation(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     """Bug 3 regression: verify custom --input audio is propagated to export_tone_pack in all stage."""
     sim_calls = []
@@ -122,6 +209,11 @@ def test_pipeline_cli_list_flags(capsys: pytest.CaptureFixture[str]):
     main(argv=["--list-voices"])
     captured_voice = capsys.readouterr().out
     assert "Available Allomorph Target Pickup Voices" in captured_voice
+
+    main(argv=["--list-packs"])
+    captured_pack = capsys.readouterr().out
+    assert "Available Allomorph Tone3000 Tone Packs:" in captured_pack
+    assert "30in_mustang_pj" in captured_pack
 
 
 def test_pipeline_cli_audit_stage(

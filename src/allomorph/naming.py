@@ -8,7 +8,13 @@ import difflib
 from collections.abc import Sequence
 from pathlib import Path
 
-from allomorph.config.instruments import INSTRUMENT_ALIASES, INSTRUMENTS, load_instrument
+from allomorph.config.instruments import (
+    INSTRUMENT_ALIASES,
+    INSTRUMENTS,
+    PACKS_CONFIG_DIR,
+    TONE_PACKS,
+    load_instrument,
+)
 from allomorph.config.voices import VOICES
 
 VOICE_CONCISE_SLUGS: dict[str, str] = {
@@ -199,6 +205,104 @@ def resolve_instruments(instrument_arg: str | Sequence[str] | None) -> list[str]
                     f"Available instruments ({len(all_playable)}): {', '.join(all_playable)}"
                 )
     return resolved
+
+
+def resolve_packs(
+    pack_arg: str | Sequence[str] | None = None,
+    instrument_arg: str | Sequence[str] | None = None,
+) -> list[str]:
+    """
+    Parses pack and instrument arguments into a list of valid tone pack IDs.
+
+    When all packs are selected (either pack_arg is 'all' or pack_arg is None and
+    instrument_arg is None or 'all'), returns only the tone packs that actually
+    exist in config/packs/ (TONE_PACKS).
+
+    Supports:
+      - 'all' -> all configured tone packs in TONE_PACKS
+      - Comma-separated list: '34in_standard_p,34in_standard_jazz'
+      - Single pack ID or alias: '34in_active_stingray', 'stingray', '30in'
+      - Explicit instrument argument if pack_arg is None and instrument_arg is not 'all'
+    """
+    all_available: list[str] = [str(pid) for pid in sorted(TONE_PACKS.keys())]
+
+    # Check if pack_arg was explicitly provided
+    if pack_arg is not None:
+        if isinstance(pack_arg, str):
+            raw_tokens = [t.strip() for t in pack_arg.split(",") if t.strip()]
+        else:
+            raw_tokens = [str(t).strip() for t in pack_arg if str(t).strip()]
+
+        if raw_tokens:
+            if any(t.lower() == "all" for t in raw_tokens):
+                return all_available
+
+            resolved: list[str] = []
+            for token in raw_tokens:
+                # 0. Check if token is a direct path to a pack directory or file
+                if Path(token).is_dir() or Path(token).is_file():
+                    if token not in resolved:
+                        resolved.append(token)
+                    continue
+
+                # 1. Exact match in TONE_PACKS
+                if token in TONE_PACKS:
+                    if token not in resolved:
+                        resolved.append(token)
+                    continue
+
+                # 2. Check alias or instrument ID
+                matched_id: str | None = None
+                if token in INSTRUMENT_ALIASES:
+                    target_inst = INSTRUMENT_ALIASES[token]
+                    if target_inst in TONE_PACKS:
+                        matched_id = target_inst
+                else:
+                    try:
+                        cfg = load_instrument(token)
+                        if cfg.id in TONE_PACKS:
+                            matched_id = cfg.id
+                    except (FileNotFoundError, KeyError):
+                        pass
+
+                if matched_id is not None:
+                    if matched_id not in resolved:
+                        resolved.append(matched_id)
+                    continue
+
+                # 3. If it's a known instrument but has no pack, raise diagnostic FileNotFoundError
+                try:
+                    cfg = load_instrument(token)
+                    pack_path = PACKS_CONFIG_DIR / f"{cfg.id}.toml"
+                    raise FileNotFoundError(
+                        f"Tone pack configuration not found for instrument '{cfg.id}'. "
+                        f"Expected explicit pack configuration at '{pack_path}'. "
+                        f"All tone packs must be explicitly defined in config/packs/."
+                    )
+                except (FileNotFoundError, KeyError) as e:
+                    if "Tone pack configuration not found" in str(e):
+                        raise
+                    # 4. Unknown pack identifier: suggest close matches
+                    close = difflib.get_close_matches(token, all_available, n=3, cutoff=0.4)
+                    hint = f" Did you mean: {', '.join(close)}?" if close else ""
+                    raise FileNotFoundError(
+                        f"Unknown tone pack identifier '{token}'.{hint}\n"
+                        f"Available tone packs ({len(all_available)}): {', '.join(all_available)}"
+                    )
+            return resolved
+
+    # pack_arg was not provided (is None or empty)
+    # Check if all packs / all instruments are selected
+    if (
+        not instrument_arg
+        or not str(instrument_arg).strip()
+        or str(instrument_arg).strip().lower() == "all"
+    ):
+        return all_available
+
+    # A specific instrument (or list of instruments) was requested
+    inst_tokens = resolve_instruments(instrument_arg)
+    return inst_tokens
 
 
 def get_default_input_path(audio_dir: Path | str | None = None) -> Path:
