@@ -5,399 +5,48 @@ vectorized NumPy SIMD operations, Cole-Davidson dielectric relaxation,
 Jordan after-effect permeability dispersion, and Wiener-regularized deconvolution.
 """
 
-import functools
 import math
 from collections.abc import Mapping, Sequence
-from typing import overload
 
 import numpy as np
 
+from allomorph.circuit.mna import (
+    DisjointSet,
+    _CoilBranch,
+    _get_cached_s_ratio_power,
+    compute_active_preamp_biquads,
+    compute_active_preamp_eq,
+    compute_active_preamp_transfer,
+    compute_core_impedance,
+    compute_core_impedance_jacobians,
+    evaluate_analog_band,
+    smooth_soft_knee_db,
+    solve_mna_linear_system,
+)
 from allomorph.circuit.parser import MAGNET_PROPERTIES, eval_pot_taper
-
-
-@functools.lru_cache(maxsize=16)
-def _get_cached_s_ratio_power(alpha: float, n_points: int) -> np.ndarray:
-    """Caches normalized s_ratio ** alpha vectors for standard frequency grids."""
-    freqs_arr = np.linspace(0.0, 24000.0, n_points)
-    w = 2.0 * np.pi * freqs_arr
-    w0 = 2.0 * np.pi * 1000.0
-    s_ratio = np.where(w > 0.0, w / w0, 0.0)
-    return s_ratio**alpha
-
-
 from allomorph.config.schema import (
     CoilConfig,
     HarnessConfig,
     InstrumentConfig,
-    PreampBandConfig,
     PreampConfig,
     VoicingConfig,
 )
 from allomorph.dsp import FREQS
 
-
-def compute_core_impedance(
-    s: complex | np.ndarray,
-    L: float,
-    L_core: float = 0.0,
-    R_core: float = 0.0,
-    chi_mu: float = 0.0,
-    omega_mu: float = 2.0 * math.pi * 1200.0,
-    k_skin: float = 0.0,
-    omega_skin: float = 2.0 * math.pi * 3200.0,
-    Rdc: float = 8000.0,
-) -> complex | np.ndarray:
-    """
-    Computes Foster 2-stage ladder impedance of the coil inductor with
-    Jordan after-effect complex magnetic permeability dispersion and
-    solid pole eddy skin-effect dispersion:
-    mu_rel(s) = 1.0 - chi_mu * ln(1.0 + s / omega_mu)
-    Z_L(s) = mu_rel(s) * [s * L_inf + (s * L_core * R_core) / (s * L_core + R_core)] + Z_skin(s)
-    where Z_skin(s) = Rdc * k_skin * (sqrt(1.0 + s / omega_skin) - 1.0)
-    where L_inf = max(L - L_core, 0.0).
-    Captures high-frequency magnetic flux expulsion from conductive pole pieces (skin effect),
-    complex permeability dispersion, and eddy damping losses.
-    """
-    if chi_mu > 0.0:
-        mu_rel = 1.0 - chi_mu * np.log(1.0 + s / omega_mu)
-    else:
-        mu_rel = 1.0
-
-    if k_skin > 0.0 and omega_skin > 0.0:
-        R_skin = Rdc * k_skin
-        Z_skin = R_skin * (np.sqrt(1.0 + s / omega_skin) - 1.0)
-    else:
-        Z_skin = 0.0
-
-    if L_core <= 0.0 or R_core <= 0.0:
-        return s * L * mu_rel + Z_skin
-    L_inf = max(L - L_core, 0.0)
-    num = s * L_core * R_core
-    den = s * L_core + R_core
-    return (s * L_inf + (num / den)) * mu_rel + Z_skin
-
-
-def compute_core_impedance_jacobians(
-    s: complex | np.ndarray,
-    L: float,
-    L_core: float = 0.0,
-    R_core: float = 0.0,
-    chi_mu: float = 0.0,
-    omega_mu: float = 2.0 * math.pi * 1200.0,
-    k_skin: float = 0.0,
-    omega_skin: float = 2.0 * math.pi * 3200.0,
-    Rdc: float = 8000.0,
-) -> dict[str, complex | np.ndarray]:
-    """
-    Computes exact closed-form partial derivatives (Jacobians) of Z_L(s) with respect
-    to physical parameters (L, chi_mu, k_skin). Provides instantaneous sensitivity
-    gradients for SPICE netlist parameter estimation without finite-difference noise.
-    """
-    if chi_mu > 0.0:
-        mu_rel = 1.0 - chi_mu * np.log(1.0 + s / omega_mu)
-        if L_core <= 0.0 or R_core <= 0.0:
-            z_ind = s * L
-        else:
-            z_ind = s * max(L - L_core, 0.0) + (s * L_core * R_core) / (s * L_core + R_core)
-        dZ_dchi_mu = -np.log(1.0 + s / omega_mu) * z_ind
-    else:
-        mu_rel = 1.0
-        dZ_dchi_mu = 0.0
-
-    dZ_dL = s * mu_rel
-
-    if k_skin > 0.0 and omega_skin > 0.0:
-        dZ_dk_skin = Rdc * (np.sqrt(1.0 + s / omega_skin) - 1.0)
-    else:
-        dZ_dk_skin = 0.0
-
-    return {"dZ_dL": dZ_dL, "dZ_dchi_mu": dZ_dchi_mu, "dZ_dk_skin": dZ_dk_skin}
-
-
-def evaluate_analog_band(band: PreampBandConfig, s: complex | np.ndarray) -> complex | np.ndarray:
-    """Evaluates continuous s-domain analog transfer function for a single EQ band."""
-    b_type = band.type
-    g_db = band.gain_db
-    if abs(g_db) < 1e-4 and b_type in ("low_shelf", "high_shelf", "bell"):
-        return 1.0 if isinstance(s, complex) else np.ones_like(s, dtype=np.complex128)
-
-    f0 = band.freq_hz
-    w0 = 2.0 * math.pi * f0
-    g = 10.0 ** (g_db / 20.0)
-
-    if b_type == "low_shelf":
-        return (s + g * w0) / (s + w0)
-    elif b_type == "high_shelf":
-        return (g * s + w0) / (s + w0)
-    elif b_type == "bell":
-        q = float(band.q) if band.q is not None else 1.0
-        num = s**2 + (w0 / q) * g * s + w0**2
-        den = s**2 + (w0 / q) * s + w0**2
-        return num / den
-    elif b_type == "low_pass":
-        if band.q is not None and band.q > 0.0:
-            q = float(band.q)
-            return (w0**2) / (s**2 + (w0 / q) * s + w0**2)
-        return w0 / (s + w0)
-    elif b_type == "high_pass":
-        if band.q is not None and band.q > 0.0:
-            q = float(band.q)
-            return (s**2) / (s**2 + (w0 / q) * s + w0**2)
-        return s / (s + w0)
-    return np.ones_like(s, dtype=np.complex128)
-
-
-def compute_active_preamp_biquads(
-    bands: Sequence[PreampBandConfig] | None,
-    gain_db: float = 0.0,
-    fs: float = 48000.0,
-) -> list[tuple[float, float, float, float, float, float]]:
-    """
-    Computes Direct-Form II Transposed biquad coefficients [b0, b1, b2, a0, a1, a2]
-    for analog preamp EQ bands via the bilinear transform with frequency pre-warping:
-      omega_a = 2 * fs * tan(omega_d / 2)
-    Accelerates live DAW / pedalboard plugin hosts to < 10 ns execution without FIR latency.
-    Ground-truth audio generation for NAM training stems strictly preserves full-length FIRs.
-    """
-    biquads: list[tuple[float, float, float, float, float, float]] = []
-    k_bilinear = 2.0 * fs
-
-    for band in bands or []:
-        g_db = band.gain_db
-        b_type = band.type
-        if abs(g_db) < 1e-4 and b_type in ("low_shelf", "high_shelf", "bell"):
-            continue
-
-        f0 = band.freq_hz
-        omega_d = 2.0 * math.pi * f0 / fs
-        omega_a = 2.0 * fs * math.tan(omega_d / 2.0)
-        g = 10.0 ** (g_db / 20.0)
-
-        if b_type == "low_shelf":
-            a0 = k_bilinear + omega_a
-            b0 = (k_bilinear + g * omega_a) / a0
-            b1 = (g * omega_a - k_bilinear) / a0
-            b2 = 0.0
-            a1 = (omega_a - k_bilinear) / a0
-            a2 = 0.0
-            biquads.append((b0, b1, b2, 1.0, a1, a2))
-        elif b_type == "high_shelf":
-            a0 = k_bilinear + omega_a
-            b0 = (g * k_bilinear + omega_a) / a0
-            b1 = (omega_a - g * k_bilinear) / a0
-            b2 = 0.0
-            a1 = (omega_a - k_bilinear) / a0
-            a2 = 0.0
-            biquads.append((b0, b1, b2, 1.0, a1, a2))
-        elif b_type == "bell":
-            q = float(band.q) if band.q is not None else 1.0
-            k2 = k_bilinear * k_bilinear
-            w2 = omega_a * omega_a
-            kw_q = (k_bilinear * omega_a) / q
-            a0 = k2 + kw_q + w2
-            b0 = (k2 + g * kw_q + w2) / a0
-            b1 = (2.0 * (w2 - k2)) / a0
-            b2 = (k2 - g * kw_q + w2) / a0
-            a1 = (2.0 * (w2 - k2)) / a0
-            a2 = (k2 - kw_q + w2) / a0
-            biquads.append((b0, b1, b2, 1.0, a1, a2))
-        elif b_type == "low_pass":
-            if band.q is not None and band.q > 0.0:
-                q = float(band.q)
-                k2 = k_bilinear * k_bilinear
-                w2 = omega_a * omega_a
-                kw_q = (k_bilinear * omega_a) / q
-                a0 = k2 + kw_q + w2
-                b0 = w2 / a0
-                b1 = (2.0 * w2) / a0
-                b2 = w2 / a0
-                a1 = (2.0 * (w2 - k2)) / a0
-                a2 = (k2 - kw_q + w2) / a0
-                biquads.append((b0, b1, b2, 1.0, a1, a2))
-            else:
-                a0 = k_bilinear + omega_a
-                b0 = omega_a / a0
-                b1 = omega_a / a0
-                b2 = 0.0
-                a1 = (omega_a - k_bilinear) / a0
-                a2 = 0.0
-                biquads.append((b0, b1, b2, 1.0, a1, a2))
-        elif b_type == "high_pass":
-            if band.q is not None and band.q > 0.0:
-                q = float(band.q)
-                k2 = k_bilinear * k_bilinear
-                w2 = omega_a * omega_a
-                kw_q = (k_bilinear * omega_a) / q
-                a0 = k2 + kw_q + w2
-                b0 = k2 / a0
-                b1 = (-2.0 * k2) / a0
-                b2 = k2 / a0
-                a1 = (2.0 * (w2 - k2)) / a0
-                a2 = (k2 - kw_q + w2) / a0
-                biquads.append((b0, b1, b2, 1.0, a1, a2))
-            else:
-                a0 = k_bilinear + omega_a
-                b0 = k_bilinear / a0
-                b1 = -k_bilinear / a0
-                b2 = 0.0
-                a1 = (omega_a - k_bilinear) / a0
-                a2 = 0.0
-                biquads.append((b0, b1, b2, 1.0, a1, a2))
-
-    return biquads
-
-
-def compute_active_preamp_transfer(
-    bands: Sequence[PreampBandConfig] | None, s: complex | np.ndarray, gain_db: float = 0.0
-) -> np.ndarray:
-    """Evaluates the composite analog active preamp contour across frequencies with finite DC transmission."""
-    h_total = np.ones_like(s, dtype=np.complex128) * (10.0 ** (gain_db / 20.0))
-    if not bands:
-        return h_total
-    for band in bands:
-        h_total = h_total * evaluate_analog_band(band, s)
-    return h_total
-
-
-def compute_active_preamp_eq(
-    preamp_spec: str | PreampConfig | Sequence[PreampBandConfig],
-    s: complex | np.ndarray,
-    preamps: Mapping[str, PreampConfig] | None = None,
-) -> np.ndarray:
-    """Evaluates analog active preamp contour transfer function.
-
-    Accepts:
-      - str (preset name): looks up in preamps mapping
-      - PreampConfig: evaluates preamp model
-      - Sequence[PreampBandConfig]: evaluates sequence of band configs
-    """
-    if isinstance(preamp_spec, str):
-        if preamps is None or preamp_spec not in preamps:
-            raise KeyError(f"Preamp '{preamp_spec}' required but not provided in preamps mapping.")
-        preset = preamps[preamp_spec]
-        return compute_active_preamp_transfer(preset.bands, s, gain_db=float(preset.gain_db))
-    elif isinstance(preamp_spec, PreampConfig):
-        return compute_active_preamp_transfer(
-            preamp_spec.bands, s, gain_db=float(preamp_spec.gain_db)
-        )
-    elif isinstance(preamp_spec, (list, tuple)):
-        return compute_active_preamp_transfer(preamp_spec, s)
-    return np.ones_like(s, dtype=np.complex128)
-
-
-@overload
-def smooth_soft_knee_db(
-    x_db: float,
-    thresh: float = ...,
-    ceiling: float = ...,
-    alpha: float = ...,
-) -> float: ...
-
-
-@overload
-def smooth_soft_knee_db(
-    x_db: np.ndarray,
-    thresh: float = ...,
-    ceiling: float = ...,
-    alpha: float = ...,
-) -> np.ndarray: ...
-
-
-def smooth_soft_knee_db(
-    x_db: float | np.ndarray,
-    thresh: float = 6.0,
-    ceiling: float = 8.0,
-    alpha: float = 2.0,
-) -> float | np.ndarray:
-    """
-    Applies a strictly C^inf infinitely differentiable thresholded soft-knee saturation
-    to gain in decibels without piecewise conditionals or slope kinks:
-        excess = (1 / alpha) * ln(1 + e^(alpha * (x - thresh)))
-        sat_excess = w * tanh(excess / w)
-        y = x - excess + sat_excess
-    where w = max(ceiling - thresh, 1e-6).
-
-    Properties:
-    - Strictly C^inf smooth everywhere on R (zero piecewise conditionals or boundary cusps).
-    - As x << thresh: excess -> 0, sat_excess -> excess, y -> x (100% linear passband transparency).
-    - At x = thresh: y ≈ thresh.
-    - As x >> thresh: excess -> x - thresh, sat_excess -> w, y -> thresh + w = ceiling.
-    - Strictly monotonic: dy/dx = 1 - sigma(alpha*(x-thresh)) * tanh^2(excess/w) > 0 everywhere.
-    """
-    w = max(ceiling - thresh, 1e-6)
-    excess = np.logaddexp(0.0, alpha * (x_db - thresh)) / alpha
-    res = x_db - excess + w * np.tanh(excess / w)
-    if isinstance(x_db, (float, int)):
-        return float(res)
-    return res
-
-
-# ==============================================================================
-# VECTORIZED MODIFIED NODAL ANALYSIS (MNA) ENGINE
-# ==============================================================================
-
-
-class DisjointSet:
-    """Disjoint-set (Union-Find) with path compression for circuit net grouping."""
-
-    def __init__(self) -> None:
-        self.parent: dict[str, str] = {}
-
-    def find(self, x: str) -> str:
-        if x not in self.parent:
-            self.parent[x] = x
-            return x
-        if self.parent[x] != x:
-            self.parent[x] = self.find(self.parent[x])
-        return self.parent[x]
-
-    def union(self, x: str, y: str) -> None:
-        rx = self.find(x)
-        ry = self.find(y)
-        if rx != ry:
-            gnd_set = {"GND", "gnd", "0", "preamp.gnd"}
-            if ry in gnd_set:
-                self.parent[rx] = ry
-            elif rx in gnd_set:
-                self.parent[ry] = rx
-            elif ry in {"out", "preamp.in", "preamp.out"}:
-                self.parent[rx] = ry
-            elif rx in {"out", "preamp.in", "preamp.out"}:
-                self.parent[ry] = rx
-            else:
-                self.parent[rx] = ry
-
-
-class _CoilBranch:
-    """Internal helper representing a coil's branch admittance and terminal nodes."""
-
-    def __init__(
-        self,
-        pickup_id: str,
-        coil_id: str,
-        alias_key: str | None,
-        t_hot: str,
-        t_cold: str,
-        L: float,
-        Rdc: float,
-        Ccoil: float,
-        Z_br: np.ndarray,
-        Y_br: np.ndarray,
-    ) -> None:
-        self.pickup_id = pickup_id
-        self.coil_id = coil_id
-        self.alias_key = alias_key
-        self.t_hot = t_hot
-        self.t_cold = t_cold
-        self.L = L
-        self.Rdc = Rdc
-        self.Ccoil = Ccoil
-        self.Z_br = Z_br
-        self.Y_br = Y_br
-        self.h_internal: np.ndarray | None = None
-        self.y_self: np.ndarray | None = None
-        self.y_mutual: np.ndarray | float = 0.0
-        self.coupled_key: str | None = None
+__all__ = [
+    "DisjointSet",
+    "_CoilBranch",
+    "_get_cached_s_ratio_power",
+    "compute_active_preamp_biquads",
+    "compute_active_preamp_eq",
+    "compute_active_preamp_transfer",
+    "compute_core_impedance",
+    "compute_core_impedance_jacobians",
+    "evaluate_analog_band",
+    "smooth_soft_knee_db",
+    "solve_mna_harness",
+    "solve_mna_linear_system",
+]
 
 
 def solve_mna_harness(
@@ -870,33 +519,7 @@ def solve_mna_harness(
                     I_vec[:, ic_c] += y_m
 
         # Solve system across all frequencies simultaneously
-        if n_nodes == 1:
-            V_sol = (I_vec[:, 0] / Y[:, 0, 0])[:, np.newaxis]
-        elif n_nodes == 2:
-            det = Y[:, 0, 0] * Y[:, 1, 1] - Y[:, 0, 1] * Y[:, 1, 0]
-            v0 = (Y[:, 1, 1] * I_vec[:, 0] - Y[:, 0, 1] * I_vec[:, 1]) / det
-            v1 = (-Y[:, 1, 0] * I_vec[:, 0] + Y[:, 0, 0] * I_vec[:, 1]) / det
-            V_sol = np.stack([v0, v1], axis=-1)
-        elif n_nodes == 3:
-            c00 = Y[:, 1, 1] * Y[:, 2, 2] - Y[:, 1, 2] * Y[:, 2, 1]
-            c01 = -(Y[:, 1, 0] * Y[:, 2, 2] - Y[:, 1, 2] * Y[:, 2, 0])
-            c02 = Y[:, 1, 0] * Y[:, 2, 1] - Y[:, 1, 1] * Y[:, 2, 0]
-            det = Y[:, 0, 0] * c00 + Y[:, 0, 1] * c01 + Y[:, 0, 2] * c02
-
-            c10 = -(Y[:, 0, 1] * Y[:, 2, 2] - Y[:, 0, 2] * Y[:, 2, 1])
-            c11 = Y[:, 0, 0] * Y[:, 2, 2] - Y[:, 0, 2] * Y[:, 2, 0]
-            c12 = -(Y[:, 0, 0] * Y[:, 2, 1] - Y[:, 0, 1] * Y[:, 2, 0])
-
-            c20 = Y[:, 0, 1] * Y[:, 1, 2] - Y[:, 0, 2] * Y[:, 1, 1]
-            c21 = -(Y[:, 0, 0] * Y[:, 1, 2] - Y[:, 0, 2] * Y[:, 1, 0])
-            c22 = Y[:, 0, 0] * Y[:, 1, 1] - Y[:, 0, 1] * Y[:, 1, 0]
-
-            v0 = (c00 * I_vec[:, 0] + c10 * I_vec[:, 1] + c20 * I_vec[:, 2]) / det
-            v1 = (c01 * I_vec[:, 0] + c11 * I_vec[:, 1] + c21 * I_vec[:, 2]) / det
-            v2 = (c02 * I_vec[:, 0] + c12 * I_vec[:, 1] + c22 * I_vec[:, 2]) / det
-            V_sol = np.stack([v0, v1, v2], axis=-1)
-        else:
-            V_sol = np.linalg.solve(Y, I_vec[:, :, np.newaxis])[:, :, 0]
+        V_sol = solve_mna_linear_system(Y, I_vec)
 
         if target_idx >= 0:
             H_coil = V_sol[:, target_idx]
