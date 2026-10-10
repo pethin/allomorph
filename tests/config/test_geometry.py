@@ -19,7 +19,7 @@ from allomorph.config.schema import VoiceCoilConfig, VoiceConfig
 
 def test_resolve_pickup_coils():
     # 1. 30" MMTW (physical mmtwx dual-coil transducer)
-    inst_30 = load_instrument("30in")
+    inst_30 = load_instrument("30in_emg_mmtw")
     coils_30 = resolve_pickup_coils(inst_30.pickups["mmtwx"], inst_30)
     assert len(coils_30) == 2
     assert all("all" in c.strings for c in coils_30)

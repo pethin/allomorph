@@ -184,7 +184,7 @@ def resolve_instruments(instrument_arg: str | Sequence[str] | None) -> list[str]
             iid = cfg.id
             if iid not in resolved:
                 resolved.append(iid)
-        except FileNotFoundError, KeyError:
+        except (FileNotFoundError, KeyError):
             matches = [iid for iid in all_playable if iid.startswith(token) or token in iid]
             if matches:
                 for m in matches:

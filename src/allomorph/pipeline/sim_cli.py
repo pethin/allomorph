@@ -4,6 +4,7 @@ Provides the allomorph-sim CLI entrypoint for simulating digital twin instrument
 """
 
 import argparse
+from collections.abc import Sequence
 from pathlib import Path
 
 import numpy as np
@@ -16,7 +17,8 @@ from allomorph.config.strings import STRINGS
 from allomorph.naming import resolve_instruments, resolve_voices
 
 
-def main(argv: list[str] | None = None) -> None:
+def build_sim_arg_parser() -> argparse.ArgumentParser:
+    """Builds and configures the ArgumentParser for the native analog simulator CLI."""
     parser = argparse.ArgumentParser(
         description="Allomorph Native Virtual Analog Circuit Simulator."
     )
@@ -240,7 +242,35 @@ def main(argv: list[str] | None = None) -> None:
         action="store_true",
         help="Disable generating sidecar manifest.json",
     )
+    return parser
+
+
+def parse_and_validate_sim_args(
+    argv: Sequence[str] | None = None,
+) -> argparse.Namespace:
+    """Parses and validates simulation command-line arguments.
+
+    Raises:
+        ValueError: If numeric arguments (--jobs, --max-samples) are invalid.
+    """
+    parser = build_sim_arg_parser()
     args = parser.parse_args(argv)
+
+    if args.jobs is not None and args.jobs < 1:
+        raise ValueError("--jobs must be a positive integer >= 1")
+
+    if args.max_samples is not None and args.max_samples < 1:
+        raise ValueError("--max-samples must be a positive integer >= 1")
+
+    return args
+
+
+def main(argv: Sequence[str] | None = None) -> None:
+    try:
+        args = parse_and_validate_sim_args(argv)
+    except ValueError as e:
+        print(f"Error: {e}")
+        return
 
     if args.sweep:
         from allomorph.circuit.sweeps import compute_parametric_sweep
@@ -324,3 +354,10 @@ def main(argv: list[str] | None = None) -> None:
 
 if __name__ == "__main__":
     main()
+
+
+__all__ = [
+    "build_sim_arg_parser",
+    "main",
+    "parse_and_validate_sim_args",
+]

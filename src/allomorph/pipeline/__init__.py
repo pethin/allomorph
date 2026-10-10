@@ -15,9 +15,12 @@ from allomorph.pipeline.bundle import (
     resolve_bundle_target_file_descriptors,
 )
 from allomorph.pipeline.cli import (
+    build_pipeline_arg_parser,
     list_instruments,
     list_voices,
     main,
+    parse_and_validate_pipeline_args,
+    resolve_execution_targets,
 )
 from allomorph.pipeline.manifest import (
     assemble_manifest_document,
@@ -30,6 +33,10 @@ from allomorph.pipeline.manifest import (
 from allomorph.pipeline.pack import (
     export_tone_pack,
     train_tone_pack,
+)
+from allomorph.pipeline.sim_cli import (
+    build_sim_arg_parser,
+    parse_and_validate_sim_args,
 )
 from allomorph.pipeline.stages import (
     run_circuit_simulation,
@@ -60,6 +67,8 @@ __all__ = [
     "build_bundle_manifest_entry",
     "build_dict_manifest_entry",
     "build_file_manifest_entry",
+    "build_pipeline_arg_parser",
+    "build_sim_arg_parser",
     "build_storefront_instrument_setup",
     "build_storefront_legal_disclaimer",
     "build_storefront_overview",
@@ -72,8 +81,11 @@ __all__ = [
     "list_instruments",
     "list_voices",
     "main",
+    "parse_and_validate_pipeline_args",
+    "parse_and_validate_sim_args",
     "read_existing_manifest",
     "resolve_bundle_target_file_descriptors",
+    "resolve_execution_targets",
     "run_circuit_simulation",
     "run_spice_batch",
     "run_training",

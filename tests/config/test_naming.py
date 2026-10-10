@@ -128,7 +128,7 @@ def test_resolve_instruments_partial_match():
 def test_resolve_instruments_comma_and_alias():
     """Verify comma-separated aliases resolve to canonical IDs."""
     insts = resolve_instruments("30in,34in")
-    assert "30in_emg_mmtw" in insts
+    assert "30in_mustang_pj" in insts
     assert "34in_standard_p" in insts
 
 

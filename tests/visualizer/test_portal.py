@@ -42,7 +42,7 @@ def test_format_instrument_meta():
     meta_30 = format_instrument_meta(inst_30)
 
     assert isinstance(meta_30, PortalInstrumentMeta)
-    assert meta_30.id == "30in_emg_mmtw"
+    assert meta_30.id == "30in_mustang_pj"
     assert meta_30.scale_in == 30.0
     assert meta_30.scale_m == round(30.0 * 0.0254, 4)
     assert "m/s" in meta_30.speeds_str

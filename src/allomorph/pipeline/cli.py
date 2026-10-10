@@ -63,8 +63,10 @@ def list_voices():
             )
 
 
-def main(argv: Sequence[str] | None = None):
-    """Main CLI entrypoint for Allomorph pipeline automation."""
+def build_pipeline_arg_parser() -> argparse.ArgumentParser:
+    """Builds and configures the ArgumentParser for the Allomorph automation pipeline."""
+    from allomorph.trainer import add_trainer_arguments
+
     parser = argparse.ArgumentParser(description="Allomorph SPICE -> NAM Automation Pipeline")
     parser.add_argument(
         "--instrument",
@@ -144,8 +146,6 @@ def main(argv: Sequence[str] | None = None):
         action="store_true",
         help="Force recompilation of cached dry and wet audio stems even if they already exist",
     )
-    from allomorph.trainer import add_trainer_arguments
-
     add_trainer_arguments(parser)
     parser.add_argument(
         "--list-instruments",
@@ -157,9 +157,28 @@ def main(argv: Sequence[str] | None = None):
         action="store_true",
         help="List all target pickup voices and their SPICE netlists",
     )
+    return parser
+
+
+def parse_and_validate_pipeline_args(
+    argv: Sequence[str] | None = None,
+) -> tuple[argparse.Namespace, PipelineCliConfig]:
+    """Parses command-line arguments and validates pipeline configuration schema.
+
+    Raises:
+        ValueError: If numeric arguments (--jobs, --max-samples) are invalid.
+        pydantic.ValidationError: If configuration options fail schema validation.
+    """
+    parser = build_pipeline_arg_parser()
     args = parser.parse_args(argv)
 
-    PipelineCliConfig.model_validate(
+    if args.jobs is not None and args.jobs < 1:
+        raise ValueError("--jobs must be a positive integer >= 1")
+
+    if args.max_samples is not None and args.max_samples < 1:
+        raise ValueError("--max-samples must be a positive integer >= 1")
+
+    config = PipelineCliConfig.model_validate(
         {
             "instrument": args.instrument or "all",
             "pack": args.pack,
@@ -168,14 +187,39 @@ def main(argv: Sequence[str] | None = None):
             "train": args.train,
             "normalize": args.normalize,
             "target_dbfs": args.target_dbfs,
-            "input_wav": args.input_wav,
-            "version_tag": args.version_tag,
-            "no_manifest": args.no_manifest,
+            "input_wav": getattr(args, "input_wav", None) or getattr(args, "input", None),
+            "version_tag": getattr(args, "version_tag", "auto"),
+            "no_manifest": getattr(args, "no_manifest", False),
             "clean_audio": args.clean_audio,
             "force": args.force,
             "overwrite": args.overwrite,
+            "jobs": args.jobs,
+            "max_samples": args.max_samples,
         }
     )
+
+    return args, config
+
+
+def resolve_execution_targets(
+    config: PipelineCliConfig,
+) -> tuple[list[str], list[str], int]:
+    """Resolves target instruments, target voices, and effective worker processes from config."""
+    import os
+
+    instruments_to_run = resolve_instruments(config.instrument or "all")
+    voices_to_run = resolve_voices(config.voice or "all")
+    effective_jobs = config.jobs if config.jobs is not None else min(4, os.cpu_count() or 1)
+    return instruments_to_run, voices_to_run, effective_jobs
+
+
+def main(argv: Sequence[str] | None = None) -> None:
+    """Main CLI entrypoint for Allomorph pipeline automation."""
+    try:
+        args, config = parse_and_validate_pipeline_args(argv)
+    except ValueError as e:
+        print(f"Error: {e}", file=sys.stderr)
+        sys.exit(2)
 
     if args.list_instruments:
         list_instruments()
@@ -185,25 +229,13 @@ def main(argv: Sequence[str] | None = None):
         list_voices()
         return
 
-    if args.jobs is not None and args.jobs < 1:
-        parser.error("--jobs must be a positive integer >= 1")
-
-    if args.max_samples is not None and args.max_samples < 1:
-        parser.error("--max-samples must be a positive integer >= 1")
-
-    import os
-
-    effective_jobs = args.jobs if args.jobs is not None else min(4, os.cpu_count() or 1)
-
-    instruments_to_run = resolve_instruments(args.instrument or "all")
-    voices_to_run = resolve_voices(args.voice or "all")
-
-    samples_str = str(args.max_samples) if args.max_samples is not None else "full"
+    instruments_to_run, voices_to_run, effective_jobs = resolve_execution_targets(config)
+    samples_str = str(config.max_samples) if config.max_samples is not None else "full"
 
     print("========================================")
     print("  ALLOMORPH SPICE -> NAM PIPELINE")
     print(f"  Instruments ({len(instruments_to_run)}): {', '.join(instruments_to_run)}")
-    print(f"  Stage:       {args.stage}")
+    print(f"  Stage:       {config.stage}")
     print(f"  Max Samples: {samples_str}")
     print(f"  Voices ({len(voices_to_run)}): {', '.join(voices_to_run)}")
     print("========================================")
@@ -409,3 +441,13 @@ def main(argv: Sequence[str] | None = None):
             run_visualization(instrument="all")
         print("\n[Pipeline Complete: Direct Voicings + Tone Packs + Interactive Portal Ready]")
         return
+
+
+__all__ = [
+    "build_pipeline_arg_parser",
+    "list_instruments",
+    "list_voices",
+    "main",
+    "parse_and_validate_pipeline_args",
+    "resolve_execution_targets",
+]

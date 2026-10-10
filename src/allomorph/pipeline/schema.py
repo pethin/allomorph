@@ -54,6 +54,8 @@ class PipelineCliConfig(AllomorphBaseModel):
     clean_audio: bool = False
     force: bool = False
     overwrite: bool = False
+    jobs: int | None = None
+    max_samples: int | None = None
 
 
 class Tone3000PackListing(AllomorphBaseModel):

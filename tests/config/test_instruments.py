@@ -24,7 +24,7 @@ def test_is_identity_voicing_tone_cap_mismatch():
 
 def test_load_instrument_aliases():
     """Verify standard aliases resolve correctly to canonical instruments."""
-    aliases = ["30in", "32in", "34in", "dingwall", "upright", "rick", "eb0"]
+    aliases = ["30in", "34in", "mustang", "dingwall", "upright", "rick", "eb0"]
     for alias in aliases:
         cfg = load_instrument(alias)
         assert isinstance(cfg, InstrumentConfig)

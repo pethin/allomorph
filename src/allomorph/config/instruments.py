@@ -12,14 +12,7 @@ CONFIG_DIR = REPO_ROOT / "config"
 INSTRUMENTS_DIR = CONFIG_DIR / "instruments"
 
 INSTRUMENT_ALIASES: dict[str, str] = {
-    "30in": "30in_emg_mmtw",
-    "30in_mm": "30in_emg_mmtw",
-    "30in_mmtw": "30in_emg_mmtw",
-    "30in_emg_mm": "30in_emg_mmtw",
-    "30in_emg_mmtw": "30in_emg_mmtw",
-    "32in": "32in_custom_pmm",
-    "32in_fretless": "32in_fretless_pmm",
-    "fretless": "32in_fretless_pmm",
+    "30in": "30in_mustang_pj",
     "34in": "34in_standard_p",
     "standard_p": "34in_standard_p",
     "34in_standard_jazz": "34in_standard_jazz",
@@ -122,7 +115,7 @@ def load_instrument(
 ) -> InstrumentConfig:
     """
     Loads and validates an instrument configuration from a file path, known ID, shorthand alias, or InstrumentConfig.
-    Aliases: '30in' -> '30in_emg_mmtw', '32in' -> '32in_custom_pmm', '34in' -> '34in_standard_p'.
+    Aliases: '30in' -> '30in_mustang_pj', '34in' -> '34in_standard_p'.
     """
     if isinstance(identifier_or_path, InstrumentConfig):
         return identifier_or_path

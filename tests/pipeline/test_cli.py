@@ -162,7 +162,7 @@ def test_pipeline_cli_sim_stage(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr("allomorph.pipeline.batch.simulate_all_instrument_voicings", _mock_sim)
     main(argv=["--stage", "sim", "--instrument", "30in", "--max-samples", "2400"])
     assert len(sim_calls) == 1
-    assert sim_calls[0][0] == "30in_emg_mmtw"
+    assert sim_calls[0][0] == "30in_mustang_pj"
     assert sim_calls[0][1]["max_samples"] == 2400
 
 
