@@ -7,11 +7,7 @@
 #   - Standard Fender Split-Coil P: Centerline 125.0mm from bridge saddle
 #       - E/A half (forward towards neck): 139.0mm from bridge (292.8mm from 12th fret)
 #       - D/G half (rearward towards bridge): 111.0mm from bridge (320.8mm from 12th fret)
-#       - Aperture width: 0.45" (11.4mm) magnetic sensing aperture per coil half (over 3/16" Alnico V rods)
-# Electronics:
-#   - Passive high-impedance circuit: 250k volume pot, 250k tone pot, 47nF capacitor.
-#   - Output: High-impedance passive 1/4" jack direct to audio interface / Anagram Block 1.
-#   - Loaded electrical resonance: 2.80 kHz, Q = 1.40.
+#       - Aperture width: 0.45" (11.4mm) magnetic sensing aperture per coil half
 
 id = "34in_standard_p"
 name = "34\" Standard P-Bass"
@@ -23,12 +19,10 @@ version = 1
 # String wave speeds: v = 2 * L * f0 (for E1=41.2Hz, A1=55.0Hz, D2=73.4Hz, G2=98.0Hz)
 string_wave_speeds = [71.16, 95.00, 126.81, 169.27]
 
-default_pickup = "split_p"
 
 # ------------------------------------------------------------------------------
 # Physical Strings Configuration (Source Instrument Setup)
 # ------------------------------------------------------------------------------
-# Strung with standard nickel roundwounds (D'Addario EXL165 / Fender 7250M .045-.105).
 [strings]
 preset = "roundwound_nickel_standard"
 brand = "D'Addario"
@@ -39,90 +33,133 @@ wrap = "nickel_round"
 tension_lbs = 171.0
 
 # ------------------------------------------------------------------------------
-# 1. STANDARD FENDER SPLIT-COIL P
+# 1. HARDWARE TRANSDUCER (Physical Split-Coil P mounted in body)
 # ------------------------------------------------------------------------------
 [pickups.split_p]
 name = "Standard Split-Coil P"
 position_name = "Split"
-bundle_name = "split_p"
 position_from_bridge_m = 0.1250  # Centerline 125.0mm
 aperture_width_in = 0.45         # 0.45" magnetic sensing aperture per split half
 coil_spacing_in = 0.0
 type = "split_coil"
 magnet_type = "alnico_v"
-resonant_frequency_hz = 2800.0   # Standard Fender split-coil loaded resonance (2.8 kHz)
-q_factor = 1.40                  # Vintage Alnico V loaded Q factor
 coils = [
     # Strings 3 & 4 see forward coil half (warmer, deeper fundamental)
-    { strings = [3, 4], position_from_bridge_m = 0.1390, aperture_width_in = 0.45, weight = 1.0 },
+    { id = "forward", strings = [3, 4], position_from_bridge_m = 0.1390, aperture_width_in = 0.45, pole_type = "rod", L = 1.9, Rdc = 5250.0, Reddy = 90000.0, Ccoil = 3e-11, weight = 1.0 },
     # Strings 1 & 2 see rearward coil half (tighter, punchier mid bite)
-    { strings = [1, 2], position_from_bridge_m = 0.1110, aperture_width_in = 0.45, weight = 1.0 }
+    { id = "rearward", strings = [1, 2], position_from_bridge_m = 0.1110, aperture_width_in = 0.45, pole_type = "rod", L = 1.9, Rdc = 5250.0, Reddy = 90000.0, Ccoil = 3e-11, weight = 1.0 },
 ]
 
-[pickups.split_p.circuit]
-topology = "single"
-L = 3.8
-Rdc = 10500.0
-Reddy = 180000.0
-Ccoil = 6e-11
-Rtop = 10.0
-Rbot = 250000.0
-Rtone = 250000.0
-Ctone = 4.7e-08
+# ------------------------------------------------------------------------------
+# 2. CONTROL HARNESSES (Multi-Harness: Passive 1V/1T and Active 2-Band Preamp)
+# ------------------------------------------------------------------------------
+
+[harnesses.passive]
+name = "Standard P-Bass Passive 1V/1T"
+type = "passive"
+load_resistance = 1000000.0
+cable_pf = 750.0
+wiring = [
+    ["pickups.split_p.forward.cold", "pickups.split_p.rearward.hot"],
+    ["pickups.split_p.rearward.cold", "GND"],
+    ["pickups.split_p.forward.hot", "controls.vol.in"],
+    ["controls.vol.wiper", "out"],
+    ["controls.vol.gnd", "GND"],
+    ["controls.vol.in", "controls.tone.in"],
+    ["controls.tone.gnd", "GND"],
+]
+
+[harnesses.passive.controls.vol]
+name = "Master Volume"
+type = "pot"
+taper = "audio_15"
+resistance = 250000.0
+default = 1.0
+
+[harnesses.passive.controls.tone]
+name = "Master Tone"
+type = "pot"
+taper = "audio_15"
+resistance = 250000.0
+cap = 4.7e-8
+default = 1.0
+
+[harnesses.active]
+name = "Sadowsky 2-Band Active Preamp"
+type = "active_preamp"
+preamp = "sadowsky_2band"
+load_resistance = 1000000.0
+cable_pf = 30.0
+wiring = [
+    ["pickups.split_p.forward.cold", "pickups.split_p.rearward.hot"],
+    ["pickups.split_p.rearward.cold", "GND"],
+    ["pickups.split_p.forward.hot", "preamp.in"],
+    ["preamp.out", "controls.vol.in"],
+    ["controls.vol.wiper", "out"],
+    ["controls.vol.gnd", "GND"],
+]
+
+[harnesses.active.controls.vol]
+name = "Master Volume"
+type = "pot"
+taper = "audio_15"
+resistance = 25000.0
+default = 1.0
+
+[harnesses.active.controls.bass]
+name = "Bass Boost"
+type = "preamp_band"
+band = "bass"
+default = 0.5
+
+[harnesses.active.controls.treble]
+name = "Treble Boost"
+type = "preamp_band"
+band = "treble"
+default = 0.5
 
 # ------------------------------------------------------------------------------
-# 2. NATIVE INSTRUMENT VOICINGS
+# 3. NATIVE INSTRUMENT VOICINGS
 # ------------------------------------------------------------------------------
 
 [voicings.vintage_open]
 version = 1
 name = "Vintage 1962 Open"
 tone_name = "Precision Vintage"
-pickup = "split_p"
-affinity = "neck"
-vol_pos = 1.0
-tone_pos = 1.0
-tone_cap_f = 4.7e-08
+harness = "passive"
+controls = { vol = 1.0, tone = 1.0 }
 string_preset_override = "roundwound_nickel_standard"
 
 [voicings.vintage_mids]
 version = 1
 name = "Vintage 1962 Vocal Mids"
 tone_name = "Precision Mids"
-pickup = "split_p"
-affinity = "neck"
-vol_pos = 1.0
-tone_pos = 0.0
-tone_cap_f = 2.2e-08
+harness = "passive"
+controls = { vol = 1.0, tone = 0.0 }
+components = { "controls.tone.cap" = 2.2e-8 }
 string_preset_override = "roundwound_nickel_standard"
 
 [voicings.vintage_warm]
 version = 1
 name = "Vintage Motown Flatwound Warmth"
 tone_name = "Precision Warm"
-pickup = "split_p"
-affinity = "neck"
-vol_pos = 1.0
-tone_pos = 0.0
-tone_cap_f = 4.7e-08
+harness = "passive"
+controls = { vol = 1.0, tone = 0.0 }
+components = { "controls.tone.cap" = 4.7e-8 }
 string_preset_override = "flatwound_vintage_heavy"
 
 [voicings.slab_dub]
 version = 1
 name = "1951 Slab Sub-Bass Dub"
 tone_name = "Precision Dub"
-pickup = "split_p"
-affinity = "neck"
-vol_pos = 1.0
-tone_pos = 0.0
-tone_cap_f = 1.0e-07
+harness = "passive"
+controls = { vol = 1.0, tone = 0.0 }
+components = { "controls.tone.cap" = 1.0e-7 }
 string_preset_override = "flatwound_vintage_heavy"
 
-# ------------------------------------------------------------------------------
-# 3. PICKUP AFFINITY ROUTING
-# ------------------------------------------------------------------------------
-[pickup_mapping]
-neck = "split_p"
-bridge = "split_p"
-parallel = "split_p"
-direct = "split_p"
+[voicings.modern_active]
+version = 1
+name = "Modern Sadowsky Active P-Bass"
+tone_name = "Precision Active"
+harness = "active"
+controls = { vol = 1.0, bass = 0.5, treble = 0.5 }

@@ -4,7 +4,6 @@ Evaluates exact continuous electrical parameter sweeps across frequencies in < 4
 Supports tone pot, volume pot, cable capacitance, tone capacitor, and active EQ sweeps.
 """
 
-import copy
 from collections.abc import Sequence
 from pathlib import Path
 from typing import Self
@@ -13,13 +12,16 @@ import numpy as np
 import polars as pl
 from pydantic import BaseModel, ConfigDict, model_validator
 
-from allomorph.circuit.parser import CircuitModel, load_circuit
+from allomorph.circuit.forward import resolve_target_voicing
 from allomorph.circuit.schema import CircuitMetricsRecord
-from allomorph.circuit.solver import (
-    apply_magnet_properties_to_model,
-    compute_circuit_transfer_functions,
+from allomorph.circuit.solver import solve_mna_harness
+from allomorph.config.preamps import PREAMPS
+from allomorph.config.schema import (
+    InstrumentConfig,
+    PreampBandConfig,
+    VoiceConfig,
+    VoicingConfig,
 )
-from allomorph.config.schema import PreampBandConfig, VoiceConfig
 from allomorph.dsp import FREQS
 
 
@@ -312,7 +314,13 @@ def _generate_default_labels(param: str, values: list[float]) -> list[str]:
 
 
 def compute_parametric_sweep(
-    circuit_or_voice: CircuitModel | VoiceConfig | str | Path,
+    circuit_or_voice: (
+        str
+        | Path
+        | VoiceConfig
+        | InstrumentConfig
+        | tuple[InstrumentConfig, VoicingConfig]
+    ),
     param: str = "tone",
     values: Sequence[float] | np.ndarray | None = None,
     freqs: Sequence[float] | np.ndarray = FREQS,
@@ -321,19 +329,21 @@ def compute_parametric_sweep(
     pot_taper: str = "audio",
 ) -> ParametricSweepResult:
     """
-    Computes continuous frequency response curves across a swept electrical parameter.
+    Computes continuous frequency response curves across a swept electrical parameter
+    using the universal Modified Nodal Analysis (MNA) harness solver.
 
     Parameters:
-        circuit_or_voice: CircuitModel, VoiceConfig, or voice identifier string/path.
+        circuit_or_voice: Instrument/voicing identifier, VoiceConfig, InstrumentConfig,
+            or (InstrumentConfig, VoicingConfig) tuple.
         param: Circuit parameter to sweep:
-            - 'tone' / 'tone_pos': Pot wiper position (0.0 to 1.0).
-            - 'vol' / 'vol_pos': Pot wiper position (0.0 to 1.0).
+            - 'tone' / 'tone_pos': Tone pot wiper position (0.0 to 1.0).
+            - 'vol' / 'vol_pos': Volume pot wiper position (0.0 to 1.0).
             - 'blend' / 'blend_pos': Pickup blend balance (0.0 Neck to 1.0 Bridge, 0.5 center).
             - 'cable' / 'cable_pf': Cable capacitance in pF (or Farads if < 1e-6).
             - 'tone_cap' / 'Ctone': Tone capacitance in nF (or Farads if < 1e-6).
             - 'bass_boost' / 'preamp_bass': Active preamp bass shelf gain in dB.
             - 'treble_boost' / 'preamp_treble': Active preamp treble shelf gain in dB.
-            - Any direct numerical attribute on CircuitModel (e.g. 'L', 'Rdc', 'Reddy').
+            - Any specific control name on the instrument's harness (e.g. 'neck_vol', 'bridge_vol').
         values: Sequence of numerical parameter values. If None, uses smart defaults.
         freqs: Frequency vector in Hz (defaults to standard 4096-tap FREQS).
         labels: Optional custom string labels for each value.
@@ -343,26 +353,30 @@ def compute_parametric_sweep(
     Returns:
         ParametricSweepResult containing curves in dB, metadata, and Polars export.
     """
-    if isinstance(circuit_or_voice, CircuitModel):
-        model = circuit_or_voice
-        voice_id = None
+    if isinstance(circuit_or_voice, tuple) and len(circuit_or_voice) == 2:
+        inst, voicing = circuit_or_voice
+        voice_id = voicing.id or (voicing.tone_name if voicing.tone_name else None)
     elif isinstance(circuit_or_voice, VoiceConfig):
         voice_id = circuit_or_voice.id
-        model = load_circuit(circuit_or_voice)
-        apply_magnet_properties_to_model(model, circuit_or_voice)
+        inst, voicing = resolve_target_voicing(circuit_or_voice.id or circuit_or_voice.name)
+    elif isinstance(circuit_or_voice, InstrumentConfig):
+        inst = circuit_or_voice
+        voicing = next(iter(circuit_or_voice.voicings.values()))
+        voice_id = voicing.id
     elif isinstance(circuit_or_voice, (str, Path)):
-        voice_id = Path(circuit_or_voice).stem
-        model = load_circuit(circuit_or_voice)
-        try:
-            from allomorph.config.voices import VOICES
-
-            cfg = VOICES.get(str(circuit_or_voice)) or VOICES.get(voice_id)
-            if cfg:
-                apply_magnet_properties_to_model(model, cfg)
-        except KeyError, ImportError, AttributeError, ValueError:
-            pass
+        v_str = (
+            Path(circuit_or_voice).stem
+            if isinstance(circuit_or_voice, Path)
+            else str(circuit_or_voice)
+        )
+        voice_id = v_str
+        inst, voicing = resolve_target_voicing(v_str)
     else:
         raise TypeError(f"Invalid circuit_or_voice: {type(circuit_or_voice)}")
+
+    if voicing.harness not in inst.harnesses:
+        raise ValueError(f"Harness '{voicing.harness}' missing from instrument '{inst.id}'")
+    h_base = inst.harnesses[voicing.harness]
 
     f_arr = np.asarray(freqs, dtype=np.float64)
 
@@ -375,199 +389,146 @@ def compute_parametric_sweep(
     elif len(labels) != len(values):
         raise ValueError(f"Length of labels ({len(labels)}) must match values ({len(values)})")
 
-    ch_idx = pickup_channel if isinstance(pickup_channel, int) else 0
+    eff_taper = pot_taper.lower().strip()
+    if eff_taper in ("audio", "audio10", "audio_10"):
+        actual_taper = "audio_10"
+    elif eff_taper in ("audio15", "audio_15", "bourns"):
+        actual_taper = "audio_15"
+    elif eff_taper in ("linear", "reverse_audio", "mn_blend"):
+        actual_taper = eff_taper
+    else:
+        actual_taper = "audio_10"
+
     p = param.lower().strip()
     curves: list[np.ndarray] = []
 
-    if p in ("tone", "tone_pos", "tone_wiper", "tone_pot"):
-        orig_tone_pos = model.tone_pos
-        orig_Rtone = model.Rtone
-        orig_taper = model.pot_taper
-        try:
-            for v in values:
-                model.apply_pot_positions(tone_pos=v, pot_taper=pot_taper)
-                tr = compute_circuit_transfer_functions(
-                    model, freqs=f_arr, return_numpy=True, include_active_preamp=True
-                )
-                ch = min(ch_idx, len(tr) - 1)
-                mag_db = 20.0 * np.log10(np.maximum(tr[ch], 1e-6))
-                curves.append(mag_db)
-        finally:
-            model.tone_pos = orig_tone_pos
-            model.Rtone = orig_Rtone
-            model.pot_taper = orig_taper
+    for v in values:
+        v_iter = voicing.model_copy(deep=True)
+        h_iter = h_base.model_copy(deep=True)
 
-    elif p in ("vol", "vol_pos", "volume", "vol_wiper", "volume_pot"):
-        orig_vol_pos = model.vol_pos
-        orig_Rtop = model.Rtop
-        orig_Rbot = model.Rbot
-        orig_taper = model.pot_taper
-        try:
-            for v in values:
-                model.apply_pot_positions(vol_pos=v, pot_taper=pot_taper)
-                tr = compute_circuit_transfer_functions(
-                    model, freqs=f_arr, return_numpy=True, include_active_preamp=True
-                )
-                ch = min(ch_idx, len(tr) - 1)
-                mag_db = 20.0 * np.log10(np.maximum(tr[ch], 1e-6))
-                curves.append(mag_db)
-        finally:
-            model.vol_pos = orig_vol_pos
-            model.Rtop = orig_Rtop
-            model.Rbot = orig_Rbot
-            model.pot_taper = orig_taper
+        if p in ("tone", "tone_pos", "tone_wiper", "tone_pot"):
+            tone_ctrl_ids = [
+                cid
+                for cid, c in h_base.controls.items()
+                if "tone" in cid.lower() or c.cap is not None
+            ]
+            if not tone_ctrl_ids:
+                tone_ctrl_ids = [cid for cid in h_base.controls if cid == "tone"]
+            if not tone_ctrl_ids and param in h_base.controls:
+                tone_ctrl_ids = [param]
+            for cid in tone_ctrl_ids:
+                v_iter.controls[cid] = float(v)
+                h_iter.controls[cid].taper = actual_taper
 
-    elif p in ("blend", "blend_pos", "pan", "balance"):
-        orig_blend = model.blend_pos
-        orig_taper = model.pot_taper
-        orig_r_n = model.Rpot_n
-        orig_r_b = model.Rpot_b
-        try:
-            for v in values:
-                model.apply_pot_positions(blend_pos=v, pot_taper=pot_taper)
-                tr = compute_circuit_transfer_functions(
-                    model, freqs=f_arr, return_numpy=True, include_active_preamp=True
-                )
-                if len(tr) > 1 and (
-                    pickup_channel in ("sum", -1, 0) or str(pickup_channel).lower() == "sum"
-                ):
-                    combined = np.abs(tr[0] + tr[1])
-                    mag_db = 20.0 * np.log10(np.maximum(combined, 1e-6))
+        elif p in ("vol", "vol_pos", "volume", "vol_wiper", "volume_pot"):
+            vol_ctrl_ids = [
+                cid
+                for cid, c in h_base.controls.items()
+                if "vol" in cid.lower() or cid == "volume"
+            ]
+            if not vol_ctrl_ids and param in h_base.controls:
+                vol_ctrl_ids = [param]
+            for cid in vol_ctrl_ids:
+                v_iter.controls[cid] = float(v)
+                h_iter.controls[cid].taper = actual_taper
+
+        elif p in ("blend", "blend_pos", "pan", "balance"):
+            blend_ctrl_ids = [
+                cid
+                for cid, c in h_base.controls.items()
+                if c.type == "blend" or "blend" in cid.lower()
+            ]
+            if blend_ctrl_ids:
+                for cid in blend_ctrl_ids:
+                    v_iter.controls[cid] = float(v)
+            elif "neck_vol" in h_base.controls and "bridge_vol" in h_base.controls:
+                if v <= 0.5:
+                    v_iter.controls["neck_vol"] = 1.0
+                    v_iter.controls["bridge_vol"] = 2.0 * v
                 else:
-                    ch = (
-                        min(int(pickup_channel), len(tr) - 1)
-                        if isinstance(pickup_channel, int)
-                        else 0
-                    )
-                    mag_db = 20.0 * np.log10(np.maximum(tr[ch], 1e-6))
-                curves.append(mag_db)
-        finally:
-            model.blend_pos = orig_blend
-            model.pot_taper = orig_taper
-            model.Rpot_n = orig_r_n
-            model.Rpot_b = orig_r_b
+                    v_iter.controls["neck_vol"] = 2.0 * (1.0 - v)
+                    v_iter.controls["bridge_vol"] = 1.0
+            elif "blend" in h_base.controls:
+                v_iter.controls["blend"] = float(v)
 
-    elif p in ("cable", "cable_pf", "ccable", "cable_capacitance"):
-        orig_Ccable = model.Ccable
-        try:
-            for v in values:
-                c_farads = v * 1e-12 if v > 1e-6 else v
-                model.Ccable = c_farads
-                tr = compute_circuit_transfer_functions(
-                    model, freqs=f_arr, return_numpy=True, include_active_preamp=True
-                )
-                ch = min(ch_idx, len(tr) - 1)
-                mag_db = 20.0 * np.log10(np.maximum(tr[ch], 1e-6))
-                curves.append(mag_db)
-        finally:
-            model.Ccable = orig_Ccable
+        elif p in ("cable", "cable_pf", "ccable", "cable_capacitance"):
+            c_pf = v if v > 1e-6 else v * 1e12
+            v_iter.components["cable_pf"] = c_pf
+            h_iter.cable_pf = c_pf
 
-    elif p in ("tone_cap", "ctone", "cap", "tone_capacitance", "tone_cap_nf"):
-        orig_Ctone = model.Ctone
-        try:
-            for v in values:
-                c_farads = v * 1e-9 if v > 1e-6 else v
-                model.Ctone = c_farads
-                tr = compute_circuit_transfer_functions(
-                    model, freqs=f_arr, return_numpy=True, include_active_preamp=True
-                )
-                ch = min(ch_idx, len(tr) - 1)
-                mag_db = 20.0 * np.log10(np.maximum(tr[ch], 1e-6))
-                curves.append(mag_db)
-        finally:
-            model.Ctone = orig_Ctone
+        elif p in ("tone_cap", "ctone", "cap", "tone_capacitance", "tone_cap_nf"):
+            c_val = v * 1e-9 if v > 1e-6 else v
+            for cid, ctrl in h_base.controls.items():
+                if "tone" in cid.lower() or ctrl.cap is not None:
+                    v_iter.components[f"controls.{cid}.cap"] = c_val
+            v_iter.components["tone_cap"] = c_val
 
-    elif p in ("bass_boost", "preamp_bass", "bass"):
-        orig_has_buf = model.has_active_buffer
-        orig_bands = copy.deepcopy(model.preamp_bands) if model.preamp_bands is not None else None
-        orig_type = model.preamp_type
-        try:
-            from allomorph.config.preamps import PREAMPS
-
-            base_bands: list[PreampBandConfig] = []
-            if orig_bands is not None:
-                base_bands = [b.model_copy() for b in orig_bands]
-            elif model.preamp_type != "none" and model.preamp_type in PREAMPS:
-                base_bands = [b.model_copy() for b in PREAMPS[model.preamp_type].bands]
-
-            shelf_idx = None
-            for i, b in enumerate(base_bands):
-                if b.type == "low_shelf":
-                    shelf_idx = i
-                    break
+        elif p in ("bass_boost", "preamp_bass", "bass"):
+            h_iter.type = "active_preamp"
+            bands: list[PreampBandConfig] = (
+                [b.model_copy() for b in v_iter.preamp_bands]
+                if v_iter.preamp_bands
+                else []
+            )
+            if not bands and h_base.preamp and h_base.preamp in PREAMPS:
+                bands = [b.model_copy() for b in PREAMPS[h_base.preamp].bands]
+            shelf_idx = next(
+                (i for i, b in enumerate(bands) if b.type == "low_shelf"), None
+            )
             if shelf_idx is None:
-                base_bands.append(PreampBandConfig(type="low_shelf", freq_hz=40.0, gain_db=0.0))
-                shelf_idx = len(base_bands) - 1
+                bands.append(PreampBandConfig(type="low_shelf", freq_hz=40.0, gain_db=0.0))
+                shelf_idx = len(bands) - 1
+            bands[shelf_idx].gain_db = float(v)
+            v_iter.preamp_bands = bands
 
-            model.has_active_buffer = True
-            for v in values:
-                bands = [b.model_copy() for b in base_bands]
-                bands[shelf_idx].gain_db = float(v)
-                model.preamp_bands = bands
-                tr = compute_circuit_transfer_functions(
-                    model, freqs=f_arr, return_numpy=True, include_active_preamp=True
-                )
-                ch = min(ch_idx, len(tr) - 1)
-                mag_db = 20.0 * np.log10(np.maximum(tr[ch], 1e-6))
-                curves.append(mag_db)
-        finally:
-            model.has_active_buffer = orig_has_buf
-            model.preamp_bands = orig_bands
-            model.preamp_type = orig_type
-
-    elif p in ("treble_boost", "preamp_treble", "treble"):
-        orig_has_buf = model.has_active_buffer
-        orig_bands = copy.deepcopy(model.preamp_bands) if model.preamp_bands is not None else None
-        orig_type = model.preamp_type
-        try:
-            from allomorph.config.preamps import PREAMPS
-
-            base_bands = []
-            if orig_bands is not None:
-                base_bands = [b.model_copy() for b in orig_bands]
-            elif model.preamp_type != "none" and model.preamp_type in PREAMPS:
-                base_bands = [b.model_copy() for b in PREAMPS[model.preamp_type].bands]
-
-            shelf_idx = None
-            for i, b in enumerate(base_bands):
-                if b.type == "high_shelf":
-                    shelf_idx = i
-                    break
+        elif p in ("treble_boost", "preamp_treble", "treble"):
+            h_iter.type = "active_preamp"
+            bands: list[PreampBandConfig] = (
+                [b.model_copy() for b in v_iter.preamp_bands]
+                if v_iter.preamp_bands
+                else []
+            )
+            if not bands and h_base.preamp and h_base.preamp in PREAMPS:
+                bands = [b.model_copy() for b in PREAMPS[h_base.preamp].bands]
+            shelf_idx = next(
+                (i for i, b in enumerate(bands) if b.type == "high_shelf"), None
+            )
             if shelf_idx is None:
-                base_bands.append(PreampBandConfig(type="high_shelf", freq_hz=4000.0, gain_db=0.0))
-                shelf_idx = len(base_bands) - 1
+                bands.append(PreampBandConfig(type="high_shelf", freq_hz=4000.0, gain_db=0.0))
+                shelf_idx = len(bands) - 1
+            bands[shelf_idx].gain_db = float(v)
+            v_iter.preamp_bands = bands
 
-            model.has_active_buffer = True
-            for v in values:
-                bands = [b.model_copy() for b in base_bands]
-                bands[shelf_idx].gain_db = float(v)
-                model.preamp_bands = bands
-                tr = compute_circuit_transfer_functions(
-                    model, freqs=f_arr, return_numpy=True, include_active_preamp=True
-                )
-                ch = min(ch_idx, len(tr) - 1)
-                mag_db = 20.0 * np.log10(np.maximum(tr[ch], 1e-6))
-                curves.append(mag_db)
-        finally:
-            model.has_active_buffer = orig_has_buf
-            model.preamp_bands = orig_bands
-            model.preamp_type = orig_type
+        elif param in h_base.controls:
+            v_iter.controls[param] = float(v)
 
-    elif hasattr(model, param):
-        orig_val = getattr(model, param)
-        try:
-            for v in values:
-                setattr(model, param, v)
-                tr = compute_circuit_transfer_functions(
-                    model, freqs=f_arr, return_numpy=True, include_active_preamp=True
-                )
-                ch = min(ch_idx, len(tr) - 1)
-                mag_db = 20.0 * np.log10(np.maximum(tr[ch], 1e-6))
-                curves.append(mag_db)
-        finally:
-            setattr(model, param, orig_val)
-    else:
-        raise ValueError(f"Unsupported sweep parameter: '{param}'")
+        elif param in v_iter.components or hasattr(v_iter, param):
+            v_iter.components[param] = float(v)
+
+        else:
+            raise ValueError(f"Unsupported sweep parameter: '{param}'")
+
+        curves_dict = solve_mna_harness(
+            inst,
+            h_iter,
+            v_iter,
+            freqs=f_arr,
+            return_complex=True,
+        )
+
+        if (
+            pickup_channel in ("sum", -1)
+            or str(pickup_channel).lower() == "sum"
+            or len(curves_dict) <= 1
+        ):
+            total_tr = np.sum(list(curves_dict.values()), axis=0)
+        else:
+            ch = int(pickup_channel) if isinstance(pickup_channel, int) else 0
+            vals = list(curves_dict.values())
+            total_tr = vals[min(ch, len(vals) - 1)]
+
+        mag_db = 20.0 * np.log10(np.maximum(np.abs(total_tr), 1e-6))
+        curves.append(mag_db)
 
     return ParametricSweepResult(
         param=param,

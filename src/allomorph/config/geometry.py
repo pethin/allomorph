@@ -31,7 +31,7 @@ def _infer_pole_type(
             return str(pickup_or_voice.pole_type).lower()
         mag = str(pickup_or_voice.magnet_type or "").lower()
         p_type = str(
-            pickup_or_voice.topology
+            pickup_or_voice.sensor_type
             if isinstance(pickup_or_voice, VoiceConfig)
             else pickup_or_voice.type
         ).lower()
@@ -59,9 +59,9 @@ def resolve_pickup_coils(
       - Single-coil / split-coil fallbacks
     """
     # 1. Composite blend / sum
-    if pickup.type == "composite" or bool(pickup.components):
+    comp_list = getattr(pickup, "components", None) or []
+    if pickup.type == "composite" or bool(comp_list):
         resolved: list[CoilConfig] = []
-        comp_list = pickup.components or []
         pickups_map: dict[str, PickupConfig] = instrument.pickups if instrument else {}
         for comp in comp_list:
             p_ref = comp.pickup
@@ -112,19 +112,24 @@ def resolve_pickup_coils(
     d_in = float(pickup.coil_spacing_in)
     d_m = d_in * 0.0254
     p_pole = _infer_pole_type(pickup)
+    default_w = 0.45 if p_pole == "rod" else 0.35
+    eff_w = w_in / 2.0 if (w_in > 0.0 and w_in != 0.75) else default_w
+
     if d_in > 0:
         return [
             CoilConfig(
+                id="neck",
                 position_from_bridge_m=pos_m - d_m / 2.0,
-                aperture_width_in=w_in / 2.0,
+                aperture_width_in=eff_w,
                 weight=0.5,
                 polarity=1.0,
                 strings=["all"],
                 pole_type=p_pole,
             ),
             CoilConfig(
+                id="bridge",
                 position_from_bridge_m=pos_m + d_m / 2.0,
-                aperture_width_in=w_in / 2.0,
+                aperture_width_in=eff_w,
                 weight=0.5,
                 polarity=1.0,
                 strings=["all"],
@@ -133,10 +138,12 @@ def resolve_pickup_coils(
         ]
 
     # 4. Standard single coil
+    single_w = w_in if (w_in > 0.0 and w_in != 0.75) else default_w
     return [
         CoilConfig(
+            id="single",
             position_from_bridge_m=pos_m,
-            aperture_width_in=w_in,
+            aperture_width_in=single_w,
             weight=1.0,
             polarity=1.0,
             strings=["all"],
@@ -158,7 +165,7 @@ def resolve_voice_pickups(voice_cfg: VoiceConfig) -> list[VoicePickupConfig]:
     return [
         VoicePickupConfig(
             name=voice_cfg.name,
-            type=voice_cfg.topology,
+            type=voice_cfg.sensor_type,
             magnet_type=voice_cfg.magnet_type,
             fr=voice_cfg.fr,
             Q=voice_cfg.Q,

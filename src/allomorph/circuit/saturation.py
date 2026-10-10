@@ -6,8 +6,7 @@ elliptical 2f0 string orbit bloom, Dahl hysteresis, and Numba fastmath kernels.
 
 import functools
 import math
-from collections.abc import Callable
-from typing import Any, overload
+from typing import overload
 
 import numpy as np
 
@@ -17,389 +16,195 @@ from allomorph.dsp import cinf_smoothstep
 # Analytical scalar normalizer for H_pre at 100 Hz: |(wc / (j*2*pi*100 + wc))**0.55| with wc = 2*pi*40
 _H_PRE_100HZ_NORM: float = 0.5807963098547466
 
-try:
-    from numba import njit
+from numba import njit
 
-    _HAS_NUMBA = True
-except ImportError:
+_HAS_NUMBA: bool = True
 
-    def njit(*args: Any, **kwargs: Any) -> Callable[[Any], Any]:
-        def decorator(func: Any) -> Any:
-            return func
 
-        return decorator
+@njit(fastmath=True, nogil=True)
+def _dahl_core(x_arr: np.ndarray, eta: float, r: float) -> np.ndarray:
+    n = len(x_arr)
+    z = np.empty(n, dtype=np.float64)
+    z_prev = 0.0
+    for i in range(1, n):
+        dx = x_arr[i] - x_arr[i - 1]
+        delta = abs(x_arr[i] - z_prev)
+        # Asymmetric pole proximity: domain-wall pinning increases as string approaches pole piece (x > 0)
+        r_eff = r * (1.0 - 0.35 * math.tanh(x_arr[i] / 0.5))
+        coupling = delta / (delta + r_eff)
+        z_prev = z_prev + dx * coupling
+        z[i] = z_prev
+    z[0] = 0.0
+    return (1.0 - eta) * x_arr + eta * z
 
-    _HAS_NUMBA = False
+@njit(fastmath=True, nogil=True)
+def _lenz_envelope_core(x_arr: np.ndarray, alpha_att: float, alpha_rel: float) -> np.ndarray:
+    n = len(x_arr)
+    env = np.empty(n, dtype=np.float64)
+    e_prev = 0.0
+    for i in range(n):
+        val = abs(x_arr[i])
+        if val > e_prev:
+            e_prev += alpha_att * (val - e_prev)
+        else:
+            e_prev += alpha_rel * (val - e_prev)
+        env[i] = e_prev
+    return env
 
-if _HAS_NUMBA:
+@njit(fastmath=True, nogil=True)
+def _lenz_velocity_drag_core(
+    x_arr: np.ndarray,
+    env: np.ndarray,
+    vsat: float,
+    k_sag: float,
+    alpha_c: float,
+    k_eddy: float = 0.0,
+    beta_curv: float = 0.0,
+    k_pull: float = 0.0,
+    k_stein: float = 0.0,
+    k_emf: float = 0.0,
+    lambda_L: float = 0.0,
+    kappa_ap: float = 0.0,
+) -> np.ndarray:
+    n = len(x_arr)
+    out = np.empty(n, dtype=np.float64)
+    x_low_prev = 0.0
+    x_high_prev = 0.0
+    for i in range(n):
+        val = x_arr[i]
+        x_low_prev += alpha_c * (val - x_low_prev)
+        x_high = val - x_low_prev
+        diff_high = x_high - x_high_prev
+        e = env[i]
 
-    @njit(fastmath=True, nogil=True)
-    def _dahl_core(x_arr: np.ndarray, eta: float, r: float) -> np.ndarray:
-        n = len(x_arr)
-        z = np.empty(n, dtype=np.float64)
-        z_prev = 0.0
-        for i in range(1, n):
-            dx = x_arr[i] - x_arr[i - 1]
-            delta = abs(x_arr[i] - z_prev)
-            # Asymmetric pole proximity: domain-wall pinning increases as string approaches pole piece (x > 0)
-            r_eff = r * (1.0 - 0.35 * math.tanh(x_arr[i] / 0.5))
-            coupling = delta / (delta + r_eff)
-            z_prev = z_prev + dx * coupling
-            z[i] = z_prev
-        z[0] = 0.0
-        return (1.0 - eta) * x_arr + eta * z
-
-    @njit(fastmath=True, nogil=True)
-    def _lenz_envelope_core(x_arr: np.ndarray, alpha_att: float, alpha_rel: float) -> np.ndarray:
-        n = len(x_arr)
-        env = np.empty(n, dtype=np.float64)
-        e_prev = 0.0
-        for i in range(n):
-            val = abs(x_arr[i])
-            if val > e_prev:
-                e_prev += alpha_att * (val - e_prev)
+        # C^inf softplus excess: continuous derivatives across threshold without slope kinks
+        if vsat > 0.0:
+            u = e - vsat
+            if u * 16.0 > 20.0:
+                sp = u
+            elif u * 16.0 < -40.0:
+                sp = 0.0
             else:
-                e_prev += alpha_rel * (val - e_prev)
-            env[i] = e_prev
-        return env
+                sp = (1.0 / 16.0) * math.log1p(math.exp(16.0 * u))
+            excess = math.tanh(sp / vsat)
+        else:
+            excess = 0.0
 
-    @njit(fastmath=True, nogil=True)
-    def _lenz_velocity_drag_core(
-        x_arr: np.ndarray,
-        env: np.ndarray,
-        vsat: float,
-        k_sag: float,
-        alpha_c: float,
-        k_eddy: float = 0.0,
-        beta_curv: float = 0.0,
-        k_pull: float = 0.0,
-        k_stein: float = 0.0,
-        k_emf: float = 0.0,
-        lambda_L: float = 0.0,
-        kappa_ap: float = 0.0,
-    ) -> np.ndarray:
-        n = len(x_arr)
-        out = np.empty(n, dtype=np.float64)
-        x_low_prev = 0.0
-        x_high_prev = 0.0
-        for i in range(n):
-            val = x_arr[i]
-            x_low_prev += alpha_c * (val - x_low_prev)
-            x_high = val - x_low_prev
-            diff_high = x_high - x_high_prev
-            e = env[i]
+        w_reg = 0.70 + 0.60 * (
+            (x_low_prev * x_low_prev) / (x_low_prev * x_low_prev + x_high * x_high + 1e-8)
+        )
 
-            # C^inf softplus excess: continuous derivatives across threshold without slope kinks
-            if vsat > 0.0:
-                u = e - vsat
-                if u * 16.0 > 20.0:
-                    sp = u
-                elif u * 16.0 < -40.0:
-                    sp = 0.0
-                else:
-                    sp = (1.0 / 16.0) * math.log1p(math.exp(16.0 * u))
-                excess = math.tanh(sp / vsat)
-            else:
-                excess = 0.0
-
-            w_reg = 0.70 + 0.60 * (
-                (x_low_prev * x_low_prev) / (x_low_prev * x_low_prev + x_high * x_high + 1e-8)
+        if excess > 1e-6:
+            x_norm = math.sqrt(x_high * x_high + 1e-8) - 1e-4
+            eddy_factor = k_eddy * excess * math.tanh(x_norm / vsat)
+            val_pos = math.log1p(math.exp(val / vsat)) if val / vsat < 20.0 else val / vsat
+            pull_damping = k_pull * w_reg * excess * math.tanh(val_pos)
+            flux_rate = math.sqrt(diff_high * diff_high + 1e-8) * 7.639437
+            stein_damping = 0.0
+            if k_stein > 0.0:
+                rate_reg = math.sqrt((flux_rate / vsat) ** 2 + 1e-8)
+                stein_damping = k_stein * excess * (rate_reg**0.6)
+            emf_damping = 0.0
+            if k_emf > 0.0:
+                emf_damping = k_emf * excess * math.tanh(x_norm / vsat)
+            ap_damping = kappa_ap * excess * math.tanh(x_norm / vsat)
+            drag_high = 1.0 / (
+                1.0
+                + (
+                    k_sag
+                    + eddy_factor
+                    + pull_damping
+                    + stein_damping
+                    + emf_damping
+                    + ap_damping
+                )
+                * excess
             )
-
-            if excess > 1e-6:
-                x_norm = math.sqrt(x_high * x_high + 1e-8) - 1e-4
-                eddy_factor = k_eddy * excess * math.tanh(x_norm / vsat)
-                val_pos = math.log1p(math.exp(val / vsat)) if val / vsat < 20.0 else val / vsat
-                pull_damping = k_pull * w_reg * excess * math.tanh(val_pos)
-                flux_rate = math.sqrt(diff_high * diff_high + 1e-8) * 7.639437
-                stein_damping = 0.0
-                if k_stein > 0.0:
-                    rate_reg = math.sqrt((flux_rate / vsat) ** 2 + 1e-8)
-                    stein_damping = k_stein * excess * (rate_reg**0.6)
-                emf_damping = 0.0
-                if k_emf > 0.0:
-                    emf_damping = k_emf * excess * math.tanh(x_norm / vsat)
-                ap_damping = kappa_ap * excess * math.tanh(x_norm / vsat)
-                drag_high = 1.0 / (
-                    1.0
-                    + (
-                        k_sag
-                        + eddy_factor
-                        + pull_damping
-                        + stein_damping
-                        + emf_damping
-                        + ap_damping
-                    )
-                    * excess
-                )
-                drag_low = (1.0 + 0.15 * kappa_ap * excess) / (
-                    1.0 + (0.25 * k_sag + 0.50 * pull_damping) * excess
-                )
-            else:
-                drag_high = 1.0
-                drag_low = 1.0
-
-            if beta_curv > 0.0 and vsat > 0.0:
-                wobble = beta_curv * math.tanh((val / vsat) ** 2) * diff_high
-            else:
-                wobble = 0.0
-
-            if k_pull > 0.0 and excess > 1e-6:
-                pitch_sag = -k_pull * w_reg * excess * diff_high
-            else:
-                pitch_sag = 0.0
-
-            if lambda_L > 0.0 and excess > 1e-6:
-                val_norm = math.sqrt(val * val + 1e-8) - 1e-4
-                ind_mod = -lambda_L * excess * math.tanh(val_norm / vsat) * diff_high
-            else:
-                ind_mod = 0.0
-
-            x_high_prev = x_high
-
-            out[i] = drag_low * x_low_prev + drag_high * (x_high + wobble + pitch_sag + ind_mod)
-        return out
-
-    @njit(fastmath=True, nogil=True)
-    def _slew_limit_core(x_arr: np.ndarray, max_delta: float) -> np.ndarray:
-        n = len(x_arr)
-        out = np.empty(n, dtype=np.float64)
-        if n == 0:
-            return out
-        prev = x_arr[0]
-        out[0] = prev
-        for i in range(1, n):
-            diff = x_arr[i] - prev
-            step = max_delta * math.tanh(diff / max_delta)
-            prev += step
-            out[i] = prev
-        return out
-
-    @njit(fastmath=True, nogil=True)
-    def _algebraic_limiter_p8_core(x_arr: np.ndarray, vsat: float) -> np.ndarray:
-        n = len(x_arr)
-        out = np.empty(n, dtype=np.float64)
-        inv_vsat = 1.0 / vsat
-        for i in range(n):
-            val = x_arr[i]
-            u = val * inv_vsat
-            u2 = u * u
-            u4 = u2 * u2
-            u8 = u4 * u4
-            denom = math.sqrt(math.sqrt(math.sqrt(1.0 + u8)))
-            out[i] = val / denom
-        return out
-
-    @njit(fastmath=True, nogil=True)
-    def _active_preamp_leveling_core(
-        x_arr: np.ndarray,
-        env: np.ndarray,
-        vsat: float,
-        k_level: float,
-    ) -> np.ndarray:
-        n = len(x_arr)
-        out = np.empty(n, dtype=np.float64)
-        if vsat <= 0.0 or k_level <= 0.0:
-            return x_arr.copy()
-        for i in range(n):
-            val = x_arr[i]
-            e = env[i]
-            if e > vsat * 0.75:
-                u = e - vsat
-                if u * 16.0 > 20.0:
-                    excess = u
-                elif u * 16.0 < -40.0:
-                    excess = 0.0
-                else:
-                    excess = (1.0 / 16.0) * math.log1p(math.exp(16.0 * u))
-                g = 1.0 / (1.0 + k_level * math.tanh(excess / vsat))
-            else:
-                g = 1.0
-            out[i] = val * g
-        return out
-else:
-
-    def _dahl_core(x_arr: np.ndarray, eta: float, r: float) -> np.ndarray:
-        n = len(x_arr)
-        z = np.empty(n, dtype=np.float64)
-        z_prev = 0.0
-        for i in range(1, n):
-            dx = x_arr[i] - x_arr[i - 1]
-            delta = abs(x_arr[i] - z_prev)
-            r_eff = r * (1.0 - 0.35 * math.tanh(x_arr[i] / 0.5))
-            coupling = delta / (delta + r_eff)
-            z_prev = z_prev + dx * coupling
-            z[i] = z_prev
-        z[0] = 0.0
-        return (1.0 - eta) * x_arr + eta * z
-
-    def _lenz_envelope_core(x_arr: np.ndarray, alpha_att: float, alpha_rel: float) -> np.ndarray:
-        n = len(x_arr)
-        env = np.empty(n, dtype=np.float64)
-        e_prev = 0.0
-        for i in range(n):
-            val = abs(x_arr[i])
-            if val > e_prev:
-                e_prev += alpha_att * (val - e_prev)
-            else:
-                e_prev += alpha_rel * (val - e_prev)
-            env[i] = e_prev
-        return env
-
-    def _lenz_velocity_drag_core(
-        x_arr: np.ndarray,
-        env: np.ndarray,
-        vsat: float,
-        k_sag: float,
-        alpha_c: float,
-        k_eddy: float = 0.0,
-        beta_curv: float = 0.0,
-        k_pull: float = 0.0,
-        k_stein: float = 0.0,
-        k_emf: float = 0.0,
-        lambda_L: float = 0.0,
-        kappa_ap: float = 0.0,
-    ) -> np.ndarray:
-        n = len(x_arr)
-        out = np.empty(n, dtype=np.float64)
-        x_low_prev = 0.0
-        x_high_prev = 0.0
-        for i in range(n):
-            val = x_arr[i]
-            x_low_prev += alpha_c * (val - x_low_prev)
-            x_high = val - x_low_prev
-            diff_high = x_high - x_high_prev
-            e = env[i]
-
-            # C^inf softplus excess: continuous derivatives across threshold without slope kinks
-            if vsat > 0.0:
-                u = e - vsat
-                if u * 16.0 > 20.0:
-                    sp = u
-                elif u * 16.0 < -40.0:
-                    sp = 0.0
-                else:
-                    sp = (1.0 / 16.0) * math.log1p(math.exp(16.0 * u))
-                excess = math.tanh(sp / vsat)
-            else:
-                excess = 0.0
-
-            w_reg = 0.70 + 0.60 * (
-                (x_low_prev * x_low_prev) / (x_low_prev * x_low_prev + x_high * x_high + 1e-8)
+            drag_low = (1.0 + 0.15 * kappa_ap * excess) / (
+                1.0 + (0.25 * k_sag + 0.50 * pull_damping) * excess
             )
+        else:
+            drag_high = 1.0
+            drag_low = 1.0
 
-            if excess > 1e-6:
-                x_norm = math.sqrt(x_high * x_high + 1e-8) - 1e-4
-                eddy_factor = k_eddy * excess * math.tanh(x_norm / vsat)
-                val_pos = math.log1p(math.exp(val / vsat)) if val / vsat < 20.0 else val / vsat
-                pull_damping = k_pull * w_reg * excess * math.tanh(val_pos)
-                flux_rate = math.sqrt(diff_high * diff_high + 1e-8) * 7.639437
-                stein_damping = 0.0
-                if k_stein > 0.0:
-                    rate_reg = math.sqrt((flux_rate / vsat) ** 2 + 1e-8)
-                    stein_damping = k_stein * excess * (rate_reg**0.6)
-                emf_damping = 0.0
-                if k_emf > 0.0:
-                    emf_damping = k_emf * excess * math.tanh(x_norm / vsat)
-                ap_damping = kappa_ap * excess * math.tanh(x_norm / vsat)
-                drag_high = 1.0 / (
-                    1.0
-                    + (
-                        k_sag
-                        + eddy_factor
-                        + pull_damping
-                        + stein_damping
-                        + emf_damping
-                        + ap_damping
-                    )
-                    * excess
-                )
-                drag_low = (1.0 + 0.15 * kappa_ap * excess) / (
-                    1.0 + (0.25 * k_sag + 0.50 * pull_damping) * excess
-                )
-            else:
-                drag_high = 1.0
-                drag_low = 1.0
+        if beta_curv > 0.0 and vsat > 0.0:
+            wobble = beta_curv * math.tanh((val / vsat) ** 2) * diff_high
+        else:
+            wobble = 0.0
 
-            if beta_curv > 0.0 and vsat > 0.0:
-                wobble = beta_curv * math.tanh((val / vsat) ** 2) * diff_high
-            else:
-                wobble = 0.0
+        if k_pull > 0.0 and excess > 1e-6:
+            pitch_sag = -k_pull * w_reg * excess * diff_high
+        else:
+            pitch_sag = 0.0
 
-            if k_pull > 0.0 and excess > 1e-6:
-                pitch_sag = -k_pull * w_reg * excess * diff_high
-            else:
-                pitch_sag = 0.0
+        if lambda_L > 0.0 and excess > 1e-6:
+            val_norm = math.sqrt(val * val + 1e-8) - 1e-4
+            ind_mod = -lambda_L * excess * math.tanh(val_norm / vsat) * diff_high
+        else:
+            ind_mod = 0.0
 
-            if lambda_L > 0.0 and excess > 1e-6:
-                val_norm = math.sqrt(val * val + 1e-8) - 1e-4
-                ind_mod = -lambda_L * excess * math.tanh(val_norm / vsat) * diff_high
-            else:
-                ind_mod = 0.0
+        x_high_prev = x_high
 
-            x_high_prev = x_high
+        out[i] = drag_low * x_low_prev + drag_high * (x_high + wobble + pitch_sag + ind_mod)
+    return out
 
-            out[i] = drag_low * x_low_prev + drag_high * (x_high + wobble + pitch_sag + ind_mod)
+@njit(fastmath=True, nogil=True)
+def _slew_limit_core(x_arr: np.ndarray, max_delta: float) -> np.ndarray:
+    n = len(x_arr)
+    out = np.empty(n, dtype=np.float64)
+    if n == 0:
         return out
+    prev = x_arr[0]
+    out[0] = prev
+    for i in range(1, n):
+        diff = x_arr[i] - prev
+        step = max_delta * math.tanh(diff / max_delta)
+        prev += step
+        out[i] = prev
+    return out
 
-    def _slew_limit_core(x_arr: np.ndarray, max_delta: float) -> np.ndarray:
-        n = len(x_arr)
-        out = np.empty(n, dtype=np.float64)
-        if n == 0:
-            return out
-        prev = x_arr[0]
-        out[0] = prev
-        for i in range(1, n):
-            diff = x_arr[i] - prev
-            step = max_delta * math.tanh(diff / max_delta)
-            prev += step
-            out[i] = prev
-        return out
+@njit(fastmath=True, nogil=True)
+def _algebraic_limiter_p8_core(x_arr: np.ndarray, vsat: float) -> np.ndarray:
+    n = len(x_arr)
+    out = np.empty(n, dtype=np.float64)
+    inv_vsat = 1.0 / vsat
+    for i in range(n):
+        val = x_arr[i]
+        u = val * inv_vsat
+        u2 = u * u
+        u4 = u2 * u2
+        u8 = u4 * u4
+        denom = math.sqrt(math.sqrt(math.sqrt(1.0 + u8)))
+        out[i] = val / denom
+    return out
 
-    def _algebraic_limiter_p8_core(x_arr: np.ndarray, vsat: float) -> np.ndarray:
-        n = len(x_arr)
-        out = np.empty(n, dtype=np.float64)
-        inv_vsat = 1.0 / vsat
-        for i in range(n):
-            val = x_arr[i]
-            u = val * inv_vsat
-            if abs(u) >= 50.0:
-                out[i] = math.copysign(vsat, val)
-                continue
-            u2 = u * u
-            u4 = u2 * u2
-            u8 = u4 * u4
-            denom = math.sqrt(math.sqrt(math.sqrt(1.0 + u8)))
-            out[i] = val / denom
-        return out
-
-    def _active_preamp_leveling_core(
-        x_arr: np.ndarray,
-        env: np.ndarray,
-        vsat: float,
-        k_level: float,
-    ) -> np.ndarray:
-        n = len(x_arr)
-        out = np.empty(n, dtype=np.float64)
-        if vsat <= 0.0 or k_level <= 0.0:
-            return x_arr.copy()
-        for i in range(n):
-            val = x_arr[i]
-            e = env[i]
-            if e > vsat * 0.75:
-                u = e - vsat
-                if u * 16.0 > 20.0:
-                    excess = u
-                elif u * 16.0 < -40.0:
-                    excess = 0.0
-                else:
-                    excess = (1.0 / 16.0) * math.log1p(math.exp(16.0 * u))
-                g = 1.0 / (1.0 + k_level * math.tanh(excess / vsat))
+@njit(fastmath=True, nogil=True)
+def _active_preamp_leveling_core(
+    x_arr: np.ndarray,
+    env: np.ndarray,
+    vsat: float,
+    k_level: float,
+) -> np.ndarray:
+    n = len(x_arr)
+    out = np.empty(n, dtype=np.float64)
+    if vsat <= 0.0 or k_level <= 0.0:
+        return x_arr.copy()
+    for i in range(n):
+        val = x_arr[i]
+        e = env[i]
+        if e > vsat * 0.75:
+            u = e - vsat
+            if u * 16.0 > 20.0:
+                excess = u
+            elif u * 16.0 < -40.0:
+                excess = 0.0
             else:
-                g = 1.0
-            out[i] = val * g
-        return out
-
+                excess = (1.0 / 16.0) * math.log1p(math.exp(16.0 * u))
+            g = 1.0 / (1.0 + k_level * math.tanh(excess / vsat))
+        else:
+            g = 1.0
+        out[i] = val * g
+    return out
 
 @overload
 def apply_algebraic_rail_limiter(x: float, vsat: float = 0.9900) -> float: ...

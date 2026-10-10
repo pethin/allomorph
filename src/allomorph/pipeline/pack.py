@@ -15,7 +15,7 @@ import numpy as np
 
 from allomorph.circuit.forward import simulate_instrument_voicing
 from allomorph.config.instruments import (
-    PickupBundle,
+    VoicingBundle,
     load_instrument,
     partition_instrument_bundles,
 )
@@ -352,7 +352,7 @@ def _target_sort_key(target_item: tuple[str, str, str, str]) -> int:
 
 def generate_storefront_description(
     inst: InstrumentConfig,
-    bundles: dict[str, PickupBundle],
+    bundles: dict[str, VoicingBundle],
 ) -> str:
     """Generates standard Tone3000 storefront product listing description in raw text format."""
     total_targets = sum(len(b.targets) for b in bundles.values())
@@ -360,7 +360,7 @@ def generate_storefront_description(
     target_items: list[tuple[str, str, str, str]] = []
     is_multi_pickup = len(bundles) > 1
     for b_name, b in bundles.items():
-        pos_label = b.pickup.position_name or b_name.capitalize()
+        pos_label = b.position_name or b_name.capitalize()
         pos_tag = pos_label if is_multi_pickup else None
         for t in b.targets:
             raw_tone = t.voicing.tone_name or t.voicing.name
@@ -474,7 +474,7 @@ def generate_storefront_description(
     if len(bundles) > 1:
         unique_tags = list(
             dict.fromkeys(
-                f"[{b.pickup.position_name or b_name.capitalize()}]"
+                f"[{b.position_name or b_name.capitalize()}]"
                 for b_name, b in bundles.items()
             )
         )
@@ -485,10 +485,12 @@ def generate_storefront_description(
         lines.append("")
         seen_positions: set[str] = set()
         for b_name, b in bundles.items():
-            pos_label = b.pickup.position_name or b_name.capitalize()
+            pos_label = b.position_name or b_name.capitalize()
             if pos_label not in seen_positions:
                 seen_positions.add(pos_label)
-                lines.append(f"• [{pos_label}]: Select {b.pickup.name}")
+                src_v = inst.voicings.get(b.source_voicing)
+                src_name = src_v.name if src_v else pos_label
+                lines.append(f"• [{pos_label}]: Select {src_name}")
         if is_active:
             lines.append(
                 "• Onboard Active EQ (Bass, Mid, Treble): Set to Center Detents (Flat / 0 dB)"
@@ -613,25 +615,23 @@ def export_tone_pack(
 
     is_multi_pickup = len(bundles) > 1
 
-    def _process_bundle(item: tuple[str, PickupBundle]) -> tuple[str, dict[str, Any]]:
+    def _process_bundle(item: tuple[str, VoicingBundle]) -> tuple[str, dict[str, Any]]:
         b_name, bundle = item
         b_dir = bundles_dir / b_name
         b_dir.mkdir(parents=True, exist_ok=True)
 
-        pos_label = bundle.pickup.position_name or b_name.capitalize()
+        pos_label = bundle.position_name or b_name.capitalize()
 
         # Determine source voicing version for this bundle
-        source_voice_ver = 1
-        for v in inst.voicings.values():
-            if v.pickup == bundle.pickup_key:
-                source_voice_ver = getattr(v, "version", 1)
-                break
+        src_v_id = bundle.source_voicing
+        src_v = inst.voicings.get(src_v_id)
+        source_voice_ver = getattr(src_v, "version", 1) if src_v else 1
 
         # A. Synthesize / Copy Source Audio for this bundle (Tone3000 upload contract requires dry v[dsp].[inst].[voicing].wav)
         dry_v_tag = resolve_tri_part_version(DSP_GENERATION, inst.version, source_voice_ver)
         dry_filename = f"dry {dry_v_tag}.wav"
         dry_dest = b_dir / dry_filename
-        source_wet_path = WET_AUDIO_DIR / inst.id / f"{bundle.pickup_key}.wav"
+        source_wet_path = WET_AUDIO_DIR / inst.id / f"{src_v_id}.wav"
 
         # Clean up any previous wav files in bundle directory to avoid stale stems
         for old_wav in b_dir.glob("*.wav"):
@@ -647,7 +647,7 @@ def export_tone_pack(
             source_wet_path.parent.mkdir(parents=True, exist_ok=True)
             simulate_instrument_voicing(
                 instrument=inst,
-                voicing=bundle.pickup_key,
+                voicing=src_v_id,
                 input_wav=input_wav,
                 output_wav=source_wet_path,
                 max_samples=None,
@@ -657,7 +657,7 @@ def export_tone_pack(
         else:
             simulate_instrument_voicing(
                 instrument=inst,
-                voicing=bundle.pickup_key,
+                voicing=src_v_id,
                 input_wav=input_wav,
                 output_wav=dry_dest,
                 max_samples=max_samples,
@@ -779,7 +779,7 @@ def export_tone_pack(
 
         bundle_manifest = {
             "bundle": b_name,
-            "pickup_key": bundle.pickup_key,
+            "source_voicing": src_v_id,
             "position_name": pos_label,
             "base_dry_file": base_dry_p.name,
             "base_dry_sha256": base_dry_sha,
@@ -796,7 +796,7 @@ def export_tone_pack(
             json.dump(bundle_manifest, bf, indent=2)
 
         bundle_entry = {
-            "pickup_key": bundle.pickup_key,
+            "source_voicing": src_v_id,
             "position_name": pos_label,
             "base_dry_file": base_dry_p.name,
             "base_dry_sha256": base_dry_sha,
@@ -1095,6 +1095,7 @@ def train_tone_pack(
             ok = train_voice(
                 instrument=inst,
                 voice=canonical_voice if canonical_voice in VOICES else target_voicing,
+                source_voicing=b_info.get("source_voicing"),
                 input_wav=dry_p,
                 output_wav=stem_p,
                 reference_wav=dry_p,

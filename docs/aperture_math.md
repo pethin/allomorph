@@ -361,20 +361,11 @@ To preserve authentic electromagnetic spatial aperture comb filtering and preven
 
 ---
 
-## 11. Diffuse Mechanical Body-Pickup Microphonic Coupling ($H_{\text{body}}$)
+## 11. Diffuse Mechanical Body Vibrations & Elimination of Static Microphonic Filters
 
-Unlike modern active pickups which are vacuum-encapsulated in dense epoxy resin, vintage passive pickups (such as 1960s Fender Alnico split-coils and single-coils) are unpotted or lightly wax-potted. Acoustic vibrations from the wooden instrument body travel into the pickup bobbins, vibrating the copper windings within the magnetic field:
+In real-world instruments, acoustic vibrations from the wooden body cavity can vibrate unpotted or lightly wax-potted pickup bobbins. However, in musical acoustics, mechanical body coupling is **acoustic vibrational feedback** dependent on dynamic room SPL, wood modal resonances, and playing volume—it is not an invariant static linear filter.
 
-$$\Delta k_{\text{body}} = \max(k_{\text{body, tgt}} - k_{\text{body, src}}, 0.0)$$
-
-Where $k_{\text{body}} = 0.08$ for Alnico V; $0.10$ for Alnico II; $0.03$ for Ceramic; $0.00$ for epoxy-potted Active pickups:
-
-$$f_b = 6200.0\text{ Hz}, \quad Q_b = 1.8, \quad f_{\text{damp}} = 9500.0\text{ Hz}$$
-$$f_n = \frac{f}{f_b}$$
-$$\text{res}(f) = \frac{f_n}{Q_b \sqrt{\left(1 - f_n^2\right)^2 + \left(\frac{f_n}{Q_b}\right)^2}}$$
-$$H_{\text{body}}(f) = 1.0 + \Delta k_{\text{body}} \cdot \text{res}(f) \cdot e^{-\left(\frac{f}{f_{\text{damp}}}\right)^2}$$
-
-* **Acoustic Consequence:** Adds authentic woody mechanical air and organic body bloom in the $5.5\text{--}7.5\text{ kHz}$ register, imparting vintage realism to sterile active signals.
+Analogous to longitudinal steel core clank (Section 10), modeling body microphonics as a static linear peaking filter (e.g. $+0.4\text{ dB}$ at $6.2\text{ kHz}$) violates Guardrail 5.1.3 by injecting artificial high-frequency noise and spectral coloration into dry neural network training stems. The forward digital twin pipeline strictly omits static linear microphonic filters, preserving clean electromagnetic spatial comb filtering and authentic minimum-phase causal dynamics.
 
 ---
 

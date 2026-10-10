@@ -1,0 +1,30 @@
+id = "34in_standard_p"
+instrument = "34in_standard_p"
+name = "Standard P-Bass Tone Pack"
+description = "Universal vintage and modern target voicings for 34\" Standard Precision Bass"
+version = 1
+
+[[bundles]]
+name = "split"
+source_voicing = "vintage_open"
+targets = [
+    "jazz_pair_active",
+    "jazz_pair_open",
+    "jazz_pair_mids",
+    "jazz_bridge_growl",
+    "jazz_bridge_open",
+    "stingray_parallel",
+    "stingray_series",
+    "pj_active",
+    "pj_passive",
+    "p_mm_parallel",
+    "p_mm_series",
+    "rickenbacker_clank",
+    "dingwall_bridge",
+    "mudbucker_deep",
+    "upright_piezo",
+    "precision_active",
+    "precision_mids",
+    "precision_warm",
+    "precision_dub",
+]

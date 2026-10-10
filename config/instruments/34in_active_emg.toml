@@ -12,13 +12,7 @@
 #       - Aperture width: 1.35" (34.3mm)
 # Electronics:
 #   - Active EMG 40/35 series soapbars with integrated low-noise internal preamplifier.
-#   - 10 kOhm low output impedance line driver, flat sub-audible DC transmission (H(0) >= 1.0).
-#   - Calibrated under Option C (Universal Active EMG Baseline @ fr = 4.15 kHz):
-#       - Bridges published factory specs of EMG 40CS (3.75 kHz) and EMG 40DC (4.55 kHz).
-#       - Optimal for 4-string (EMG 35), 5-string (EMG 40), and 6-string (EMG 45) active soapbar instruments.
-#   - Neck Soapbar active resonance: 4150.0 Hz, Q = 1.40.
-#   - Bridge Soapbar active resonance: 4150.0 Hz, Q = 1.40.
-#   - Parallel center blend active resonance: 4150.0 Hz, Q = 1.35.
+#   - 10 kOhm low output impedance line driver.
 
 id = "34in_active_emg"
 name = "34\" Active EMG Bass (Option C Baseline)"
@@ -27,15 +21,13 @@ scale_length_m = 0.8636
 electronics = "active"
 version = 1
 
-# Extended wave speeds: v = 2 * L * f0 (spans B0=30.87Hz to G2=98.00Hz for 4, 5, and 6-string universal compatibility)
+# Extended wave speeds: v = 2 * L * f0 (spans B0=30.87Hz to G2=98.00Hz)
 string_wave_speeds = [53.31, 71.16, 95.00, 126.81, 169.27]
 
-default_pickup = "pair_parallel"
 
 # ------------------------------------------------------------------------------
 # Physical Strings Configuration (Source Instrument Setup)
 # ------------------------------------------------------------------------------
-# Strung with standard 5-string nickel roundwounds (D'Addario EXL170-5 .045-.130).
 [strings]
 preset = "roundwound_nickel_5string"
 brand = "D'Addario"
@@ -46,8 +38,9 @@ wrap = "nickel_round"
 tension_lbs = 195.0
 
 # ------------------------------------------------------------------------------
-# 1. ACTIVE EMG SOAPBAR (Neck Solo)
+# 1. HARDWARE TRANSDUCERS (Active EMG Soapbars with internal op-amp buffers)
 # ------------------------------------------------------------------------------
+
 [pickups.neck]
 name = "Active EMG Soapbar (Neck)"
 position_name = "Neck"
@@ -57,32 +50,13 @@ coil_spacing_in = 0.65           # 0.65" (16.51mm) internal dual-blade spacing
 type = "dual_coil_parallel"
 magnet_type = "ceramic"
 pole_type = "blade"
-resonant_frequency_hz = 4150.0   # Active EMG buffered resonance (Option C midpoint)
-q_factor = 1.40
+has_internal_buffer = true
+buffer_output_impedance = 10000.0
 coils = [
-    { strings = ["all"], position_from_bridge_m = 0.14325, aperture_width_in = 0.40, weight = 0.5, pole_type = "blade" },
-    { strings = ["all"], position_from_bridge_m = 0.12675, aperture_width_in = 0.40, weight = 0.5, pole_type = "blade" }
+    { id = "forward", strings = ["all"], position_from_bridge_m = 0.14325, aperture_width_in = 0.40, weight = 0.5, pole_type = "blade", L = 2.0, Rdc = 4500.0, Reddy = 72000.0, Ccoil = 6.25e-10 },
+    { id = "rearward", strings = ["all"], position_from_bridge_m = 0.12675, aperture_width_in = 0.40, weight = 0.5, pole_type = "blade", L = 2.0, Rdc = 4500.0, Reddy = 72000.0, Ccoil = 6.25e-10 },
 ]
 
-[pickups.neck.circuit]
-topology = "single"
-L = 2.0
-Rdc = 4500.0
-Reddy = 72000.0
-Ccoil = 5.18e-10
-vsat = 0.50
-active = true
-active_variant = "classic"
-k_level = 0.25
-R_out = 10000.0
-preamp = "none"
-Rvol = 25000.0
-tau_att_level = 0.003
-tau_rel_level = 0.045
-
-# ------------------------------------------------------------------------------
-# 2. ACTIVE EMG SOAPBAR (Bridge Solo)
-# ------------------------------------------------------------------------------
 [pickups.bridge]
 name = "Active EMG Soapbar (Bridge)"
 position_name = "Bridge"
@@ -92,107 +66,69 @@ coil_spacing_in = 0.65           # 0.65" (16.51mm) internal dual-blade spacing
 type = "dual_coil_parallel"
 magnet_type = "ceramic"
 pole_type = "blade"
-resonant_frequency_hz = 4150.0   # Active EMG buffered resonance (Option C midpoint)
-q_factor = 1.40
+has_internal_buffer = true
+buffer_output_impedance = 10000.0
 coils = [
-    { strings = ["all"], position_from_bridge_m = 0.06325, aperture_width_in = 0.40, weight = 0.5, pole_type = "blade" },
-    { strings = ["all"], position_from_bridge_m = 0.04675, aperture_width_in = 0.40, weight = 0.5, pole_type = "blade" }
+    { id = "forward", strings = ["all"], position_from_bridge_m = 0.06325, aperture_width_in = 0.40, weight = 0.5, pole_type = "blade", L = 2.0, Rdc = 4500.0, Reddy = 72000.0, Ccoil = 6.25e-10 },
+    { id = "rearward", strings = ["all"], position_from_bridge_m = 0.04675, aperture_width_in = 0.40, weight = 0.5, pole_type = "blade", L = 2.0, Rdc = 4500.0, Reddy = 72000.0, Ccoil = 6.25e-10 },
 ]
 
-[pickups.bridge.circuit]
-topology = "single"
-L = 2.0
-Rdc = 4500.0
-Reddy = 72000.0
-Ccoil = 5.18e-10
-vsat = 0.50
-active = true
-active_variant = "classic"
-k_level = 0.25
-R_out = 10000.0
-preamp = "none"
-Rvol = 25000.0
-tau_att_level = 0.003
-tau_rel_level = 0.045
+# ------------------------------------------------------------------------------
+# 2. CONTROL HARNESS (EMG ABC Active Blend & Master Volume)
+# ------------------------------------------------------------------------------
 
-# ------------------------------------------------------------------------------
-# 3. ACTIVE EMG SOAPBARS PARALLEL (Center Detent / 50-50 Mix)
-# ------------------------------------------------------------------------------
-[pickups.pair_parallel]
-name = "Active EMG Soapbars Parallel (Center Detent)"
-position_name = "Parallel"
-position_from_bridge_m = 0.0950  # Acoustic centroid (135.0mm + 55.0mm) / 2
-aperture_width_in = 1.35
-coil_spacing_in = 0.0
-type = "composite"
-magnet_type = "ceramic"
-pole_type = "blade"
-resonant_frequency_hz = 4150.0   # Blended active resonance
-q_factor = 1.35
-components = [
-    { pickup = "neck", weight = 0.5 },
-    { pickup = "bridge", weight = 0.5 }
+[harnesses.active]
+name = "EMG Active Blend & Volume Harness"
+type = "active_preamp"
+load_resistance = 1000000.0
+cable_pf = 30.0
+
+wiring = [
+    ["pickups.neck.hot", "controls.blend.neck_in"],
+    ["pickups.neck.cold", "GND"],
+    ["pickups.bridge.hot", "controls.blend.bridge_in"],
+    ["pickups.bridge.cold", "GND"],
+    ["controls.blend.wiper", "preamp.in"],
+    ["preamp.out", "controls.vol.in"],
+    ["controls.vol.wiper", "out"],
+    ["controls.vol.gnd", "GND"],
 ]
 
-[pickups.pair_parallel.circuit]
-topology = "parallel"
-active = true
-active_variant = "classic"
-k_level = 0.25
-vsat = 0.50
-R_out = 10000.0
-preamp = "none"
-Rvol = 25000.0
-tau_att_level = 0.003
-tau_rel_level = 0.045
+[harnesses.active.controls.blend]
+name = "Pickup Blend"
+type = "pot"
+taper = "mn_blend"
+resistance = 25000.0
+default = 0.5
 
-[pickups.pair_parallel.circuit.neck]
-L = 2.0
-Rdc = 4500.0
-Reddy = 72000.0
-Ccoil = 5.18e-10
-vsat = 0.50
-
-[pickups.pair_parallel.circuit.bridge]
-L = 2.0
-Rdc = 4500.0
-Reddy = 72000.0
-Ccoil = 5.18e-10
-vsat = 0.50
+[harnesses.active.controls.vol]
+name = "Master Volume"
+type = "pot"
+taper = "audio_15"
+resistance = 25000.0
+default = 1.0
 
 # ------------------------------------------------------------------------------
-# 4. NATIVE INSTRUMENT VOICINGS
+# 3. NATIVE INSTRUMENT VOICINGS
 # ------------------------------------------------------------------------------
 
 [voicings.pair_parallel]
 version = 1
-name = "Active Dual EMG Soapbars Parallel"
-tone_name = "Active EMG Pair"
-pickup = "pair_parallel"
-affinity = "parallel"
-vol_pos = 1.0
+name = "Active EMG Soapbars Parallel (Center Detent)"
+tone_name = "EMG Soapbar Parallel"
+harness = "active"
+controls = { vol = 1.0, blend = 0.5 }
 
 [voicings.neck_solo]
 version = 1
-name = "Active Solo EMG Soapbar Neck"
-tone_name = "Active EMG Neck"
-pickup = "neck"
-affinity = "neck"
-vol_pos = 1.0
+name = "Active EMG Soapbar (Neck Solo)"
+tone_name = "EMG Soapbar Neck"
+harness = "active"
+controls = { vol = 1.0, blend = 0.0 }
 
 [voicings.bridge_solo]
 version = 1
-name = "Active Solo EMG Soapbar Bridge"
-tone_name = "Active EMG Bridge"
-pickup = "bridge"
-affinity = "bridge"
-vol_pos = 1.0
-
-# ------------------------------------------------------------------------------
-# 5. PICKUP AFFINITY ROUTING
-# ------------------------------------------------------------------------------
-[pickup_mapping]
-neck = "neck"
-bridge = "bridge"
-parallel = "pair_parallel"
-direct = "pair_parallel"
+name = "Active EMG Soapbar (Bridge Solo)"
+tone_name = "EMG Soapbar Bridge"
+harness = "active"
+controls = { vol = 1.0, blend = 1.0 }

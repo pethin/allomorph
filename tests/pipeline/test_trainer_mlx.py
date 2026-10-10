@@ -203,7 +203,8 @@ def test_mlx_training_fast_dev_run_export(tmp_path: Path):
     assert "metadata" in data
     assert "other_metadata" in data["metadata"]
     other_meta = data["metadata"]["other_metadata"]
-    assert other_meta["target_voice"]["id"] == "precision_active"
+    assert other_meta["target_voicing"]["id"] == "precision_active"
+    assert "voicing" in other_meta["source_instrument"]
     assert "training" in other_meta
     assert other_meta["training"]["validation_esr_a2_full"] is not None
 

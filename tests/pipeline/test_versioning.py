@@ -15,8 +15,8 @@ from allomorph.naming import get_t3k_basename
 from allomorph.pipeline.schema import (
     NamExportMetadata,
     NamSourceInstrumentMeta,
-    NamSourcePickupMeta,
-    NamTargetVoiceMeta,
+    NamSourceVoicingMeta,
+    NamTargetVoicingMeta,
     NamTrainingConfig,
     NamTrainingMetadata,
     PipelineCliConfig,
@@ -97,25 +97,24 @@ def test_t3k_filename_length_ceiling():
         for vid, vcfg in VOICES.items():
             tone_name = vcfg.tone_name or vcfg.name
             if len(inst_cfg.pickups) <= 1 or vcfg.preserve_aperture:
-                pos_name = None
+                pos_names = [None]
             else:
-                from allomorph.config import get_source_pickup
+                pos_names = [
+                    p.position_name or p.name
+                    for p in inst_cfg.pickups.values()
+                    if p.position_name or p.name
+                ] or [None]
 
-                try:
-                    pcfg = get_source_pickup(inst_cfg, vid)
-                    pos_name = pcfg.position_name or pcfg.name
-                except KeyError, ValueError:
-                    pos_name = None
-
-            basename = get_t3k_basename(
-                tone_name,
-                pos_name,
-                preserve_aperture=vcfg.preserve_aperture,
-                version_tag=version_tag,
-            )
-            assert len(basename) <= 64, (
-                f"Tone '{basename}' for {inst_id} -> {vid} exceeds 64-character ceiling ({len(basename)} > 64)"
-            )
+            for pos_name in pos_names:
+                basename = get_t3k_basename(
+                    tone_name,
+                    pos_name,
+                    preserve_aperture=vcfg.preserve_aperture,
+                    version_tag=version_tag,
+                )
+                assert len(basename) <= 64, (
+                    f"Tone '{basename}' for {inst_id} -> {vid} exceeds 64-character ceiling ({len(basename)} > 64)"
+                )
 
 
 def test_t3k_basename_exceeding_ceiling_raises_error():
@@ -307,9 +306,9 @@ def test_nam_export_metadata_schema_version_fields():
             id="30in_emg_mmtw",
             name='30" Short Scale MM',
             scale_length_in=30.0,
-            pickup=NamSourcePickupMeta(name="EMG MM Dual Coil"),
+            voicing=NamSourceVoicingMeta(name="EMG MM Dual Coil"),
         ),
-        target_voice=NamTargetVoiceMeta(
+        target_voicing=NamTargetVoicingMeta(
             id="precision_vintage",
             name="Vintage 62 P (Alnico V)",
         ),
@@ -321,6 +320,8 @@ def test_nam_export_metadata_schema_version_fields():
     assert d["voice_version"] == 1
     assert d["allomorph_version"] == "0.2.0"
     assert d["git_commit"] == "abc1234"
+    assert d["target_voicing"]["id"] == "precision_vintage"
+    assert d["source_instrument"]["voicing"]["name"] == "EMG MM Dual Coil"
 
 
 def test_cli_config_schemas_support_version_and_manifest_flags():

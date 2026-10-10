@@ -10,11 +10,6 @@
 #       - Aperture width: 0.45" (11.4mm) magnetic sensing aperture per coil half
 #   - 60s/Modern Bridge Single-Coil: 63.5mm from bridge saddle (368.3mm from 12th fret, 14 1/2")
 #       - Aperture width: 0.45" (11.4mm) narrow single-coil magnetic sensing aperture
-# Electronics:
-#   - Passive high-impedance circuit: Dual 250k audio volume pots (V/V/T), 250k master tone (47nF cap).
-#   - Parallel summing loaded resonance: 2.80 kHz, Q = 1.20 (125k net vol load + 750pF cable).
-#   - Solo Split-P loaded resonance: 2.80 kHz, Q = 1.40 (250k vol load + 750pF cable).
-#   - Solo Bridge loaded resonance: 3.20 kHz, Q = 1.60 (250k vol load + 750pF cable).
 
 id = "34in_standard_pj"
 name = "34\" Standard P/J Bass"
@@ -26,12 +21,10 @@ version = 1
 # String wave speeds: v = 2 * L * f0 (for E1=41.2Hz, A1=55.0Hz, D2=73.4Hz, G2=98.0Hz)
 string_wave_speeds = [71.16, 95.00, 126.81, 169.27]
 
-default_pickup = "pair_parallel"
 
 # ------------------------------------------------------------------------------
 # Physical Strings Configuration (Source Instrument Setup)
 # ------------------------------------------------------------------------------
-# Strung with standard nickel roundwounds (D'Addario EXL165 / Fender 7250M .045-.105).
 [strings]
 preset = "roundwound_nickel_standard"
 brand = "D'Addario"
@@ -42,9 +35,10 @@ wrap = "nickel_round"
 tension_lbs = 171.0
 
 # ------------------------------------------------------------------------------
-# 1. STANDARD FENDER SPLIT-COIL P (Neck Solo)
+# 1. HARDWARE TRANSDUCERS (Single physical pickups mounted in wood)
 # ------------------------------------------------------------------------------
-[pickups.p]
+
+[pickups.split_p]
 name = "Vintage Split-Coil P (Neck)"
 position_name = "Neck"
 position_from_bridge_m = 0.1250  # Centerline 125.0mm
@@ -52,31 +46,14 @@ aperture_width_in = 0.45         # 0.45" magnetic sensing aperture per split hal
 coil_spacing_in = 0.0
 type = "split_coil"
 magnet_type = "alnico_v"
-resonant_frequency_hz = 2800.0   # Standard Fender split-coil loaded resonance (2.8 kHz)
-q_factor = 1.40                  # Vintage Alnico V loaded Q factor
 coils = [
     # Strings 3 & 4 see forward coil half (warmer, deeper fundamental)
-    { strings = [3, 4], position_from_bridge_m = 0.1390, aperture_width_in = 0.45, weight = 1.0 },
+    { id = "forward", strings = [3, 4], position_from_bridge_m = 0.1390, aperture_width_in = 0.45, pole_type = "rod", L = 1.9, Rdc = 5250.0, Reddy = 90000.0, Ccoil = 3e-11, weight = 1.0 },
     # Strings 1 & 2 see rearward coil half (tighter, punchier mid bite)
-    { strings = [1, 2], position_from_bridge_m = 0.1110, aperture_width_in = 0.45, weight = 1.0 }
+    { id = "rearward", strings = [1, 2], position_from_bridge_m = 0.1110, aperture_width_in = 0.45, pole_type = "rod", L = 1.9, Rdc = 5250.0, Reddy = 90000.0, Ccoil = 3e-11, weight = 1.0 },
 ]
 
-# ------------------------------------------------------------------------------
-# 2. 60s JAZZ BRIDGE SINGLE-COIL (Bridge Solo)
-# ------------------------------------------------------------------------------
-
-[pickups.p.circuit]
-topology = "single"
-L = 3.8
-Rdc = 10500.0
-Reddy = 180000.0
-Ccoil = 6e-11
-Rtop = 10.0
-Rbot = 250000.0
-Rtone = 250000.0
-Ctone = 4.7000000000000004e-08
-
-[pickups.j]
+[pickups.bridge_j]
 name = "60s Jazz Bridge Single-Coil"
 position_name = "Bridge"
 position_from_bridge_m = 0.0635  # 63.5mm from bridge (14 1/2" from 12th fret)
@@ -84,218 +61,149 @@ aperture_width_in = 0.45         # 0.45" narrow single-coil sensing aperture
 coil_spacing_in = 0.0
 type = "single_coil"
 magnet_type = "alnico_v"
-resonant_frequency_hz = 3200.0   # Bridge single-coil loaded resonance (3.2 kHz)
-q_factor = 1.60
 coils = [
-    { strings = ["all"], position_from_bridge_m = 0.0635, aperture_width_in = 0.45, weight = 1.0 }
+    { id = "bridge", position_from_bridge_m = 0.0635, aperture_width_in = 0.45, pole_type = "rod", L = 3.6, Rdc = 7800.0, Reddy = 125000.0, Ccoil = 7.0e-11, weight = 1.0 },
 ]
 
 # ------------------------------------------------------------------------------
-# 3. VINTAGE P/J PARALLEL (Both Volumes 100%)
+# 2. CONTROL HARNESSES (Multi-Harness: Authentic 2V/1T Passive and Active 2-Band)
 # ------------------------------------------------------------------------------
 
-[pickups.j.circuit]
-topology = "single"
-L = 3.6
-Rdc = 7800.0
-Reddy = 125000.0
-Ccoil = 7e-11
-Rtop = 10.0
-Rbot = 250000.0
-Rtone = 250000.0
-Ctone = 4.7000000000000004e-08
+[harnesses.passive]
+name = "P/J 2V/1T Passive Harness"
+type = "passive"
+load_resistance = 1000000.0
+cable_pf = 750.0
+k_mutual = 0.04
 
-[pickups.pair_parallel]
-name = "Vintage P/J Parallel (Both Volumes 100%)"
-position_name = "Parallel"
-position_from_bridge_m = 0.09425 # Acoustic centroid (125.0mm + 63.5mm) / 2
-aperture_width_in = 0.45         # Blended effective sensing aperture
-coil_spacing_in = 0.0
-type = "composite"
-magnet_type = "alnico_v"
-resonant_frequency_hz = 2800.0   # Combined parallel equivalent resonance under 125k net vol load
-q_factor = 1.20                  # Damped quality factor under dual 250k volume load
-components = [
-    { pickup = "p", weight = 0.5 },
-    { pickup = "j", weight = 0.5 }
+wiring = [
+    # Split P in humbucking series
+    ["pickups.split_p.forward.cold", "pickups.split_p.rearward.hot"],
+    ["pickups.split_p.rearward.cold", "GND"],
+    ["pickups.split_p.forward.hot", "controls.p_vol.wiper"],
+    ["controls.p_vol.in", "bus"],
+    ["controls.p_vol.gnd", "GND"],
+
+    # Bridge J
+    ["pickups.bridge_j.hot", "controls.j_vol.wiper"],
+    ["controls.j_vol.in", "bus"],
+    ["controls.j_vol.gnd", "GND"],
+    ["pickups.bridge_j.cold", "GND"],
+
+    # Master tone & output
+    ["bus", "controls.tone.in"],
+    ["controls.tone.gnd", "GND"],
+    ["bus", "out"],
 ]
 
-[pickups.p_active]
-name = "Modern Ceramic Split-Coil (Neck)"
-position_name = "Split"
-position_from_bridge_m = 0.1250
-aperture_width_in = 0.45
-coil_spacing_in = 0.0
-type = "split_coil"
-magnet_type = "ceramic"
-alpha = 0.12
-resonant_frequency_hz = 4800.0
-q_factor = 1.70
-coils = [
-    { strings = [3, 4], position_from_bridge_m = 0.1390, aperture_width_in = 0.45, weight = 1.0 },
-    { strings = [1, 2], position_from_bridge_m = 0.1110, aperture_width_in = 0.45, weight = 1.0 }
-]
+[harnesses.passive.controls.p_vol]
+name = "P Volume"
+type = "pot"
+taper = "audio_15"
+resistance = 250000.0
+default = 1.0
 
-[pickups.p_active.circuit]
-topology = "single"
-L = 4.8
-Rdc = 9500.0
-Reddy = 110000.0
-Ccoil = 8e-11
-vsat = 0.4
-active = true
+[harnesses.passive.controls.j_vol]
+name = "J Volume"
+type = "pot"
+taper = "audio_15"
+resistance = 250000.0
+default = 1.0
+
+[harnesses.passive.controls.tone]
+name = "Master Tone"
+type = "pot"
+taper = "audio_15"
+resistance = 250000.0
+cap = 4.7e-8
+default = 1.0
+
+[harnesses.active]
+name = "Sadowsky 2-Band Active Preamp"
+type = "active_preamp"
 preamp = "sadowsky_2band"
-Rvol = 500000.0
+load_resistance = 1000000.0
+cable_pf = 30.0
+k_mutual = 0.04
 
-[pickups.j_active]
-name = "Modern Ceramic Single-Coil (Bridge)"
-position_name = "Bridge"
-position_from_bridge_m = 0.0635
-aperture_width_in = 0.45
-coil_spacing_in = 0.0
-type = "single_coil"
-magnet_type = "ceramic"
-alpha = 0.12
-resonant_frequency_hz = 4600.0
-q_factor = 1.80
-coils = [
-    { strings = ["all"], position_from_bridge_m = 0.0635, aperture_width_in = 0.45, weight = 1.0 }
+wiring = [
+    # Split P into neck_in
+    ["pickups.split_p.forward.cold", "pickups.split_p.rearward.hot"],
+    ["pickups.split_p.rearward.cold", "GND"],
+    ["pickups.split_p.forward.hot", "controls.blend.neck_in"],
+
+    # Bridge J into bridge_in
+    ["pickups.bridge_j.hot", "controls.blend.bridge_in"],
+    ["pickups.bridge_j.cold", "GND"],
+
+    # Preamp & Volume
+    ["controls.blend.wiper", "preamp.in"],
+    ["preamp.out", "controls.vol.in"],
+    ["controls.vol.wiper", "out"],
+    ["controls.vol.gnd", "GND"],
 ]
 
-[pickups.j_active.circuit]
-topology = "single"
-L = 3.6
-Rdc = 7800.0
-Reddy = 125000.0
-Ccoil = 7e-11
-vsat = 0.6
-active = true
-preamp = "sadowsky_2band"
-Rvol = 500000.0
+[harnesses.active.controls.blend]
+name = "Pickup Blend"
+type = "pot"
+taper = "mn_blend"
+resistance = 250000.0
+default = 0.5
 
-[pickups.pair_active]
-name = "Modern Active P/J (Split P + J Bridge)"
-position_name = "Parallel"
-position_from_bridge_m = 0.09425
-aperture_width_in = 0.45
-coil_spacing_in = 0.0
-type = "composite"
-magnet_type = "ceramic"
-resonant_frequency_hz = 4600.0
-q_factor = 1.60
-components = [
-    { pickup = "p_active", weight = 0.5 },
-    { pickup = "j_active", weight = 0.5 }
-]
+[harnesses.active.controls.vol]
+name = "Master Volume"
+type = "pot"
+taper = "audio_15"
+resistance = 25000.0
+default = 1.0
 
-[pickups.pair_active.circuit]
-topology = "parallel"
-active = true
-preamp = "sadowsky_2band"
-Rvol = 500000.0
+[harnesses.active.controls.bass]
+name = "Bass Boost"
+type = "preamp_band"
+band = "bass"
+default = 0.5
 
-[pickups.pair_active.circuit.neck]
-L = 4.8
-Rdc = 9500.0
-Reddy = 110000.0
-Ccoil = 8e-11
-vsat = 0.4
-
-[pickups.pair_active.circuit.bridge]
-L = 3.6
-Rdc = 7800.0
-Reddy = 125000.0
-Ccoil = 7e-11
-vsat = 0.6
+[harnesses.active.controls.treble]
+name = "Treble Boost"
+type = "preamp_band"
+band = "treble"
+default = 0.5
 
 # ------------------------------------------------------------------------------
-# 4. SMART VOICE MAPPING
-# ------------------------------------------------------------------------------
-# Directs the player to select the closest physical pickup state on the P/J Bass:
-#   - Neck Solo (P): Precision bass voicings, Mudbucker, and Upright piezo depth
-#   - Bridge Solo (J): 60s Jazz bridge growl, StingRay bite, and Rickenbacker clank
-#   - Both Parallel (P/J): Authentic P/J hybrid, scooped Jazz slap, and modern punch
-
-
-[pickups.pair_parallel.circuit]
-topology = "parallel"
-Rtop = 10.0
-Rbot = 125000.0
-Rtone = 250000.0
-Ctone = 4.7000000000000004e-08
-
-[pickups.pair_parallel.circuit.neck]
-L = 3.8
-Rdc = 10500.0
-Reddy = 180000.0
-Ccoil = 6e-11
-
-[pickups.pair_parallel.circuit.bridge]
-L = 3.6
-Rdc = 7800.0
-Reddy = 125000.0
-Ccoil = 7e-11
-
-# ------------------------------------------------------------------------------
-# 2. NATIVE INSTRUMENT VOICINGS
+# 3. NATIVE INSTRUMENT VOICINGS
 # ------------------------------------------------------------------------------
 
 [voicings.pair_parallel]
 version = 1
-name = "Vintage Alnico P/J Parallel"
+name = "Vintage P/J Parallel (Both Volumes 100%)"
 tone_name = "PJ Passive"
-pickup = "pair_parallel"
-affinity = "parallel"
-vol_pos = 1.0
-tone_pos = 1.0
-tone_cap_f = 4.7e-08
-
-[voicings.pair_active]
-version = 1
-name = "Modern Active P/J Preamp Boost"
-tone_name = "PJ Active"
-pickup = "pair_active"
-affinity = "parallel"
-vol_pos = 1.0
-tone_pos = 1.0
-preamp_preset = "sadowsky_2band"
-
-[voicings.p_solo]
-version = 1
-name = "Solo Vintage Split P"
-tone_name = "Precision Vintage"
-pickup = "p"
-affinity = "neck"
-vol_pos = 1.0
-tone_pos = 1.0
-tone_cap_f = 4.7e-08
+harness = "passive"
+controls = { p_vol = 1.0, j_vol = 1.0, tone = 1.0 }
 
 [voicings.neck_active]
 version = 1
-name = "Solo Modern Active Split P"
-tone_name = "Precision Active"
-pickup = "p_active"
-affinity = "neck"
-vol_pos = 1.0
-tone_pos = 1.0
-preamp_preset = "sadowsky_2band"
+name = "Modern Ceramic Split-Coil (Neck Active)"
+tone_name = "PJ Neck Active"
+harness = "active"
+controls = { vol = 1.0, blend = 0.0, bass = 0.5, treble = 0.5 }
 
-
-[voicings.j_solo]
+[voicings.pair_active]
 version = 1
-name = "Solo 60s Bridge J"
-tone_name = "Jazz Bridge Open"
-pickup = "j"
-affinity = "bridge"
-vol_pos = 1.0
-tone_pos = 1.0
-tone_cap_f = 4.7e-08
+name = "Modern Sadowsky Active P/J Pair"
+tone_name = "PJ Active"
+harness = "active"
+controls = { vol = 1.0, blend = 0.5, bass = 0.5, treble = 0.5 }
 
-# ------------------------------------------------------------------------------
-# 3. PICKUP AFFINITY ROUTING
-# ------------------------------------------------------------------------------
-[pickup_mapping]
-neck = "p"
-bridge = "j"
-parallel = "pair_parallel"
-direct = "pair_parallel"
+[voicings.p_warm]
+version = 1
+name = "Vintage Split-P Warm"
+tone_name = "PJ Neck Warm"
+harness = "passive"
+controls = { p_vol = 1.0, j_vol = 0.0, tone = 1.0 }
+
+[voicings.j_growl]
+version = 1
+name = "Vintage 60s Bridge J Growl"
+tone_name = "PJ Bridge Growl"
+harness = "passive"
+controls = { p_vol = 0.0, j_vol = 1.0, tone = 1.0 }

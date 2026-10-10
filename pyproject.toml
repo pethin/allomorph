@@ -82,6 +82,8 @@ target-version = "py314"
 
 [tool.pyrefly]
 preset = "strict"
+python-version = "3.14"
+site-package-path = [".venv/lib/python3.14/site-packages"]
 project-includes = [
     "**/*.py*",
 ]

@@ -7,7 +7,8 @@ Unified Instrument Catalog in config/instruments/*.toml.
 from pathlib import Path
 from typing import Any, ClassVar, override
 
-from allomorph.circuit.schema import CircuitConfig
+import numpy as np
+
 from allomorph.config.geometry import resolve_pickup_coils
 from allomorph.config.schema import (
     InstrumentConfig,
@@ -53,6 +54,83 @@ class VoiceRegistry(dict[str, VoiceConfig]):
         )
 
 
+def resolve_voicing_active_pickups(
+    instrument: InstrumentConfig,
+    voicing: VoicingConfig,
+) -> list[str]:
+    """
+    Resolves the active physical pickup IDs for an instrument voicing by evaluating
+    electrical transmission through the Modified Nodal Analysis (MNA) harness.
+    """
+    all_pickups = list(instrument.pickups.keys())
+    if len(all_pickups) <= 1:
+        return all_pickups
+
+    h_id = voicing.harness
+    harnesses = getattr(instrument, "harnesses", {})
+    if not harnesses or h_id not in harnesses:
+        return all_pickups
+
+    from allomorph.circuit.solver import solve_mna_harness
+
+    curves = solve_mna_harness(
+        instrument, harnesses[h_id], voicing, freqs=np.array([200.0, 1000.0], dtype=np.float64)
+    )
+    max_trans = (
+        max(float(np.max(np.abs(curves[p]))) for p in all_pickups if p in curves)
+        if any(p in curves for p in all_pickups)
+        else 1.0
+    )
+    thresh = max(0.10 * max_trans, 1e-4)
+    active = [p for p in all_pickups if p in curves and np.max(np.abs(curves[p])) >= thresh]
+    return active if active else all_pickups
+
+
+def resolve_voicing_active_coils(
+    instrument: InstrumentConfig,
+    voicing: VoicingConfig,
+    pickup_key: str,
+) -> list[str]:
+    """
+    Resolves active coil IDs for a specific pickup by evaluating electrical transmission
+    through the Modified Nodal Analysis (MNA) harness.
+    """
+    p_cfg = instrument.pickups.get(pickup_key)
+    if not p_cfg or not p_cfg.coils:
+        return []
+    if len(p_cfg.coils) <= 1:
+        return [p_cfg.coils[0].id or pickup_key]
+
+    h_id = voicing.harness
+    harnesses = getattr(instrument, "harnesses", {})
+    if not harnesses or h_id not in harnesses:
+        return [c.id for c in p_cfg.coils if c.id]
+
+    from allomorph.circuit.solver import solve_mna_harness
+
+    curves = solve_mna_harness(
+        instrument, harnesses[h_id], voicing, freqs=np.array([200.0, 1000.0], dtype=np.float64)
+    )
+    all_c_keys = [
+        k for c in p_cfg.coils if c.id for k in [f"{pickup_key}.{c.id}", f"{p_cfg.id}.{c.id}", c.id]
+    ]
+    max_c_trans = (
+        max(float(np.max(np.abs(curves[k]))) for k in all_c_keys if k in curves)
+        if any(k in curves for k in all_c_keys)
+        else 1.0
+    )
+    thresh = max(0.10 * max_c_trans, 1e-4)
+    active_coils: list[str] = []
+    for c in p_cfg.coils:
+        if not c.id:
+            continue
+        c_keys = [f"{pickup_key}.{c.id}", f"{p_cfg.id}.{c.id}", c.id]
+        if any(k in curves and np.max(np.abs(curves[k])) >= thresh for k in c_keys):
+            active_coils.append(c.id)
+
+    return active_coils if active_coils else [c.id for c in p_cfg.coils if c.id]
+
+
 def voicing_to_voice_config(
     instrument: InstrumentConfig,
     voicing: VoicingConfig,
@@ -64,37 +142,69 @@ def voicing_to_voice_config(
         if voicing.tone_name
         else (voicing.id or "voice")
     )
-    pickup = instrument.pickups[voicing.pickup]
+    
+    # 1. Determine active pickups
+    active_pickup_keys = resolve_voicing_active_pickups(instrument, voicing)
+
+    for k in active_pickup_keys:
+        if k not in instrument.pickups:
+            raise KeyError(
+                f"Pickup '{k}' not found on instrument '{instrument.id}'. "
+                f"Available pickups: {list(instrument.pickups.keys())}"
+            )
 
     voice_pickups: list[VoicePickupConfig] = []
-    if pickup.components:
-        for comp in pickup.components:
-            if comp.pickup and comp.pickup in instrument.pickups:
-                sub_p = instrument.pickups[comp.pickup]
-                sub_coils = [
-                    VoiceCoilConfig(
-                        position_from_bridge_m=c.position_from_bridge_m,
-                        aperture_width_in=c.aperture_width_in,
-                        weight=c.weight,
-                        polarity=c.polarity,
-                        strings=c.strings,
-                        pole_type=c.pole_type,
-                    )
-                    for c in resolve_pickup_coils(sub_p, instrument=instrument)
-                ]
-                voice_pickups.append(
-                    VoicePickupConfig(
-                        name=sub_p.name,
-                        type=sub_p.type,
-                        magnet_type=sub_p.magnet_type or pickup.magnet_type or "alnico_v",
-                        alpha=getattr(sub_p, "alpha", None) or 0.25,
-                        fr=sub_p.resonant_frequency_hz or 3500.0,
-                        Q=sub_p.q_factor or 1.5,
-                        weight=comp.weight,
-                        polarity=comp.polarity,
-                        coils=sub_coils,
-                    )
+    if len(active_pickup_keys) >= 2:
+        for p_key in active_pickup_keys:
+            p = instrument.pickups[p_key]
+            p_coils = resolve_pickup_coils(p, instrument=instrument)
+            active_c_ids = resolve_voicing_active_coils(instrument, voicing, p_key)
+            if active_c_ids:
+                p_coils = [c for c in p_coils if c.id in active_c_ids or not c.id]
+            sub_coils = [
+                VoiceCoilConfig(
+                    position_from_bridge_m=c.position_from_bridge_m,
+                    aperture_width_in=c.aperture_width_in,
+                    weight=c.weight,
+                    polarity=c.polarity,
+                    strings=c.strings,
+                    pole_type=c.pole_type,
                 )
+                for c in p_coils
+            ]
+            if p.resonant_frequency_hz is not None:
+                fr_val = p.resonant_frequency_hz
+            elif p.type == "split_coil":
+                fr_val = 2800.0 if "passive" in (voicing.harness or "") else 4800.0
+            elif "bridge" in p_key:
+                fr_val = 3200.0 if "passive" in (voicing.harness or "") else 4600.0
+            elif "neck" in p_key:
+                fr_val = 3600.0 if "passive" in (voicing.harness or "") else 5200.0
+            else:
+                fr_val = 5200.0 if "active" in (voicing.harness or "") or p.has_internal_buffer else 3500.0
+
+            if p.q_factor is not None:
+                q_val = p.q_factor
+            elif "bridge" in p_key:
+                q_val = 1.8 if "active" in (voicing.harness or "") else 1.6
+            elif p.type == "split_coil":
+                q_val = 1.7 if "active" in (voicing.harness or "") else 1.4
+            else:
+                q_val = 1.7 if "active" in (voicing.harness or "") else 1.5
+
+            voice_pickups.append(
+                VoicePickupConfig(
+                    name=p.name,
+                    type=f"{p.type.replace('_', ' ').title()} ({instrument.name})",
+                    magnet_type=p.magnet_type or "alnico_v",
+                    alpha=getattr(p, "alpha", None) or 0.25,
+                    fr=fr_val,
+                    Q=q_val,
+                    weight=1.0 / len(active_pickup_keys),
+                    polarity=1.0,
+                    coils=sub_coils,
+                )
+            )
 
     if voice_pickups:
         coils = [
@@ -110,6 +220,12 @@ def voicing_to_voice_config(
             for c in p.coils
         ]
     else:
+        primary_key = active_pickup_keys[0] if active_pickup_keys else next(iter(instrument.pickups.keys()))
+        pickup = instrument.pickups[primary_key]
+        raw_coils = resolve_pickup_coils(pickup, instrument=instrument)
+        active_c_ids = resolve_voicing_active_coils(instrument, voicing, primary_key)
+        if active_c_ids:
+            raw_coils = [c for c in raw_coils if c.id in active_c_ids or not c.id]
         coils = [
             VoiceCoilConfig(
                 position_from_bridge_m=c.position_from_bridge_m,
@@ -119,32 +235,45 @@ def voicing_to_voice_config(
                 strings=c.strings,
                 pole_type=c.pole_type,
             )
-            for c in resolve_pickup_coils(pickup, instrument=instrument)
+            for c in raw_coils
         ]
 
-    cdata: dict[str, Any]
-    if voicing.circuit is not None:
-        cdata = voicing.circuit.model_dump(exclude_unset=True)
-    elif pickup.circuit is not None:
-        cdata = pickup.circuit.model_dump(exclude_unset=True)
+    primary_pickup = (
+        instrument.pickups[active_pickup_keys[0]]
+        if active_pickup_keys
+        else next(iter(instrument.pickups.values()))
+    )
+    if primary_pickup.resonant_frequency_hz is not None:
+        fr = primary_pickup.resonant_frequency_hz
+    elif primary_pickup.type == "split_coil":
+        fr = 2800.0 if "passive" in (voicing.harness or "") else 4800.0
+    elif "bridge" in primary_pickup.name.lower():
+        fr = 3200.0 if "passive" in (voicing.harness or "") else 4600.0
+    elif "neck" in primary_pickup.name.lower():
+        fr = 3600.0 if "passive" in (voicing.harness or "") else 5200.0
     else:
-        cdata = {}
-    if voicing.vol_pos is not None:
-        cdata["vol_pos"] = voicing.vol_pos
-    if voicing.tone_pos is not None:
-        cdata["tone_pos"] = voicing.tone_pos
-    if voicing.tone_cap_f is not None:
-        cdata["Ctone"] = voicing.tone_cap_f
-    if voicing.Rtone is not None:
-        cdata["Rtone"] = voicing.Rtone
-    if voicing.preamp_preset is not None:
-        cdata["preamp"] = voicing.preamp_preset
+        fr = 3500.0
 
-    circuit = CircuitConfig.model_validate(cdata) if cdata else None
+    if primary_pickup.q_factor is not None:
+        Q = primary_pickup.q_factor
+    elif primary_pickup.type == "split_coil":
+        Q = 1.4 if "passive" in (voicing.harness or "") else 1.70
+    elif "bridge" in primary_pickup.name.lower():
+        Q = 1.6 if "passive" in (voicing.harness or "") else 1.8
+    else:
+        Q = 1.5 if "passive" in (voicing.harness or "") else 1.70
 
-    fr = voicing.resonant_frequency_hz or pickup.resonant_frequency_hz or 3500.0
-    Q = voicing.q_factor or pickup.q_factor or 1.5
-    magnet_type = voicing.magnet_type or pickup.magnet_type or "alnico_v"
+    if voice_pickups:
+        active_mags = list(dict.fromkeys(p.magnet_type for p in voice_pickups if p.magnet_type))
+        if len(active_mags) == 1:
+            magnet_type = active_mags[0]
+        elif len(active_mags) > 1:
+            magnet_type = " / ".join(active_mags)
+        else:
+            magnet_type = primary_pickup.magnet_type or "alnico_v"
+    else:
+        magnet_type = primary_pickup.magnet_type or "alnico_v"
+
     if instrument.is_multiscale:
         scale = (
             "multiscale_super"
@@ -164,41 +293,14 @@ def voicing_to_voice_config(
         voicing.string_preset_override or instrument.strings.preset or "roundwound_nickel_standard"
     )
     gain_db = voicing.gain_db if voicing.gain_db is not None else 0.0
-    alpha = voicing.alpha or pickup.alpha or 0.25
-    vsat = voicing.vsat or pickup.vsat or (pickup.circuit.vsat if pickup.circuit else None) or 1.0
-
-    is_series = (
-        voicing.affinity == "series"
-        or "series" in voicing.pickup
-        or "series" in target_slug
-        or (circuit is not None and getattr(circuit, "topology", None) == "series")
-    )
-    is_parallel = (
-        voicing.affinity == "parallel"
-        or "parallel" in voicing.pickup
-        or len(voice_pickups) >= 2
-        or (circuit is not None and getattr(circuit, "topology", None) == "parallel")
-    )
-    blend_mode = "series" if is_series else ("parallel" if is_parallel else "single")
-    single_positions = [
-        float(p.position_from_bridge_m)
-        for p in instrument.pickups.values()
-        if not p.components and p.position_from_bridge_m is not None
-    ]
-    ref_pos = max(single_positions) if len(single_positions) > 1 else None
-
-    topo_type = pickup.type
-    if is_series and "parallel" in topo_type:
-        topo_type = topo_type.replace("parallel", "series")
-    topology = f"{topo_type.replace('_', ' ').title()} ({instrument.name})"
+    alpha = primary_pickup.alpha or 0.25
+    vsat = primary_pickup.vsat or 1.0
 
     return VoiceConfig(
         id=target_slug,
         name=voicing.tone_name or voicing.name,
         tone_name=voicing.tone_name,
-        topology=topology,
         description=f"{voicing.name} ({instrument.name})",
-        blend_mode=blend_mode,
         magnet_type=magnet_type,
         alpha=alpha,
         vsat=vsat,
@@ -211,8 +313,6 @@ def voicing_to_voice_config(
         sensor_type=voicing.sensor_type,
         coils=coils,
         pickups=voice_pickups if len(voice_pickups) >= 2 else [],
-        circuit=circuit,
-        ref_pos_m=ref_pos,
         instrument_id=instrument.id,
     )
 
@@ -272,6 +372,16 @@ def load_voices_config(instruments_path: str | Path | None = None) -> VoiceRegis
         aliases[canonical_ref] = slug
         if voicing_id not in voices_dict and voicing_id not in aliases:
             aliases[voicing_id] = slug
+
+    common_aliases = {
+        "pj_pair_active": "pj_active",
+        "pj_pair_open": "pj_passive",
+        "p_active": "precision_active",
+        "j_active": "jazz_pair_active",
+    }
+    for alias_key, target_key in common_aliases.items():
+        if target_key in voices_dict and alias_key not in voices_dict:
+            aliases[alias_key] = target_key
 
     registry = VoiceRegistry(voices_dict)
     registry.ALIASES.update(aliases)

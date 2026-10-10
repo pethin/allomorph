@@ -21,7 +21,6 @@ version = 1
 # String wave speeds: v = 2 * L * f0 (for E1=41.2Hz, A1=55.0Hz, D2=73.4Hz, G2=98.0Hz)
 string_wave_speeds = [66.98, 89.41, 119.35, 159.31]
 
-default_pickup = "px"
 
 # ------------------------------------------------------------------------------
 # Physical Strings Configuration (Source Instrument Setup)
@@ -37,10 +36,12 @@ wrap = "nickel_round"
 tension_lbs = 160.0
 
 # ------------------------------------------------------------------------------
-# 1. REVERSE EMG PX SPLIT-COIL (Neck Solo)
+# 1. HARDWARE TRANSDUCERS (Single physical pickups mounted in wood)
 # ------------------------------------------------------------------------------
-# Reverse split layout: D/G coil half is mounted forward (towards neck) for fullness,
-# while E/A coil half is mounted backward (towards bridge) for tight low-end definition.
+
+# Reverse EMG PX Split-Coil:
+# D/G coil half mounted forward (towards neck) for fullness,
+# E/A coil half mounted backward (towards bridge) for tight low-end definition.
 [pickups.px]
 name = "Reverse EMG PX Split-Coil (Neck)"
 position_name = "Neck"
@@ -50,200 +51,133 @@ coil_spacing_in = 0.0
 type = "split_coil"
 magnet_type = "ceramic"
 pole_type = "blade"
-resonant_frequency_hz = 3200.0   # Ceramic active X-series resonance (from EMG datasheet)
-q_factor = 1.40
-
+has_internal_buffer = true
+buffer_output_impedance = 2000.0
 coils = [
-    # Strings 1 & 2 see only the forward D/G coil half
-    { strings = [1, 2], position_from_bridge_m = 0.1368, aperture_width_in = 1.10, weight = 1.0, pole_type = "blade" },
-    # Strings 3 & 4 see only the rearward E/A coil half
-    { strings = [3, 4], position_from_bridge_m = 0.1088, aperture_width_in = 1.10, weight = 1.0, pole_type = "blade" }
+    # Strings 1 & 2 see only forward D/G coil half
+    { id = "forward", strings = [1, 2], position_from_bridge_m = 0.1368, aperture_width_in = 0.45, weight = 1.0, pole_type = "blade", L = 0.80, Rdc = 2800.0, Reddy = 150000.0, Ccoil = 3.17e-9 },
+    # Strings 3 & 4 see only rearward E/A coil half
+    { id = "rearward", strings = [3, 4], position_from_bridge_m = 0.1088, aperture_width_in = 0.45, weight = 1.0, pole_type = "blade", L = 0.80, Rdc = 2800.0, Reddy = 150000.0, Ccoil = 3.17e-9 },
 ]
 
-[pickups.px.circuit]
-topology = "single"
-L = 0.80
-Rdc = 2800.0
-Reddy = 150000.0
-Ccoil = 2.97e-9
-active = true
-active_variant = "x_series"
-k_level = 0.0
-vsat = 2.40
-R_out = 2000.0
-tau_att_level = 0.003
-tau_rel_level = 0.045
-
-# ------------------------------------------------------------------------------
-# 2. EMG MMTWX SINGLE-COIL (Bridge Solo - Push/Pull Down: J Mode)
-# ------------------------------------------------------------------------------
-# Active single-coil mode using bridge-side stacked coils (L2+L3) at 50.8mm (2.0" from bridge).
-# Selected when MMTWX volume pot is pushed down.
-[pickups.mmtwx_single]
-name = "EMG MMTWX Single-Coil (Bridge)"
-position_name = "Single"
-position_from_bridge_m = 0.0508  # 50.8mm from bridge (2.0")
-aperture_width_in = 0.75         # Narrow 0.75" Jazz bridge aperture
-coil_spacing_in = 0.0
-type = "single_coil"
-magnet_type = "ceramic_steel"
-pole_type = "blade"
-resonant_frequency_hz = 3500.0   # High single-coil active resonance
-q_factor = 1.40
-
-coils = [
-    { strings = ["all"], position_from_bridge_m = 0.0508, aperture_width_in = 0.75, weight = 1.0, pole_type = "blade" }
-]
-
-[pickups.mmtwx_single.circuit]
-topology = "single"
-L = 0.80
-Rdc = 2800.0
-Reddy = 150000.0
-Ccoil = 2.49e-9
-active = true
-active_variant = "x_series"
-k_level = 0.0
-vsat = 2.40
-R_out = 2000.0
-tau_att_level = 0.003
-tau_rel_level = 0.045
-
-# ------------------------------------------------------------------------------
-# 3. EMG MMTWX DUAL-COIL (Bridge Solo - Push/Pull Up: MM Mode)
-# ------------------------------------------------------------------------------
-# Humbucking Music Man mode superimposing neck coil (73.7mm) and bridge coil (50.8mm).
-# Selected when MMTWX volume pot is pulled up.
-[pickups.mmtwx_dual]
-name = "EMG MMTWX Dual-Coil (Centerline)"
-position_name = "Dual"
-position_from_bridge_m = 0.0622  # 62.2mm centerline (2.45")
+# EMG MMTWX Active Dual-Mode Pickup (Bridge):
+# Dual-mode ceramic & steel blades (CSX MM dual coil or JCSX single-coil).
+[pickups.mmtwx]
+name = "EMG MMTWX Active Dual-Mode Pickup"
+position_name = "Bridge"
+position_from_bridge_m = 0.0622  # 62.2mm centerline
 aperture_width_in = 1.50         # Dual-coil housing aperture
 coil_spacing_in = 0.90           # 0.90" (22.86mm) spacing between coil centers
 type = "dual_coil_parallel"
 magnet_type = "ceramic_steel"
 pole_type = "blade"
-resonant_frequency_hz = 2500.0   # Active dual-coil resonance
-q_factor = 1.35
-
+has_internal_buffer = true
+buffer_output_impedance = 2000.0
 coils = [
-    { strings = ["all"], position_from_bridge_m = 0.0737, aperture_width_in = 0.75, weight = 0.5, pole_type = "blade" }, # Neck coil
-    { strings = ["all"], position_from_bridge_m = 0.0508, aperture_width_in = 0.75, weight = 0.5, pole_type = "blade" }  # Bridge coil
-]
-
-[pickups.mmtwx_dual.circuit]
-topology = "single"
-L = 0.80
-Rdc = 2800.0
-Reddy = 150000.0
-Ccoil = 4.86e-9
-active = true
-active_variant = "x_series"
-k_level = 0.0
-vsat = 2.40
-R_out = 2000.0
-tau_att_level = 0.003
-tau_rel_level = 0.045
-
-# ------------------------------------------------------------------------------
-# 4. ACTIVE PARALLEL P/MM BLEND (EMG ABCX Center Detent - Push/Pull Up: MM Mode)
-# ------------------------------------------------------------------------------
-# Op-amp buffered 50/50 parallel summation of Reverse PX and MMTWX dual-coil.
-# Results in a compound 3-coil array (Reverse P split + MM dual coils).
-[pickups.blend_parallel]
-name = "EMG PX + MMTWX Parallel (P/MM Mode)"
-position_name = "P/MM"
-position_from_bridge_m = 0.0868  # Acoustic centroid
-aperture_width_in = 0.88
-coil_spacing_in = 0.0
-type = "composite"
-magnet_type = "ceramic_steel"
-pole_type = "blade"
-resonant_frequency_hz = 2850.0   # Active composite resonance
-q_factor = 1.38
-components = [
-    { pickup = "px", weight = 0.5 },
-    { pickup = "mmtwx_dual", weight = 0.5 }
+    { id = "neck", strings = ["all"], position_from_bridge_m = 0.0737, aperture_width_in = 0.45, weight = 0.5, pole_type = "blade", L = 0.80, Rdc = 2800.0, Reddy = 150000.0, Ccoil = 2.4e-9 },
+    { id = "bridge", strings = ["all"], position_from_bridge_m = 0.0508, aperture_width_in = 0.45, weight = 0.5, pole_type = "blade", L = 0.80, Rdc = 2800.0, Reddy = 150000.0, Ccoil = 2.4e-9 },
 ]
 
 # ------------------------------------------------------------------------------
-# 5. ACTIVE PARALLEL P/J BLEND (EMG ABCX Center Detent - Push/Pull Down: J Mode)
+# 2. CONTROL HARNESS (EMG ABCX Active Blend & Push-Pull Coil Switch)
 # ------------------------------------------------------------------------------
-# Op-amp buffered 50/50 parallel summation of Reverse PX and MMTWX single-coil.
-# Results in an authentic 2-pickup P/J sensing array (Reverse P split + J bridge @ 50.8mm).
-[pickups.pj_blend_parallel]
-name = "EMG PX + MMTWX Single Parallel (P/J Mode)"
-position_name = "P/J"
-position_from_bridge_m = 0.0868  # Acoustic centroid
-aperture_width_in = 0.88
-coil_spacing_in = 0.0
-type = "composite"
-magnet_type = "ceramic_steel"
-pole_type = "blade"
-resonant_frequency_hz = 3350.0   # Active composite resonance (3.2 kHz PX + 3.5 kHz J)
-q_factor = 1.40
-components = [
-    { pickup = "px", weight = 0.5 },
-    { pickup = "mmtwx_single", weight = 0.5 }
+
+[harnesses.active]
+name = "EMG ABCX Active Blend Harness with MMTWX Push-Pull"
+type = "active_preamp"
+load_resistance = 1000000.0
+cable_pf = 30.0
+
+wiring = [
+    # PX pickup into blend neck_in
+    ["pickups.px.hot", "controls.blend.neck_in"],
+    ["pickups.px.cold", "GND"],
+
+    # Blend output into master volume
+    ["controls.blend.wiper", "preamp.in"],
+    ["preamp.out", "controls.vol.in"],
+    ["controls.vol.wiper", "out"],
+    ["controls.vol.gnd", "GND"],
 ]
 
+[harnesses.active.controls.blend]
+name = "Pickup Blend"
+type = "pot"
+taper = "mn_blend"
+resistance = 25000.0
+default = 0.5
+
+[harnesses.active.controls.vol]
+name = "Master Volume"
+type = "pot"
+taper = "audio_15"
+resistance = 25000.0
+default = 1.0
+
+[harnesses.active.switches.coil_mode]
+name = "MMTWX Push-Pull Coil Mode"
+type = "push_pull"
+default = "dual"
+
+[harnesses.active.switches.coil_mode.positions.dual]
+connect = [
+    ["pickups.mmtwx.neck.hot", "controls.blend.bridge_in"],
+    ["pickups.mmtwx.bridge.hot", "controls.blend.bridge_in"],
+    ["pickups.mmtwx.neck.cold", "GND"],
+    ["pickups.mmtwx.bridge.cold", "GND"],
+]
+k_mutual = 0.20
+components = { "pickups.mmtwx.neck.Ccoil" = 4.86e-9, "pickups.mmtwx.bridge.Ccoil" = 4.86e-9 }
+
+[harnesses.active.switches.coil_mode.positions.single]
+connect = [
+    ["pickups.mmtwx.bridge.hot", "controls.blend.bridge_in"],
+    ["pickups.mmtwx.bridge.cold", "GND"],
+    ["pickups.mmtwx.neck.cold", "GND"],
+]
+k_mutual = 0.0
+components = { "pickups.mmtwx.bridge.Ccoil" = 2.68e-9 }
+
 # ------------------------------------------------------------------------------
-# 6. NATIVE INSTRUMENT VOICINGS
+# 3. NATIVE INSTRUMENT VOICINGS
 # ------------------------------------------------------------------------------
 
 [voicings.px_solo]
 version = 1
 name = "Solo Reverse EMG PX Split"
 tone_name = "Custom PX Solo"
-pickup = "px"
-affinity = "neck"
-vol_pos = 1.0
+harness = "active"
+switches = { coil_mode = "dual" }
+controls = { vol = 1.0, blend = 0.0 }
 
 [voicings.mm_single]
 version = 1
 name = "Solo Bridge MMTWX Single Coil"
 tone_name = "Custom MM Single"
-pickup = "mmtwx_single"
-affinity = "bridge"
-vol_pos = 1.0
+harness = "active"
+switches = { coil_mode = "single" }
+controls = { vol = 1.0, blend = 1.0 }
 
 [voicings.mm_dual]
 version = 1
 name = "Solo Bridge MMTWX Dual Coil"
 tone_name = "Custom MM Dual"
-pickup = "mmtwx_dual"
-affinity = "bridge"
-vol_pos = 1.0
+harness = "active"
+switches = { coil_mode = "dual" }
+controls = { vol = 1.0, blend = 1.0 }
 
 [voicings.blend_parallel]
 version = 1
 name = "Reverse PX + MMTWX Parallel Detent"
 tone_name = "Custom P∕MM Blend"
-pickup = "blend_parallel"
-affinity = "parallel"
-vol_pos = 1.0
+harness = "active"
+switches = { coil_mode = "dual" }
+controls = { vol = 1.0, blend = 0.5 }
 
 [voicings.pj_blend]
 version = 1
 name = "Reverse PX + MMTWX Single (P/J Mode)"
 tone_name = "Custom PJ Blend"
-pickup = "pj_blend_parallel"
-affinity = "parallel"
-vol_pos = 1.0
-
-# ------------------------------------------------------------------------------
-# 7. PICKUP AFFINITY ROUTING
-# ------------------------------------------------------------------------------
-[pickup_mapping]
-neck = "px"
-bridge = "mmtwx_single"
-parallel = "blend_parallel"
-direct = "px"
-pj_active = "pj_blend_parallel"
-pj_passive = "pj_blend_parallel"
-"34in_standard_pj:pair_parallel" = "pj_blend_parallel"
-"34in_standard_pj:pair_active" = "pj_blend_parallel"
-stingray_parallel = "mmtwx_dual"
-stingray_series = "mmtwx_dual"
-"34in_active_stingray:parallel_classic" = "mmtwx_dual"
-"34in_active_stingray:series_punch" = "mmtwx_dual"
+harness = "active"
+switches = { coil_mode = "single" }
+controls = { vol = 1.0, blend = 0.5 }

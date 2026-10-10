@@ -10,12 +10,8 @@
 #       - Aperture width: 0.45" (11.4mm) magnetic sensing aperture per coil half
 #   - Jazz Bridge Single-Coil: Centerline 55.0mm from bridge saddle (326.0mm from 12th fret)
 #       - Aperture width: 0.45" (11.4mm) magnetic sensing aperture
-#   - Parallel Summing (P + J): Acoustic centroid 105.0mm from bridge saddle
 # Electronics:
 #   - Passive high-impedance circuit: 250k volume pot, 250k tone pot (47nF cap), 3-way toggle.
-#   - P loaded resonance: 2.80 kHz, Q = 1.40 under 750pF cable load.
-#   - J loaded resonance: 3.20 kHz, Q = 1.60 under 750pF cable load.
-#   - Parallel loaded resonance: 2.80 kHz, Q = 1.20 under 750pF cable load.
 
 id = "30in_mustang_pj"
 name = "30\" Mustang Bass PJ (Short Scale)"
@@ -27,12 +23,10 @@ version = 1
 # String wave speeds: v = 2 * L * f0 (for E1=41.2Hz, A1=55.0Hz, D2=73.4Hz, G2=98.0Hz)
 string_wave_speeds = [62.79, 83.82, 111.89, 149.35]
 
-default_pickup = "pair_parallel"
 
 # ------------------------------------------------------------------------------
 # Physical Strings Configuration (Source Instrument Setup)
 # ------------------------------------------------------------------------------
-# Strung with short-scale nickel roundwounds (D"Addario EXL160S .050-.105 / Fender 5250XL).
 [strings]
 preset = "roundwound_nickel_standard"
 brand = "D'Addario"
@@ -43,9 +37,10 @@ wrap = "nickel_round"
 tension_lbs = 145.0
 
 # ------------------------------------------------------------------------------
-# 1. SPLIT-COIL PRECISION PICKUP (Neck Solo - Toggle Up)
+# 1. HARDWARE TRANSDUCERS (Single physical pickups mounted in wood)
 # ------------------------------------------------------------------------------
-[pickups.p]
+
+[pickups.split_p]
 name = "Mustang PJ Split-P (Neck)"
 position_name = "Neck"
 position_from_bridge_m = 0.1550  # Centerline 155.0mm
@@ -53,31 +48,14 @@ aperture_width_in = 0.45         # 0.45" magnetic sensing aperture per split hal
 coil_spacing_in = 0.0
 type = "split_coil"
 magnet_type = "alnico_v"
-resonant_frequency_hz = 2800.0
-q_factor = 1.40
 coils = [
     # Strings 3 & 4 see forward coil half (deeper fundamental)
-    { strings = [3, 4], position_from_bridge_m = 0.1670, aperture_width_in = 0.45, weight = 1.0 },
+    { id = "forward", strings = [3, 4], position_from_bridge_m = 0.1670, aperture_width_in = 0.45, pole_type = "rod", L = 1.9, Rdc = 5250.0, Reddy = 90000.0, Ccoil = 3e-11, weight = 1.0 },
     # Strings 1 & 2 see rearward coil half (snappy transient bite)
-    { strings = [1, 2], position_from_bridge_m = 0.1430, aperture_width_in = 0.45, weight = 1.0 }
+    { id = "rearward", strings = [1, 2], position_from_bridge_m = 0.1430, aperture_width_in = 0.45, pole_type = "rod", L = 1.9, Rdc = 5250.0, Reddy = 90000.0, Ccoil = 3e-11, weight = 1.0 },
 ]
 
-# ------------------------------------------------------------------------------
-# 2. SINGLE-COIL JAZZ PICKUP (Bridge Solo - Toggle Down)
-# ------------------------------------------------------------------------------
-
-[pickups.p.circuit]
-topology = "single"
-L = 3.8
-Rdc = 10500.0
-Reddy = 180000.0
-Ccoil = 6e-11
-Rtop = 10.0
-Rbot = 250000.0
-Rtone = 250000.0
-Ctone = 4.7000000000000004e-08
-
-[pickups.j]
+[pickups.bridge_j]
 name = "Mustang PJ Single-Coil J (Bridge)"
 position_name = "Bridge"
 position_from_bridge_m = 0.0550  # 55.0mm from bridge
@@ -85,106 +63,92 @@ aperture_width_in = 0.45
 coil_spacing_in = 0.0
 type = "single_coil"
 magnet_type = "alnico_v"
-resonant_frequency_hz = 3200.0
-q_factor = 1.60
 coils = [
-    { strings = ["all"], position_from_bridge_m = 0.0550, aperture_width_in = 0.45, weight = 1.0 }
+    { id = "bridge", position_from_bridge_m = 0.0550, aperture_width_in = 0.45, pole_type = "rod", L = 3.6, Rdc = 7800.0, Reddy = 125000.0, Ccoil = 7.0e-11, weight = 1.0 },
 ]
 
 # ------------------------------------------------------------------------------
-# 3. MUSTANG P + J PARALLEL (Toggle Middle)
+# 2. CONTROL HARNESS (Passive 1V/1T with 3-Way Toggle Switch)
 # ------------------------------------------------------------------------------
 
-[pickups.j.circuit]
-topology = "single"
-L = 3.6
-Rdc = 7800.0
-Reddy = 125000.0
-Ccoil = 7e-11
-Rtop = 10.0
-Rbot = 250000.0
-Rtone = 250000.0
-Ctone = 4.7000000000000004e-08
+[harnesses.passive]
+name = "Mustang PJ 1V/1T Passive Harness"
+type = "passive"
+load_resistance = 1000000.0
+cable_pf = 750.0
 
-[pickups.pair_parallel]
-name = "Mustang P + J Parallel"
-position_name = "Parallel"
-position_from_bridge_m = 0.1050  # Centroid 105.0mm
-aperture_width_in = 0.45
-coil_spacing_in = 0.0
-type = "composite"
-magnet_type = "alnico_v"
-resonant_frequency_hz = 2800.0
-q_factor = 1.20
-components = [
-    { pickup = "p", weight = 0.5 },
-    { pickup = "j", weight = 0.5 }
+wiring = [
+    # Split P series
+    ["pickups.split_p.forward.cold", "pickups.split_p.rearward.hot"],
+    ["pickups.split_p.rearward.cold", "GND"],
+
+    # Bridge J cold
+    ["pickups.bridge_j.cold", "GND"],
+
+    # Master Volume & Tone
+    ["controls.vol.wiper", "out"],
+    ["controls.vol.gnd", "GND"],
+    ["controls.vol.in", "controls.tone.in"],
+    ["controls.tone.gnd", "GND"],
 ]
 
+[harnesses.passive.controls.vol]
+name = "Master Volume"
+type = "pot"
+taper = "audio_15"
+resistance = 250000.0
+default = 1.0
+
+[harnesses.passive.controls.tone]
+name = "Master Tone"
+type = "pot"
+taper = "audio_15"
+resistance = 250000.0
+cap = 4.7e-8
+default = 1.0
+
+[harnesses.passive.switches.pickup_selector]
+name = "Pickup Selector"
+type = "toggle"
+default = "both"
+
+[harnesses.passive.switches.pickup_selector.positions.neck]
+connect = [["pickups.split_p.forward.hot", "controls.vol.in"]]
+
+[harnesses.passive.switches.pickup_selector.positions.bridge]
+connect = [["pickups.bridge_j.hot", "controls.vol.in"]]
+
+[harnesses.passive.switches.pickup_selector.positions.both]
+connect = [
+    ["pickups.split_p.forward.hot", "controls.vol.in"],
+    ["pickups.bridge_j.hot", "controls.vol.in"],
+]
+k_mutual = 0.04
+
 # ------------------------------------------------------------------------------
-# 4. SMART VOICE MAPPING
-# ------------------------------------------------------------------------------
-# Directs the player to select the closest 3-way toggle position on the Mustang PJ:
-#   - Toggle Up (Split-P Solo): Precision Bass, Mudbucker, Upright
-#   - Toggle Down (J-Bridge Solo): 60s Jazz Bridge, StingRay, Rickenbacker, Dingwall Bridge
-#   - Toggle Middle (P + J Parallel): Jazz Bass Pair, Modern P/J, Vintage P/J, P/MM
-
-
-[pickups.pair_parallel.circuit]
-topology = "parallel"
-Rtop = 10.0
-Rbot = 250000.0
-Rtone = 250000.0
-Ctone = 4.7000000000000004e-08
-
-[pickups.pair_parallel.circuit.neck]
-L = 3.8
-Rdc = 10500.0
-Reddy = 180000.0
-Ccoil = 6e-11
-
-[pickups.pair_parallel.circuit.bridge]
-L = 3.6
-Rdc = 7800.0
-Reddy = 125000.0
-Ccoil = 7e-11
-
-# ------------------------------------------------------------------------------
-# 2. NATIVE INSTRUMENT VOICINGS
+# 3. NATIVE INSTRUMENT VOICINGS
 # ------------------------------------------------------------------------------
 
 [voicings.pair_parallel]
 version = 1
 name = "Short Scale P/J Parallel"
 tone_name = "Mustang PJ Parallel"
-pickup = "pair_parallel"
-affinity = "parallel"
-vol_pos = 1.0
-tone_pos = 1.0
+harness = "passive"
+switches = { pickup_selector = "both" }
+controls = { vol = 1.0, tone = 1.0 }
 
-[voicings.p_solo]
+[voicings.p_warm]
 version = 1
-name = "Solo Short Scale Split P"
-tone_name = "Mustang P Solo"
-pickup = "p"
-affinity = "neck"
-vol_pos = 1.0
-tone_pos = 1.0
+name = "Short Scale Split-P Warm"
+tone_name = "Mustang PJ Neck Warm"
+harness = "passive"
+switches = { pickup_selector = "neck" }
+controls = { vol = 1.0, tone = 1.0 }
 
-[voicings.j_solo]
+[voicings.j_growl]
 version = 1
-name = "Solo Short Scale Bridge J"
-tone_name = "Mustang J Solo"
-pickup = "j"
-affinity = "bridge"
-vol_pos = 1.0
-tone_pos = 1.0
-
-# ------------------------------------------------------------------------------
-# 3. PICKUP AFFINITY ROUTING
-# ------------------------------------------------------------------------------
-[pickup_mapping]
-neck = "p"
-bridge = "j"
-parallel = "pair_parallel"
-direct = "pair_parallel"
+name = "Short Scale Bridge J Growl"
+tone_name = "Mustang PJ Bridge Growl"
+harness = "passive"
+switches = { pickup_selector = "bridge" }
+controls = { vol = 1.0, tone = 1.0 }

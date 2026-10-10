@@ -10,8 +10,6 @@
 #   - Parallel Summing (Bridge + Middle): Centerline 72.0mm from bridge saddle
 # Electronics:
 #   - Active onboard buffer (Darkglass Tone Capsule / EMG active buffer).
-#   - High dynamic headroom, cable isolated (< 1.0 kOhm output impedance).
-#   - FD3n loaded resonance: 3.40 kHz, Q = 1.50.
 
 id = "37in_multiscale_dingwall"
 name = "37\" Multi-Scale Dingwall 5-String (FD3n)"
@@ -26,7 +24,6 @@ version = 1
 # String wave speeds for 34"-37" 5-string multi-scale (B0, E1, A1, D2, G2)
 string_wave_speeds = [58.02, 75.88, 99.19, 129.60, 169.27]
 
-default_pickup = "pair_parallel"
 
 # ------------------------------------------------------------------------------
 # Physical Strings Configuration (Source Instrument Setup)
@@ -42,39 +39,8 @@ wrap = "stainless_round"
 tension_lbs = 220.0
 
 # ------------------------------------------------------------------------------
-# 1. DINGWALL FD3n NEODYMIUM (Bridge Solo)
+# 1. HARDWARE TRANSDUCERS (Single physical pickups mounted in wood)
 # ------------------------------------------------------------------------------
-[pickups.bridge]
-name = "Dingwall FD3n Neodymium (Bridge)"
-position_name = "Bridge"
-position_from_bridge_m = 0.0480  # Angled bridge sweet spot 48.0mm
-aperture_width_in = 0.45
-coil_spacing_in = 0.0
-type = "split_coil"
-magnet_type = "neodymium"
-alpha = 0.08
-resonant_frequency_hz = 7300.0   # Active buffered resonance
-q_factor = 1.50
-coils = [
-    # Reverse split-P: treble strings (1, 2) forward half, bass strings (3, 4, 5) rearward half
-    { strings = [1, 2], position_from_bridge_m = 0.0575, aperture_width_in = 0.40, weight = 1.0 },
-    { strings = [3, 4, 5], position_from_bridge_m = 0.0385, aperture_width_in = 0.40, weight = 1.0 }
-]
-
-# ------------------------------------------------------------------------------
-# 2. DINGWALL FD3n NEODYMIUM (Middle Solo)
-# ------------------------------------------------------------------------------
-
-[pickups.bridge.circuit]
-topology = "single"
-L = 2.3
-Rdc = 4400.0
-Reddy = 150000.0
-Ccoil = 1.2e-10
-vsat = 0.9
-active = true
-preamp = "none"
-Rvol = 500000.0
 
 [pickups.middle]
 name = "Dingwall FD3n Neodymium (Middle)"
@@ -84,153 +50,143 @@ aperture_width_in = 0.45
 coil_spacing_in = 0.0
 type = "split_coil"
 magnet_type = "neodymium"
-resonant_frequency_hz = 7300.0
-q_factor = 1.50
 coils = [
     # Reverse split-P: treble strings (1, 2) forward half, bass strings (3, 4, 5) rearward half
-    { strings = [1, 2], position_from_bridge_m = 0.10425, aperture_width_in = 0.40, weight = 1.0 },
-    { strings = [3, 4, 5], position_from_bridge_m = 0.08775, aperture_width_in = 0.40, weight = 1.0 }
+    { id = "forward", strings = [1, 2], position_from_bridge_m = 0.10425, aperture_width_in = 0.40, pole_type = "rod", L = 1.15, Rdc = 2200.0, Reddy = 150000.0, Ccoil = 6e-11, weight = 0.5 },
+    { id = "rearward", strings = [3, 4, 5], position_from_bridge_m = 0.08775, aperture_width_in = 0.40, pole_type = "rod", L = 1.15, Rdc = 2200.0, Reddy = 150000.0, Ccoil = 6e-11, weight = 0.5 },
 ]
 
-# ------------------------------------------------------------------------------
-# 3. DINGWALL BRIDGE + MIDDLE PARALLEL (Position 2 on Rotary Selector)
-# ------------------------------------------------------------------------------
-
-[pickups.middle.circuit]
-topology = "single"
-L = 2.3
-Rdc = 4400.0
-Reddy = 150000.0
-Ccoil = 1.2e-10
-active = true
-preamp = "none"
-Rvol = 500000.0
-
-[pickups.pair_parallel]
-name = "Dingwall Bridge + Middle Parallel"
-position_name = "Parallel"
-position_from_bridge_m = 0.0720  # Centroid 72.0mm
+[pickups.bridge]
+name = "Dingwall FD3n Neodymium (Bridge)"
+position_name = "Bridge"
+position_from_bridge_m = 0.0480  # Angled bridge sweet spot 48.0mm
 aperture_width_in = 0.45
 coil_spacing_in = 0.0
-type = "composite"
+type = "split_coil"
 magnet_type = "neodymium"
-resonant_frequency_hz = 3600.0
-q_factor = 1.40
-components = [
-    { pickup = "bridge", weight = 0.5 },
-    { pickup = "middle", weight = 0.5 }
+coils = [
+    # Reverse split-P: treble strings (1, 2) forward half, bass strings (3, 4, 5) rearward half
+    { id = "forward", strings = [1, 2], position_from_bridge_m = 0.0575, aperture_width_in = 0.40, pole_type = "rod", L = 1.15, Rdc = 2200.0, Reddy = 150000.0, Ccoil = 6e-11, weight = 0.5 },
+    { id = "rearward", strings = [3, 4, 5], position_from_bridge_m = 0.0385, aperture_width_in = 0.40, pole_type = "rod", L = 1.15, Rdc = 2200.0, Reddy = 150000.0, Ccoil = 6e-11, weight = 0.5 },
 ]
 
 # ------------------------------------------------------------------------------
-# 4. SMART VOICE MAPPING
+# 2. CONTROL HARNESS (Dingwall Active Rotary & Preamp Harness)
 # ------------------------------------------------------------------------------
-# Directs the player to select the closest physical pickup state on the Dingwall:
-#   - Bridge Solo (Pos 1): Voice 13 (Dingwall Multi-Scale Bridge) is an exact 1:1 identity match!
-#   - Parallel (Pos 2): Jazz and P/J dual-coil hybrid voicings
-#   - Middle Solo (Pos 3): Precision bass, Mudbucker, and Upright fullness
 
+[harnesses.active]
+name = "Dingwall Active Rotary & Preamp Harness"
+type = "active_preamp"
+preamp = "dingwall_active"
+load_resistance = 1000000.0
+cable_pf = 30.0
 
-[pickups.pair_parallel.circuit]
-topology = "parallel"
-active = true
-preamp = "none"
-Rvol = 500000.0
+wiring = [
+    # Middle coils in series
+    ["pickups.middle.forward.cold", "pickups.middle.rearward.hot"],
 
-[pickups.pair_parallel.circuit.neck]
-L = 2.3
-Rdc = 4400.0
-Reddy = 150000.0
-Ccoil = 1.2e-10
+    # Bridge coils in series
+    ["pickups.bridge.forward.cold", "pickups.bridge.rearward.hot"],
 
-[pickups.pair_parallel.circuit.bridge]
-L = 2.3
-Rdc = 4400.0
-Reddy = 150000.0
-Ccoil = 1.2e-10
-
-[pickups.pair_series]
-name = "Dingwall Bridge + Middle Series"
-position_name = "Series"
-bundle_name = "series"
-position_from_bridge_m = 0.0720  # Centroid 72.0mm
-aperture_width_in = 0.45
-coil_spacing_in = 0.0
-type = "composite"
-magnet_type = "neodymium"
-resonant_frequency_hz = 3100.0
-q_factor = 1.60
-components = [
-    { pickup = "bridge", weight = 0.5 },
-    { pickup = "middle", weight = 0.5 }
+    # Preamp & Volume
+    ["preamp.out", "controls.vol.in"],
+    ["controls.vol.wiper", "out"],
+    ["controls.vol.gnd", "GND"],
 ]
 
-[pickups.pair_series.circuit]
-topology = "series"
-active = true
-preamp = "none"
-Rvol = 500000.0
+[harnesses.active.controls.vol]
+name = "Master Volume"
+type = "pot"
+taper = "audio_15"
+resistance = 25000.0
+default = 1.0
 
-[pickups.pair_series.circuit.neck]
-L = 2.3
-Rdc = 4400.0
-Reddy = 150000.0
-Ccoil = 1.2e-10
+[harnesses.active.controls.bass]
+name = "Bass Boost/Cut"
+type = "preamp_band"
+band = "bass"
+default = 0.5
 
-[pickups.pair_series.circuit.bridge]
-L = 2.3
-Rdc = 4400.0
-Reddy = 150000.0
-Ccoil = 1.2e-10
+[harnesses.active.controls.low_mid]
+name = "Low-Mid Boost/Cut"
+type = "preamp_band"
+band = "bell"
+default = 0.5
+
+[harnesses.active.controls.high_mid]
+name = "High-Mid Boost/Cut"
+type = "preamp_band"
+band = "bell"
+default = 0.5
+
+[harnesses.active.switches.rotary]
+name = "Rotary Pickup Selector"
+type = "rotary"
+default = "parallel"
+
+[harnesses.active.switches.rotary.positions.bridge]
+connect = [
+    ["pickups.bridge.rearward.cold", "GND"],
+    ["pickups.bridge.forward.hot", "preamp.in"],
+]
+
+[harnesses.active.switches.rotary.positions.parallel]
+connect = [
+    ["pickups.bridge.rearward.cold", "GND"],
+    ["pickups.bridge.forward.hot", "preamp.in"],
+    ["pickups.middle.rearward.cold", "GND"],
+    ["pickups.middle.forward.hot", "preamp.in"],
+]
+
+[harnesses.active.switches.rotary.positions.series]
+connect = [
+    ["pickups.bridge.rearward.cold", "GND"],
+    ["pickups.bridge.forward.hot", "pickups.middle.rearward.cold"],
+    ["pickups.middle.forward.hot", "preamp.in"],
+]
+
+[harnesses.active.switches.rotary.positions.middle]
+connect = [
+    ["pickups.middle.rearward.cold", "GND"],
+    ["pickups.middle.forward.hot", "preamp.in"],
+]
 
 # ------------------------------------------------------------------------------
-# 2. NATIVE INSTRUMENT VOICINGS
+# 3. NATIVE INSTRUMENT VOICINGS
 # ------------------------------------------------------------------------------
 
 [voicings.bridge_clank]
 version = 1
 name = "FD3 Solo Bridge Multiscale Clarity"
 tone_name = "Dingwall Bridge"
-pickup = "bridge"
-affinity = "bridge"
-vol_pos = 1.0
+harness = "active"
+switches = { rotary = "bridge" }
+controls = { vol = 1.0, bass = 0.5, low_mid = 0.5, high_mid = 0.5 }
 string_preset_override = "roundwound_stainless_clank"
 
 [voicings.middle_growl]
 version = 1
 name = "FD3 Solo Middle Punch"
 tone_name = "Dingwall Middle"
-pickup = "middle"
-affinity = "neck"
-vol_pos = 1.0
+harness = "active"
+switches = { rotary = "middle" }
+controls = { vol = 1.0, bass = 0.5, low_mid = 0.5, high_mid = 0.5 }
 string_preset_override = "roundwound_stainless_clank"
 
 [voicings.pair_parallel]
 version = 1
 name = "FD3 Bridge + Middle Parallel"
 tone_name = "Dingwall Parallel"
-pickup = "pair_parallel"
-affinity = "parallel"
-vol_pos = 1.0
+harness = "active"
+switches = { rotary = "parallel" }
+controls = { vol = 1.0, bass = 0.5, low_mid = 0.5, high_mid = 0.5 }
 string_preset_override = "roundwound_stainless_clank"
 
 [voicings.pair_series]
 version = 1
 name = "FD3 Bridge + Middle Series Wall of Sound"
 tone_name = "Dingwall Series"
-pickup = "pair_series"
-affinity = "parallel"
-vol_pos = 1.0
+harness = "active"
+switches = { rotary = "series" }
+controls = { vol = 1.0, bass = 0.5, low_mid = 0.5, high_mid = 0.5 }
 string_preset_override = "roundwound_stainless_clank"
-
-# ------------------------------------------------------------------------------
-# 3. PICKUP AFFINITY ROUTING
-# ------------------------------------------------------------------------------
-[pickup_mapping]
-neck = "middle"
-bridge = "bridge"
-parallel = "pair_parallel"
-series = "pair_series"
-direct = "pair_parallel"
-dingwall_bridge = "bridge"
-dingwall_series = "pair_series"
-"37in_multiscale_dingwall:bridge_clank" = "bridge"

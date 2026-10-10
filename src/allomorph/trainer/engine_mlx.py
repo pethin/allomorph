@@ -24,16 +24,14 @@ from pedalboard.io import AudioFile
 from allomorph.config import (
     InstrumentConfig,
     compute_effective_position,
-    get_source_pickup,
     load_instrument,
     resolve_voice_coils,
-    resolve_voice_pickups,
 )
 from allomorph.pipeline.schema import (
     NamExportMetadata,
     NamSourceInstrumentMeta,
-    NamSourcePickupMeta,
-    NamTargetVoiceMeta,
+    NamSourceVoicingMeta,
+    NamTargetVoicingMeta,
     NamTrainingMetadata,
 )
 from allomorph.trainer.callbacks import compute_linear_slope
@@ -431,6 +429,7 @@ def _restore_model_state(model: MLXPackedWaveNet, state: dict[str, mx.array]) ->
 def train_voice_mlx(
     instrument: str | InstrumentConfig,
     voice: str,
+    source_voicing: str | None = None,
     input_wav: str | Path | None = None,
     output_wav: str | Path | None = None,
     reference_wav: str | Path | None = None,
@@ -504,16 +503,70 @@ def train_voice_mlx(
     inst_name = inst_cfg.name
     scale_length_in = inst_cfg.scale_length_in or 34.0
 
-    try:
-        src_pickup = get_source_pickup(inst_cfg, voice)
-        src_pickup_name = src_pickup.name
-        src_pos_mm = (src_pickup.position_from_bridge_m or 0.0) * 1000.0
-    except KeyError, ValueError:
-        from allomorph.config import PickupConfig
+    from allomorph.config.voices import voicing_to_voice_config
 
-        src_pickup = PickupConfig(name="Pickup", position_from_bridge_m=0.0)
-        src_pickup_name = "Pickup"
-        src_pos_mm = 0.0
+    if source_voicing is not None:
+        if source_voicing not in inst_cfg.voicings:
+            raise KeyError(
+                f"Source voicing '{source_voicing}' not found on instrument '{inst_cfg.id}'. "
+                f"Available voicings: {list(inst_cfg.voicings.keys())}"
+            )
+        src_vcfg = inst_cfg.voicings[source_voicing]
+        src_voicing_id = source_voicing
+    elif voice in inst_cfg.voicings:
+        src_vcfg = inst_cfg.voicings[voice]
+        src_voicing_id = voice
+    elif inst_cfg.voicings:
+        src_voicing_id = next(iter(inst_cfg.voicings.keys()))
+        src_vcfg = inst_cfg.voicings[src_voicing_id]
+    else:
+        src_voicing_id = "default"
+        src_vcfg = None
+
+    if src_vcfg is not None:
+        src_voice_cfg = voicing_to_voice_config(inst_cfg, src_vcfg)
+        src_coils = resolve_voice_coils(src_voice_cfg)
+        src_eff_pos_m = compute_effective_position(src_coils) if src_coils else 0.0
+        src_eff_pos_mm = src_eff_pos_m * 1000.0
+        src_voicing_name = src_vcfg.name
+        src_tone_name = src_vcfg.tone_name
+        src_harness = src_vcfg.harness
+        src_controls = dict(src_vcfg.controls)
+        src_switches = dict(src_vcfg.switches)
+        src_aperture = src_coils[0].aperture_width_in if src_coils else 0.75
+        src_coil_spacing = (
+            abs(src_coils[1].position_from_bridge_m - src_coils[0].position_from_bridge_m) / 0.0254
+            if len(src_coils) >= 2
+            else 0.0
+        )
+        src_type = "dual_coil" if len(src_coils) >= 2 else "single_coil"
+    else:
+        src_eff_pos_m = 0.0
+        src_eff_pos_mm = 0.0
+        src_voicing_name = "Default Voicing"
+        src_tone_name = None
+        src_harness = ""
+        src_controls: dict[str, float] = {}
+        src_switches: dict[str, str] = {}
+        src_aperture = 0.75
+        src_coil_spacing = 0.0
+        src_type = "single_coil"
+
+    src_voicing_meta = NamSourceVoicingMeta(
+        id=src_voicing_id,
+        name=src_voicing_name,
+        tone_name=src_tone_name,
+        harness=src_harness,
+        position_from_bridge_m=src_eff_pos_m,
+        position_from_bridge_mm=src_eff_pos_mm,
+        effective_position_m=src_eff_pos_m,
+        effective_position_mm=src_eff_pos_mm,
+        aperture_width_in=src_aperture,
+        coil_spacing_in=src_coil_spacing,
+        type=src_type,
+        controls=src_controls,
+        switches=src_switches,
+    )
 
     models_path = Path(models_dir)
     if models_path.name == "nam" or models_path.name == inst_id:
@@ -571,8 +624,7 @@ def train_voice_mlx(
     if reference_wav:
         reference_path = Path(reference_wav)
     else:
-        src_pk = src_pickup.id or getattr(inst_cfg, "default_pickup", None) or "default"
-        candidate_source = AUDIO_DIR / "wet" / inst_id / f"{src_pk}.wav"
+        candidate_source = AUDIO_DIR / "wet" / inst_id / f"{src_voicing_id}.wav"
         if candidate_source.exists() and is_wet_stem_valid(
             candidate_source, base_dry_path=resolved_input
         ):
@@ -586,12 +638,12 @@ def train_voice_mlx(
                 )
                 reference_path = simulate_instrument_voicing(
                     instrument=inst_id,
-                    voicing=src_pk,
+                    voicing=src_voicing_id,
                     output_wav=candidate_source,
                 )
             except (FileNotFoundError, ValueError, RuntimeError, KeyError, OSError) as e:
                 print(
-                    f"[NAM Trainer] Warning: Failed to auto-generate source pickup stem: {e}. Falling back to input sweep."
+                    f"[NAM Trainer] Warning: Failed to auto-generate source voicing stem: {e}. Falling back to input sweep."
                 )
                 reference_path = resolved_input
 
@@ -659,7 +711,7 @@ def train_voice_mlx(
     print("\n========================================")
     print("  ALLOMORPH NAM LOCAL A2 TRAINER (MLX)")
     print(f'  Source Bass: {inst_name} ({inst_id}, {scale_length_in}")')
-    print(f"  Source PU:   {src_pickup_name} (pos={src_pos_mm:.1f}mm)")
+    print(f"  Source Voicing: {src_voicing_name} (pos={src_eff_pos_mm:.1f}mm)")
     print(f"  Target Voice:{voice} ({voice_name})")
     print("  Model Tier:  Architecture 2 Slimmable (channels_3 + channels_8)")
     print("  Hardware:    Apple Silicon (MLX Metal)")
@@ -894,6 +946,10 @@ def train_voice_mlx(
         "stop_reason": state.stop_reason,
     }
 
+    target_coils = resolve_voice_coils(vcfg)
+    target_eff_pos_m = compute_effective_position(target_coils) if target_coils else 0.0
+    target_eff_pos_mm = target_eff_pos_m * 1000.0
+
     nam_meta = NamExportMetadata(
         training=NamTrainingMetadata.model_validate(raw_training_meta),
         license="PolyForm Noncommercial License 1.0.0 (https://polyformproject.org/licenses/noncommercial/1.0.0)",
@@ -912,26 +968,18 @@ def train_voice_mlx(
             scale_length_in=scale_length_in,
             scale_length_m=inst_cfg.scale_length_m,
             string_wave_speeds=inst_cfg.string_wave_speeds,
-            pickup=NamSourcePickupMeta(
-                id=src_pickup.id or "",
-                name=src_pickup_name,
-                position_from_bridge_m=src_pickup.position_from_bridge_m or 0.0,
-                position_from_bridge_mm=src_pos_mm,
-                aperture_width_in=src_pickup.aperture_width_in,
-                coil_spacing_in=src_pickup.coil_spacing_in,
-                type=src_pickup.type,
-            ),
+            voicing=src_voicing_meta,
         ),
-        target_voice=NamTargetVoiceMeta(
+        target_voicing=NamTargetVoicingMeta(
             id=voice,
             name=voice_name,
-            topology=vcfg.topology,
+            tone_name=vcfg.tone_name,
+            sensor_type=vcfg.sensor_type,
             resonant_frequency_hz=float(vcfg.fr),
             q_factor=float(vcfg.Q),
-            effective_position_m=compute_effective_position(resolve_voice_coils(vcfg)),
-            pickups=resolve_voice_pickups(vcfg),
-            coils=resolve_voice_coils(vcfg),
-            circuit=vcfg.circuit,
+            effective_position_m=target_eff_pos_m,
+            effective_position_mm=target_eff_pos_mm,
+            coils=target_coils,
         ),
     )
 
@@ -941,7 +989,7 @@ def train_voice_mlx(
         "name": model_title,
         "modeled_by": "Allomorph (Peter Nguyen <peter@phn.dev>)",
         "gear_make": inst_name,
-        "gear_model": f"{src_pickup_name} -> {voice_name}",
+        "gear_model": f"{src_voicing_name} -> {voice_name}",
         "gear_type": "preamp",
         "tone_type": "clean",
         "loudness": model_loudness_db,
@@ -959,7 +1007,7 @@ def train_voice_mlx(
             "git_commit": meta_dump["git_commit"],
             "generated_at": meta_dump["generated_at"],
             "source_instrument": meta_dump["source_instrument"],
-            "target_voice": meta_dump["target_voice"],
+            "target_voicing": meta_dump["target_voicing"],
         },
     }
 
@@ -1005,7 +1053,7 @@ def train_voice_mlx(
     print(f"  Model Path:    {target_nam} ({size_kb:.1f} KB)")
     print(f"  Model Title:   {model_title}")
     print(f"  Source Bass:   {inst_name}")
-    print(f"  Source Pickup: {src_pickup_name} ({src_pos_mm:.1f}mm)")
+    print(f"  Source Voicing: {src_voicing_name} ({src_eff_pos_mm:.1f}mm)")
 
     best_studio_val = state.best_esr_full
     ch8_db = 10.0 * math.log10(max(best_studio_val, 1e-12))

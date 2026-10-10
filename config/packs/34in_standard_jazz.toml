@@ -1,0 +1,41 @@
+id = "34in_standard_jazz"
+instrument = "34in_standard_jazz"
+name = "Standard Jazz Bass Tone Pack"
+description = "Universal target voicings for 34\" Standard Jazz Bass"
+version = 1
+
+[[bundles]]
+name = "neck"
+source_voicing = "neck_warm"
+targets = [
+    "precision_vintage",
+    "precision_active",
+    "precision_mids",
+    "precision_warm",
+    "precision_dub",
+    "mudbucker_deep",
+    "upright_piezo",
+]
+
+[[bundles]]
+name = "bridge"
+source_voicing = "bridge_open"
+targets = [
+    "stingray_parallel",
+    "stingray_series",
+    "rickenbacker_clank",
+    "dingwall_bridge",
+    "jazz_bridge_growl",
+]
+
+[[bundles]]
+name = "parallel"
+source_voicing = "pair_open"
+targets = [
+    "pj_active",
+    "pj_passive",
+    "p_mm_parallel",
+    "p_mm_series",
+    "jazz_pair_active",
+    "jazz_pair_mids",
+]

@@ -11,11 +11,8 @@ import pytest
 
 from allomorph.circuit.forward import (
     simulate_all_instrument_voicings,
-    simulate_circuit_audio,
     simulate_instrument_voicing,
 )
-from allomorph.circuit.parser import CircuitModel
-from allomorph.circuit.schema import HarnessControls
 from allomorph.dsp import read_wav, write_wav_24bit
 
 
@@ -84,38 +81,20 @@ def test_forward_auto_normalize_fallback_target_dbfs(
     )
 
 
-def test_simulate_circuit_audio_pot_taper(tmp_path: Path):
-    """Bug 9 regression: simulate_circuit_audio must apply pot_taper from harness controls."""
-    # Construct a circuit model with volume and tone pots
-    model = CircuitModel(
-        topology="single",
-        Rdc=6000.0,
-        L=3.0,
-        Rvol_total=500000.0,
-        pot_taper="audio",
+def test_forward_simulation_voicing_controls(test_audio_file: Path, tmp_path: Path):
+    """Verify simulate_instrument_voicing executes with active volume and tone controls."""
+    out_p = tmp_path / "p_out.wav"
+    sim_path = simulate_instrument_voicing(
+        instrument="34in_standard_p",
+        voicing="vintage_open",
+        input_wav=test_audio_file,
+        output_wav=out_p,
+        max_samples=2400,
     )
-
-    # Signal array
-    t = np.linspace(0, 0.02, 960, endpoint=False)
-    audio = (0.2 * np.sin(2.0 * np.pi * 200.0 * t)).astype(np.float32)
-
-    harness_linear = HarnessControls(vol_pos=0.5, pot_taper="linear")
-    harness_audio = HarnessControls(vol_pos=0.5, pot_taper="audio")
-
-    # With linear taper at 0.5, eff_vol = 0.5
-    # With audio taper at 0.5, eff_vol is around 0.1-0.15
-    model_lin = model.model_copy(deep=True)
-    out_lin = tmp_path / "out_lin.wav"
-    simulate_circuit_audio(audio, out_lin, model_lin, harness_controls=harness_linear)
-
-    model_aud = model.model_copy(deep=True)
-    out_aud = tmp_path / "out_aud.wav"
-    simulate_circuit_audio(audio, out_aud, model_aud, harness_controls=harness_audio)
-
-    # Check that model Rtop/Rbot reflect the different pot tapers
-    assert model_lin.Rbot != model_aud.Rbot, (
-        "Linear and audio tapers at 0.5 wiper position must yield distinct pot resistance splits"
-    )
+    assert sim_path.exists()
+    audio, _sr = read_wav(sim_path)
+    assert len(audio) == 2400
+    assert np.all(np.isfinite(audio))
 
 
 def test_simulate_all_instrument_voicings(
@@ -173,4 +152,133 @@ def test_forward_simulation_upright_piezo(test_audio_file: Path, tmp_path: Path)
     )
     small_audio, _ = read_wav(sim_small)
     assert np.all(np.isfinite(small_audio))
+
+
+def test_forward_simulation_return_audio_and_in_memory(test_audio_file: Path, tmp_path: Path):
+    """Verify return_audio=True and in-memory input_audio array handling."""
+    sig = np.sin(2.0 * np.pi * 100.0 * np.linspace(0, 0.05, 2400, endpoint=False))
+    out_p, audio = simulate_instrument_voicing(
+        instrument="34in_standard_p",
+        voicing="vintage_open",
+        input_audio=sig,
+        return_audio=True,
+        max_samples=1200,
+        output_wav=tmp_path / "mem_out.wav",
+    )
+    assert out_p.exists()
+    assert audio is not None
+    assert len(audio) == 1200
+
+    # Test cache hit path (force=False)
+    _out_cached, audio_cached = simulate_instrument_voicing(
+        instrument="34in_standard_p",
+        voicing="vintage_open",
+        input_wav=test_audio_file,
+        output_wav=tmp_path / "cached_out.wav",
+        return_audio=True,
+        force=False,
+    )
+    # Second call hits cache
+    _out_cached2, audio_cached2 = simulate_instrument_voicing(
+        instrument="34in_standard_p",
+        voicing="vintage_open",
+        input_wav=test_audio_file,
+        output_wav=tmp_path / "cached_out.wav",
+        return_audio=True,
+        force=False,
+    )
+    assert np.allclose(audio_cached, audio_cached2, atol=1e-4)
+
+
+def test_forward_simulation_normalization_modes(test_audio_file: Path, tmp_path: Path):
+    """Verify peak and rms normalization modes in simulate_instrument_voicing."""
+    for mode in ("peak", "rms"):
+        out_p = tmp_path / f"norm_{mode}.wav"
+        res = simulate_instrument_voicing(
+            instrument="34in_standard_p",
+            voicing="vintage_open",
+            input_wav=test_audio_file,
+            output_wav=out_p,
+            normalize=mode,
+            target_dbfs=-15.0,
+            max_samples=1200,
+        )
+        assert res.exists()
+
+
+def test_forward_resolve_target_voicing_errors():
+    """Verify diagnostic exceptions in resolve_target_voicing."""
+    from allomorph.circuit.forward import resolve_target_voicing
+    from allomorph.config.instruments import load_instrument
+
+    inst = load_instrument("34in_standard_p")
+    voicing = inst.voicings["vintage_open"]
+
+    # Passing VoicingConfig without instrument raises ValueError
+    with pytest.raises(ValueError, match="Must provide instrument"):
+        resolve_target_voicing(voicing, instrument=None)
+
+    # Passing pickup name as voicing raises KeyError per Guardrail 5.3.4
+    with pytest.raises(KeyError, match="cannot be used as a target voicing"):
+        resolve_target_voicing("split_p", instrument=inst)
+
+    # Missing voicing raises KeyError
+    with pytest.raises(KeyError, match="could not be resolved"):
+        resolve_target_voicing("non_existent_voicing_xyz")
+
+
+def test_simulate_voice_wrapper_and_options(test_audio_file: Path, tmp_path: Path):
+    """Verify simulate_voice wrapper, config object support, and error cases."""
+    from allomorph.circuit.forward import resolve_target_voicing, simulate_voice
+    from allomorph.config.instruments import load_instrument
+
+    inst = load_instrument("34in_standard_p")
+
+    # 1. Resolve target voicing with colon and tone slug
+    inst_res, v_res = resolve_target_voicing("34in_standard_p:Precision Vintage")
+    assert inst_res.id == "34in_standard_p"
+    assert v_res.id == "vintage_open"
+
+    # 2. simulate_voice basic call
+    out_p = tmp_path / "sim_voice.wav"
+    ok = simulate_voice(
+        "vintage_open",
+        instrument=inst,
+        input_wav=test_audio_file,
+        output_wav=out_p,
+        max_samples=1200,
+    )
+    assert ok is True
+    assert out_p.exists()
+
+    # 3. simulate_voice with unknown pickup raises KeyError
+    with pytest.raises(KeyError, match="Pickup 'nonexistent_pickup' not found"):
+        simulate_voice(
+            "vintage_open",
+            instrument=inst,
+            input_wav=test_audio_file,
+            pickup="nonexistent_pickup",
+        )
+
+    # 4. simulate_voice with skip_identity=True
+    skip_p = tmp_path / "skip_out.wav"
+    skip_p.write_bytes(b"temp")
+    res_skip = simulate_voice(
+        "vintage_open",
+        instrument=inst,
+        input_wav=test_audio_file,
+        output_wav=skip_p,
+        skip_identity=True,
+    )
+    assert res_skip is False
+    assert not skip_p.exists()
+
+    # 5. simulate_voice with non-existent target voice raises KeyError
+    with pytest.raises(KeyError, match="not found"):
+        simulate_voice(
+            "completely_unknown_voicing_12345",
+            instrument=inst,
+            input_wav=test_audio_file,
+        )
+
 

@@ -6,6 +6,7 @@ soft-knee core saturation, and Numba accelerated kernels.
 import math
 import tempfile
 from pathlib import Path
+from typing import Any
 
 import numpy as np
 import pedalboard.io
@@ -13,47 +14,59 @@ import pytest
 
 from allomorph.circuit import (
     MAGNET_PROPERTIES,
-    CircuitModel,
     _dahl_core,
     _lenz_envelope_core,
     _lenz_velocity_drag_core,
     _slew_limit_core,
     apply_dahl_hysteresis,
     apply_elliptical_orbit_projection,
-    apply_magnet_properties_to_model,
     apply_oversampled_saturation,
     compute_core_impedance,
-    load_circuit,
-    simulate_circuit_audio,
+    simulate_instrument_voicing,
     simulate_voice,
 )
-from allomorph.config.schema import PickupConfig
 from allomorph.dsp import write_wav_24bit
 
 
 def test_passive_saturation_bypassed():
-    """Verify that forward tanh saturation is bypassed when is_passive is True."""
+    """Verify that forward saturation is bypassed when apply_saturation is False."""
     n_samples = 4800
     # High amplitude input (0.80) exceeding vsat (0.45)
     in_heavy = np.full((1, n_samples), 0.80, dtype=np.float32)
-
-    m = load_circuit("precision_vintage")
 
     with (
         tempfile.NamedTemporaryFile(suffix=".wav") as tmp_act,
         tempfile.NamedTemporaryFile(suffix=".wav") as tmp_pas,
     ):
-        # Active simulation: applies tanh
-        simulate_circuit_audio(in_heavy, Path(tmp_act.name), m, is_passive=False)
-        # Passive simulation: bypasses tanh
-        simulate_circuit_audio(in_heavy, Path(tmp_pas.name), m, is_passive=True)
+        # Saturation enabled: applies non-linear compression
+        simulate_instrument_voicing(
+            voicing="precision_vintage",
+            input_audio=in_heavy,
+            output_wav=Path(tmp_act.name),
+            apply_saturation=True,
+            normalize="none",
+            apply_dither=False,
+            dc_block=False,
+            force=True,
+        )
+        # Saturation bypassed: linear uncompressed
+        simulate_instrument_voicing(
+            voicing="precision_vintage",
+            input_audio=in_heavy,
+            output_wav=Path(tmp_pas.name),
+            apply_saturation=False,
+            normalize="none",
+            apply_dither=False,
+            dc_block=False,
+            force=True,
+        )
 
         with pedalboard.io.AudioFile(tmp_act.name) as f:
             audio_act = f.read(f.frames)[0]
         with pedalboard.io.AudioFile(tmp_pas.name) as f:
             audio_pas = f.read(f.frames)[0]
 
-    # Passive output should maintain linear proportional gain (higher uncompressed peak)
+    # Linear uncompressed output maintains higher peak
     assert np.max(np.abs(audio_pas)) > np.max(np.abs(audio_act))
 
 
@@ -162,19 +175,17 @@ def test_fractional_core_eddy_diffusion():
     """
     L0 = 4.8  # H
     # 1. Alnico V
-    model_alnico = CircuitModel()
-    model_alnico.L = L0
-    apply_magnet_properties_to_model(
-        model_alnico, PickupConfig(name="mock", magnet_type="alnico_v")
-    )
-    assert model_alnico.L_core == pytest.approx(0.08 * L0)
-    assert model_alnico.R_core > 0.0
+    props_alnico = MAGNET_PROPERTIES["alnico_v"]
+    L_core_alnico = props_alnico.k_core * L0
+    R_core_alnico = 2.0 * math.pi * props_alnico.f_core * L_core_alnico
+    assert L_core_alnico == pytest.approx(0.08 * L0)
+    assert R_core_alnico > 0.0
 
     # Evaluate at 10 kHz
     w_hi = 2.0 * math.pi * 10000.0
     s_hi = 1j * w_hi
     Z_hi_alnico = compute_core_impedance(
-        s_hi, model_alnico.L, model_alnico.L_core, model_alnico.R_core
+        s_hi, L0, L_core_alnico, R_core_alnico
     )
 
     # Inductance at high frequency should be dropped by ~7-8%
@@ -186,29 +197,20 @@ def test_fractional_core_eddy_diffusion():
     assert Z_hi_alnico.real > 500.0
 
     # 2. Ceramic (insulating ferrite core)
-    model_ceramic = CircuitModel()
-    model_ceramic.L = L0
-    apply_magnet_properties_to_model(
-        model_ceramic, PickupConfig(name="mock", magnet_type="ceramic")
-    )
-    assert model_ceramic.L_core == pytest.approx(0.02 * L0)
+    props_ceramic = MAGNET_PROPERTIES["ceramic"]
+    L_core_ceramic = props_ceramic.k_core * L0
+    R_core_ceramic = 2.0 * math.pi * props_ceramic.f_core * L_core_ceramic
+    assert L_core_ceramic == pytest.approx(0.02 * L0)
     Z_hi_ceramic = compute_core_impedance(
-        s_hi, model_ceramic.L, model_ceramic.L_core, model_ceramic.R_core
+        s_hi, L0, L_core_ceramic, R_core_ceramic
     )
     L_eff_ceramic = Z_hi_ceramic.imag / w_hi
     drop_ceramic = (L0 - L_eff_ceramic) / L0 * 100.0
     assert drop_ceramic <= 2.2
 
     # 3. Disabled eddy diffusion
-    model_disabled = CircuitModel()
-    model_disabled.L = L0
-    apply_magnet_properties_to_model(
-        model_disabled, PickupConfig(name="mock", magnet_type="alnico_v"), eddy_diffusion=False
-    )
-    assert model_disabled.L_core == 0.0
-    assert model_disabled.R_core == 0.0
     Z_hi_disabled = compute_core_impedance(
-        s_hi, model_disabled.L, model_disabled.L_core, model_disabled.R_core
+        s_hi, L0, L_core=0.0, R_core=0.0
     )
     assert Z_hi_disabled.imag / w_hi == pytest.approx(L0)
     assert Z_hi_disabled.real == 0.0
@@ -1113,3 +1115,89 @@ def test_apply_state_space_saturation_with_config_and_1x_oversample():
     out_uni = apply_oversampled_saturation(unipolar_sig, config=config)
     assert len(out_uni) == len(unipolar_sig)
     assert np.all(np.isfinite(out_uni))
+
+
+def test_saturation_numba_core_kernels():
+    """Verify state-space Numba core kernels directly across edge cases."""
+    from allomorph.circuit.saturation import (
+        _active_preamp_leveling_core,
+        _algebraic_limiter_p8_core,
+        _dahl_core,
+        _lenz_envelope_core,
+        _lenz_velocity_drag_core,
+        _slew_limit_core,
+    )
+
+    def _py(fn: Any) -> Any:
+        return getattr(fn, "py_func", fn)
+
+    # 1. _dahl_core: verify hysteresis integration on positive/negative excursions
+    x_test = np.array([0.0, 0.2, 0.5, 0.3, -0.2, -0.4, 0.0], dtype=np.float64)
+    z_jitted = _dahl_core(x_test, eta=0.15, r=0.4)
+    z_py = _py(_dahl_core)(x_test, eta=0.15, r=0.4)
+    assert np.allclose(z_jitted, z_py)
+    assert z_jitted[0] == 0.0
+
+    # 2. _lenz_envelope_core: verify asymmetric attack/release tracking
+    env_jitted = _lenz_envelope_core(x_test, alpha_att=0.2, alpha_rel=0.02)
+    env_py = _py(_lenz_envelope_core)(x_test, alpha_att=0.2, alpha_rel=0.02)
+    assert np.allclose(env_jitted, env_py)
+
+    # 3. _lenz_velocity_drag_core: verify non-linear dynamic drag and all metallurgical damping branches
+    # Test with all damping mechanisms active
+    env_test = np.array([0.0, 0.2, 0.8, 0.6, 0.4, 0.2, 0.0], dtype=np.float64)
+    drag_out = _py(_lenz_velocity_drag_core)(
+        x_test,
+        env_test,
+        vsat=0.4,
+        k_sag=0.08,
+        alpha_c=0.15,
+        k_eddy=0.05,
+        beta_curv=0.04,
+        k_pull=0.05,
+        k_stein=0.03,
+        k_emf=0.02,
+        lambda_L=0.03,
+        kappa_ap=0.02,
+    )
+    assert len(drag_out) == len(x_test)
+    assert np.all(np.isfinite(drag_out))
+
+    # Test edge case: vsat <= 0
+    drag_zero_vsat = _py(_lenz_velocity_drag_core)(
+        x_test, env_test, vsat=0.0, k_sag=0.05, alpha_c=0.15
+    )
+    assert np.all(np.isfinite(drag_zero_vsat))
+
+    # Test extreme positive/negative envelope values (softplus thresholds: u*16 > 20 and u*16 < -40)
+    extreme_env = np.array([0.0, 5.0, 0.001], dtype=np.float64)
+    extreme_x = np.array([0.0, 1.0, 0.01], dtype=np.float64)
+    drag_extreme = _py(_lenz_velocity_drag_core)(
+        extreme_x, extreme_env, vsat=0.5, k_sag=0.05, alpha_c=0.15, k_pull=0.02, lambda_L=0.02
+    )
+    assert np.all(np.isfinite(drag_extreme))
+
+    # 4. _slew_limit_core: empty array and active slew limiting
+    empty_res = _py(_slew_limit_core)(np.empty(0, dtype=np.float64), max_delta=0.05)
+    assert len(empty_res) == 0
+    slew_out = _py(_slew_limit_core)(x_test, max_delta=0.05)
+    assert np.all(np.isfinite(slew_out))
+    assert np.allclose(_slew_limit_core(x_test, max_delta=0.05), slew_out)
+
+    # 5. _algebraic_limiter_p8_core: normal and overflow guard regions
+    x_rail = np.array([0.1, 0.5, 0.95, 2.0, 50.0, -60.0], dtype=np.float64)
+    lim_py = _py(_algebraic_limiter_p8_core)(x_rail, vsat=0.985)
+    lim_jit = _algebraic_limiter_p8_core(x_rail, vsat=0.985)
+    assert np.allclose(lim_py, lim_jit)
+    assert np.all(np.abs(lim_py) <= 0.985)
+
+    # 6. _active_preamp_leveling_core: vsat <= 0, k_level <= 0, e > vsat * 0.75, e <= vsat * 0.75
+    bypassed_1 = _py(_active_preamp_leveling_core)(x_test, env_test, vsat=0.0, k_level=0.5)
+    assert np.array_equal(bypassed_1, x_test)
+    bypassed_2 = _py(_active_preamp_leveling_core)(x_test, env_test, vsat=0.5, k_level=0.0)
+    assert np.array_equal(bypassed_2, x_test)
+
+    level_py = _py(_active_preamp_leveling_core)(x_test, env_test, vsat=0.4, k_level=0.5)
+    level_jit = _active_preamp_leveling_core(x_test, env_test, vsat=0.4, k_level=0.5)
+    assert np.allclose(level_py, level_jit)
+

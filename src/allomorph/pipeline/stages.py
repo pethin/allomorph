@@ -85,6 +85,7 @@ def run_training(
     precision: str = "auto",
     num_workers: int | str = "auto",
     version_tag: str | None = "auto",
+    source_voicing: str | None = None,
     no_manifest: bool = False,
     include_identity: bool = False,
     engine: str = "auto",
@@ -99,6 +100,7 @@ def run_training(
     return train_voice(
         instrument=instrument,
         voice=voice,
+        source_voicing=source_voicing,
         input_wav=input_wav,
         output_wav=output_wav,
         reference_wav=reference_wav,

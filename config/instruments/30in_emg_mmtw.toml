@@ -3,9 +3,7 @@
 # 30" Short Scale Bass with Active 18V EMG MMTWX (X-Series)
 # ==============================================================================
 # Physical Datum: Centerline located 77.5mm from bridge saddle (303.5mm from 12th fret).
-# Pickup Hardware: Active 18V EMG MMTWX (X-series, equivalent to 35TWX with MMTW physical specs).
-#   - Dual-Coil Mode: Coils L1 (neck) + L2 (bridge) in parallel (2.50 kHz fr, Ceramic & Steel).
-#   - Single-Coil Mode: Coils L2 + L3 (bridge-side stacked hum-canceler, 3.50 kHz fr, Ceramic & Steel).
+# Pickup Hardware: Active 18V EMG MMTWX (X-series, dual-mode Ceramic & Steel).
 
 id = "30in_emg_mmtw"
 name = "30\" Short Scale MM (EMG MMTWX)"
@@ -17,13 +15,10 @@ version = 1
 # String wave speeds: v = 2 * L * f0 (for E1=41.2Hz, A1=55.0Hz, D2=73.4Hz, G2=98.0Hz)
 string_wave_speeds = [62.79, 83.82, 111.89, 149.35]
 
-# Default pickup setting when not overridden by voice mapping
-default_pickup = "mmtw_dual"
 
 # ------------------------------------------------------------------------------
 # Physical Strings Configuration (Source Instrument Setup)
 # ------------------------------------------------------------------------------
-# Strung with short-scale nickel roundwounds (D'Addario EXL160S .050-.105).
 [strings]
 preset = "roundwound_nickel_standard"
 brand = "D'Addario"
@@ -34,76 +29,69 @@ wrap = "nickel_round"
 tension_lbs = 145.0
 
 # ------------------------------------------------------------------------------
-# 1. DUAL-COIL MODE (Push/Pull Down: Humbucking Music Man Sound)
+# 1. HARDWARE TRANSDUCER (EMG MMTWX Dual-Mode Pickup)
 # ------------------------------------------------------------------------------
-[pickups.mmtw_dual]
-name = "EMG MMTWX Dual-Coil (Centerline)"
-position_name = "Dual"
-bundle_name = "dual"
+[pickups.mmtwx]
+name = "EMG MMTWX Active Dual-Mode Pickup"
+position_name = "Centerline"
 position_from_bridge_m = 0.0775  # 77.5mm centerline
 aperture_width_in = 1.50         # Overall pickup housing sensing envelope
 coil_spacing_in = 0.90           # 0.90" (22.86mm) spacing between coil centers
 type = "dual_coil_parallel"
 magnet_type = "ceramic_steel"
 pole_type = "blade"
-resonant_frequency_hz = 2500.0   # Internal active X-series CSX resonance (equivalent to 35TWX)
-q_factor = 1.35                  # Quality factor of the active resonant peak
-
-# Multi-coil spatial standing wave breakdown:
+has_internal_buffer = true
+buffer_output_impedance = 2000.0
 coils = [
-    { strings = ["all"], position_from_bridge_m = 0.08893, aperture_width_in = 0.75, weight = 0.5, pole_type = "blade" }, # L1 (Neck)
-    { strings = ["all"], position_from_bridge_m = 0.06607, aperture_width_in = 0.75, weight = 0.5, pole_type = "blade" }  # L2 (Bridge)
+    { id = "neck", strings = ["all"], position_from_bridge_m = 0.08893, aperture_width_in = 0.45, weight = 0.5, pole_type = "blade", L = 0.80, Rdc = 2800.0, Reddy = 150000.0, Ccoil = 2.4e-9 },
+    { id = "bridge", strings = ["all"], position_from_bridge_m = 0.06607, aperture_width_in = 0.45, weight = 0.5, pole_type = "blade", L = 0.80, Rdc = 2800.0, Reddy = 150000.0, Ccoil = 2.4e-9 },
 ]
 
-[pickups.mmtw_dual.circuit]
-topology = "single"
-L = 0.80
-Rdc = 2800.0
-Reddy = 150000.0
-Ccoil = 4.86e-9
-active = true
-active_variant = "x_series"
-k_level = 0.0
-vsat = 2.40
-R_out = 2000.0
-tau_att_level = 0.003
-tau_rel_level = 0.045
-
 # ------------------------------------------------------------------------------
-# 2. SINGLE-COIL MODE (Push/Pull Up: J-Style Single-Coil Sound)
+# 2. CONTROL HARNESS (Push-Pull Dual/Single Switch & Volume)
 # ------------------------------------------------------------------------------
-# Note: EMG MMTW switches strictly to the bridge-side stacked coils (L2 + L3).
-# L2 is the active sensing coil; L3 is a phantom dummy coil underneath for hum cancellation.
-[pickups.mmtw_single]
-name = "EMG MMTWX Single-Coil (Bridge Coil)"
-position_name = "Single"
-bundle_name = "single"
-position_from_bridge_m = 0.06607 # 66.07mm (L2 coil center)
-aperture_width_in = 0.75         # Narrow 0.75" single-coil aperture
-coil_spacing_in = 0.0            # Single sensing line (no humbucker comb notch)
-type = "single_coil"
-magnet_type = "ceramic_steel"
-pole_type = "blade"
-resonant_frequency_hz = 3500.0   # Higher active X-series JCSX resonance (equivalent to 35TWX)
-q_factor = 1.40
+[harnesses.active]
+name = "EMG MMTWX Active Harness with Push-Pull Coil Switch"
+type = "active_preamp"
+load_resistance = 1000000.0
+cable_pf = 30.0
 
-coils = [
-    { strings = ["all"], position_from_bridge_m = 0.06607, aperture_width_in = 0.75, weight = 1.0, pole_type = "blade" }
+wiring = [
+    ["preamp.out", "controls.vol.in"],
+    ["controls.vol.wiper", "out"],
+    ["controls.vol.gnd", "GND"],
 ]
 
-[pickups.mmtw_single.circuit]
-topology = "single"
-L = 0.80
-Rdc = 2800.0
-Reddy = 150000.0
-Ccoil = 2.49e-9
-active = true
-active_variant = "x_series"
-k_level = 0.0
-vsat = 2.40
-R_out = 2000.0
-tau_att_level = 0.003
-tau_rel_level = 0.045
+[harnesses.active.controls.vol]
+name = "Master Volume"
+type = "pot"
+taper = "audio_15"
+resistance = 25000.0
+default = 1.0
+
+[harnesses.active.switches.coil_mode]
+name = "Push-Pull Dual/Single Switch"
+type = "push_pull"
+default = "dual"
+
+[harnesses.active.switches.coil_mode.positions.dual]
+connect = [
+    ["pickups.mmtwx.neck.hot", "preamp.in"],
+    ["pickups.mmtwx.bridge.hot", "preamp.in"],
+    ["pickups.mmtwx.neck.cold", "GND"],
+    ["pickups.mmtwx.bridge.cold", "GND"],
+]
+k_mutual = 0.20
+components = { "pickups.mmtwx.neck.Ccoil" = 4.86e-9, "pickups.mmtwx.bridge.Ccoil" = 4.86e-9 }
+
+[harnesses.active.switches.coil_mode.positions.single]
+connect = [
+    ["pickups.mmtwx.bridge.hot", "preamp.in"],
+    ["pickups.mmtwx.bridge.cold", "GND"],
+    ["pickups.mmtwx.neck.cold", "GND"],
+]
+k_mutual = 0.0
+components = { "pickups.mmtwx.bridge.Ccoil" = 2.68e-9 }
 
 # ------------------------------------------------------------------------------
 # 3. NATIVE INSTRUMENT VOICINGS
@@ -113,38 +101,25 @@ tau_rel_level = 0.045
 version = 1
 name = "Active Dual-Coil Parallel (MM Mode)"
 tone_name = "MMTW Dual"
-pickup = "mmtw_dual"
-affinity = "parallel"
-vol_pos = 1.0
+harness = "active"
+switches = { coil_mode = "dual" }
+controls = { vol = 1.0 }
 
 [voicings.single_mode]
 version = 1
 name = "Active Single-Coil Stacked (J Mode)"
 tone_name = "MMTW Single"
-pickup = "mmtw_single"
-affinity = "bridge"
-vol_pos = 1.0
+harness = "active"
+switches = { coil_mode = "single" }
+controls = { vol = 1.0 }
 
 [voicings.dual_warm]
 version = 1
 name = "Active Dual-Coil Warm Low-Mid Bloom"
 tone_name = "MMTW Warm"
-pickup = "mmtw_dual"
-affinity = "neck"
-vol_pos = 1.0
+harness = "active"
+switches = { coil_mode = "dual" }
+controls = { vol = 1.0 }
 preamp_bands = [
     { type = "low_pass", freq_hz = 650.0, gain_db = 0.0, q = 1.6 }
 ]
-
-# ------------------------------------------------------------------------------
-# 4. PICKUP AFFINITY ROUTING
-# ------------------------------------------------------------------------------
-[pickup_mapping]
-neck = "mmtw_dual"
-parallel = "mmtw_dual"
-bridge = "mmtw_single"
-direct = "mmtw_dual"
-"stingray_parallel" = "mmtw_dual"
-"stingray_series" = "mmtw_dual"
-"34in_active_stingray:parallel_classic" = "mmtw_dual"
-"34in_active_stingray:series_punch" = "mmtw_dual"

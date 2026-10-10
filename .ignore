@@ -1,0 +1,3 @@
+# Search ignore file for ripgrep (rg) and silver searcher (ag)
+*.nam
+*.wav

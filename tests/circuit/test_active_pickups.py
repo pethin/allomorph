@@ -12,8 +12,7 @@ import numpy as np
 
 from allomorph.circuit import (
     apply_active_pickup_dynamics,
-    compute_circuit_transfer_functions,
-    load_circuit,
+    solve_mna_harness,
 )
 from allomorph.config import INSTRUMENTS
 
@@ -23,28 +22,29 @@ def test_active_pickup_resonant_frequency_accuracy():
     freqs = np.linspace(20.0, 20000.0, 8000)
 
     test_cases = [
-        ("30in_emg_mmtw", "mmtw_dual", 2500.0),
-        ("30in_emg_mmtw", "mmtw_single", 3500.0),
-        ("32in_custom_pmm", "px", 3200.0),
-        ("32in_custom_pmm", "mmtwx_single", 3500.0),
-        ("32in_custom_pmm", "mmtwx_dual", 2500.0),
-        ("32in_fretless_pmm", "pcsx", 2610.0),
-        ("34in_active_emg", "neck", 4150.0),
-        ("34in_active_emg", "bridge", 4150.0),
+        ("30in_emg_mmtw", "dual_mode", "mmtwx", 2500.0),
+        ("30in_emg_mmtw", "single_mode", "mmtwx", 3500.0),
+        ("32in_custom_pmm", "px_solo", "px", 3200.0),
+        ("32in_custom_pmm", "mm_single", "mmtwx", 3500.0),
+        ("32in_custom_pmm", "mm_dual", "mmtwx", 2500.0),
+        ("32in_fretless_pmm", "pcsx_solo", "pcsx", 2610.0),
+        ("34in_active_emg", "neck_solo", "neck", 4150.0),
+        ("34in_active_emg", "bridge_solo", "bridge", 4150.0),
     ]
 
-    for inst_id, pickup_key, expected_fr in test_cases:
+    for inst_id, v_id, pickup_key, expected_fr in test_cases:
         inst = INSTRUMENTS[inst_id]
-        p = inst.pickups[pickup_key]
-        assert p.circuit is not None
-        model = load_circuit(p.circuit)
-        curves = compute_circuit_transfer_functions(model, freqs=freqs)
-        peak_idx = int(np.argmax(curves[0]))
+        v = inst.voicings[v_id]
+        h = inst.harnesses[v.harness]
+        curves = solve_mna_harness(inst, h, v, freqs=freqs)
+        assert pickup_key in curves, f"Pickup {pickup_key} not found in curves for {inst_id}:{v_id}"
+        curve = curves[pickup_key]
+        peak_idx = int(np.argmax(curve))
         peak_f = float(freqs[peak_idx])
 
         error_hz = abs(peak_f - expected_fr)
         assert error_hz <= 50.0, (
-            f"{inst_id}:{pickup_key} resonant peak {peak_f:.1f} Hz deviates by {error_hz:.1f} Hz "
+            f"{inst_id}:{v_id}:{pickup_key} resonant peak {peak_f:.1f} Hz deviates by {error_hz:.1f} Hz "
             f"from target {expected_fr:.1f} Hz (tolerance +-50 Hz)"
         )
 
@@ -124,14 +124,10 @@ def test_small_signal_linearity_bypass():
 
 def test_active_pickup_output_impedances():
     """Verify that X-Series declares 2k line driver impedance and Classic declares 10k output impedance."""
-    mmtw_circ = INSTRUMENTS["30in_emg_mmtw"].pickups["mmtw_dual"].circuit
-    assert mmtw_circ is not None
-    mmtwx_model = load_circuit(mmtw_circ)
-    assert mmtwx_model.R_out == 2000.0
-    assert mmtwx_model.active_variant == "x_series"
+    mmtwx_p = INSTRUMENTS["30in_emg_mmtw"].pickups["mmtwx"]
+    assert mmtwx_p.has_internal_buffer
+    assert mmtwx_p.buffer_output_impedance == 2000.0
 
-    classic_circ = INSTRUMENTS["34in_active_emg"].pickups["neck"].circuit
-    assert classic_circ is not None
-    classic_model = load_circuit(classic_circ)
-    assert classic_model.R_out == 10000.0
-    assert classic_model.active_variant == "classic"
+    classic_p = INSTRUMENTS["34in_active_emg"].pickups["neck"]
+    assert classic_p.has_internal_buffer
+    assert classic_p.buffer_output_impedance == 10000.0

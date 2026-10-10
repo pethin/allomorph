@@ -719,10 +719,6 @@ def _apply_cinf_fades(sig: np.ndarray, fade_len: int) -> np.ndarray:
     return out
 
 
-# Backward-compatibility alias ensuring full C^infinity boundary smoothness across all synthesis stages
-_apply_hann_fades = _apply_cinf_fades
-
-
 def _synth_log_chirp(
     dur: float,
     f_start: float,
@@ -746,7 +742,7 @@ def _synth_log_chirp(
     else:
         sig = amp * np.sin(phase)
     sig -= np.mean(sig)
-    return _apply_hann_fades(sig, min(n // 4, int(0.005 * sample_rate)))
+    return _apply_cinf_fades(sig, min(n // 4, int(0.005 * sample_rate)))
 
 
 def synthesize_fast_log_sweep(
@@ -1018,7 +1014,7 @@ def _synth_pluck(
     p_max = float(np.max(np.abs(sig)))
     if p_max > 0:
         sig = (sig / p_max) * amp
-    return _apply_hann_fades(sig, min(n // 4, int(0.005 * sample_rate)))
+    return _apply_cinf_fades(sig, min(n // 4, int(0.005 * sample_rate)))
 
 
 def _synth_ghost_note(
@@ -1052,7 +1048,7 @@ def _synth_ghost_note(
     p_max = float(np.max(np.abs(sig)))
     if p_max > 0:
         sig = (sig / p_max) * amp
-    return _apply_hann_fades(sig, min(n // 4, int(0.003 * sample_rate)))
+    return _apply_cinf_fades(sig, min(n // 4, int(0.003 * sample_rate)))
 
 
 def _synth_natural_harmonic(
@@ -1087,7 +1083,7 @@ def _synth_natural_harmonic(
     p_max = float(np.max(np.abs(sig)))
     if p_max > 0:
         sig = (sig / p_max) * amp
-    return _apply_hann_fades(sig, min(n // 4, int(0.005 * sample_rate)))
+    return _apply_cinf_fades(sig, min(n // 4, int(0.005 * sample_rate)))
 
 
 def _synth_dyad(
@@ -1113,7 +1109,7 @@ def _synth_dyad(
     p_max = float(np.max(np.abs(sig)))
     if p_max > 0:
         sig = (sig / p_max) * amp
-    return _apply_hann_fades(sig, min(len(sig) // 4, int(0.005 * sample_rate)))
+    return _apply_cinf_fades(sig, min(len(sig) // 4, int(0.005 * sample_rate)))
 
 
 def _synth_glissando(
@@ -1160,7 +1156,7 @@ def _synth_glissando(
     p_max = float(np.max(np.abs(sig)))
     if p_max > 0:
         sig = (sig / p_max) * amp
-    return _apply_hann_fades(sig, min(n // 4, int(0.005 * sample_rate)))
+    return _apply_cinf_fades(sig, min(n // 4, int(0.005 * sample_rate)))
 
 
 def _synth_ghost_rake(
@@ -1226,7 +1222,7 @@ def _synth_slap_pop_pair(
     p_max = float(np.max(np.abs(composite)))
     if p_max > 0:
         composite = (composite / p_max) * amp
-    return _apply_hann_fades(composite, min(len(composite) // 4, int(0.005 * sample_rate)))
+    return _apply_cinf_fades(composite, min(len(composite) // 4, int(0.005 * sample_rate)))
 
 
 def _synth_vibrato_pluck(
@@ -1277,7 +1273,7 @@ def _synth_vibrato_pluck(
     p_max = float(np.max(np.abs(sig)))
     if p_max > 0:
         sig = (sig / p_max) * amp
-    return _apply_hann_fades(sig, min(n // 4, int(0.005 * sample_rate)))
+    return _apply_cinf_fades(sig, min(n // 4, int(0.005 * sample_rate)))
 
 
 def _synth_long_ringout(
@@ -1331,7 +1327,7 @@ def _synth_long_ringout(
     if p_max > 0:
         sig = (sig / p_max) * amp
     fade_samples = min(n // 8, int(0.05 * sample_rate))
-    return _apply_hann_fades(sig, fade_samples)
+    return _apply_cinf_fades(sig, fade_samples)
 
 
 def _synth_two_tone_probe(
@@ -1351,7 +1347,7 @@ def _synth_two_tone_probe(
     p_max = float(np.max(np.abs(sig)))
     if p_max > 0:
         sig = (sig / p_max) * amp
-    return _apply_hann_fades(sig, min(n // 4, int(0.005 * sample_rate)))
+    return _apply_cinf_fades(sig, min(n // 4, int(0.005 * sample_rate)))
 
 
 def generate_optimal_bass_dry(
@@ -1606,7 +1602,7 @@ def generate_optimal_bass_dry(
             sig_m = (sig_m / np.max(np.abs(sig_m))) * 0.80
             am_env = 0.575 + 0.325 * np.sin(2.0 * np.pi * 0.25 * tm)
             append_segment(
-                _apply_hann_fades(sig_m * am_env, min(nm // 4, int(0.01 * sample_rate))),
+                _apply_cinf_fades(sig_m * am_env, min(nm // 4, int(0.01 * sample_rate))),
                 0.4,
             )
 

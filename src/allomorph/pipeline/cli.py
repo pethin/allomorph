@@ -45,13 +45,13 @@ def list_voices():
     """Lists all target pickup voices and their SPICE netlists."""
     print("Available Allomorph Target Pickup Voices (SPICE Digital Twins):")
     for vid, cfg in VOICES.items():
-        print(f"  - {vid}: {cfg.name} ({cfg.topology})")
+        print(f"  - {vid}: {cfg.name} [{cfg.sensor_type}]")
         coils = resolve_voice_coils(cfg)
         pickups = resolve_voice_pickups(cfg)
         eff_pos = compute_effective_position(coils)
         if len(pickups) > 1:
             print(
-                f"      Circuit: {cfg.circuit} | Pickups={len(pickups)}, Coils={len(coils)} (Eff pos={eff_pos * 1000:.1f}mm) | Composite fr={cfg.fr}Hz (Q={cfg.Q})"
+                f"      Description: {cfg.description} | Pickups={len(pickups)}, Coils={len(coils)} (Eff pos={eff_pos * 1000:.1f}mm) | Composite fr={cfg.fr}Hz (Q={cfg.Q})"
             )
             for p in pickups:
                 print(
@@ -59,7 +59,7 @@ def list_voices():
                 )
         else:
             print(
-                f"      Circuit: {cfg.circuit} | Coils={len(coils)} (Eff pos={eff_pos * 1000:.1f}mm) | fr={cfg.fr}Hz (Q={cfg.Q})"
+                f"      Description: {cfg.description} | Coils={len(coils)} (Eff pos={eff_pos * 1000:.1f}mm) | fr={cfg.fr}Hz (Q={cfg.Q})"
             )
 
 
@@ -116,38 +116,10 @@ def main(argv: Sequence[str] | None = None):
         help="Train NAM model locally with Apple Silicon Metal/MPS acceleration",
     )
     parser.add_argument(
-        "--pickup",
-        "-p",
-        default=None,
-        help="Physical pickup setting for source instrument ('auto' to resolve from pickup_mapping, or explicit pickup ID)",
-    )
-    parser.add_argument(
         "--voice",
         "-v",
         default="all",
         help="Target pickup voice for audio pre-filtering, simulation, and training (voice ID, comma-separated list, or 'all'; default: 'all')",
-    )
-    parser.add_argument(
-        "--vol-pos",
-        "--vol",
-        type=float,
-        default=None,
-        dest="vol_pos",
-        help="Volume pot wiper position (0.0 to 1.0, default 1.0 full open)",
-    )
-    parser.add_argument(
-        "--tone-pos",
-        "--tone",
-        type=float,
-        default=None,
-        dest="tone_pos",
-        help="Tone pot wiper position (0.0 to 1.0, default 1.0 full open/bright)",
-    )
-    parser.add_argument(
-        "--cable-pf",
-        type=float,
-        default=None,
-        help="Cable capacitance loading in pF (default: from circuit config, typically 750 pF)",
     )
     parser.add_argument(
         "--jobs",
@@ -192,12 +164,8 @@ def main(argv: Sequence[str] | None = None):
             "instrument": args.instrument or "all",
             "pack": args.pack,
             "stage": args.stage,
-            "pickup": args.pickup,
             "voice": args.voice or "all",
             "train": args.train,
-            "vol_pos": args.vol_pos,
-            "tone_pos": args.tone_pos,
-            "cable_pf": args.cable_pf if args.cable_pf is not None else 750.0,
             "normalize": args.normalize,
             "target_dbfs": args.target_dbfs,
             "input_wav": args.input_wav,

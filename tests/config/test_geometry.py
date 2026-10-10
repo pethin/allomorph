@@ -6,7 +6,6 @@ import math
 
 import pytest
 
-from allomorph.circuit.schema import CircuitConfig
 from allomorph.config import (
     VOICES,
     compute_effective_position,
@@ -19,15 +18,13 @@ from allomorph.config.schema import VoiceCoilConfig, VoiceConfig
 
 
 def test_resolve_pickup_coils():
-    # 1. 30" MMTW (dual and single coil)
+    # 1. 30" MMTW (physical mmtwx dual-coil transducer)
     inst_30 = load_instrument("30in")
-    coils_30_dual = resolve_pickup_coils(inst_30.pickups["mmtw_dual"], inst_30)
-    assert len(coils_30_dual) == 2
-    assert all("all" in c.strings for c in coils_30_dual)
-
-    coils_30_single = resolve_pickup_coils(inst_30.pickups["mmtw_single"], inst_30)
-    assert len(coils_30_single) == 1
-    assert math.isclose(coils_30_single[0].position_from_bridge_m, 0.06607, abs_tol=1e-4)
+    coils_30 = resolve_pickup_coils(inst_30.pickups["mmtwx"], inst_30)
+    assert len(coils_30) == 2
+    assert all("all" in c.strings for c in coils_30)
+    assert math.isclose(coils_30[0].position_from_bridge_m, 0.08893, abs_tol=1e-4)
+    assert math.isclose(coils_30[1].position_from_bridge_m, 0.06607, abs_tol=1e-4)
 
     # 2. 34" P (split coils with E/A and D/G binding)
     inst_p = load_instrument("34in_standard_p")
@@ -38,14 +35,14 @@ def test_resolve_pickup_coils():
     assert math.isclose(coils_p[0].position_from_bridge_m, 0.1390, abs_tol=1e-4)
     assert math.isclose(coils_p[1].position_from_bridge_m, 0.1110, abs_tol=1e-4)
 
-    # 3. 34" Jazz (composite pair_parallel)
+    # 3. 34" Jazz (physical neck and bridge pickups)
     inst_j = load_instrument("34in_standard_jazz")
-    coils_j = resolve_pickup_coils(inst_j.pickups["pair_parallel"], inst_j)
-    assert len(coils_j) == 2
-    assert math.isclose(coils_j[0].position_from_bridge_m, 0.1556, abs_tol=1e-4)
-    assert math.isclose(coils_j[1].position_from_bridge_m, 0.0635, abs_tol=1e-4)
-    assert coils_j[0].weight == 0.5
-    assert coils_j[1].weight == 0.5
+    coils_neck = resolve_pickup_coils(inst_j.pickups["neck"], inst_j)
+    coils_bridge = resolve_pickup_coils(inst_j.pickups["bridge"], inst_j)
+    assert len(coils_neck) == 1
+    assert math.isclose(coils_neck[0].position_from_bridge_m, 0.1556, abs_tol=1e-4)
+    assert len(coils_bridge) == 1
+    assert math.isclose(coils_bridge[0].position_from_bridge_m, 0.0635, abs_tol=1e-4)
 
 
 def test_resolve_voice_pickups():
@@ -151,11 +148,9 @@ def test_resolve_voice_coils():
     custom_voice = VoiceConfig(
         id="custom_voice",
         name="Custom Voice",
-        topology="single",
         description="Test custom voice",
         fr=3000.0,
         Q=1.5,
-        circuit=CircuitConfig(topology="single", L=3.0, Rdc=6000.0, Reddy=2000.0, Ccoil=50e-12),
         coils=[
             VoiceCoilConfig(
                 position_from_bridge_m=0.066,
@@ -233,10 +228,8 @@ def test_infer_pole_type_and_geometry_branches():
         id="v_b",
         name="Blade Voice",
         description="Test blade voice",
-        topology="Blade Humbucker",
         fr=3000.0,
         Q=1.5,
-        circuit=VOICES["precision_vintage"].circuit,
     )
     assert _infer_pole_type(v_blade) == "blade"
 
@@ -315,10 +308,8 @@ def test_resolve_voice_coils_empty_fallback():
         id="empty_voice",
         name="Empty Voice",
         description="Test empty voice",
-        topology="single",
         fr=3000.0,
         Q=1.5,
-        circuit=VOICES["precision_vintage"].circuit,
     )
     coils = resolve_voice_coils(v_empty)
     assert len(coils) == 1

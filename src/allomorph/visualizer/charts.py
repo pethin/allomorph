@@ -77,7 +77,7 @@ def render_chart_to_file(
             strokeWidth=alt.condition(voice_selection, alt.value(2.8), alt.value(1.0)),
             tooltip=[
                 alt.Tooltip("voice_name:N", title="Pickup Configuration"),
-                alt.Tooltip("topology:N", title="Topology"),
+                alt.Tooltip("sensor_type:N", title="Transducer"),
                 alt.Tooltip("description:N", title="Circuit / Acoustic Description"),
                 alt.Tooltip("frequency:Q", title="Frequency (Hz)", format=".1f"),
                 alt.Tooltip("magnitude_db:Q", title="Magnitude (dB)", format="+.1f"),
@@ -439,16 +439,8 @@ def generate_voicings_page(target_html: Path | str | None = None) -> Path:
         </div>
       </div>
 
-      <div class="presets-row">
+      <div id="presets-container" class="presets-row">
         <span class="preset-label">Quick Comparisons:</span>
-        <button class="preset-chip" onclick="applyPreset('precision_vintage', 'jazz_bridge_growl')">P vs J Bridge</button>
-        <button class="preset-chip" onclick="applyPreset('precision_vintage', 'stingray_parallel')">P vs StingRay</button>
-        <button class="preset-chip" onclick="applyPreset('stingray_parallel', 'jazz_bridge_growl')">StingRay vs J Bridge</button>
-        <button class="preset-chip" onclick="applyPreset('pj_passive', 'pj_active')">Passive vs Active PJ</button>
-        <button class="preset-chip" onclick="applyPreset('precision_vintage', 'upright_piezo')">P vs Upright</button>
-        <button class="preset-chip" onclick="applyPreset('soapbar_neck', 'precision_vintage')">Soapbar Neck vs P</button>
-        <button class="preset-chip" onclick="applyPreset('active_emg_neck', 'precision_vintage')">EMG Neck vs P</button>
-        <button class="preset-chip" onclick="applyPreset('precision_vintage', 'precision_vintage')">Identity (Reset)</button>
       </div>
 
       <div class="metrics-row">
@@ -479,14 +471,14 @@ def generate_voicings_page(target_html: Path | str | None = None) -> Path:
       <div class="spec-card">
         <div class="spec-header" style="color: var(--blue);">
           <span id="src-spec-title">Source Voicing</span>
-          <span class="badge" id="src-spec-topo">Topology</span>
+          <span class="badge" id="src-spec-topo">Transducer</span>
         </div>
         <div class="spec-desc" id="src-spec-desc">Description</div>
       </div>
       <div class="spec-card">
         <div class="spec-header" style="color: var(--amber);">
           <span id="tgt-spec-title">Target Voicing</span>
-          <span class="badge" id="tgt-spec-topo">Topology</span>
+          <span class="badge" id="tgt-spec-topo">Transducer</span>
         </div>
         <div class="spec-desc" id="tgt-spec-desc">Description</div>
       </div>
@@ -501,27 +493,61 @@ def generate_voicings_page(target_html: Path | str | None = None) -> Path:
     const data = JSON.parse(document.getElementById('voicings-data').textContent);
     const freqs = data.frequencies;
     const voices = data.voices;
-    const families = data.families;
+    const instruments = data.instruments;
+    const instrumentOrder = data.instrument_order || Object.keys(instruments || {{}});
+    const chips = data.chips || [];
 
     const sourceSelect = document.getElementById('source-select');
     const targetSelect = document.getElementById('target-select');
+    const presetsContainer = document.getElementById('presets-container');
+
+    if (presetsContainer && chips.length > 0) {{
+      presetsContainer.innerHTML = '<span class="preset-label">Quick Comparisons:</span>';
+      chips.forEach(chip => {{
+        const btn = document.createElement('button');
+        btn.className = 'preset-chip';
+        btn.textContent = chip.label;
+        btn.onclick = () => applyPreset(chip.source, chip.target);
+        presetsContainer.appendChild(btn);
+      }});
+    }}
 
     function populateSelect(selectEl, selectedId) {{
       selectEl.innerHTML = '';
-      families.forEach(fam => {{
-        const famVoices = Object.values(voices).filter(v => v.family === fam);
-        if (famVoices.length === 0) return;
-        const optgroup = document.createElement('optgroup');
-        optgroup.label = fam;
-        famVoices.forEach(v => {{
-          const opt = document.createElement('option');
-          opt.value = v.id;
-          opt.textContent = `${{v.name}} (${{v.topology}})`;
-          if (v.id === selectedId) opt.selected = true;
-          optgroup.appendChild(opt);
+      if (instruments && instrumentOrder.length > 0) {{
+        instrumentOrder.forEach(instId => {{
+          const instMeta = instruments[instId];
+          if (!instMeta || !instMeta.voice_ids || instMeta.voice_ids.length === 0) return;
+          const optgroup = document.createElement('optgroup');
+          optgroup.label = instMeta.label || instMeta.name;
+          instMeta.voice_ids.forEach(vid => {{
+            const v = voices[vid];
+            if (!v) return;
+            const opt = document.createElement('option');
+            opt.value = v.id;
+            opt.textContent = v.name;
+            if (v.id === selectedId) opt.selected = true;
+            optgroup.appendChild(opt);
+          }});
+          selectEl.appendChild(optgroup);
         }});
-        selectEl.appendChild(optgroup);
-      }});
+      }} else {{
+        const families = data.families || [];
+        families.forEach(fam => {{
+          const famVoices = Object.values(voices).filter(v => v.family === fam);
+          if (famVoices.length === 0) return;
+          const optgroup = document.createElement('optgroup');
+          optgroup.label = fam;
+          famVoices.forEach(v => {{
+            const opt = document.createElement('option');
+            opt.value = v.id;
+            opt.textContent = v.name;
+            if (v.id === selectedId) opt.selected = true;
+            optgroup.appendChild(opt);
+          }});
+          selectEl.appendChild(optgroup);
+        }});
+      }}
     }}
 
     populateSelect(sourceSelect, data.default_source || 'precision_vintage');
@@ -615,11 +641,11 @@ def generate_voicings_page(target_html: Path | str | None = None) -> Path:
       document.getElementById('metric-status').className = 'metric-val ' + (isIdentity ? 'identity' : 'boost');
 
       document.getElementById('src-spec-title').textContent = src.name;
-      document.getElementById('src-spec-topo').textContent = src.topology;
+      document.getElementById('src-spec-topo').textContent = (src.sensor_type || 'magnetic').toUpperCase();
       document.getElementById('src-spec-desc').textContent = `${{src.description}} (fr: ${{src.fr.toFixed(0)}} Hz, Q: ${{src.q.toFixed(2)}})`;
 
       document.getElementById('tgt-spec-title').textContent = tgt.name;
-      document.getElementById('tgt-spec-topo').textContent = tgt.topology;
+      document.getElementById('tgt-spec-topo').textContent = (tgt.sensor_type || 'magnetic').toUpperCase();
       document.getElementById('tgt-spec-desc').textContent = `${{tgt.description}} (fr: ${{tgt.fr.toFixed(0)}} Hz, Q: ${{tgt.q.toFixed(2)}})`;
 
       const traceSource = {{

@@ -1,6 +1,6 @@
 """
 Tests for pickup aperture response, spatial comb filtering, dual-coil humbuckers,
-saddle boundary stiffness, cylindrical rod vs blade aperture, and microphonics.
+saddle boundary stiffness, and cylindrical rod vs blade aperture.
 """
 
 import math
@@ -12,17 +12,15 @@ from hypothesis import strategies as st
 from allomorph.config import (
     SCALES,
     VOICES,
-    get_source_pickup,
     load_instrument,
     resolve_pickup_coils,
 )
-from allomorph.config.schema import CoilConfig, PickupConfig
+from allomorph.config.schema import CoilConfig
 from allomorph.dsp import FREQS
 from allomorph.physics.aperture import (
     CALIBRATION_EXCURSION_ETA,
     FRACTIONAL_EXCURSION_CALIBRATION_ETA,
     aperture_response,
-    compute_body_microphonic_coupling,
     compute_coil_aperture,
     compute_displacement_proximity_shelf,
     compute_pickup_isolation_leveling,
@@ -154,8 +152,7 @@ def test_split_coil_string_differentiation():
 def test_3coil_pmm_compound_response():
     """Verify that 3-coil P/MM blend evaluates 3 distinct physical coil positions."""
     inst = load_instrument("32in_custom_pmm")
-    blend = get_source_pickup(inst, "p_mm_series")  # routes to blend_parallel
-    coils = resolve_pickup_coils(blend, inst)
+    coils = [c for p in inst.pickups.values() for c in resolve_pickup_coils(p, inst)]
 
     # Should have 4 coil records (PX D/G, PX E/A, MMTWX neck, MMTWX bridge)
     assert len(coils) == 4
@@ -233,7 +230,7 @@ def test_identity_acoustic_transfer_preserves_flat_bass():
 def test_numpy_pickup_macro_aperture_properties():
     """Verify that macro aperture computes a smooth, comb-free sensing envelope."""
     inst = load_instrument("30in_emg_mmtw")
-    src_pickup = inst.pickups["mmtw_dual"]
+    src_pickup = inst.pickups["mmtwx"]
     speeds = inst.string_wave_speeds
 
     freqs = np.linspace(20.0, 10000.0, 500)
@@ -390,39 +387,6 @@ def test_compute_displacement_proximity_shelf():
     assert h_pos[idx_20] > 1.0  # 125mm is further from bridge than calibration eta -> boost
 
 
-def test_body_microphonic_coupling():
-    """Verify mechanical body-pickup microphonic coupling physics and differential scaling."""
-    freqs = np.asarray(FREQS, dtype=np.float64)
-
-    # 1. Active EMG source to Vintage Alnico V target: Δk_body = 0.08 - 0.0 = 0.08
-    src_pickup_active = PickupConfig(name="EMG Active", magnet_type="active")
-    tgt_voice_alnico5 = VOICES["precision_vintage"]
-    h_body = compute_body_microphonic_coupling(freqs, src_pickup_active, tgt_voice_alnico5)
-
-    assert len(h_body) == len(freqs)
-    assert np.all(np.isfinite(h_body))
-    # DC and sub-audible must be exactly 1.0 (0.0 dB)
-    assert math.isclose(h_body[0], 1.0, rel_tol=1e-5)
-    # Peak must occur near 6.2 kHz
-    peak_idx = int(np.argmax(h_body))
-    peak_freq = freqs[peak_idx]
-    assert 5500.0 <= peak_freq <= 6800.0
-    # Boost should be subtle (+0.35 to +0.55 dB)
-    peak_db = 20.0 * np.log10(h_body[peak_idx])
-    assert 0.35 <= peak_db <= 0.55
-
-    # 2. Matching passive source (Alnico V to Alnico V): Δk_body = 0.0 -> exact identity
-    src_alnico5 = PickupConfig(name="Vintage P", magnet_type="alnico_v")
-    h_body_id = compute_body_microphonic_coupling(freqs, src_alnico5, tgt_voice_alnico5)
-    assert np.allclose(h_body_id, 1.0, atol=1e-12)
-
-    # 3. Active-to-active: exact identity
-    src_active = PickupConfig(name="EMG Active", magnet_type="active")
-    tgt_active = tgt_voice_alnico5.model_copy(update={"magnet_type": "active"})
-    h_body_active = compute_body_microphonic_coupling(freqs, src_active, tgt_active)
-    assert np.allclose(h_body_active, 1.0, atol=1e-12)
-
-
 def test_get_coil_register():
     """Verify get_coil_register maps string lists to 'lower', 'upper', or 'all'."""
     assert get_coil_register(CoilConfig(position_from_bridge_m=0.1, strings=["all"])) == "all"
@@ -457,24 +421,6 @@ def test_multiscale_acoustic_response_range():
     assert math.isclose(resp[0], 1.0, abs_tol=1e-3)
 
 
-def test_body_microphonic_coupling_active_inst_and_zero_delta():
-    """Verify compute_body_microphonic_coupling with active instrument and zero/negative delta_k."""
-    freqs = np.asarray(FREQS, dtype=np.float64)
-    inst_active = load_instrument("34in_active_emg").model_copy(update={"electronics": "active"})
-    src_pickup = inst_active.pickups["neck"]
-    tgt_voice = VOICES["precision_vintage"]
-
-    # Active electronics treats source as active
-    h_body = compute_body_microphonic_coupling(freqs, src_pickup, tgt_voice, inst=inst_active)
-    assert np.max(h_body) > 1.0
-
-    # Negative delta_k (e.g. Alnico V source to Neodymium target, 0.02 - 0.08 = -0.06)
-    src_alnico = PickupConfig(name="P", magnet_type="alnico_v")
-    tgt_neo = tgt_voice.model_copy(update={"magnet_type": "neodymium"})
-    h_zero = compute_body_microphonic_coupling(freqs, src_alnico, tgt_neo)
-    assert np.allclose(h_zero, 1.0)
-
-
 def test_is_voice_matching_source_edge_cases():
     """Verify is_voice_matching_source edge cases and mismatch branches."""
     inst_p = load_instrument("34in_standard_p")
@@ -482,10 +428,8 @@ def test_is_voice_matching_source_edge_cases():
     # Non-existent voice
     assert not is_voice_matching_source(inst_p, "non_existent_voice")
 
-    # Preserve aperture with no_eq
-    v_preserve = VOICES["precision_vintage"].model_copy(
-        update={"preserve_aperture": True, "circuit": type("Circuit", (), {"no_eq": True})()}
-    )
+    # Preserve aperture
+    v_preserve = VOICES["precision_vintage"].model_copy(update={"preserve_aperture": True})
     assert is_voice_matching_source(inst_p, "test_preserve", voice_cfg=v_preserve)
 
     # Scale range mismatch (> 0.012 m)

@@ -1,8 +1,8 @@
 """
 Allomorph - Acoustic Sensing Aperture & Spatial Boundary Engine
 Computes 2D cylindrical rod Bessel apertures, 1D blade slit sinc apertures,
-saddle witness-point boundary stiffness, body microphonics, and multi-coil
-spatial responses across the continuous wave-speed continuum.
+saddle witness-point boundary stiffness, and multi-coil spatial responses
+across the continuous wave-speed continuum.
 """
 
 import math
@@ -10,14 +10,12 @@ from collections.abc import Sequence
 
 import numpy as np
 
-from allomorph.circuit.parser import MAGNET_PROPERTIES
 from allomorph.config.geometry import resolve_pickup_coils, resolve_voice_coils
-from allomorph.config.instruments import get_source_pickup, load_instrument
+from allomorph.config.instruments import load_instrument
 from allomorph.config.scales import SCALES
 from allomorph.config.schema import (
     CoilConfig,
     InstrumentConfig,
-    PickupConfig,
     ScaleConfig,
     VoiceCoilConfig,
     VoiceConfig,
@@ -30,46 +28,6 @@ from allomorph.physics.strings import (
     get_inharmonicity_for_f0,
     resolve_scale_range,
 )
-
-
-def compute_body_microphonic_coupling(
-    freqs: Sequence[float] | np.ndarray,
-    src_pickup: PickupConfig,
-    tgt_voice: VoiceConfig,
-    inst: InstrumentConfig | None = None,
-) -> np.ndarray:
-    """
-    Computes diffuse mechanical body-pickup microphonic coupling transfer curve.
-    Unpotted and lightly potted vintage passive pickups exhibit subtle mechanical
-    coupling to body vibrations around 6.2 kHz, damped above 9.5 kHz.
-    Active epoxy-potted and sealed modern pickups have near-zero microphonic coupling.
-    Evaluated differentially: Δk_body = max(k_tgt - k_src, 0.0).
-    """
-    freqs = np.asarray(freqs, dtype=np.float64)
-    if inst is not None and inst.electronics == "active":
-        src_mag = "active"
-    else:
-        src_mag = src_pickup.magnet_type or "active"
-
-    tgt_mag = tgt_voice.magnet_type or "alnico_v"
-
-    k_src = MAGNET_PROPERTIES.get(src_mag, MAGNET_PROPERTIES["active"]).k_body
-    k_tgt = MAGNET_PROPERTIES.get(tgt_mag, MAGNET_PROPERTIES["alnico_v"]).k_body
-
-    delta_k = max(k_tgt - k_src, 0.0)
-    if delta_k <= 0.0:
-        return np.ones_like(freqs)
-
-    fb = 6200.0
-    Qb = 1.8
-    fdamp = 9500.0
-
-    fn = freqs / fb
-    denom = Qb * np.sqrt((1.0 - fn**2) ** 2 + (fn / Qb) ** 2)
-    resonance = fn / np.maximum(denom, 1e-9)
-    damping = np.exp(-((freqs / fdamp) ** 2))
-
-    return 1.0 + delta_k * resonance * damping
 
 
 def compute_coil_aperture(
@@ -214,7 +172,7 @@ def is_voice_matching_source(
         return False
 
     if vcfg.preserve_aperture:
-        return bool(getattr(vcfg.circuit, "no_eq", False))
+        return True
 
     src_range = resolve_scale_range(inst)
     tgt_scale = vcfg.scale
@@ -225,23 +183,36 @@ def is_voice_matching_source(
     if abs(src_range[0] - tgt_range[0]) > 0.012 or abs(src_range[1] - tgt_range[1]) > 0.012:
         return False
 
-    src_p = get_source_pickup(inst, voice_id)
-    src_coils = resolve_pickup_coils(src_p, inst)
     tgt_coils = resolve_voice_coils(vcfg)
-
-    if len(src_coils) != len(tgt_coils):
+    if not tgt_coils:
         return False
 
-    s_sort = sorted(src_coils, key=lambda c: c.position_from_bridge_m)
     t_sort = sorted(tgt_coils, key=lambda c: c.position_from_bridge_m)
 
-    for sc, tc in zip(s_sort, t_sort):
-        if abs(sc.position_from_bridge_m - tc.position_from_bridge_m) > 0.005:
+    def _coils_match(candidate_coils: list[CoilConfig]) -> bool:
+        if len(candidate_coils) != len(tgt_coils):
             return False
-        if abs(sc.aperture_width_in - tc.aperture_width_in) > 0.15:
-            return False
+        c_sort = sorted(candidate_coils, key=lambda c: c.position_from_bridge_m)
+        for sc, tc in zip(c_sort, t_sort):
+            if abs(sc.position_from_bridge_m - tc.position_from_bridge_m) > 0.005:
+                return False
+            if abs(sc.aperture_width_in - tc.aperture_width_in) > 0.15:
+                return False
+        return True
 
-    return True
+    # 1. Check each physical pickup in isolation
+    for p in inst.pickups.values():
+        p_coils = resolve_pickup_coils(p, inst)
+        if _coils_match(p_coils):
+            return True
+
+    # 2. Check full instrument coil ensemble (e.g. Jazz pair)
+    if len(inst.pickups) > 1:
+        all_coils = [c for p in inst.pickups.values() for c in resolve_pickup_coils(p, inst)]
+        if _coils_match(all_coils):
+            return True
+
+    return False
 
 
 def get_coil_register(coil: CoilConfig | VoiceCoilConfig) -> str:

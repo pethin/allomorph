@@ -1,0 +1,64 @@
+# ==============================================================================
+# ALLOMORPH VISUALIZER SUITE CONFIGURATION
+# Configures interactive frequency response visualizers, comparisons, and quick chips.
+# ==============================================================================
+
+default_source = "precision_vintage"
+default_target = "jazz_bridge_growl"
+
+# Additional source voicings for visualizer comparison beyond tone pack bundles
+additional_source_voicings = [
+    "34in_preamp_soapbar:pair_parallel",
+    "34in_preamp_soapbar:neck_solo",
+    "34in_preamp_soapbar:bridge_solo",
+    "34in_active_emg:pair_parallel",
+    "34in_active_emg:neck_solo",
+    "34in_active_emg:bridge_solo",
+]
+
+# Additional target voicings for visualizer comparison beyond tone pack bundles
+additional_target_voicings = [
+    "dingwall_middle",
+    "rickenbacker_open",
+]
+
+# Dynamic Quick Comparison Chips
+[[chips]]
+label = "P vs J Bridge"
+source = "precision_vintage"
+target = "jazz_bridge_growl"
+
+[[chips]]
+label = "P vs StingRay"
+source = "precision_vintage"
+target = "stingray_parallel"
+
+[[chips]]
+label = "StingRay vs J Bridge"
+source = "stingray_parallel"
+target = "jazz_bridge_growl"
+
+[[chips]]
+label = "Passive vs Active PJ"
+source = "pj_passive"
+target = "pj_active"
+
+[[chips]]
+label = "P vs Upright"
+source = "precision_vintage"
+target = "upright_piezo"
+
+[[chips]]
+label = "Soapbar Neck vs P"
+source = "soapbar_neck"
+target = "precision_vintage"
+
+[[chips]]
+label = "EMG Neck vs P"
+source = "emg_soapbar_neck"
+target = "precision_vintage"
+
+[[chips]]
+label = "Identity (Reset)"
+source = "precision_vintage"
+target = "precision_vintage"

@@ -17,7 +17,7 @@ The native engine executes in-memory acoustic aperture pre-filtering, analytical
 │    • 2D cylindrical rod / blade sinc apertures         │
 │    • Wave-speed continuum log interpolation            │
 │    • Saddle boundary layer stiffness (x < 75 mm)       │
-│    • Longitudinal core clank & body microphonics       │
+│    • Longitudinal core attack transient & boundary     │
 │    • Multi-pickup causal integer sample shifting (tau) │
 └────────────────────────────────────────────────────────┘
           │ (Per-pickup drive signals)

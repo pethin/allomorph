@@ -1,0 +1,43 @@
+id = "30in_mustang_pj"
+instrument = "30in_mustang_pj"
+name = "Mustang PJ Bass Tone Pack"
+description = "Universal target voicings for 30\" Mustang PJ Bass"
+version = 1
+
+[[bundles]]
+name = "neck"
+source_voicing = "p_warm"
+targets = [
+    "mudbucker_deep",
+    "upright_piezo",
+    "precision_vintage",
+    "precision_active",
+    "precision_mids",
+    "precision_warm",
+    "precision_dub",
+]
+
+[[bundles]]
+name = "bridge"
+source_voicing = "j_growl"
+targets = [
+    "jazz_bridge_growl",
+    "jazz_bridge_open",
+    "stingray_parallel",
+    "stingray_series",
+    "rickenbacker_clank",
+    "dingwall_bridge",
+]
+
+[[bundles]]
+name = "parallel"
+source_voicing = "pair_parallel"
+targets = [
+    "jazz_pair_active",
+    "jazz_pair_open",
+    "jazz_pair_mids",
+    "p_mm_parallel",
+    "p_mm_series",
+    "pj_active",
+    "pj_passive",
+]

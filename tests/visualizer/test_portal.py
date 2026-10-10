@@ -4,6 +4,8 @@ Tests for HTML portal generation and metadata formatting in allomorph.visualizer
 
 from pathlib import Path
 
+import pytest
+
 from allomorph.config.instruments import load_instrument
 from allomorph.config.voices import VOICES
 from allomorph.visualizer.portal import (
@@ -43,7 +45,6 @@ def test_format_instrument_meta():
     assert meta_30.id == "30in_emg_mmtw"
     assert meta_30.scale_in == 30.0
     assert meta_30.scale_m == round(30.0 * 0.0254, 4)
-    assert meta_30.default_pickup == "mmtw_dual"
     assert "m/s" in meta_30.speeds_str
     assert "mm" in meta_30.pickups_summary
 
@@ -85,3 +86,16 @@ def test_generate_portal_pages(tmp_path: Path):
     assert "<!DOCTYPE html>" in content
     assert "Allomorph | Voicing Comparisons" in content
     assert f"{len(VOICES)} Catalog Voicings" in content
+
+
+def test_generate_portal_pages_responses_dir(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Validates writing index.html and root frequency_responses.html when output_dir == RESPONSES_DIR."""
+    resp_dir = tmp_path / "frequency_responses"
+    resp_dir.mkdir(parents=True, exist_ok=True)
+    monkeypatch.setattr("allomorph.visualizer.portal.RESPONSES_DIR", resp_dir)
+    monkeypatch.setattr("allomorph.visualizer.portal.DOCS_DIR", tmp_path)
+    generate_portal_pages(output_dir=resp_dir)
+    assert (resp_dir / "index.html").exists()
+    assert (tmp_path / "frequency_responses.html").exists()

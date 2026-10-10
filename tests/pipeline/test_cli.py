@@ -179,3 +179,46 @@ def test_allomorph_cli_root_entrypoint(monkeypatch: pytest.MonkeyPatch):
     allomorph.cli.main(["--stage", "viz"])
     assert len(cli_calls) == 1
     assert cli_calls[0] == ["--stage", "viz"]
+
+
+def test_pipeline_cli_list_commands(capsys: pytest.CaptureFixture[str]):
+    """Verify --list-instruments and --list-voices execute and format output."""
+    main(argv=["--list-instruments"])
+    out = capsys.readouterr().out
+    assert "Available Allomorph Source Instruments:" in out
+    assert "30in_emg_mmtw" in out
+
+    main(argv=["--list-voices"])
+    out_voices = capsys.readouterr().out
+    assert "Available Allomorph Target Pickup Voices" in out_voices
+    assert "precision_vintage" in out_voices
+
+
+def test_pipeline_cli_argument_errors():
+    """Verify validation of jobs and max-samples arguments."""
+    with pytest.raises(SystemExit):
+        main(argv=["--jobs", "0"])
+
+    with pytest.raises(SystemExit):
+        main(argv=["--max-samples", "0"])
+
+
+def test_pipeline_cli_clean_audio(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    """Verify --clean-audio clears existing files and directories."""
+    audio_dir = tmp_path / "audio"
+    audio_dir.mkdir(parents=True, exist_ok=True)
+    (audio_dir / "test_file.wav").write_bytes(b"dummy")
+    sub_dir = audio_dir / "subdir"
+    sub_dir.mkdir()
+    (sub_dir / "sub_file.wav").write_bytes(b"dummy2")
+
+    def _dummy_viz(*args: object, **kwargs: object) -> None:
+        pass
+
+    monkeypatch.setattr("allomorph.circuit.forward.AUDIO_DIR", audio_dir)
+    monkeypatch.setattr("allomorph.pipeline.cli.run_visualization", _dummy_viz)
+
+    main(argv=["--clean-audio", "--stage", "viz"])
+    assert not (audio_dir / "test_file.wav").exists()
+    assert not sub_dir.exists()
+

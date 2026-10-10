@@ -5,6 +5,8 @@ Tests for allomorph.visualizer CLI entrypoint and package exports.
 from pathlib import Path
 from unittest.mock import patch
 
+import pytest
+
 from allomorph.visualizer import main
 
 
@@ -36,3 +38,10 @@ def test_visualizer_main_instrument_all():
     with patch("allomorph.visualizer.generate_all_charts") as mock_gen:
         main(["--instrument", "all", "--mode", "output"])
         mock_gen.assert_called_once_with(output_dir=None)
+
+
+def test_visualizer_main_debug_stem(capsys: pytest.CaptureFixture[str]) -> None:
+    """Verify main() with --debug-stem runs stem diagnostics."""
+    main(["--debug-stem", "precision_vintage"])
+    captured = capsys.readouterr()
+    assert "ALLOMORPH STEM DIAGNOSTIC REPORT" in captured.out

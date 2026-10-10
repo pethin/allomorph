@@ -17,7 +17,6 @@ def test_portal_instrument_meta_validation():
         scale_m=0.762,
         speeds_str="58.0 m/s, 75.0 m/s, 99.0 m/s, 130.0 m/s",
         pickups_summary="EMG MM (@ 77.5mm)",
-        default_pickup="emg_mm",
     )
     assert meta.id == "30in"
     assert meta.scale_in == 30.0
@@ -58,3 +57,34 @@ def test_visualizer_cli_config_validation():
     # Extra arguments rejection
     with pytest.raises(ValidationError):
         VisualizerCliConfig.model_validate({"instrument": "30in", "unexpected_option": True})
+
+
+def test_visualizer_config_and_chips_schema():
+    """Verify VisualizerChipConfig and VisualizerConfig serialization and defaults."""
+    from allomorph.visualizer.schema import (
+        VisualizerChipConfig,
+        VisualizerConfig,
+        load_visualizer_config,
+    )
+
+    chip = VisualizerChipConfig(label="P vs J", source="precision_vintage", target="jazz_bridge_growl")
+    assert chip.label == "P vs J"
+    assert chip.source == "precision_vintage"
+    assert chip.target == "jazz_bridge_growl"
+
+    cfg = VisualizerConfig(
+        default_source="precision_vintage",
+        default_target="jazz_bridge_growl",
+        chips=[chip],
+    )
+    assert len(cfg.chips) == 1
+    assert cfg.chips[0].label == "P vs J"
+
+    # Test load_visualizer_config loading from default config/visualizer.toml
+    loaded = load_visualizer_config()
+    assert loaded.default_source == "precision_vintage"
+    assert loaded.default_target == "jazz_bridge_growl"
+    assert len(loaded.chips) >= 8
+    chip_labels = [c.label for c in loaded.chips]
+    assert "P vs J Bridge" in chip_labels
+    assert "Identity (Reset)" in chip_labels

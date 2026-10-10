@@ -53,13 +53,13 @@ def test_generate_storefront_description():
 
 def test_export_tone_pack_minimal(tmp_path: Path, mini_dry_audio: Path):
     """Verify exporting a tone pack with bounded samples creates valid bundle layout."""
-    inst = load_instrument("30in_emg_mmtw")
+    inst = load_instrument("34in_standard_p")
     out_dir = tmp_path / "test_pack"
 
     # Restrict to two targets for high-speed unit testing
     targets = [
-        ("34in_standard_p", "vintage_open"),
         ("34in_standard_jazz", "bridge_growl"),
+        ("34in_standard_jazz", "pair_open"),
     ]
 
     pack_dir = export_tone_pack(
@@ -93,9 +93,9 @@ def test_export_tone_pack_minimal(tmp_path: Path, mini_dry_audio: Path):
 
 def test_export_tone_pack_existing_skip_and_repack(tmp_path: Path, mini_dry_audio: Path):
     """Verify existing pack returns early when overwrite=False, and repacks when overwrite=True."""
-    inst = load_instrument("30in_emg_mmtw")
+    inst = load_instrument("34in_standard_p")
     out_dir = tmp_path / "test_pack_repack"
-    targets = [("34in_standard_p", "vintage_open")]
+    targets = [("34in_standard_jazz", "bridge_growl")]
 
     # Initial export
     export_tone_pack(
@@ -165,8 +165,8 @@ def test_export_tone_pack_parallel_bundles_and_cached_stems(
             # Source instrument dry stem gets 0.35, target wet stems get 0.85
             is_dry = (
                 "dry" in p.name
-                or "30in" in str(p)
-                or str(voicing) in ("dual", "single", "mmtw_dual", "mmtw_single")
+                or "34in_standard_jazz" in str(p)
+                or str(voicing) in ("neck_warm", "bridge_open", "pair_open")
             )
             val = 0.35 if is_dry else 0.85
             samples = np.array([0.0, val, -val], dtype=np.float32)
@@ -182,7 +182,7 @@ def test_export_tone_pack_parallel_bundles_and_cached_stems(
 
     monkeypatch.setattr("allomorph.pipeline.pack.simulate_instrument_voicing", _mock_sim_voicing)
 
-    inst = load_instrument("30in_emg_mmtw")
+    inst = load_instrument("34in_standard_jazz")
     out_dir = tmp_path / "test_parallel_pack"
     targets = [("34in_standard_p", "vintage_open")]
 
@@ -209,11 +209,11 @@ def test_train_tone_pack_flat_structure_mocked(
 
     from allomorph.pipeline.pack import train_tone_pack
 
-    inst = load_instrument("30in_emg_mmtw")
+    inst = load_instrument("34in_standard_p")
     pack_dir = tmp_path / "test_train_pack"
     targets = [
-        ("34in_standard_p", "vintage_open"),
-        ("34in_standard_p", "vintage_mids"),
+        ("34in_standard_jazz", "bridge_growl"),
+        ("34in_standard_jazz", "pair_open"),
     ]
 
     export_tone_pack(
@@ -328,6 +328,97 @@ def test_train_tone_pack_flat_structure_mocked(
 
     # 4. Voice filter: only train matching voice
     mock_train_calls.clear()
-    train_tone_pack(pack=pack_dir, voice="precision_vintage", overwrite=True)
+    train_tone_pack(pack=pack_dir, voice="jazz_bridge_growl", overwrite=True)
     assert len(mock_train_calls) == 1
-    assert "vintage" in mock_train_calls[0]["basename"].lower()
+    assert "growl" in mock_train_calls[0]["basename"].lower()
+
+
+def test_train_tone_pack_legacy_removal_and_manifest_population(
+    tmp_path: Path, mini_dry_audio: Path, monkeypatch: pytest.MonkeyPatch
+):
+    """Verify train_tone_pack detects legacy models (< 2 submodels) and unlinks them, and populates manifest."""
+    import json
+
+    from allomorph.pipeline.pack import export_tone_pack, train_tone_pack
+
+    inst = load_instrument("34in_standard_p")
+    pack_dir = tmp_path / "test_legacy_pack"
+    targets = [("34in_standard_jazz", "bridge_growl")]
+
+    export_tone_pack(
+        instrument=inst,
+        output_dir=pack_dir,
+        input_wav=mini_dry_audio,
+        max_samples=1200,
+        catalog_targets=targets,
+        overwrite=True,
+    )
+
+    # Create a legacy single-tier model in nam/
+    nam_dir = pack_dir / "nam"
+    nam_dir.mkdir(parents=True, exist_ok=True)
+    legacy_file = next((pack_dir / "bundles" / "split").glob("*.wav"))
+    legacy_nam = nam_dir / f"{legacy_file.stem}.nam"
+    with open(legacy_nam, "w", encoding="utf-8") as f:
+        json.dump({"version": "0.5.0", "config": {"submodels": [{"name": "channels_8"}]}}, f)
+
+    mock_calls: list[str] = []
+
+    def _mock_train_voice(*args: Any, basename: str | None = None, **kwargs: Any) -> bool:
+        mock_calls.append(str(basename))
+        out_file = nam_dir / f"{basename}.nam"
+        with open(out_file, "w", encoding="utf-8") as f:
+            json.dump(
+                {
+                    "version": "0.5.1",
+                    "config": {"submodels": [{"name": "ch3"}, {"name": "ch8"}]},
+                    "metadata": {"training": {"validation_esr": 0.001}},
+                },
+                f,
+            )
+        return True
+
+    import allomorph.trainer
+
+    monkeypatch.setattr(allomorph.trainer, "train_voice", _mock_train_voice)
+
+    # Calling train_tone_pack should detect legacy and retrain
+    train_tone_pack(pack=pack_dir, voice="all", overwrite=False)
+    assert len(mock_calls) >= 1
+
+
+def test_export_tone_pack_artwork_candidates(
+    tmp_path: Path, mini_dry_audio: Path, monkeypatch: pytest.MonkeyPatch
+):
+    """Verify export_tone_pack resolves artwork for various instrument IDs and handles train=True."""
+    from allomorph.pipeline.pack import export_tone_pack
+
+    # Mock train_tone_pack
+    train_called: list[bool] = []
+
+    def _mock_train(*args: object, **kwargs: object) -> None:
+        train_called.append(True)
+
+    monkeypatch.setattr("allomorph.pipeline.pack.train_tone_pack", _mock_train)
+
+    # Test with real catalog instruments to exercise artwork candidate resolution and train=True
+    for test_id in [
+        "34in_active_stingray",
+        "30in_mustang_pj",
+        "34in_standard_pj",
+        "34in_preamp_soapbar",
+    ]:
+        real_inst = load_instrument(test_id)
+        out_d = tmp_path / f"art_{test_id}"
+        export_tone_pack(
+            instrument=real_inst,
+            output_dir=out_d,
+            input_wav=mini_dry_audio,
+            max_samples=1200,
+            catalog_targets=[("34in_standard_jazz", "bridge_growl")],
+            overwrite=True,
+            train=True,
+        )
+        assert (out_d / "manifest.json").exists()
+
+    assert len(train_called) == 4

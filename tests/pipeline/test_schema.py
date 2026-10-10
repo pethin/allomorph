@@ -9,8 +9,8 @@ from allomorph.pipeline.schema import (
     ArtworkPackConfig,
     NamExportMetadata,
     NamSourceInstrumentMeta,
-    NamSourcePickupMeta,
-    NamTargetVoiceMeta,
+    NamSourceVoicingMeta,
+    NamTargetVoicingMeta,
     NamTrainingConfig,
     NamTrainingMetadata,
     PipelineCliConfig,
@@ -24,7 +24,6 @@ def test_pipeline_cli_config_validation():
         stage="sim",
         instrument="30in",
         pack="34in_active_stingray",
-        cable_pf=750.0,
         overwrite=True,
         force=True,
     )
@@ -36,6 +35,12 @@ def test_pipeline_cli_config_validation():
 
     with pytest.raises(ValidationError):
         PipelineCliConfig(stage="unsupported_stage")  # type: ignore[arg-type]
+
+    # Verify rejection of eliminated 2-branch CLI fields
+    dead_fields = ["pickup", "vol_pos", "tone_pos", "blend_pos", "pot_taper", "cable_pf"]
+    for field in dead_fields:
+        with pytest.raises(ValidationError):
+            PipelineCliConfig.model_validate({field: 0.5 if "pos" in field else "test"})
 
 
 def test_tone3000_listing_validation():
@@ -96,18 +101,18 @@ def test_nam_export_metadata_validation():
             scale_length_in=30.0,
             scale_length_m=0.762,
             string_wave_speeds=[58.0, 75.0, 99.0, 130.0],
-            pickup=NamSourcePickupMeta(name="EMG MMTWX", position_from_bridge_m=0.0775),
+            voicing=NamSourceVoicingMeta(name="EMG MMTWX", position_from_bridge_m=0.0775),
         ),
-        target_voice=NamTargetVoiceMeta(
+        target_voicing=NamTargetVoicingMeta(
             id="precision_vintage",
             name="'62 Precision Bass (Alnico V)",
-            topology="single",
+            sensor_type="magnetic",
             resonant_frequency_hz=3200.0,
             q_factor=1.8,
         ),
     )
     assert meta.source_instrument.id == "30in"
-    assert meta.target_voice.id == "precision_vintage"
+    assert meta.target_voicing.id == "precision_vintage"
     assert meta.training.esr == 0.0004
     assert meta.training.validation_esr_a2_full == 0.0004
     assert meta.training.validation_esr_a2_lite == 0.0018
@@ -115,7 +120,7 @@ def test_nam_export_metadata_validation():
     assert meta.training.mrstft_loss == 0.0008
     assert meta.training.epochs_trained == 85
     assert meta.training.stop_reason == "Dual-Gate ESR & Delta Met"
-    assert meta.source_instrument.pickup.name == "EMG MMTWX"
+    assert meta.source_instrument.voicing.name == "EMG MMTWX"
 
     # Rejection of missing required fields
     with pytest.raises(ValidationError):

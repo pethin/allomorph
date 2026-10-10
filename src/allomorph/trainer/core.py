@@ -92,7 +92,7 @@ def setup_headless_environment() -> None:
     logging.getLogger("pytorch_lightning.utilities.rank_zero").addFilter(_LitLoggerFilter())
 
     # Headless Tkinter fallback: neural-amp-modeler's core trainer imports tkinter at top-level
-    if "tkinter" not in sys.modules:
+    if "tkinter" not in sys.modules:  # pragma: no cover
         try:
             import tkinter  # noqa: F401
         except ModuleNotFoundError:
@@ -420,6 +420,7 @@ def configure_a2_architecture(*args: Any, **kwargs: Any) -> None:
 def train_voice(
     instrument: str | InstrumentConfig = "30in",
     voice: str = "precision_active",
+    source_voicing: str | None = None,
     input_wav: str | Path | None = None,
     output_wav: str | Path | None = None,
     reference_wav: str | Path | None = None,
@@ -455,6 +456,7 @@ def train_voice(
         return train_voice_mlx(
             instrument=instrument,
             voice=voice,
+            source_voicing=source_voicing,
             input_wav=input_wav,
             output_wav=output_wav,
             reference_wav=reference_wav,
@@ -487,6 +489,7 @@ def train_voice(
     return train_voice_torch(
         instrument=instrument,
         voice=voice,
+        source_voicing=source_voicing,
         input_wav=input_wav,
         output_wav=output_wav,
         reference_wav=reference_wav,
@@ -562,6 +565,7 @@ def train_voices_from_config(cli_cfg: NamTrainingConfig) -> bool:
             ok = train_voice(
                 instrument=inst,
                 voice=voice,
+                source_voicing=cli_cfg.source_voicing,
                 input_wav=input_wav_path,
                 output_wav=out_wav,
                 reference_wav=cli_cfg.reference_wav,

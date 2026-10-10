@@ -6,6 +6,8 @@ import json
 from pathlib import Path
 from typing import Any
 
+import pytest
+
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
 from allomorph.pipeline.schema import NamExportMetadata
@@ -32,9 +34,9 @@ def test_model_metadata_contains_input_bass():
             export_meta = NamExportMetadata.model_validate(meta)
             assert export_meta.source_instrument.id == "30in_emg_mm"
             assert export_meta.source_instrument.scale_length_in == 30.0
-            assert export_meta.source_instrument.pickup.name == "EMG MM Dual Coil"
+            assert export_meta.source_instrument.voicing.name == "EMG MM Dual Coil"
             assert meta["gear_make"] == '30" Short Scale MM (EMG MM)'
-            assert export_meta.target_voice.id == "03_modern_p_ceramic"
+            assert export_meta.target_voicing.id == "03_modern_p_ceramic"
             found = True
             break
     if not found:
@@ -526,3 +528,135 @@ def test_inst_models_dir_non_nesting_on_nam_dir(tmp_path: Path):
         inst_models_dir2 = models_path2 / inst_id
 
     assert inst_models_dir2 == general_models_dir / inst_id
+
+
+def test_train_voice_torch_fast_dev_run(tmp_path: Path):
+    """Verify PyTorch A2 trainer executes in fast_dev_run mode."""
+    from allomorph.trainer import train_voice
+
+    input_audio = REPO_ROOT / "audio" / "input.wav"
+    if not input_audio.exists():
+        pytest.skip("audio/input.wav not found")
+
+    models_dir = tmp_path / "models"
+    ok = train_voice(
+        instrument="30in",
+        voice="precision_active",
+        input_wav=input_audio,
+        output_wav=input_audio,
+        reference_wav=input_audio,
+        models_dir=models_dir,
+        epochs=1,
+        min_epochs=1,
+        fast_dev_run=True,
+        engine="torch",
+        batch_size=16,
+    )
+    assert ok is True
+
+
+def test_apple_silicon_tier_detection(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Verify detect_apple_silicon_tier classifies Apple Silicon chip families correctly."""
+    import subprocess
+
+    from allomorph.trainer.core import detect_apple_silicon_tier
+
+    def _mock_sysctl(brand: str) -> Any:
+        def _runner(*args: object, **kwargs: object) -> subprocess.CompletedProcess[str]:
+            return subprocess.CompletedProcess(args=["sysctl"], returncode=0, stdout=f"{brand}\n")
+
+        return _runner
+
+    # 1. Ultra
+    monkeypatch.setattr(subprocess, "run", _mock_sysctl("Apple M2 Ultra"))
+    assert detect_apple_silicon_tier() == "ultra"
+
+    # 2. Max
+    monkeypatch.setattr(subprocess, "run", _mock_sysctl("Apple M1 Max"))
+    assert detect_apple_silicon_tier() == "max"
+
+    # 3. Pro
+    monkeypatch.setattr(subprocess, "run", _mock_sysctl("Apple M3 Pro"))
+    assert detect_apple_silicon_tier() == "pro"
+
+    # 4. Base
+    monkeypatch.setattr(subprocess, "run", _mock_sysctl("Apple M1"))
+    assert detect_apple_silicon_tier() == "base"
+
+
+def test_resolve_hardware_batch_size_branches(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Verify resolve_hardware_batch_size across MLX and PyTorch backends."""
+    from allomorph.trainer.core import resolve_hardware_batch_size
+
+    # MLX branches
+    monkeypatch.setattr("allomorph.trainer.core.detect_apple_silicon_tier", lambda: "ultra")
+    assert resolve_hardware_batch_size("auto", engine="mlx") == 16
+
+    monkeypatch.setattr("allomorph.trainer.core.detect_apple_silicon_tier", lambda: "base")
+    assert resolve_hardware_batch_size("auto", engine="mlx") == 8
+
+    # String integer
+    assert resolve_hardware_batch_size("24") == 24
+
+
+def test_train_voices_from_config_and_main(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Verify train_voices_from_config and CLI main function dispatch."""
+    import allomorph.trainer
+    from allomorph.pipeline.schema import NamTrainingConfig
+    from allomorph.trainer import main, train_voices_from_config
+
+    # 1. With pack config
+    pack_called: list[bool] = []
+
+    def _mock_pack(*args: object, **kwargs: object) -> None:
+        pack_called.append(True)
+
+    monkeypatch.setattr("allomorph.pipeline.pack.train_tone_pack", _mock_pack)
+    cfg_pack = NamTrainingConfig(pack="34in_standard_p", voice="all")
+    assert train_voices_from_config(cfg_pack) is True
+    assert len(pack_called) == 1
+
+    # 2. Main with CLI args mocking train_voices_from_config
+    def _mock_train_cfg(cfg: object) -> bool:
+        return True
+
+    monkeypatch.setattr(allomorph.trainer, "train_voices_from_config", _mock_train_cfg)
+    ret = main(["--instrument", "34in_standard_p", "--voice", "vintage_open"])
+    assert ret == 0
+
+    # 3. Main with GUI flag (mocked to prevent desktop window launch)
+    gui_called: list[bool] = []
+
+    def _mock_nam_gui(*args: object, **kwargs: object) -> None:
+        gui_called.append(True)
+
+    monkeypatch.setattr("nam.cli.nam_gui", _mock_nam_gui, raising=False)
+    assert main(["--gui"]) == 0
+    assert len(gui_called) == 1
+
+    def _mock_nam_gui_err(*args: object, **kwargs: object) -> None:
+        raise RuntimeError("Mock GUI unavailable")
+
+    monkeypatch.setattr("nam.cli.nam_gui", _mock_nam_gui_err, raising=False)
+    assert main(["--gui"]) == 1
+
+
+def test_main_entrypoints(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Verify python -m allomorph and python -m allomorph.trainer entrypoints."""
+    import runpy
+
+    # allomorph.__main__
+    with pytest.raises(SystemExit) as exc_info:
+        runpy.run_module("allomorph.__main__", run_name="__main__")
+    assert exc_info.value.code in (0, 2)  # 0 or 2 depending on default CLI args
+
+    # allomorph.trainer.__main__
+    def _mock_main(*args: object, **kwargs: object) -> int:
+        return 0
+
+    monkeypatch.setattr("allomorph.trainer.main", _mock_main)
+    with pytest.raises(SystemExit) as exc_info2:
+        runpy.run_module("allomorph.trainer.__main__", run_name="__main__")
+    assert exc_info2.value.code == 0
+
+

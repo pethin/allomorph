@@ -8,14 +8,11 @@
 #   - Dual-P Neck Split-Coil (DPn): Centerline 125.0mm from bridge saddle
 #       - B/E/A bass half (forward towards neck): 138.0mm from bridge
 #       - D/G treble half (rearward towards bridge): 112.0mm from bridge
-#       - Aperture width: 1.00" (25.4mm) per coil half
+#       - Aperture width: 0.45" (11.4mm) per coil half
 #   - FD3n Bridge Single/Dual Coil: Centerline 58.0mm from bridge saddle
 #   - Parallel Summing (Dual-P + FD3n): Centerline 91.5mm from bridge saddle
 # Electronics:
 #   - Passive Quad-Tone 4-way rotary selector, 250k volume, 250k tone (47nF cap).
-#   - Dual-P loaded resonance: 3.20 kHz, Q = 1.35 under 750pF cable load.
-#   - FD3n Bridge loaded resonance: 3.60 kHz, Q = 1.45 under 750pF cable load.
-#   - Parallel loaded resonance: 3.40 kHz, Q = 1.30.
 
 id = "34in_dingwall_sp1"
 name = "Dingwall SP1 5-String (32\"-35\" Super P)"
@@ -30,7 +27,6 @@ version = 1
 # String wave speeds for 32"-35" Super multi-scale (B0, E1, A1, D2, G2)
 string_wave_speeds = [54.88, 71.69, 93.60, 122.14, 159.31]
 
-default_pickup = "p"
 
 # ------------------------------------------------------------------------------
 # Physical Strings Configuration (Source Instrument Setup)
@@ -46,9 +42,10 @@ wrap = "nickel_round"
 tension_lbs = 205.0
 
 # ------------------------------------------------------------------------------
-# 1. DINGWALL DUAL-P NEODYMIUM SPLIT-COIL (Neck Solo - Rotary Pos 4)
+# 1. HARDWARE TRANSDUCERS (Single physical pickups mounted in wood)
 # ------------------------------------------------------------------------------
-[pickups.p]
+
+[pickups.split_p]
 name = "Dingwall Dual-P Neodymium (Neck)"
 position_name = "Neck"
 position_from_bridge_m = 0.1250  # Centerline 125.0mm
@@ -56,29 +53,12 @@ aperture_width_in = 0.45         # 0.45" aperture per split half
 coil_spacing_in = 0.0
 type = "split_coil"
 magnet_type = "neodymium"
-resonant_frequency_hz = 3200.0   # Loaded resonance
-q_factor = 1.35
 coils = [
     # Strings 3, 4 & 5 see forward coil half
-    { strings = [3, 4, 5], position_from_bridge_m = 0.1380, aperture_width_in = 0.45, weight = 1.0 },
+    { id = "forward", strings = [3, 4, 5], position_from_bridge_m = 0.1380, aperture_width_in = 0.45, pole_type = "rod", L = 1.9, Rdc = 5250.0, Reddy = 180000.0, Ccoil = 3e-11, weight = 0.5 },
     # Strings 1 & 2 see rearward coil half
-    { strings = [1, 2], position_from_bridge_m = 0.1120, aperture_width_in = 0.45, weight = 1.0 }
+    { id = "rearward", strings = [1, 2], position_from_bridge_m = 0.1120, aperture_width_in = 0.45, pole_type = "rod", L = 1.9, Rdc = 5250.0, Reddy = 180000.0, Ccoil = 3e-11, weight = 0.5 },
 ]
-
-# ------------------------------------------------------------------------------
-# 2. DINGWALL FD3n BRIDGE PICKUP (Bridge Solo - Rotary Pos 1)
-# ------------------------------------------------------------------------------
-
-[pickups.p.circuit]
-topology = "single"
-L = 3.8
-Rdc = 10500.0
-Reddy = 180000.0
-Ccoil = 6e-11
-Rtop = 10.0
-Rbot = 250000.0
-Rtone = 250000.0
-Ctone = 4.7000000000000004e-08
 
 [pickups.bridge]
 name = "Dingwall FD3n Neodymium (Bridge)"
@@ -88,155 +68,116 @@ aperture_width_in = 0.45
 coil_spacing_in = 0.0
 type = "split_coil"
 magnet_type = "neodymium"
-resonant_frequency_hz = 3600.0
-q_factor = 1.45
 coils = [
     # Reverse split-P: treble strings (1, 2) forward half, bass strings (3, 4, 5) rearward half
-    { strings = [1, 2], position_from_bridge_m = 0.06625, aperture_width_in = 0.40, weight = 1.0 },
-    { strings = [3, 4, 5], position_from_bridge_m = 0.04975, aperture_width_in = 0.40, weight = 1.0 }
+    { id = "forward", strings = [1, 2], position_from_bridge_m = 0.06625, aperture_width_in = 0.40, pole_type = "rod", L = 1.15, Rdc = 2200.0, Reddy = 150000.0, Ccoil = 6e-11, weight = 0.5 },
+    { id = "rearward", strings = [3, 4, 5], position_from_bridge_m = 0.04975, aperture_width_in = 0.40, pole_type = "rod", L = 1.15, Rdc = 2200.0, Reddy = 150000.0, Ccoil = 6e-11, weight = 0.5 },
 ]
 
 # ------------------------------------------------------------------------------
-# 3. DINGWALL DUAL-P + BRIDGE PARALLEL (Rotary Pos 2)
+# 2. CONTROL HARNESS (Dingwall Quad-Tone 4-Way Rotary Selector & Passive Controls)
 # ------------------------------------------------------------------------------
 
-[pickups.bridge.circuit]
-topology = "single"
-L = 2.3
-Rdc = 4400.0
-Reddy = 150000.0
-Ccoil = 1.2e-10
-Rtop = 10.0
-Rbot = 250000.0
-Rtone = 250000.0
-Ctone = 4.7000000000000004e-08
+[harnesses.passive]
+name = "Dingwall Quad-Tone Passive Harness"
+type = "passive"
+load_resistance = 1000000.0
+cable_pf = 750.0
 
-[pickups.pair_parallel]
-name = "Dingwall Dual-P + Bridge Parallel"
-position_name = "Parallel"
-position_from_bridge_m = 0.0915  # Centroid 91.5mm
-aperture_width_in = 0.45
-coil_spacing_in = 0.0
-type = "composite"
-magnet_type = "neodymium"
-resonant_frequency_hz = 3400.0
-q_factor = 1.30
-components = [
-    { pickup = "p", weight = 0.5 },
-    { pickup = "bridge", weight = 0.5 }
+wiring = [
+    # Split P coils in series
+    ["pickups.split_p.forward.cold", "pickups.split_p.rearward.hot"],
+
+    # Bridge coils in series
+    ["pickups.bridge.forward.cold", "pickups.bridge.rearward.hot"],
+
+    # Master volume and tone
+    ["bus", "controls.vol.in"],
+    ["controls.vol.wiper", "out"],
+    ["controls.vol.gnd", "GND"],
+    ["bus", "controls.tone.in"],
+    ["controls.tone.gnd", "GND"],
+]
+
+[harnesses.passive.controls.vol]
+name = "Master Volume"
+type = "pot"
+taper = "audio_15"
+resistance = 250000.0
+default = 1.0
+
+[harnesses.passive.controls.tone]
+name = "Master Tone"
+type = "pot"
+taper = "audio_15"
+resistance = 250000.0
+cap = 4.7e-8
+default = 1.0
+
+[harnesses.passive.switches.rotary]
+name = "Quad-Tone 4-Way Rotary Selector"
+type = "rotary"
+default = "parallel"
+
+[harnesses.passive.switches.rotary.positions.bridge]
+connect = [
+    ["pickups.bridge.rearward.cold", "GND"],
+    ["pickups.bridge.forward.hot", "bus"],
+]
+
+[harnesses.passive.switches.rotary.positions.parallel]
+connect = [
+    ["pickups.bridge.rearward.cold", "GND"],
+    ["pickups.bridge.forward.hot", "bus"],
+    ["pickups.split_p.rearward.cold", "GND"],
+    ["pickups.split_p.forward.hot", "bus"],
+]
+
+[harnesses.passive.switches.rotary.positions.series]
+connect = [
+    ["pickups.bridge.rearward.cold", "GND"],
+    ["pickups.bridge.forward.hot", "pickups.split_p.rearward.cold"],
+    ["pickups.split_p.forward.hot", "bus"],
+]
+
+[harnesses.passive.switches.rotary.positions.neck]
+connect = [
+    ["pickups.split_p.rearward.cold", "GND"],
+    ["pickups.split_p.forward.hot", "bus"],
 ]
 
 # ------------------------------------------------------------------------------
-# 4. SMART VOICE MAPPING
-# ------------------------------------------------------------------------------
-# Directs the player to select the closest rotary switch position on the SP1:
-#   - Pos 4: Dual-P Solo (Precision Bass, Mudbucker, Upright)
-#   - Pos 3: Dual-P + Bridge Series (Dingwall Series, Massive output, wall of sound)
-#   - Pos 2: Dual-P + Bridge Parallel (Jazz Bass pair, Modern P/J, Vintage P/J, P/MM)
-#   - Pos 1: FD3n Bridge Solo (60s Jazz Bridge, StingRay, Rickenbacker, Multi-Scale)
-
-
-[pickups.pair_parallel.circuit]
-topology = "parallel"
-Rtop = 10.0
-Rbot = 250000.0
-Rtone = 250000.0
-Ctone = 4.7000000000000004e-08
-
-[pickups.pair_parallel.circuit.neck]
-L = 3.8
-Rdc = 10500.0
-Reddy = 180000.0
-Ccoil = 6e-11
-
-[pickups.pair_parallel.circuit.bridge]
-L = 2.3
-Rdc = 4400.0
-Reddy = 150000.0
-Ccoil = 1.2e-10
-
-# ------------------------------------------------------------------------------
-# 4. DINGWALL DUAL-P + BRIDGE SERIES (Rotary Pos 3)
-# ------------------------------------------------------------------------------
-[pickups.pair_series]
-name = "Dingwall Dual-P + Bridge Series"
-position_name = "Series"
-bundle_name = "series"
-position_from_bridge_m = 0.0915  # Centroid 91.5mm
-aperture_width_in = 0.45
-coil_spacing_in = 0.0
-type = "composite"
-magnet_type = "neodymium"
-resonant_frequency_hz = 3100.0
-q_factor = 1.45
-components = [
-    { pickup = "p", weight = 0.5 },
-    { pickup = "bridge", weight = 0.5 }
-]
-
-[pickups.pair_series.circuit]
-topology = "series"
-Rtop = 10.0
-Rbot = 250000.0
-Rtone = 250000.0
-Ctone = 4.7000000000000004e-08
-
-[pickups.pair_series.circuit.neck]
-L = 3.8
-Rdc = 10500.0
-Reddy = 180000.0
-Ccoil = 6e-11
-
-[pickups.pair_series.circuit.bridge]
-L = 2.3
-Rdc = 4400.0
-Reddy = 150000.0
-Ccoil = 1.2e-10
-
-# ------------------------------------------------------------------------------
-# 2. NATIVE INSTRUMENT VOICINGS
+# 3. NATIVE INSTRUMENT VOICINGS
 # ------------------------------------------------------------------------------
 
 [voicings.super_p_parallel]
 version = 1
 name = "Dingwall Super P + Bridge Parallel"
 tone_name = "Dingwall SP1 Parallel"
-pickup = "pair_parallel"
-affinity = "parallel"
-vol_pos = 1.0
+harness = "passive"
+switches = { rotary = "parallel" }
+controls = { vol = 1.0, tone = 1.0 }
 
 [voicings.super_p_series]
 version = 1
 name = "Dingwall Super P + Bridge Series Wall of Sound"
 tone_name = "Dingwall SP1 Series"
-pickup = "pair_series"
-affinity = "parallel"
-vol_pos = 1.0
-tone_pos = 1.0
+harness = "passive"
+switches = { rotary = "series" }
+controls = { vol = 1.0, tone = 1.0 }
 
 [voicings.super_p_solo]
 version = 1
 name = "Dingwall Super P Solo Split"
 tone_name = "Dingwall Super P"
-pickup = "p"
-affinity = "neck"
-vol_pos = 1.0
+harness = "passive"
+switches = { rotary = "neck" }
+controls = { vol = 1.0, tone = 1.0 }
 
 [voicings.super_bridge_solo]
 version = 1
 name = "Dingwall FD3 Solo Bridge"
 tone_name = "Dingwall SP1 Bridge"
-pickup = "bridge"
-affinity = "bridge"
-vol_pos = 1.0
-
-# ------------------------------------------------------------------------------
-# 3. PICKUP AFFINITY ROUTING
-# ------------------------------------------------------------------------------
-[pickup_mapping]
-neck = "p"
-bridge = "bridge"
-parallel = "pair_parallel"
-series = "pair_series"
-direct = "pair_parallel"
-dingwall_series = "pair_series"
+harness = "passive"
+switches = { rotary = "bridge" }
+controls = { vol = 1.0, tone = 1.0 }

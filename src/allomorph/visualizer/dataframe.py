@@ -101,13 +101,55 @@ def build_voice_dataframe(
     return df
 
 
+def get_visualizer_voicing_ids() -> list[str]:
+    """Discovers all target and source voicings declared across tone packs and visualizer.toml."""
+    from allomorph.config.instruments import PACKS_CONFIG_DIR, load_tone_pack
+    from allomorph.visualizer.schema import load_visualizer_config
+
+    vcfg = load_visualizer_config()
+    discovered: list[str] = []
+
+    def _add_voice(v_token: str) -> None:
+        if v_token in VOICES:
+            vid = VOICES[v_token].id
+            if vid not in discovered:
+                discovered.append(vid)
+
+    if PACKS_CONFIG_DIR.is_dir():
+        for p in sorted(PACKS_CONFIG_DIR.glob("*.toml")):
+            pack = load_tone_pack(p)
+            for b in pack.bundles:
+                _add_voice(f"{pack.instrument}:{b.source_voicing}")
+                _add_voice(b.source_voicing)
+                for tgt in b.targets:
+                    _add_voice(tgt)
+
+    for extra in vcfg.additional_source_voicings:
+        _add_voice(extra)
+    for extra in vcfg.additional_target_voicings:
+        _add_voice(extra)
+    for chip in vcfg.chips:
+        _add_voice(chip.source)
+        _add_voice(chip.target)
+    _add_voice(vcfg.default_source)
+    _add_voice(vcfg.default_target)
+
+    # Ensure all registered catalog target voices are included
+    for vid in sorted(VOICES.keys()):
+        if vid not in discovered:
+            discovered.append(vid)
+
+    return discovered
+
+
 def get_cached_target_dfs(step: int = 1) -> dict[str, tuple[str, np.ndarray]]:
     """Caches precomputed target voice responses downsampled by step."""
     if step in _TARGET_DFS_CACHE:
         return _TARGET_DFS_CACHE[step]
 
     target_dfs: dict[str, tuple[str, np.ndarray]] = {}
-    for vid, cfg in sorted(VOICES.items()):
+    for vid in get_visualizer_voicing_ids():
+        cfg = VOICES[vid]
         vname = cfg.name
         vdf = build_voice_dataframe(vid, cfg, mode="output")
         mag_full = np.asarray(vdf["magnitude_db"], dtype=np.float64)
@@ -145,9 +187,9 @@ VOICE_FAMILIES: dict[str, str] = {
     "soapbar_pair": "Soapbar",
     "soapbar_neck": "Soapbar",
     "soapbar_bridge": "Soapbar",
-    "active_emg_pair": "EMG",
-    "active_emg_neck": "EMG",
-    "active_emg_bridge": "EMG",
+    "emg_soapbar_parallel": "EMG",
+    "emg_soapbar_neck": "EMG",
+    "emg_soapbar_bridge": "EMG",
 }
 
 
@@ -161,31 +203,58 @@ def build_voicings_comparison_data(step: int = 3) -> dict[str, Any]:
       - Line 3: Difference (H_diff = H_tgt - H_src)
     When Source == Target, the difference line evaluates to exact 0.00 dB.
     """
+    from allomorph.config.instruments import INSTRUMENTS
+    from allomorph.visualizer.schema import load_visualizer_config
+
+    vcfg = load_visualizer_config()
     freqs = np.asarray(log_freqs[::step], dtype=np.float64)
     f_pts = np.round(freqs, 1).tolist()
 
     target_dfs = get_cached_target_dfs(step=step)
 
     voices_dict: dict[str, dict[str, Any]] = {}
+    instruments_dict: dict[str, dict[str, Any]] = {}
     families_set: set[str] = set()
 
     for vid, (vname, db_tgt) in sorted(target_dfs.items()):
-        vcfg = VOICES[vid]
+        v_obj = VOICES[vid]
         family = VOICE_FAMILIES.get(vid, "Specialty")
         families_set.add(family)
         rms_db = compute_curve_rms_db(db_tgt)
+
+        inst_id = v_obj.instrument_id or ""
+        inst = INSTRUMENTS.get(inst_id)
+        inst_name = inst.name if inst else "Other"
+        inst_scale = (
+            float(inst.scale_length_in)
+            if (inst is not None and inst.scale_length_in is not None)
+            else 34.0
+        )
+        inst_label = f'{inst_name} ({inst_scale:.1f}")' if inst else "Other"
+
+        if inst_id not in instruments_dict:
+            instruments_dict[inst_id] = {
+                "id": inst_id,
+                "name": inst_name,
+                "scale": inst_scale,
+                "label": inst_label,
+                "voice_ids": [],
+            }
+        instruments_dict[inst_id]["voice_ids"].append(vid)
+
         voices_dict[vid] = {
             "id": vid,
             "name": vname,
-            "tone_name": vcfg.tone_name or vname,
+            "tone_name": v_obj.tone_name or vname,
             "family": family,
-            "topology": vcfg.topology,
-            "sensor_type": vcfg.sensor_type,
-            "description": vcfg.description,
-            "fr": float(vcfg.fr),
-            "q": float(vcfg.Q),
-            "alpha": float(vcfg.alpha or 0.0),
-            "vsat": float(vcfg.vsat or 1.0),
+            "instrument_id": inst_id,
+            "instrument_name": inst_name,
+            "sensor_type": v_obj.sensor_type,
+            "description": v_obj.description,
+            "fr": float(v_obj.fr),
+            "q": float(v_obj.Q),
+            "alpha": float(v_obj.alpha or 0.0),
+            "vsat": float(v_obj.vsat or 1.0),
             "magnitude_db": np.round(db_tgt, 2).tolist(),
             "rms_db": round(rms_db, 2),
         }
@@ -208,12 +277,34 @@ def build_voicings_comparison_data(step: int = 3) -> dict[str, Any]:
         families_set - set(family_order)
     )
 
+    standard_instrument_order = [
+        "34in_standard_p",
+        "34in_standard_jazz",
+        "34in_standard_pj",
+        "30in_mustang_pj",
+        "34in_active_stingray",
+        "34in_active_pmm",
+        "34in_preamp_soapbar",
+        "34in_active_emg",
+        "37in_multiscale_dingwall",
+        "34in_dingwall_sp1",
+        "33in_rickenbacker_4003",
+        "30in_gibson_eb0",
+        "41in_upright_bass",
+    ]
+    sorted_instruments = [i for i in standard_instrument_order if i in instruments_dict] + [
+        i for i in instruments_dict if i not in standard_instrument_order
+    ]
+
     return {
         "frequencies": f_pts,
         "voices": voices_dict,
         "families": sorted_families,
-        "default_source": "precision_vintage",
-        "default_target": "jazz_bridge_growl",
+        "instruments": instruments_dict,
+        "instrument_order": sorted_instruments,
+        "chips": [c.model_dump() for c in vcfg.chips],
+        "default_source": vcfg.default_source,
+        "default_target": vcfg.default_target,
     }
 
 

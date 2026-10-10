@@ -303,9 +303,8 @@ $$H_{\text{hp}}(s) = \frac{s}{s + 2\pi \cdot 400.0}, \quad \text{touch\_mod} = \
 Bound domain-wall displacement delta via soft-knee saturation (`_slew_limit_core`):
 $$\Delta x_{\text{max}} = \frac{2\pi f_{\text{slew}} V_{\text{sat}}}{f_s}, \quad f_{\text{slew}} = 16000.0\text{ Hz}, \quad \Delta x_{\text{slew}}[n] = \Delta x_{\text{max}} \cdot \tanh\left(\frac{x[n] - x_{\text{slewed}}[n-1]}{\Delta x_{\text{max}}}\right)$$
 
-### 4.6 Thermal Dither & Body Coupling
+### 4.6 Thermal Dither Floor
 - Inject calibrated $-108\text{ dBFS}$ RLC-shaped Johnson noise dither to prevent hardware fixed-point neural gating pops (bypassed on small signals $\le 0.10$).
-- Model diffuse body microphonics on unpotted vintage passive pickups: $f_b = 6200.0\text{ Hz}, Q_b = 1.8, f_{\text{damp}} = 9500.0\text{ Hz}$.
 
 ### 4.7 Conformal Geometric Clearance & Dynamic Steinmetz AC Core Loss
 - **Conformal clearance divergence:** $x_{\text{disp}} / (1 - \kappa_{\text{geom}} \tanh(x_{\text{disp}} / V_{\text{sat}}))$ modeling pole proximity growl and pushback without negative rail clipping.

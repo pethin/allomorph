@@ -228,12 +228,6 @@ def main(argv: list[str] | None = None) -> None:
         help="Execution stage: 'sim' (direct forward simulation of instrument voicings), 'all'.",
     )
     parser.add_argument(
-        "--pickup",
-        "-p",
-        default=None,
-        help="Physical pickup setting for source instrument ('auto' to resolve from pickup_mapping, or explicit pickup ID)",
-    )
-    parser.add_argument(
         "--version-tag",
         default=None,
         help="Semantic version tag to embed in exported filenames (e.g. 'auto', 'v2.1.1')",

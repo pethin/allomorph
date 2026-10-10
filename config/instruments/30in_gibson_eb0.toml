@@ -11,7 +11,6 @@ electronics = "passive"
 version = 1
 
 string_wave_speeds = [63.83, 85.22, 113.75, 151.84]
-default_pickup = "mudbucker"
 
 [strings]
 preset = "flatwound_vintage_heavy"
@@ -23,67 +22,71 @@ wrap = "monel_flat"
 tension_lbs = 152.0
 
 # ------------------------------------------------------------------------------
-# 1. PICKUPS
+# 1. HARDWARE TRANSDUCER (Gibson 30k Sidewinder Neck Humbucker)
 # ------------------------------------------------------------------------------
 
 [pickups.mudbucker]
 name = "Gibson 30k Sidewinder Neck Humbucker (Mudbucker)"
 position_name = "Neck"
-bundle_name = "neck"
 position_from_bridge_m = 0.2668  # Neck heel datum (266.8mm)
 aperture_width_in = 1.25
 coil_spacing_in = 0.0
 type = "sidewinder"
 magnet_type = "ceramic"
-alpha = 0.12
-resonant_frequency_hz = 1200.0   # Extreme high inductance (14.4H) deep resonance
-q_factor = 1.60
 coils = [
-    { strings = ["all"], position_from_bridge_m = 0.2668, aperture_width_in = 1.25, weight = 1.0 }
+    { id = "sidewinder", strings = ["all"], position_from_bridge_m = 0.2668, aperture_width_in = 1.25, pole_type = "rod", L = 14.4, Rdc = 27900.0, Reddy = 450000.0, Ccoil = 8e-11, weight = 1.0 },
 ]
 
-[pickups.mudbucker.circuit]
-topology = "single"
-L = 14.4
-Rdc = 27900.0
-Reddy = 450000.0
-Ccoil = 8e-11
-vsat = 0.35
-Rtop = 10.0
-Rbot = 500000.0
-Rtone = 500000.0
-Ctone = 2.2e-08
+# ------------------------------------------------------------------------------
+# 2. CONTROL HARNESS (1V/1T Passive 500k Cavity Wiring)
+# ------------------------------------------------------------------------------
+
+[harnesses.passive]
+name = "EB-0 500k 1V/1T Passive Harness"
+type = "passive"
+load_resistance = 1000000.0
+cable_pf = 750.0
+
+wiring = [
+    ["pickups.mudbucker.sidewinder.hot", "controls.vol.in"],
+    ["pickups.mudbucker.sidewinder.cold", "GND"],
+    ["controls.vol.wiper", "out"],
+    ["controls.vol.gnd", "GND"],
+    ["controls.vol.in", "controls.tone.in"],
+    ["controls.tone.gnd", "GND"],
+]
+
+[harnesses.passive.controls.vol]
+name = "Master Volume"
+type = "pot"
+taper = "audio_15"
+resistance = 500000.0
+default = 1.0
+
+[harnesses.passive.controls.tone]
+name = "Master Tone"
+type = "pot"
+taper = "audio_15"
+resistance = 500000.0
+cap = 2.2e-8
+default = 1.0
 
 # ------------------------------------------------------------------------------
-# 2. NATIVE INSTRUMENT VOICINGS
+# 3. NATIVE INSTRUMENT VOICINGS
 # ------------------------------------------------------------------------------
 
 [voicings.neck_deep]
 version = 1
 name = "Massive 14.4H Sidewinder Sub-Bass"
 tone_name = "Mudbucker Deep"
-pickup = "mudbucker"
-affinity = "neck"
-vol_pos = 1.0
-tone_pos = 1.0
-tone_cap_f = 2.2e-08
+harness = "passive"
+controls = { vol = 1.0, tone = 1.0 }
 
 [voicings.neck_dub]
 version = 1
 name = "Sub-Bass Heavy Reggae Dub"
 tone_name = "Mudbucker Dub"
-pickup = "mudbucker"
-affinity = "neck"
-vol_pos = 1.0
-tone_pos = 0.0
-tone_cap_f = 4.7e-08
+harness = "passive"
+controls = { vol = 1.0, tone = 0.0 }
+components = { "controls.tone.cap" = 4.7e-8 }
 string_preset_override = "flatwound_vintage_heavy"
-
-# ------------------------------------------------------------------------------
-# 3. PICKUP AFFINITY ROUTING
-# ------------------------------------------------------------------------------
-[pickup_mapping]
-neck = "mudbucker"
-bridge = "mudbucker"
-parallel = "mudbucker"
-direct = "mudbucker"

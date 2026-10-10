@@ -37,6 +37,10 @@ def test_build_voicings_comparison_data_performance_and_bounds():
     assert "frequencies" in data
     assert "voices" in data
     assert "families" in data
+    assert "instruments" in data
+    assert "instrument_order" in data
+    assert "chips" in data
+    assert len(data["chips"]) >= 8
     assert "default_source" in data
     assert "default_target" in data
 
@@ -105,6 +109,7 @@ def test_generate_voicings_page_html_integrity():
         assert "target-select" in content
         assert "btn-swap" in content
         assert "plot-div" in content
+        assert "presets-container" in content
 
         # Check that JSON data payload is embedded and parseable
         marker_start = '<script id="voicings-data" type="application/json">'
@@ -114,3 +119,6 @@ def test_generate_voicings_page_html_integrity():
         assert "frequencies" in parsed_data
         assert "voices" in parsed_data
         assert len(parsed_data["voices"]) == len(VOICES)
+        assert "instruments" in parsed_data
+        assert "chips" in parsed_data
+        assert len(parsed_data["chips"]) >= 8

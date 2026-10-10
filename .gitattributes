@@ -1,0 +1,3 @@
+# Treat neural network model weights and audio as binary files
+*.nam binary
+*.wav binary

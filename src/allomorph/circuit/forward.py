@@ -6,7 +6,6 @@ loaded RLC circuit, active preamps, and string mechanics into 24-bit PCM wet ste
 
 import functools
 import math
-from collections.abc import Sequence
 from pathlib import Path
 from typing import Any, Literal, overload
 
@@ -14,18 +13,12 @@ import numpy as np
 import pedalboard
 
 from allomorph.circuit.audio import find_default_input_audio
-from allomorph.circuit.parser import MAGNET_PROPERTIES, CircuitModel
+from allomorph.circuit.parser import MAGNET_PROPERTIES
 from allomorph.circuit.saturation import (
     apply_active_pickup_dynamics,
     apply_oversampled_saturation,
 )
-from allomorph.circuit.schema import CircuitConfig
-from allomorph.circuit.solver import (
-    apply_magnet_properties_to_model,
-    compute_active_preamp_eq,
-    compute_active_preamp_transfer,
-    compute_circuit_transfer_functions,
-)
+from allomorph.circuit.solver import solve_mna_harness
 from allomorph.config.geometry import compute_effective_position, resolve_pickup_coils
 from allomorph.config.instruments import INSTRUMENTS, load_instrument
 from allomorph.config.scales import REPO_ROOT, resolve_scale_range
@@ -89,6 +82,22 @@ def resolve_target_voicing(
 
     clean_voicing = str(voicing).lower().replace(" ", "_").replace("∕", "_").replace("/", "_")
 
+    # If canonical reference "instrument:voicing" is supplied without explicit instrument, parse it
+    if ":" in str(voicing) and instrument is None:
+        inst_part, voicing_part = str(voicing).split(":", 1)
+        inst = load_instrument(inst_part)
+        clean_v_part = voicing_part.lower().replace(" ", "_").replace("∕", "_").replace("/", "_")
+        if voicing_part in inst.voicings:
+            return inst, inst.voicings[voicing_part]
+        for v in inst.voicings.values():
+            slug = (
+                v.tone_name.lower().replace(" ", "_").replace("∕", "_").replace("/", "_")
+                if v.tone_name
+                else (v.id or "")
+            )
+            if clean_v_part in (v.id, slug):
+                return inst, v
+
     # If instrument was provided, check its native voicings first
     if instrument is not None:
         inst = (
@@ -107,58 +116,13 @@ def resolve_target_voicing(
             if clean_voicing in (v.id, slug):
                 return inst, v
 
-        # Check if voicing matches a declared pickup on the instrument
+        # Check if voicing matches a declared pickup on the instrument - reject with fail-fast KeyError
         if clean_voicing in inst.pickups or str(voicing) in inst.pickups:
             p_key = clean_voicing if clean_voicing in inst.pickups else str(voicing)
-            p_cfg = inst.pickups[p_key]
-
-            # 1. Search for a native nominal voicing on that pickup
-            best_match: VoicingConfig | None = None
-            for v in inst.voicings.values():
-                if v.pickup == p_key:
-                    if v.id == p_key:
-                        best_match = v
-                        break
-                    if (
-                        v.vol_pos == 1.0
-                        and v.tone_pos == 1.0
-                        and (v.gain_db == 0.0 or v.gain_db is None)
-                        and len(v.preamp_bands) == 0
-                        and v.hpf is None
-                        and v.circuit is None
-                    ):
-                        best_match = v
-                        break
-                    if best_match is None:
-                        best_match = v
-
-            if best_match is not None:
-                return inst, best_match
-
-            # 2. If no identity voicing, construct a clean nominal VoicingConfig
-            sensor = (
-                "bridge_force"
-                if ("piezo" in getattr(p_cfg, "type", "") or p_key.endswith("piezo"))
-                else ("direct" if getattr(p_cfg, "type", "") == "direct" else "magnetic")
+            raise KeyError(
+                f"Pickup '{p_key}' cannot be used as a target voicing. All voicings must be "
+                f"explicitly defined under [voicings]. Available voicings on '{inst.id}': {list(inst.voicings.keys())}"
             )
-            str_preset = (
-                getattr(getattr(inst, "strings", None), "preset", None)
-                or "roundwound_nickel_standard"
-            )
-            p_preamp = getattr(p_cfg.circuit, "preamp", None) if p_cfg.circuit else None
-            if p_preamp in ("none", ""):
-                p_preamp = None
-            dyn_v = VoicingConfig(
-                id=p_key,
-                name=p_cfg.name or p_key,
-                pickup=p_key,
-                vol_pos=1.0,
-                tone_pos=1.0,
-                sensor_type=sensor,
-                string_preset_override=str_preset,
-                preamp_preset=p_preamp,
-            )
-            return inst, dyn_v
 
     # Search STANDARD_CATALOG_TARGETS and SOURCE_CATALOG_VOICINGS across all instruments
     from allomorph.config.instruments import (
@@ -329,13 +293,7 @@ def simulate_instrument_voicing(
         out_path = Path(output_wav)
         out_path.parent.mkdir(parents=True, exist_ok=True)
     elif not return_audio:
-        if isinstance(voicing, str) and (
-            voicing in inst.pickups or str(voicing).lower() in inst.pickups
-        ):
-            p_key = voicing if voicing in inst.pickups else str(voicing).lower()
-            out_path = WET_AUDIO_DIR / inst.id / f"{p_key}.wav"
-        else:
-            out_path = WET_AUDIO_DIR / inst.id / f"{voicing_id}.wav"
+        out_path = WET_AUDIO_DIR / inst.id / f"{voicing_id}.wav"
         out_path.parent.mkdir(parents=True, exist_ok=True)
 
     # Cryptographic Bit-Provenance Cache Check
@@ -350,24 +308,26 @@ def simulate_instrument_voicing(
                 return out_path, audio_cached
             return out_path
 
-    # Lookup physical pickup
-    pickup_key = voicing_cfg.pickup
-    if pickup_key not in inst.pickups:
-        raise KeyError(
-            f"Voicing '{voicing_id}' references unknown pickup '{pickup_key}' on instrument '{inst.id}'. "
-            f"Available pickups: {list(inst.pickups.keys())}"
-        )
+    # Resolve active harness and MNA
+    harness_id = voicing_cfg.harness
+    used_mna = bool(getattr(inst, "harnesses", None) and harness_id in inst.harnesses)
+
+    from allomorph.config.voices import (
+        resolve_voicing_active_coils,
+        resolve_voicing_active_pickups,
+    )
+
+    active_pickups = resolve_voicing_active_pickups(inst, voicing_cfg)
+    pickup_key = active_pickups[0] if active_pickups else next(iter(inst.pickups.keys()))
     pickup_cfg = inst.pickups[pickup_key]
 
-    if (
-        inst.electronics == "passive"
-        and pickup_cfg.circuit is None
-        and voicing_cfg.sensor_type == "magnetic"
-    ):
-        raise ValueError(
-            f"Passive instrument '{inst.id}' pickup '{pickup_key}' "
-            f"does not define a '[circuit]' block. Passive source pickups require an explicit "
-            f"circuit model for forward circuit simulation."
+    if not used_mna:
+        harnesses_list: list[str] = (
+            list(inst.harnesses.keys()) if hasattr(inst, "harnesses") and inst.harnesses else []
+        )
+        raise KeyError(
+            f"Voicing '{voicing_cfg.name}' on instrument '{inst.id}' references harness '{harness_id}', "
+            f"which was not found in inst.harnesses: {harnesses_list}"
         )
 
     f = np.asarray(FREQS, dtype=np.float64)
@@ -379,57 +339,34 @@ def simulate_instrument_voicing(
     input_mono = raw_audio[0] if raw_audio.ndim > 1 else raw_audio
     n_samples = len(input_mono)
 
-    # 1. Sensor Aperture Acoustics & Loaded RLC Circuit Transfer
-    circ_model = None
-    curves = None
-    target_circuit_cfg = voicing_cfg.circuit or pickup_cfg.circuit
-    if target_circuit_cfg is not None:
-        cdata = target_circuit_cfg.model_dump(exclude_unset=True)
-        if voicing_cfg.vol_pos is not None:
-            cdata["vol_pos"] = voicing_cfg.vol_pos
-        if voicing_cfg.tone_pos is not None:
-            cdata["tone_pos"] = voicing_cfg.tone_pos
-        if voicing_cfg.tone_cap_f is not None:
-            cdata["Ctone"] = voicing_cfg.tone_cap_f
-        if voicing_cfg.Rtone is not None:
-            cdata["Rtone"] = voicing_cfg.Rtone
-        if voicing_cfg.preamp_preset is not None:
-            cdata["preamp"] = voicing_cfg.preamp_preset
+    curves_dict = solve_mna_harness(inst, inst.harnesses[harness_id], voicing_cfg, freqs=f)
 
-        circ_model = CircuitModel.from_circuit_config(CircuitConfig.model_validate(cdata))
-        eff_vol = vol_pos if vol_pos is not None else circ_model.vol_pos
-        eff_tone = tone_pos if tone_pos is not None else circ_model.tone_pos
-        eff_blend = blend_pos if blend_pos is not None else circ_model.blend_pos
-        circ_model.apply_pot_positions(
-            vol_pos=eff_vol,
-            tone_pos=eff_tone,
-            blend_pos=eff_blend,
-        )
-        if cable_pf is not None:
-            circ_model.Ccable = float(cable_pf) * 1e-12
-        apply_magnet_properties_to_model(circ_model, pickup_cfg, eddy_diffusion=True)
-        curves = compute_circuit_transfer_functions(circ_model, freqs=f, return_numpy=True)
+    def _lookup_curve(*keys: str) -> np.ndarray:
+        for k in keys:
+            if k and k in curves_dict and curves_dict[k] is not None:
+                return curves_dict[k]
+        return next(iter(curves_dict.values()))
 
-    # 2. Active Preamp EQ Contour H_preamp(f)
-    circ_preamp = getattr(circ_model, "preamp", None) if circ_model is not None else None
-
-    if voicing_cfg.preamp_bands:
-        h_pre_raw = compute_active_preamp_transfer(voicing_cfg.preamp_bands, s)
-        h_preamp = np.abs(h_pre_raw).astype(np.float64)
-    elif voicing_cfg.preamp_preset:
-        h_pre_raw = compute_active_preamp_eq(voicing_cfg.preamp_preset, s)
-        h_preamp = np.abs(h_pre_raw).astype(np.float64)
-    elif circ_preamp and circ_preamp not in ("none", ""):
-        h_pre_raw = compute_active_preamp_eq(circ_preamp, s)
-        h_preamp = np.abs(h_pre_raw).astype(np.float64)
+    if len(active_pickups) >= 2:
+        curves = [_lookup_curve(p_id) for p_id in active_pickups]
     else:
-        h_preamp = np.ones_like(f, dtype=np.float64)
-
-    # Active preamp voltage gain scaling (e.g. series punch gain scaling)
-    if circ_model is not None and getattr(circ_model, "preamp_gain", 1.0) != 1.0:
-        h_preamp = h_preamp * float(circ_model.preamp_gain)
-    if circ_model is not None and getattr(circ_model, "preamp_gain_db", 0.0) != 0.0:
-        h_preamp = h_preamp * (10.0 ** (float(circ_model.preamp_gain_db) / 20.0))
+        p_coils = resolve_pickup_coils(pickup_cfg, inst)
+        active_c_ids = resolve_voicing_active_coils(inst, voicing_cfg, pickup_key)
+        if active_c_ids:
+            p_coils = [c for c in p_coils if c.id in active_c_ids or not c.id]
+        if len(p_coils) > 1:
+            curves = [
+                _lookup_curve(
+                    f"{pickup_cfg.id}.{c.id}",
+                    c.id or "",
+                    f"{pickup_key}.{c.id}",
+                    pickup_key,
+                )
+                for c in p_coils
+            ]
+        else:
+            curves = [_lookup_curve(pickup_key, pickup_cfg.id or "")]
+    h_preamp = np.ones_like(f, dtype=np.float64)
 
     # 3. Viscoelastic String Wrap Damping H_wrap(f)
     inst_string = get_instrument_string(inst)
@@ -480,22 +417,24 @@ def simulate_instrument_voicing(
             h_base = h_ac
     else:
         # Magnetic sensor: determine single pickup vs multi-pickup composite
+        p_components = getattr(pickup_cfg, "components", None) or []
         is_composite = (
-            pickup_cfg.type == "composite"
-            or bool(pickup_cfg.components)
+            len(active_pickups) >= 2
+            or pickup_cfg.type == "composite"
+            or bool(p_components)
             or (curves is not None and len(curves) > 1)
         )
 
         single_positions = [
             float(p.position_from_bridge_m)
             for p in inst.pickups.values()
-            if not p.components and p.position_from_bridge_m is not None
+            if not getattr(p, "components", None) and p.position_from_bridge_m is not None
         ]
         # Self-referential leveling: multi-pickup basses level bridge pickups relative to their own forward-most pickup.
         # Single-pickup basses receive ref_pos = None and evaluate to exact 1.0000 (0.00 dB).
         ref_pos = max(single_positions) if len(single_positions) > 1 else None
 
-        if is_composite and pickup_cfg.components:
+        if is_composite and (p_components or len(active_pickups) >= 2):
             is_composite_sim = True
             N = 8192
             f_bins = np.fft.rfftfreq(N, 1.0 / 48000.0)
@@ -503,11 +442,15 @@ def simulate_instrument_voicing(
 
             # Resolve branch components
             branch_sub_pickups = []
-            for comp in pickup_cfg.components:
-                if comp.pickup and comp.pickup in inst.pickups:
-                    branch_sub_pickups.append(
-                        (inst.pickups[comp.pickup], float(comp.weight), float(comp.polarity))
-                    )
+            if p_components:
+                for comp in p_components:
+                    if comp.pickup and comp.pickup in inst.pickups:
+                        branch_sub_pickups.append(
+                            (inst.pickups[comp.pickup], float(comp.weight), float(comp.polarity))
+                        )
+            else:
+                for p_id in active_pickups:
+                    branch_sub_pickups.append((inst.pickups[p_id], 1.0, 1.0))
 
             branch_coils_list = []
             branch_positions = []
@@ -570,14 +513,14 @@ def simulate_instrument_voicing(
                         raise KeyError(f"Unrecognized magnet type: '{sp_mag}'")
                     sp_props = MAGNET_PROPERTIES[sp_mag]
                     sp_vsat = (
-                        float(voicing_cfg.vsat)
-                        if voicing_cfg.vsat is not None
+                        float(sp.vsat)
+                        if sp.vsat is not None
                         else float(sp_props.vsat)
                     )
                     sp_alpha = (
-                        float(voicing_cfg.alpha)
-                        if voicing_cfg.alpha is not None
-                        else (float(sp.alpha) if sp.alpha is not None else float(sp_props.alpha))
+                        float(sp.alpha)
+                        if sp.alpha is not None
+                        else float(sp_props.alpha)
                     )
                     drive_db = float(getattr(voicing_cfg, "gain_db", 0.0) or 0.0)
                     drive_in = v_ac if drive_db == 0.0 else v_ac * (10.0 ** (drive_db / 20.0))
@@ -613,39 +556,20 @@ def simulate_instrument_voicing(
                 ]
 
                 # Check if sub-pickup defines its own active circuit
-                sub_circ = branch_sub_pickups[i][0].circuit
-                sub_active_var = (
-                    sub_circ.active_variant
-                    if sub_circ is not None
-                    else (circ_model.active_variant if circ_model is not None else None)
-                )
+                sub_p = branch_sub_pickups[i][0]
+                sub_active_var = sub_p.active_variant
                 if sub_active_var is not None and apply_saturation:
                     sub_vsat = (
-                        float(sub_circ.vsat)
-                        if (sub_circ is not None and sub_circ.vsat is not None)
-                        else (float(circ_model.vsat) if circ_model is not None else 2.40)
-                    )
-                    sub_k_level = (
-                        float(sub_circ.k_level)
-                        if (sub_circ is not None and sub_circ.k_level is not None)
-                        else (float(circ_model.k_level) if circ_model is not None else 0.0)
-                    )
-                    sub_tau_att = (
-                        float(sub_circ.tau_att_level)
-                        if (sub_circ is not None and sub_circ.tau_att_level is not None)
-                        else 0.003
-                    )
-                    sub_tau_rel = (
-                        float(sub_circ.tau_rel_level)
-                        if (sub_circ is not None and sub_circ.tau_rel_level is not None)
-                        else 0.045
+                        float(sub_p.vsat)
+                        if sub_p.vsat is not None
+                        else 2.40
                     )
                     b_audio = apply_active_pickup_dynamics(
                         v_coil.astype(np.float32),
                         vsat=sub_vsat,
-                        k_level=sub_k_level,
-                        tau_att=sub_tau_att,
-                        tau_rel=sub_tau_rel,
+                        k_level=0.0,
+                        tau_att=0.003,
+                        tau_rel=0.045,
                         sr=sr,
                     ).astype(np.float64)
                 else:
@@ -681,12 +605,15 @@ def simulate_instrument_voicing(
 
                 M_blend = np.sqrt(gamma * P_coh_reg + (1.0 - gamma) * P_incoh) / dc_norm
 
-                # Homomorphic minimum-phase causal FIR synthesis
-                # Directly models the physical aperture magnitude response (coherent comb notch transitioning
-                # smoothly into incoherent high-frequency summation) without STFT phase-forcing pole artifacts.
-                fir_comp = synthesize_minimum_phase_fir(M_blend, num_taps=num_taps, normalize=False)
+                # Universal C^inf Cross-Coherence Decay Filter
+                # Filters saturated branch sum with regularized spectral ratio to model smooth
+                # spatial aperture coherence decay without discarding non-linear dynamics.
+                S_raw = np.abs(np.sum(H_channels_arr, axis=0))
+                H_corr_ratio = M_blend / np.maximum(S_raw, 1e-4)
+                H_corr = np.clip(H_corr_ratio, 10.0 ** (-6.0 / 20.0), 10.0 ** (12.0 / 20.0))
+                fir_corr = synthesize_minimum_phase_fir(H_corr, num_taps=num_taps, normalize=False)
                 composite_audio = fft_convolve(
-                    input_mono, np.asarray(fir_comp, dtype=np.float64), mode="causal"
+                    raw_sum, np.asarray(fir_corr, dtype=np.float64), mode="causal"
                 )[:n_samples]
 
                 mag_spectrum = M_blend
@@ -752,8 +679,7 @@ def simulate_instrument_voicing(
         # Magnetic core saturation produces open-circuit coil EMF
         has_direct_dynamics = (
             voicing_cfg.sensor_type == "direct"
-            and circ_model is not None
-            and not getattr(circ_model, "no_eq", False)
+            and (pickup_cfg is not None and pickup_cfg.vsat is not None)
         )
         if apply_saturation and (voicing_cfg.sensor_type == "magnetic" or has_direct_dynamics):
             sp = pickup_cfg if pickup_cfg is not None else next(iter(inst.pickups.values()))
@@ -764,12 +690,10 @@ def simulate_instrument_voicing(
                 raise KeyError(f"Unrecognized magnet type: '{sp_mag}'")
             sp_props = MAGNET_PROPERTIES[sp_mag]
             mag_vsat = (
-                float(voicing_cfg.vsat) if voicing_cfg.vsat is not None else float(sp_props.vsat)
+                float(sp.vsat) if sp.vsat is not None else float(sp_props.vsat)
             )
             sp_alpha = (
-                float(voicing_cfg.alpha)
-                if voicing_cfg.alpha is not None
-                else (float(sp.alpha) if sp.alpha is not None else float(sp_props.alpha))
+                float(sp.alpha) if sp.alpha is not None else float(sp_props.alpha)
             )
             drive_db = float(getattr(voicing_cfg, "gain_db", 0.0) or 0.0)
             drive_in = v_ac if drive_db == 0.0 else v_ac * (10.0 ** (drive_db / 20.0))
@@ -798,19 +722,19 @@ def simulate_instrument_voicing(
             ).astype(np.float64)
         elif apply_saturation and voicing_cfg.sensor_type == "bridge_force":
             p_vsat = (
-                float(voicing_cfg.vsat)
-                if voicing_cfg.vsat is not None
-                else (
-                    float(circ_model.vsat)
-                    if (circ_model is not None and circ_model.vsat is not None)
-                    else 0.42
-                )
+                float(pickup_cfg.vsat)
+                if (pickup_cfg is not None and pickup_cfg.vsat is not None)
+                else 0.42
             )
             drive_db = float(getattr(voicing_cfg, "gain_db", 0.0) or 0.0)
             drive_in = v_ac if drive_db == 0.0 else v_ac * (10.0 ** (drive_db / 20.0))
             max_in = float(np.max(np.abs(drive_in))) if len(drive_in) > 0 else 0.0
             if max_in > 0.10 and p_vsat > 0.0:
-                alpha_p = float(voicing_cfg.alpha) if voicing_cfg.alpha is not None else 0.15
+                alpha_p = (
+                    float(pickup_cfg.alpha)
+                    if (pickup_cfg is not None and pickup_cfg.alpha is not None)
+                    else 0.15
+                )
                 v_piezo = drive_in * (1.0 + alpha_p * np.tanh(drive_in / p_vsat))
                 emf = (p_vsat * np.tanh(v_piezo / p_vsat)).astype(np.float64)
             else:
@@ -824,18 +748,23 @@ def simulate_instrument_voicing(
         v_coil = fft_convolve(emf, fir_elec_np, mode="causal")[:n_samples]
 
         # Active pickup internal op-amp dynamics
-        active_var = circ_model.active_variant if circ_model is not None else None
+        active_var = (
+            pickup_cfg.active_variant
+            if pickup_cfg is not None
+            else None
+        )
         if active_var is not None and apply_saturation:
-            v_sat = float(circ_model.vsat) if circ_model is not None else 2.40
-            k_level = float(circ_model.k_level) if circ_model is not None else 0.0
-            tau_att = float(circ_model.tau_att_level) if circ_model is not None else 0.003
-            tau_rel = float(circ_model.tau_rel_level) if circ_model is not None else 0.045
+            v_sat = (
+                float(pickup_cfg.vsat)
+                if (pickup_cfg is not None and pickup_cfg.vsat is not None)
+                else 2.40
+            )
             filtered = apply_active_pickup_dynamics(
                 v_coil.astype(np.float32),
                 vsat=v_sat,
-                k_level=k_level,
-                tau_att=tau_att,
-                tau_rel=tau_rel,
+                k_level=0.0,
+                tau_att=0.003,
+                tau_rel=0.045,
                 sr=sr,
             ).astype(np.float64)
         else:
@@ -989,8 +918,6 @@ def simulate_all_instrument_voicings(
     for inst in target_insts:
         for voicing in inst.voicings.values():
             tasks.append((inst, voicing))
-        for p_key in inst.pickups:
-            tasks.append((inst, p_key))
 
     def _sim(item: tuple[InstrumentConfig, VoicingConfig | str]) -> Path:
         i, v = item
@@ -1012,228 +939,6 @@ def simulate_all_instrument_voicings(
         exported_paths = [_sim(t) for t in tasks]
 
     return exported_paths
-
-
-def simulate_circuit_audio(
-    input_audio: str | Path | np.ndarray,
-    output_wav_path: str | Path,
-    model: CircuitModel,
-    circuit_curves: Sequence[Any] | None = None,
-    is_passive: bool = False,
-    bypass_saturation: bool | None = None,
-    normalize: str = "auto",
-    target_dbfs: float | None = None,
-    oversample: int = 2,
-    displacement_weighting: bool = True,
-    magnet_drag: bool = True,
-    alpha: float = 0.20,
-    alphas: Sequence[float] | None = None,
-    alpha3: float = 0.08,
-    alpha3s: Sequence[float] | None = None,
-    eta_hyst: float = 0.06,
-    eta_hysts: Sequence[float] | None = None,
-    k_sag: float = 0.08,
-    k_sags: Sequence[float] | None = None,
-    k_eddy: float = 0.0,
-    k_eddys: Sequence[float] | None = None,
-    kappa_orbit: float = 0.0,
-    kappa_orbits: Sequence[float] | None = None,
-    beta_curv: float = 0.0,
-    beta_curvs: Sequence[float] | None = None,
-    k_pull: float = 0.0,
-    k_pulls: Sequence[float] | None = None,
-    tau_touch: float = 0.0,
-    tau_touches: Sequence[float] | None = None,
-    kappa_geom: float = 0.0,
-    kappa_geoms: Sequence[float] | None = None,
-    k_stein: float = 0.0,
-    k_steins: Sequence[float] | None = None,
-    k_emf: float = 0.0,
-    k_emfs: Sequence[float] | None = None,
-    lambda_L: float = 0.0,
-    lambda_Ls: Sequence[float] | None = None,
-    kappa_ap: float = 0.0,
-    kappa_aps: Sequence[float] | None = None,
-    vol_pos: float | None = None,
-    tone_pos: float | None = None,
-    blend_pos: float | None = None,
-    pot_taper: str | None = None,
-    slew_limit: bool = True,
-    f_slew: float = 16000.0,
-    is_identity: bool = False,
-    noise_dither: bool = True,
-    vsat: float | None = None,
-    vsats: Sequence[float] | None = None,
-    dc_block: bool = True,
-    max_samples: int | None = None,
-    skip_identity: bool = False,
-    saturation_config: Any = None,
-    harness_controls: Any = None,
-    **kwargs: Any,
-) -> bool:
-    """
-    Executes circuit simulation on audio through a CircuitModel.
-    Convolves with the circuit's transfer function, applies non-linear saturation,
-    sub-audible DC-blocking, thermal dither, and level matching.
-    """
-    if harness_controls is not None:
-        vol_pos = getattr(harness_controls, "vol_pos", vol_pos)
-        tone_pos = getattr(harness_controls, "tone_pos", tone_pos)
-        blend_pos = getattr(harness_controls, "blend_pos", blend_pos)
-        pot_taper = getattr(harness_controls, "pot_taper", pot_taper)
-
-    if (
-        vol_pos is not None
-        or tone_pos is not None
-        or blend_pos is not None
-        or pot_taper is not None
-    ):
-        model.apply_pot_positions(
-            vol_pos=vol_pos,
-            tone_pos=tone_pos,
-            blend_pos=blend_pos,
-            pot_taper=pot_taper,
-        )
-
-    # 1. Audio Loading
-    if isinstance(input_audio, np.ndarray):
-        if input_audio.ndim == 2:
-            audio_data = (
-                input_audio[0] if input_audio.shape[0] < input_audio.shape[1] else input_audio[:, 0]
-            )
-        else:
-            audio_data = input_audio
-        sr = 48000
-    else:
-        audio_data, sr = read_wav(input_audio)
-
-    if max_samples is not None and len(audio_data) > max_samples:
-        audio_data = audio_data[:max_samples]
-
-    audio_mono = np.asarray(audio_data, dtype=np.float64)
-    should_bypass = bypass_saturation is True or is_passive
-    in_peak = float(np.max(np.abs(audio_mono)))
-    if not should_bypass and in_peak > 0.10:
-        target_drive_peak = min(in_peak * 0.687, 0.70)
-        audio_mono = (audio_mono / max(in_peak, 1e-9)) * target_drive_peak
-
-    # 2. Circuit Transfer Function
-    f = np.asarray(FREQS, dtype=np.float64)
-    if circuit_curves is not None:
-        curves = circuit_curves
-    else:
-        curves = compute_circuit_transfer_functions(model, freqs=f, return_numpy=True)
-    h_elec = np.asarray(curves[0], dtype=np.float64)
-
-    # 3. FIR Synthesis & Linear Stage Fusion
-    circ_fir = synthesize_minimum_phase_fir(h_elec, num_taps=NUM_TAPS, normalize=False)
-    filtered = fft_convolve(audio_mono, circ_fir, mode="causal")[: len(audio_mono)]
-
-    # 4. Non-Linear Saturation
-    should_bypass = bypass_saturation is True or is_passive
-    if not should_bypass:
-        if saturation_config is not None:
-            vsat = getattr(saturation_config, "vsat", vsat)
-            alpha = getattr(saturation_config, "alpha", alpha)
-            alpha3 = getattr(saturation_config, "alpha3", alpha3)
-            eta_hyst = getattr(saturation_config, "eta_hyst", eta_hyst)
-            k_sag = getattr(saturation_config, "k_sag", k_sag)
-            k_eddy = getattr(saturation_config, "k_eddy", k_eddy)
-            kappa_orbit = getattr(saturation_config, "kappa_orbit", kappa_orbit)
-            beta_curv = getattr(saturation_config, "beta_curv", beta_curv)
-            k_pull = getattr(saturation_config, "k_pull", k_pull)
-            tau_touch = getattr(saturation_config, "tau_touch", tau_touch)
-            kappa_geom = getattr(saturation_config, "kappa_geom", kappa_geom)
-            k_stein = getattr(saturation_config, "k_stein", k_stein)
-            k_emf = getattr(saturation_config, "k_emf", k_emf)
-            lambda_L = getattr(saturation_config, "lambda_L", lambda_L)
-            kappa_ap = getattr(saturation_config, "kappa_ap", kappa_ap)
-        vsat_val = vsat if vsat is not None else 0.45
-        filtered = apply_oversampled_saturation(
-            filtered.astype(np.float32),
-            vsat=vsat_val,
-            alpha=alpha,
-            alpha3=alpha3,
-            eta_hyst=eta_hyst,
-            k_sag=k_sag,
-            k_eddy=k_eddy,
-            kappa_orbit=kappa_orbit,
-            beta_curv=beta_curv,
-            k_pull=k_pull,
-            tau_touch=tau_touch,
-            kappa_geom=kappa_geom,
-            k_stein=k_stein,
-            k_emf=k_emf,
-            lambda_L=lambda_L,
-            kappa_ap=kappa_ap,
-            slew_limit=slew_limit,
-            f_slew=f_slew,
-            oversample=oversample,
-            displacement_weighting=displacement_weighting,
-            magnet_drag=magnet_drag,
-        ).astype(np.float64)
-
-        if model.active_variant is not None:
-            filtered = apply_active_pickup_dynamics(
-                filtered.astype(np.float32),
-                vsat=float(model.vsat),
-                k_level=float(model.k_level),
-                tau_att=float(model.tau_att_level),
-                tau_rel=float(model.tau_rel_level),
-                sr=sr,
-            ).astype(np.float64)
-
-    # 5. DC Blocking
-    in_peak = float(np.max(np.abs(audio_mono)))
-    if dc_block and in_peak > 0.10:
-        hp = pedalboard.HighpassFilter(cutoff_frequency_hz=8.0)
-        filtered = hp(filtered.astype(np.float32)[np.newaxis, :], sr)[0].astype(np.float64)
-        filtered = filtered - float(np.mean(filtered))
-
-    # 6. Thermal Dither
-    if noise_dither and float(np.max(np.abs(audio_mono))) > 0.10:
-        n_samples = len(filtered)
-        white_noise = _get_white_noise_vector(n_samples)
-        dither_fir = synthesize_minimum_phase_fir(h_elec, num_taps=512, normalize=True)
-        colored = fft_convolve(
-            white_noise, np.asarray(dither_fir, dtype=np.float64), mode="causal"
-        )[:n_samples]
-        c_rms = max(float(np.sqrt(np.mean(colored**2))), 1e-9)
-        filtered = filtered + (colored / c_rms) * (10.0 ** (-108.0 / 20.0))
-
-    # 7. Level Normalization
-    in_rms = float(np.sqrt(np.mean(audio_mono**2)))
-    should_normalize = (
-        normalize in ("auto", "rms", "peak")
-        and in_peak > 0.10
-        and in_rms > 0.005
-        and (np.min(audio_mono) < 0.0)
-    )
-    if normalize == "rms" and target_dbfs is not None:
-        target_rms = 10.0 ** (target_dbfs / 20.0)
-        cur_rms = float(np.sqrt(np.mean(filtered**2)))
-        if cur_rms > 1e-9:
-            filtered = filtered * (target_rms / cur_rms)
-    elif normalize == "peak" and target_dbfs is not None:
-        target_peak = 10.0 ** (target_dbfs / 20.0)
-        cur_peak = float(np.max(np.abs(filtered)))
-        if cur_peak > 1e-9:
-            filtered = filtered * (target_peak / cur_peak)
-    elif should_normalize:
-        out_rms = float(np.sqrt(np.mean(filtered**2)))
-        if in_rms > 1e-9 and out_rms > 1e-9:
-            filtered = filtered * (in_rms / out_rms)
-
-    if normalize not in ("none", "raw"):
-        peak = float(np.max(np.abs(filtered)))
-        if peak > CALIBRATION_PEAK_CEILING:
-            filtered = filtered * (CALIBRATION_PEAK_CEILING / peak)
-
-    # 8. WAV Export
-    out_p = Path(output_wav_path)
-    out_p.parent.mkdir(parents=True, exist_ok=True)
-    write_wav_24bit(out_p, filtered.astype(np.float32), sample_rate=sr)
-    return True
 
 
 def simulate_voice(
@@ -1284,12 +989,12 @@ def simulate_voice(
                 f"Available pickups: {list(inst_obj.pickups.keys())}"
             )
         if inst_obj.electronics == "passive":
-            p_key = pickup or getattr(inst_obj, "default_pickup", None) or "p"
-            if p_key in inst_obj.pickups and inst_obj.pickups[p_key].circuit is None:
+            p_key = pickup or (next(iter(inst_obj.pickups.keys())) if inst_obj.pickups else "p")
+            if p_key in inst_obj.pickups and not inst_obj.harnesses:
                 raise ValueError(
                     f"Passive instrument '{inst_obj.id}' pickup '{p_key}' "
-                    f"does not define a '[circuit]' block. Passive source pickups require an explicit "
-                    f"circuit model for forward circuit simulation."
+                    f"does not define a control harness. Passive source pickups require an explicit "
+                    f"circuit harness for forward circuit simulation."
                 )
 
         from allomorph.physics import is_voice_matching_source
@@ -1301,11 +1006,7 @@ def simulate_voice(
             return False
 
         apply_sat = kwargs.get("apply_saturation", True)
-        p_key = (
-            pickup
-            or getattr(inst_obj, "default_pickup", None)
-            or (next(iter(inst_obj.pickups.keys())) if inst_obj.pickups else None)
-        )
+        p_key = pickup or (next(iter(inst_obj.pickups.keys())) if inst_obj.pickups else None)
         src_p = inst_obj.pickups.get(p_key) if p_key else None
         src_mag = (src_p.magnet_type if src_p else None) or (
             "active" if inst_obj.electronics == "active" else "alnico_v"
@@ -1314,7 +1015,10 @@ def simulate_voice(
 
         try:
             t_inst, v_cfg = resolve_target_voicing(voice, instrument=inst_obj)
-            tgt_p = t_inst.pickups.get(v_cfg.pickup)
+            from allomorph.config.voices import resolve_voicing_active_pickups
+
+            tgt_act = resolve_voicing_active_pickups(t_inst, v_cfg)
+            tgt_p = t_inst.pickups.get(tgt_act[0]) if tgt_act else None
             tgt_mag = (tgt_p.magnet_type if tgt_p else None) or "alnico_v"
             tgt_props = MAGNET_PROPERTIES.get(tgt_mag, MAGNET_PROPERTIES["alnico_v"])
             if is_id or (

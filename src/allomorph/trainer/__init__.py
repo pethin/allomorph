@@ -92,10 +92,13 @@ def add_trainer_arguments(parser: argparse.ArgumentParser) -> None:
         help="Target pickup voice (ID, comma-separated list, or 'all'; default: 'all')",
     )
     _add_arg(
+        "--source-voicing",
+        "--voicing",
         "--pickup",
         "-p",
+        dest="source_voicing",
         default=None,
-        help="Physical pickup setting for source instrument (default: all pickups on the instrument)",
+        help="Source instrument voicing setting (default: auto-detected from instrument voicings)",
     )
     _add_arg(
         "--input",
@@ -107,7 +110,7 @@ def add_trainer_arguments(parser: argparse.ArgumentParser) -> None:
         "--output",
         "--output-wav",
         dest="output_wav",
-        help="Path to simulated SPICE output WAV (default: circuits/out_<voice>.wav)",
+        help="Path to simulated target voice wet output WAV (default: audio/wet/<instrument>/<voice>.wav)",
     )
     _add_arg(
         "--models-dir",
@@ -181,7 +184,7 @@ def add_trainer_arguments(parser: argparse.ArgumentParser) -> None:
         "--reference-wav",
         dest="reference_wav",
         default=None,
-        help="Path to reference source stem for differential comparison (default: auto-detected from source pickup)",
+        help="Path to reference source stem for differential comparison (default: auto-detected from source voicing)",
     )
     _add_arg(
         "--batch-size",

@@ -317,8 +317,8 @@ allomorph/
 │       │   ├── aperture.py                # Sinc & Bessel aperture integrals, saddle stiffness
 │       │   └── prefilter.py               # Minimum-phase FIR prefilter synthesis
 │       ├── circuit/                       # Native WAV SPICE circuit simulation subpackage
-│       │   ├── parser.py                  # SPICE netlist tokenizer & CircuitModel
-│       │   ├── solver.py                  # Analytical nodal RLC matrix solver & AC curves
+│       │   ├── parser.py                  # SPICE value parsing & magnet metallurgy properties
+│       │   ├── solver.py                  # Modified Nodal Analysis (MNA) solver & AC curves
 │       │   ├── saturation.py              # State-space non-linear saturation & Numba kernels
 │       │   ├── audio.py                   # Vectorized FFT convolution & 24-bit audio buffers
 │       │   ├── simulation.py              # Audio simulation orchestration & batch workers
@@ -336,7 +336,7 @@ allomorph/
 │   ├── analyze_voices.py                  # Thin delegating CLI wrapper for allomorph.visualizer
 │   ├── train_nam.py                       # Local NAM A2 PyTorch/MPS GPU trainer
 │   └── generate_tone3000_artwork.py       # Tone3000 storefront artwork generator
-├── tests/                                 # Hierarchical pytest test suite (304 tests)
+├── tests/                                 # Hierarchical pytest test suite (365 tests)
 │   ├── circuit/                           # SPICE netlists, nodal RLC solving, ODE saturation, simulation
 │   └── physics/                           # Aperture sinc filters, string mechanics, dispersion, FIR synthesis
 └── models/                                # Exported .nam neural models

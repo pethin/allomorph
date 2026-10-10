@@ -51,7 +51,6 @@ def format_instrument_meta(inst: InstrumentConfig) -> PortalInstrumentMeta:
         scale_m=round(scale_m, 4),
         speeds_str=speeds_str,
         pickups_summary=pickups_summary,
-        default_pickup=inst.default_pickup or "default",
     )
 
 

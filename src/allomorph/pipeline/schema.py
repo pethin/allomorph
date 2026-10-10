@@ -12,19 +12,24 @@ from typing import Literal
 from pydantic import ConfigDict, Field
 
 from allomorph.base import AllomorphBaseModel
-from allomorph.circuit.schema import CircuitConfig
-from allomorph.config.schema import VoiceCoilConfig, VoicePickupConfig
+from allomorph.config.schema import (
+    PackBundleConfig,
+    TonePackConfig,
+    VoiceCoilConfig,
+)
 
 __all__ = [
     "ArtworkPackConfig",
     "NamExportMetadata",
     "NamSourceInstrumentMeta",
-    "NamSourcePickupMeta",
-    "NamTargetVoiceMeta",
+    "NamSourceVoicingMeta",
+    "NamTargetVoicingMeta",
     "NamTrainingConfig",
     "NamTrainingMetadata",
+    "PackBundleConfig",
     "PipelineCliConfig",
     "Tone3000PackListing",
+    "TonePackConfig",
 ]
 
 
@@ -34,14 +39,8 @@ class PipelineCliConfig(AllomorphBaseModel):
     instrument: str = "all"
     pack: str | None = None
     stage: Literal["all", "viz", "sim", "pack", "train", "audit"] = "all"
-    pickup: str | None = None
     voice: str = "all"
     train: bool = False
-    vol_pos: float | None = Field(default=None, ge=0.0, le=1.0)
-    tone_pos: float | None = Field(default=None, ge=0.0, le=1.0)
-    blend_pos: float | None = Field(default=None, ge=0.0, le=1.0)
-    pot_taper: Literal["audio", "linear", "reverse_audio", "mn_blend"] | None = None
-    cable_pf: float = Field(default=750.0, ge=0.0, le=20000.0)
     normalize: Literal["auto", "rms", "peak", "lufs", "none"] = "auto"
     target_dbfs: float | None = None
     out_dir: str | None = None
@@ -66,16 +65,23 @@ class Tone3000PackListing(AllomorphBaseModel):
     voicings: list[str] = Field(..., min_length=15, max_length=32)
 
 
-class NamSourcePickupMeta(AllomorphBaseModel):
-    """Source pickup geometry and physical configuration metadata."""
+class NamSourceVoicingMeta(AllomorphBaseModel):
+    """Source voicing configuration, harness, and physical sensing geometry metadata."""
 
     id: str = ""
     name: str
+    tone_name: str | None = None
+    harness: str = ""
+    position_name: str | None = None
     position_from_bridge_m: float = 0.0
     position_from_bridge_mm: float = 0.0
+    effective_position_m: float = 0.0
+    effective_position_mm: float = 0.0
     aperture_width_in: float = 0.75
     coil_spacing_in: float = 0.0
     type: str = "single_coil"
+    controls: dict[str, float] = Field(default_factory=dict)
+    switches: dict[str, str] = Field(default_factory=dict)
 
 
 class NamTrainingMetadata(AllomorphBaseModel):
@@ -118,21 +124,21 @@ class NamSourceInstrumentMeta(AllomorphBaseModel):
     scale_length_in: float
     scale_length_m: float | None = None
     string_wave_speeds: list[float] = Field(default_factory=list)
-    pickup: NamSourcePickupMeta
+    voicing: NamSourceVoicingMeta
 
 
-class NamTargetVoiceMeta(AllomorphBaseModel):
+class NamTargetVoicingMeta(AllomorphBaseModel):
     """Metadata describing the target acoustic voicing and circuit embedded in Architecture 2 models."""
 
     id: str
     name: str
-    topology: str = ""
+    tone_name: str | None = None
+    sensor_type: str = "magnetic"
     resonant_frequency_hz: float = 0.0
     q_factor: float = 0.0
     effective_position_m: float = 0.0
-    pickups: list[VoicePickupConfig] = Field(default_factory=list)
+    effective_position_mm: float = 0.0
     coils: list[VoiceCoilConfig] = Field(default_factory=list)
-    circuit: CircuitConfig | None = None
 
 
 class NamExportMetadata(AllomorphBaseModel):
@@ -150,13 +156,17 @@ class NamExportMetadata(AllomorphBaseModel):
     git_commit: str | None = None
     generated_at: str | None = None
     source_instrument: NamSourceInstrumentMeta
-    target_voice: NamTargetVoiceMeta
+    target_voicing: NamTargetVoicingMeta
 
 
 class NamTrainingConfig(AllomorphBaseModel):
     """Training hyperparameters and execution flags for NAM Architecture 2 local training."""
 
     instrument: str = "all"
+    source_voicing: str | None = Field(
+        default=None,
+        description="Source instrument voicing setting (default: auto-detected from instrument voicings)",
+    )
     pack: str | None = Field(
         default=None,
         description="Tone3000 pack identifier to train (outputs flat .nam files to tone3000/packs/[pack]/nam/)",

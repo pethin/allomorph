@@ -2,6 +2,8 @@
 Tests for Fast Logarithmic Sine Sweep synthesis, Farina deconvolution, and stem diagnostics.
 """
 
+from pathlib import Path
+
 import numpy as np
 
 from allomorph.circuit.stem_debug import debug_voicing_stem, format_stem_report_table
@@ -104,19 +106,22 @@ def test_farina_harmonic_separation():
     )
 
 
-def test_stem_debug_api():
+def test_stem_debug_api(tmp_path: Path):
     """Validates the stem diagnostic reporting API across standard and composite voicings."""
-    report_p = debug_voicing_stem("precision_vintage")
+    report_p = debug_voicing_stem("precision_vintage", export_dir=tmp_path)
     assert report_p.is_causal_zero_latency
     assert 0 <= report_p.onset_sample_index <= 4
     assert -2.0 <= report_p.peak_sample_index <= 5
     assert -30.0 <= report_p.rms_dbfs <= -5.0
     assert report_p.thd_percent >= 0.0
+    assert report_p.output_wav is not None and report_p.output_wav.exists()
+    assert report_p.ir_wav is not None and report_p.ir_wav.exists()
 
     table_text = format_stem_report_table(report_p)
     assert "ALLOMORPH STEM DIAGNOSTIC REPORT" in table_text
     assert "precision_vintage" in table_text
     assert "PASS" in table_text
+    assert "Exported Artifacts" in table_text
 
     # Also validate composite multi-pickup voice
     report_dingwall = debug_voicing_stem("dingwall_parallel")

@@ -1,0 +1,30 @@
+id = "34in_active_stingray"
+instrument = "34in_active_stingray"
+name = "Active StingRay Bass Tone Pack"
+description = "Universal target voicings for 34\" Active Music Man StingRay Bass"
+version = 1
+
+[[bundles]]
+name = "bridge"
+source_voicing = "parallel_classic"
+targets = [
+    "precision_vintage",
+    "precision_active",
+    "precision_mids",
+    "precision_warm",
+    "precision_dub",
+    "jazz_pair_active",
+    "jazz_pair_open",
+    "jazz_pair_mids",
+    "jazz_bridge_growl",
+    "jazz_bridge_open",
+    "p_mm_parallel",
+    "p_mm_series",
+    "pj_active",
+    "pj_passive",
+    "rickenbacker_clank",
+    "dingwall_bridge",
+    "mudbucker_deep",
+    "upright_piezo",
+    "stingray_series",
+]

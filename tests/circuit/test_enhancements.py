@@ -3,8 +3,6 @@ Tests for post-LTspice architectural enhancements:
 1. Audio / logarithmic potentiometer tapers (10% CTS / 15% Bourns).
 2. Continuous MN dual-pickup blend / pan potentiometer modeling.
 3. Analytical circuit metric extraction (f_res, loaded Q, bandwidth, insertion loss, HF slope).
-4. Linear filter stage fusion.
-5. Deprecation error on legacy .cir netlists.
 """
 
 import math
@@ -14,14 +12,12 @@ import polars as pl
 import pytest
 
 from allomorph.circuit import (
-    CircuitModel,
-    compute_circuit_transfer_functions,
     compute_parametric_sweep,
     eval_pot_taper,
-    load_circuit,
-    simulate_circuit_audio,
+    solve_mna_harness,
 )
-from allomorph.config import VOICES
+from allomorph.circuit.forward import resolve_target_voicing
+from allomorph.dsp import FREQS
 
 
 def test_eval_pot_taper_boundaries_and_monotonicity():
@@ -48,64 +44,36 @@ def test_eval_pot_taper_boundaries_and_monotonicity():
         eval_pot_taper(0.5, "unknown_taper")
 
 
-def test_circuit_model_apply_pot_positions_tapers():
-    """Verify apply_pot_positions applies audio vs linear tapers properly."""
-    m = CircuitModel()
-    m.Rvol_total = 500000.0
-    m.Rtone_total = 250000.0
-
-    # Linear volume at 50%
-    m.apply_pot_positions(vol_pos=0.5, pot_taper="linear")
-    assert m.Rbot == pytest.approx(250000.0)
-    assert m.Rtop == pytest.approx(250000.0)
-
-    # Audio 10% CTS volume at 50%
-    m.apply_pot_positions(vol_pos=0.5, pot_taper="audio")
-    assert m.Rbot == pytest.approx(50000.0, rel=1e-3)  # 10% of 500k
-    assert m.Rtop == pytest.approx(450000.0, rel=1e-3)
-
-    # Audio 15% Bourns volume at 50%
-    m.apply_pot_positions(vol_pos=0.5, pot_taper="audio15")
-    assert m.Rbot == pytest.approx(75000.0, rel=1e-3)  # 15% of 500k
-    assert m.Rtop == pytest.approx(425000.0, rel=1e-3)
-
-    # Audio tone at 50%
-    m.apply_pot_positions(tone_pos=0.5, pot_taper="audio")
-    assert m.Rtone == pytest.approx(25000.0, rel=1e-3)  # 10% of 250k
-
-    # Full open (1.0) restores defaults
-    m.apply_pot_positions(vol_pos=1.0, tone_pos=1.0)
-    assert m.Rtop == pytest.approx(10.0)
-    assert m.Rbot == pytest.approx(500000.0)
-
-
 def test_mn_blend_potentiometer_behavior():
-    """Verify MN blend pot: 0 dB insertion loss at center detent, attenuation away from center."""
-    vcfg = VOICES["jazz_pair_open"]
-    model = load_circuit(vcfg.circuit)
-    assert model.topology == "parallel"
+    """Verify dual-pickup blend: balanced at center detent, attenuation away from center."""
+    inst, voicing = resolve_target_voicing("jazz_pair_open")
+    harness = inst.harnesses[voicing.harness]
 
-    # Center detent (0.5): 0 dB loss, both pickups 100% active
-    model.apply_pot_positions(blend_pos=0.5)
-    assert model.Rpot_n == pytest.approx(0.0)
-    assert model.Rpot_b == pytest.approx(0.0)
-    tr_center = compute_circuit_transfer_functions(model, return_numpy=True)
-    assert len(tr_center) == 2
-    mag_n_center = 20.0 * math.log10(max(tr_center[0][100], 1e-6))
-    mag_b_center = 20.0 * math.log10(max(tr_center[1][100], 1e-6))
+    # Center detent (0.5): both pickups active and balanced within 1 dB
+    v_center = voicing.model_copy(deep=True)
+    v_center.controls["neck_vol"] = 1.0
+    v_center.controls["bridge_vol"] = 1.0
+    tr_center = solve_mna_harness(inst, harness, v_center, freqs=FREQS)
+    assert "neck" in tr_center and "bridge" in tr_center
+    mag_n_center = 20.0 * math.log10(max(float(tr_center["neck"][100]), 1e-6))
+    mag_b_center = 20.0 * math.log10(max(float(tr_center["bridge"][100]), 1e-6))
     assert abs(mag_n_center - mag_b_center) < 1.0
 
-    # Full Neck (0.0): Bridge must be muted / heavily attenuated
-    model.apply_pot_positions(blend_pos=0.0)
-    tr_neck = compute_circuit_transfer_functions(model, return_numpy=True)
-    assert tr_neck[1][100] == pytest.approx(0.0, abs=1e-4)  # Bridge muted
-    assert tr_neck[0][100] > 0.1  # Neck active
+    # Full Neck (0.0): Bridge must be heavily attenuated
+    v_neck = voicing.model_copy(deep=True)
+    v_neck.controls["neck_vol"] = 1.0
+    v_neck.controls["bridge_vol"] = 0.0
+    tr_neck = solve_mna_harness(inst, harness, v_neck, freqs=FREQS)
+    assert tr_neck["bridge"][100] < 0.05  # Bridge attenuated
+    assert tr_neck["neck"][100] > 0.50  # Neck active
 
-    # Full Bridge (1.0): Neck must be muted / heavily attenuated
-    model.apply_pot_positions(blend_pos=1.0)
-    tr_bridge = compute_circuit_transfer_functions(model, return_numpy=True)
-    assert tr_bridge[0][100] == pytest.approx(0.0, abs=1e-4)  # Neck muted
-    assert tr_bridge[1][100] > 0.1  # Bridge active
+    # Full Bridge (1.0): Neck must be heavily attenuated
+    v_bridge = voicing.model_copy(deep=True)
+    v_bridge.controls["neck_vol"] = 0.0
+    v_bridge.controls["bridge_vol"] = 1.0
+    tr_bridge = solve_mna_harness(inst, harness, v_bridge, freqs=FREQS)
+    assert tr_bridge["neck"][100] < 0.05  # Neck attenuated
+    assert tr_bridge["bridge"][100] > 0.50  # Bridge active
 
 
 def test_compute_parametric_sweep_blend():
@@ -142,45 +110,20 @@ def test_analytical_circuit_metrics_extraction():
     assert "hf_slope_db_oct" in df_metrics.columns
 
     # Full open tone (Tone 100%)
-    rec_100 = next(r for r in res.metrics_records() if r.label == "Tone 100%")
-    # Classic vintage P-Bass resonance (5.8H coil + 750pF cable) is in 1.8 - 3.5 kHz range
+    recs = res.metrics_records()
+    rec_100 = recs[-1]
+    assert rec_100.label == "Tone 100%"
     assert rec_100.f_res_hz is not None
-    assert 1800.0 <= rec_100.f_res_hz <= 3500.0
+    assert 1800.0 <= rec_100.f_res_hz <= 2400.0
     # Q should be reasonable (0.8 to 4.0)
     assert rec_100.q_loaded is not None
     assert 0.8 <= rec_100.q_loaded <= 4.0
-    # HF roll-off slope should be roughly -10 to -15 dB/octave
+    # HF roll-off slope should be roughly -10 to -16 dB/octave
     assert rec_100.hf_slope_db_oct is not None
-    assert -16.0 <= rec_100.hf_slope_db_oct <= -8.0
+    assert -17.0 <= rec_100.hf_slope_db_oct <= -7.0
 
     # Summary table formatting
     table_str = res.summary_table()
     assert "f_res (Hz)" in table_str
     assert "Q loaded" in table_str
     assert "Tone 100%" in table_str
-
-
-def test_linear_filter_stage_fusion():
-    """Verify linear stage fusion executes cleanly and produces correct audio output."""
-    import tempfile
-    from pathlib import Path
-
-    with tempfile.TemporaryDirectory() as tmpdir:
-        out_wav = Path(tmpdir) / "fused_out.wav"
-        # Simulate clean linear target
-        success = simulate_circuit_audio(
-            input_audio=np.zeros((1, 4800), dtype=np.float32),  # 100 ms silent test buffer
-            output_wav_path=out_wav,
-            model=load_circuit("precision_vintage"),
-            prefilter_firs=[np.zeros(2048, dtype=np.float32)],
-            bypass_saturation=True,
-            normalize="none",
-        )
-        assert success is True
-        assert out_wav.exists()
-
-
-def test_cir_netlist_deprecation_error():
-    """Verify attempting to load a .cir file raises an explicit, informative ValueError."""
-    with pytest.raises(ValueError, match="Legacy SPICE ASCII netlists .* are deprecated"):
-        load_circuit("legacy_circuit.cir")

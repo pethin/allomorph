@@ -193,12 +193,10 @@ def test_tone3000_t3k_pack_basename_alignment():
     """Verify that every numbered voicing in each storefront description strictly matches
     the authoritative get_t3k_basename(tone_name, pos_name) file name and is <= 34 chars.
     """
-    from allomorph.config.instruments import get_source_pickup, load_instrument
-    from allomorph.config.voices import VOICES
+    from allomorph.config.instruments import partition_instrument_bundles
     from allomorph.naming import get_t3k_basename
 
     for pack, iid in PACK_INSTRUMENT_MAP.items():
-        inst = load_instrument(iid)
         txt_path = DOCS_DIR / f"{pack}.txt"
         content = txt_path.read_text(encoding="utf-8")
         voicing_lines = [
@@ -209,18 +207,16 @@ def test_tone3000_t3k_pack_basename_alignment():
             f"{pack}.txt expected {expected_count} voicing lines, found {len(voicing_lines)}"
         )
 
+        bundles = partition_instrument_bundles(iid)
         valid_basenames = set()
-        for vid, vcfg in VOICES.items():
-            pcfg = get_source_pickup(inst, vid)
-            pos = (
-                (pcfg.position_name or pcfg.name)
-                if (pack in MULTI_PICKUP_PACKS and not vcfg.preserve_aperture)
-                else None
-            )
-            tone = vcfg.tone_name or vcfg.name
-            valid_basenames.add(
-                get_t3k_basename(tone, pos, preserve_aperture=vcfg.preserve_aperture)
-            )
+        for b_data in bundles.values():
+            pos = b_data.position_name if pack in MULTI_PICKUP_PACKS else None
+            for tgt_ref in b_data.targets:
+                vcfg = tgt_ref.voicing
+                tone = vcfg.tone_name or vcfg.name
+                valid_basenames.add(
+                    get_t3k_basename(tone, pos, preserve_aperture=vcfg.preserve_aperture)
+                )
 
         for idx, vline in enumerate(voicing_lines, 1):
             expected_prefix = f"{idx:02d}. "
@@ -253,7 +249,8 @@ def test_generated_pack_storefront_descriptions():
     from allomorph.naming import get_t3k_basename
     from allomorph.pipeline.pack import generate_storefront_description
 
-    for inst_id, inst in INSTRUMENTS.items():
+    for inst_id in PACK_INSTRUMENT_MAP.values():
+        inst = INSTRUMENTS[inst_id]
         bundles = partition_instrument_bundles(inst)
         content = generate_storefront_description(inst, bundles)
 
@@ -319,7 +316,7 @@ def test_generated_pack_storefront_descriptions():
         for b in bundles.values():
             for tref in b.targets:
                 vcfg = tref.voicing
-                pos = b.pickup.position_name if len(bundles) > 1 else None
+                pos = b.position_name if len(bundles) > 1 else None
                 tone = vcfg.tone_name or vcfg.name
                 expected_basenames.add(
                     get_t3k_basename(tone, pos, preserve_aperture=vcfg.preserve_aperture)

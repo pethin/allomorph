@@ -11,7 +11,6 @@ electronics = "passive"
 version = 1
 
 string_wave_speeds = [69.60, 92.90, 124.01, 165.53]
-default_pickup = "bridge"
 
 [strings]
 preset = "roundwound_nickel_standard"
@@ -23,176 +22,150 @@ wrap = "nickel_round"
 tension_lbs = 168.0
 
 # ------------------------------------------------------------------------------
-# 1. PICKUPS
+# 1. HARDWARE TRANSDUCERS (Single physical pickups mounted in wood)
 # ------------------------------------------------------------------------------
-
-[pickups.bridge]
-name = "Rickenbacker Hi-Gain Bridge Single-Coil"
-position_name = "Bridge"
-bundle_name = "bridge"
-position_from_bridge_m = 0.1080  # 4.25" (108.0mm) datum from bridge saddles
-aperture_width_in = 0.45
-coil_spacing_in = 0.0
-type = "single_coil"
-magnet_type = "ceramic"
-alpha = 0.12
-resonant_frequency_hz = 3800.0
-q_factor = 1.70
-coils = [
-    { strings = ["all"], position_from_bridge_m = 0.1080, aperture_width_in = 0.45, weight = 1.0 }
-]
-
-[pickups.bridge.circuit]
-topology = "single"
-L = 3.8
-Rdc = 8400.0
-Reddy = 110000.0
-Ccoil = 8.5e-11
-Rtop = 10.0
-Rbot = 330000.0
-Rtone = 330000.0
-Ctone = 4.7e-08
-
-[pickups.bridge_hpf]
-name = "Rickenbacker Bridge Single-Coil with 4.7nF HPF"
-position_name = "Bridge"
-bundle_name = "bridge"
-position_from_bridge_m = 0.1080  # 4.25" (108.0mm) datum (shared physical position with standard bridge)
-aperture_width_in = 0.45
-coil_spacing_in = 0.0
-type = "single_coil"
-magnet_type = "ceramic"
-alpha = 0.12
-resonant_frequency_hz = 3800.0
-q_factor = 1.70
-coils = [
-    { strings = ["all"], position_from_bridge_m = 0.1080, aperture_width_in = 0.45, weight = 1.0 }
-]
-
-[pickups.bridge_hpf.circuit]
-topology = "single"
-L = 3.8
-Rdc = 8400.0
-Reddy = 140000.0
-Ccoil = 9e-11
-Rtop = 10.0
-Rbot = 330000.0
-Rtone = 330000.0
-Ctone = 4.7e-08
-Crick = 4.7e-09
 
 [pickups.neck]
 name = "Rickenbacker Hi-Gain Neck Single-Coil"
 position_name = "Neck"
-bundle_name = "neck"
 position_from_bridge_m = 0.2100  # 8.25" (210.0mm) datum (24th fret harmonic node)
 aperture_width_in = 0.45
 coil_spacing_in = 0.0
 type = "single_coil"
 magnet_type = "ceramic"
-alpha = 0.12
-resonant_frequency_hz = 3600.0
-q_factor = 1.50
 coils = [
-    { strings = ["all"], position_from_bridge_m = 0.2100, aperture_width_in = 0.45, weight = 1.0 }
+    { id = "neck", position_from_bridge_m = 0.2100, aperture_width_in = 0.45, pole_type = "rod", L = 3.5, Rdc = 8000.0, Reddy = 120000.0, Ccoil = 8.0e-11, weight = 1.0 },
 ]
 
-[pickups.neck.circuit]
-topology = "single"
-L = 3.5
-Rdc = 8000.0
-Reddy = 120000.0
-Ccoil = 8.0e-11
-Rtop = 10.0
-Rbot = 330000.0
-Rtone = 330000.0
-Ctone = 4.7e-08
-
-[pickups.pair_stereo]
-name = "Rickenbacker Dual Pickups Parallel (Rick-O-Sound)"
-position_name = "Parallel"
-bundle_name = "parallel"
-position_from_bridge_m = 0.1590  # Acoustic centroid (210.0mm + 108.0mm) / 2
+[pickups.bridge]
+name = "Rickenbacker Hi-Gain Bridge Single-Coil"
+position_name = "Bridge"
+position_from_bridge_m = 0.1080  # 4.25" (108.0mm) datum from bridge saddles
 aperture_width_in = 0.45
-coil_spacing_in = 4.02           # 4.02" (102.0mm) spacing between pickup centers
-type = "composite"
+coil_spacing_in = 0.0
+type = "single_coil"
 magnet_type = "ceramic"
-alpha = 0.12
-resonant_frequency_hz = 3900.0
-q_factor = 1.40
-components = [
-    { pickup = "neck", weight = 0.5 },
-    { pickup = "bridge", weight = 0.5 }
+coils = [
+    { id = "bridge", position_from_bridge_m = 0.1080, aperture_width_in = 0.45, pole_type = "rod", L = 3.8, Rdc = 8400.0, Reddy = 110000.0, Ccoil = 8.5e-11, weight = 1.0 },
 ]
-
-[pickups.pair_stereo.circuit]
-topology = "parallel"
-Rtop = 10.0
-Rbot = 165000.0
-Rtone = 165000.0
-Ctone = 4.7e-08
-
-[pickups.pair_stereo.circuit.neck]
-L = 3.5
-Rdc = 8000.0
-Reddy = 120000.0
-Ccoil = 8.0e-11
-
-[pickups.pair_stereo.circuit.bridge]
-L = 3.8
-Rdc = 8400.0
-Reddy = 110000.0
-Ccoil = 8.5e-11
 
 # ------------------------------------------------------------------------------
-# 2. NATIVE INSTRUMENT VOICINGS
+# 2. CONTROL HARNESS (Authentic 2V/2T Passive Cavity Wiring)
+# ------------------------------------------------------------------------------
+
+[harnesses.passive]
+name = "Rickenbacker 4003 2V/2T Passive Harness"
+type = "passive"
+load_resistance = 1000000.0
+cable_pf = 750.0
+
+wiring = [
+    ["pickups.neck.hot", "controls.neck_vol.wiper"],
+    ["controls.neck_vol.in", "neck_bus"],
+    ["controls.neck_vol.gnd", "GND"],
+    ["pickups.neck.cold", "GND"],
+    ["neck_bus", "controls.neck_tone.in"],
+    ["controls.neck_tone.gnd", "GND"],
+
+    ["controls.bridge_vol.in", "bridge_bus"],
+    ["controls.bridge_vol.gnd", "GND"],
+    ["pickups.bridge.cold", "GND"],
+    ["bridge_bus", "controls.bridge_tone.in"],
+    ["controls.bridge_tone.gnd", "GND"],
+]
+
+[harnesses.passive.controls.neck_vol]
+name = "Neck Volume"
+type = "pot"
+taper = "audio_15"
+resistance = 330000.0
+default = 1.0
+
+[harnesses.passive.controls.neck_tone]
+name = "Neck Tone"
+type = "pot"
+taper = "audio_15"
+resistance = 330000.0
+cap = 4.7e-8
+default = 1.0
+
+[harnesses.passive.controls.bridge_vol]
+name = "Bridge Volume"
+type = "pot"
+taper = "audio_15"
+resistance = 330000.0
+default = 1.0
+
+[harnesses.passive.controls.bridge_tone]
+name = "Bridge Tone"
+type = "pot"
+taper = "audio_15"
+resistance = 330000.0
+cap = 4.7e-8
+default = 1.0
+
+[harnesses.passive.switches.pickup_selector]
+name = "Pickup Selector"
+type = "toggle"
+default = "both"
+
+[harnesses.passive.switches.pickup_selector.positions.neck]
+connect = [["neck_bus", "out"]]
+
+[harnesses.passive.switches.pickup_selector.positions.bridge]
+connect = [["bridge_bus", "out"]]
+
+[harnesses.passive.switches.pickup_selector.positions.both]
+connect = [["neck_bus", "out"], ["bridge_bus", "out"]]
+k_mutual = 0.04
+
+[harnesses.passive.switches.vintage_tone]
+name = "Push-Pull Vintage Tone"
+type = "push_pull"
+default = "bypass"
+
+[harnesses.passive.switches.vintage_tone.positions.bypass]
+connect = [["pickups.bridge.hot", "controls.bridge_vol.wiper"]]
+
+[harnesses.passive.switches.vintage_tone.positions.vintage]
+connect = [
+    ["pickups.bridge.hot", "vintage_cap.in"],
+    ["vintage_cap.out", "controls.bridge_vol.wiper"],
+]
+components = { "vintage_cap" = 4.7e-9 }
+
+# ------------------------------------------------------------------------------
+# 3. NATIVE INSTRUMENT VOICINGS
 # ------------------------------------------------------------------------------
 
 [voicings.bridge_clank]
 version = 1
 name = "Vintage 4003 Bridge Clank (4.7nF HPF)"
 tone_name = "Rickenbacker Clank"
-pickup = "bridge_hpf"
-affinity = "bridge"
-vol_pos = 1.0
-tone_pos = 1.0
+harness = "passive"
+switches = { pickup_selector = "bridge", vintage_tone = "vintage" }
+controls = { bridge_vol = 1.0, bridge_tone = 1.0 }
 
 [voicings.bridge_open]
 version = 1
-name = "Modern 4003 Bridge Open Bypass"
+name = "Modern 4003 Bridge Open (Bypass HPF)"
 tone_name = "Rickenbacker Open"
-pickup = "bridge"
-affinity = "bridge"
-vol_pos = 1.0
-tone_pos = 1.0
-tone_cap_f = 4.7e-08
+harness = "passive"
+switches = { pickup_selector = "bridge", vintage_tone = "bypass" }
+controls = { bridge_vol = 1.0, bridge_tone = 1.0 }
 
 [voicings.neck_warm]
 version = 1
-name = "4003 Neck Hi-Gain Warm"
-tone_name = "Rickenbacker Warm"
-pickup = "neck"
-affinity = "neck"
-vol_pos = 1.0
-tone_pos = 0.8
-tone_cap_f = 4.7e-08
+name = "4003 Neck Warm"
+tone_name = "Rickenbacker Neck"
+harness = "passive"
+switches = { pickup_selector = "neck", vintage_tone = "bypass" }
+controls = { neck_vol = 1.0, neck_tone = 1.0 }
 
-[voicings.pair_stereo]
+[voicings.pair_open]
 version = 1
-name = "4003 Dual Pickups Parallel Rick-O-Sound"
+name = "4003 Dual Pickups Parallel"
 tone_name = "Rickenbacker Pair"
-pickup = "pair_stereo"
-affinity = "parallel"
-vol_pos = 1.0
-tone_pos = 1.0
-
-# ------------------------------------------------------------------------------
-# 3. PICKUP AFFINITY ROUTING
-# ------------------------------------------------------------------------------
-[pickup_mapping]
-neck = "neck"
-bridge = "bridge"
-parallel = "pair_stereo"
-direct = "pair_stereo"
-rickenbacker_clank = "bridge_hpf"
-"33in_rickenbacker_4003:bridge_clank" = "bridge_hpf"
+harness = "passive"
+switches = { pickup_selector = "both", vintage_tone = "bypass" }
+controls = { neck_vol = 1.0, neck_tone = 1.0, bridge_vol = 1.0, bridge_tone = 1.0 }

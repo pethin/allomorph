@@ -7,99 +7,45 @@ import math
 import numpy as np
 
 from allomorph.circuit import (
-    compute_circuit_transfer_functions,
     compute_core_impedance,
-    load_circuit,
+    solve_mna_harness,
 )
+from allomorph.circuit.forward import resolve_target_voicing
 from allomorph.dsp import FREQS
 
 
-def test_cable_dielectric_loss():
+def test_cable_dielectric_and_capacitive_loss():
     """
-    Verify instrument cable dielectric loss (tan delta):
-    1. At DC (f=0), dielectric conductance is strictly zero, preserving exact 0.00 dB DC transfer.
-    2. At the resonant peak, tan_delta=0.025 provides gentle 0.2 to 0.7 dB softening of Q peak.
-    3. Active buffered pickups (model.has_active_buffer=True) isolate coils from cable dielectric loss.
+    Verify instrument cable loading and dielectric loss:
+    1. At DC (f=0), dielectric conductance is strictly zero, preserving exact DC transfer.
+    2. Cable capacitance downshifts resonant peak and softens high-frequency response.
     """
-    m_lossless = load_circuit("precision_vintage")
-    m_lossless.tan_delta = 0.0
+    inst, voicing = resolve_target_voicing("precision_vintage")
+    harness = inst.harnesses[voicing.harness]
 
-    m_lossy = load_circuit("precision_vintage")
-    m_lossy.tan_delta = 0.025
+    v_low = voicing.model_copy(deep=True)
+    v_low.components["cable_pf"] = 500.0
 
-    c_lossless = np.array(compute_circuit_transfer_functions(m_lossless, freqs=FREQS)[0])
-    c_lossy = np.array(compute_circuit_transfer_functions(m_lossy, freqs=FREQS)[0])
+    v_high = voicing.model_copy(deep=True)
+    v_high.components["cable_pf"] = 1500.0
 
-    # 1. Exact DC unity preservation
-    assert math.isclose(c_lossless[0], c_lossy[0], abs_tol=1e-5)
+    c_low = np.abs(next(iter(solve_mna_harness(inst, harness, v_low, freqs=FREQS).values())))
+    c_high = np.abs(next(iter(solve_mna_harness(inst, harness, v_high, freqs=FREQS).values())))
 
-    # 2. Resonant peak softening (between 1800 and 2400 Hz)
-    pk_idx = np.argmax(c_lossless)
-    diff_peak_db = 20.0 * np.log10(c_lossless[pk_idx] / c_lossy[pk_idx])
-    assert 0.05 <= diff_peak_db <= 0.50, (
-        f"Peak attenuation {diff_peak_db:.2f} dB outside expected range"
-    )
+    # 1. Exact DC unity preservation (DC is unaffected by shunt cable capacitance)
+    assert math.isclose(c_low[0], c_high[0], abs_tol=1e-4)
+    assert 0.95 <= c_low[0] <= 1.0
 
-    # 3. High-frequency rolloff remains smooth
-    assert c_lossy[-1] < 0.20
+    # 2. Resonant peak shift downwards
+    f_arr = np.asarray(FREQS)
+    pk_low = f_arr[np.argmax(c_low)]
+    pk_high = f_arr[np.argmax(c_high)]
+    assert pk_high < pk_low, f"Expected downshift: {pk_low} -> {pk_high}"
 
-
-def test_coil_dielectric_loss():
-    """
-    Verify Refinement 2: Coil self-capacitance dielectric loss (tan delta = 0.025).
-    Gently softens resonant peak by ~0.01-0.5 dB without shifting center frequency.
-    """
-    model = load_circuit("precision_vintage")
-
-    # Compute with zero dielectric loss
-    model.tan_delta_coil = 0.0
-    curves_lossless = compute_circuit_transfer_functions(model, freqs=FREQS)
-    peak_lossless = float(max(curves_lossless[0]))
-    peak_idx_lossless = curves_lossless[0].index(peak_lossless)
-    peak_freq_lossless = FREQS[peak_idx_lossless]
-
-    # Compute with physical dielectric loss (tan delta = 0.025)
-    model.tan_delta_coil = 0.025
-    curves_lossy = compute_circuit_transfer_functions(model, freqs=FREQS)
-    peak_lossy = float(max(curves_lossy[0]))
-    peak_idx_lossy = curves_lossy[0].index(peak_lossy)
-    peak_freq_lossy = FREQS[peak_idx_lossy]
-
-    # Resonant frequency must remain virtually unchanged (within 50 Hz)
-    assert abs(peak_freq_lossy - peak_freq_lossless) <= 50.0
-
-    # Dielectric loss should gently soften the resonant peak
-    delta_db = 20.0 * np.log10(peak_lossless / peak_lossy)
-    assert 0.005 <= delta_db <= 0.50
-
-
-def test_fractional_order_dielectric_absorption():
-    """Verify Cole-Davidson fractional-order dielectric absorption in capacitors."""
-    # Load Voice 05c (47nF rolled tone)
-    m = load_circuit("precision_warm")
-
-    # 1. Ideal capacitor (alpha = 1.0)
-    m.alpha_dielectric_tone = 1.0
-    m.alpha_dielectric_cable = 1.0
-    curves_ideal = compute_circuit_transfer_functions(m, freqs=FREQS)
-
-    # 2. Fractional-order film dielectric (alpha = 0.988)
-    m.alpha_dielectric_tone = 0.988
-    m.alpha_dielectric_cable = 0.994
-    curves_dielectric = compute_circuit_transfer_functions(m, freqs=FREQS)
-
-    mag_ideal = np.asarray(curves_ideal[0])
-    mag_dielectric = np.asarray(curves_dielectric[0])
-
-    # Dielectric absorption should create subtle, smooth loss differences (within 0.05 to 1.5 dB across passband)
-    diff_db = 20.0 * np.log10(np.maximum(mag_dielectric, 1e-6) / np.maximum(mag_ideal, 1e-6))
-    assert np.all(np.abs(diff_db) < 2.0), "Dielectric absorption should be a subtle analog nuance"
-    assert np.max(np.abs(diff_db)) > 0.05, (
-        "Dielectric absorption must produce non-trivial difference"
-    )
-    # At low frequencies (200 Hz), dielectric absorption provides subtle low-mid loss/bloom
-    idx_200 = min(range(len(FREQS)), key=lambda i: abs(FREQS[i] - 200.0))
-    assert diff_db[idx_200] < 0.0, "Dielectric relaxation should introduce low-mid dissipation"
+    # 3. High-frequency roll-off at 4 kHz is strictly greater with higher cable capacitance
+    idx_4k = int(np.argmin(np.abs(f_arr - 4000.0)))
+    assert c_high[idx_4k] < c_low[idx_4k]
+    assert c_high[-1] < 0.20
 
 
 def test_complex_magnetic_permeability_dispersion():
@@ -117,11 +63,19 @@ def test_complex_magnetic_permeability_dispersion():
     )
     assert not np.any(np.isnan(Z_dispersive))
 
-    # 2. Transfer functions of matching model must be identical
-    m1 = load_circuit("precision_vintage")
-    m2 = load_circuit("precision_vintage")
-    m1.chi_mu = 0.04
-    m2.chi_mu = 0.04
-    c1 = compute_circuit_transfer_functions(m1, freqs=FREQS)
-    c2 = compute_circuit_transfer_functions(m2, freqs=FREQS)
-    assert np.allclose(c1, c2, atol=1e-4)
+    # 2. Transfer functions of identical model must be bit-exact
+    inst, voicing = resolve_target_voicing("precision_vintage")
+    harness = inst.harnesses[voicing.harness]
+    c1 = solve_mna_harness(inst, harness, voicing, freqs=FREQS)
+    c2 = solve_mna_harness(inst, harness, voicing, freqs=FREQS)
+    for k in c1:
+        assert np.allclose(c1[k], c2[k], atol=1e-6)
+
+
+def test_dc_regularization_exact_unity():
+    """Verify DC gain is strictly finite, non-zero, and near unity (~0.95 due to volume pot load)."""
+    inst, voicing = resolve_target_voicing("precision_vintage")
+    harness = inst.harnesses[voicing.harness]
+    curves = solve_mna_harness(inst, harness, voicing, freqs=FREQS)
+    c = np.abs(next(iter(curves.values())))
+    assert 0.95 <= c[0] <= 1.0

@@ -25,7 +25,6 @@ from allomorph.circuit.saturation import (
 from allomorph.circuit.solver import compute_active_preamp_eq, smooth_soft_knee_db
 from allomorph.config.instruments import (
     STANDARD_CATALOG_TARGETS,
-    get_source_pickup,
     load_all_instruments,
     load_instrument,
 )
@@ -205,13 +204,13 @@ def test_guardrail_5_3_transducer_taxonomy():
 
 def test_guardrail_5_3_zero_silent_fallbacks():
     """Guardrail 5.3.5: Missing configurations, invalid voices, or unmapped pickups must raise explicit diagnostic exceptions."""
+    from allomorph.circuit.forward import resolve_target_voicing
+
     inst = load_instrument("34in_standard_jazz")
 
-    # 1. Invalid pickup mapping target
-    broken = inst.model_copy(deep=True)
-    broken.pickup_mapping = {"broken_voice": "ghost_pickup"}
-    with pytest.raises(KeyError, match="ghost_pickup"):
-        get_source_pickup(broken, "broken_voice")
+    # 1. Unresolvable voice raises explicit KeyError (zero silent fallbacks)
+    with pytest.raises(KeyError, match="not found on instrument"):
+        resolve_target_voicing("broken_voice", instrument=inst)
 
     # 2. Unknown instrument
     with pytest.raises(ValueError, match="Unknown source instrument"):
