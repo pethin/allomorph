@@ -9,10 +9,13 @@ from typing import Any, ClassVar, override
 
 import numpy as np
 
-from allomorph.config.geometry import resolve_pickup_coils
+from allomorph.config.resolvers import (
+    build_voice_coils_for_pickup,
+    compound_multi_pickup_coils,
+    infer_pickup_resonance_and_q,
+)
 from allomorph.config.schema import (
     InstrumentConfig,
-    VoiceCoilConfig,
     VoiceConfig,
     VoicePickupConfig,
     VoicingConfig,
@@ -167,44 +170,11 @@ def voicing_to_voice_config(
     if len(active_pickup_keys) >= 2:
         for p_key in active_pickup_keys:
             p = instrument.pickups[p_key]
-            p_coils = resolve_pickup_coils(p, instrument=instrument)
             active_c_ids = resolve_voicing_active_coils(instrument, voicing, p_key)
-            if active_c_ids:
-                p_coils = [c for c in p_coils if c.id in active_c_ids or not c.id]
-            sub_coils = [
-                VoiceCoilConfig(
-                    position_from_bridge_m=c.position_from_bridge_m,
-                    aperture_width_in=c.aperture_width_in,
-                    weight=c.weight,
-                    polarity=c.polarity,
-                    strings=c.strings,
-                    pole_type=c.pole_type,
-                )
-                for c in p_coils
-            ]
-            if p.resonant_frequency_hz is not None:
-                fr_val = p.resonant_frequency_hz
-            elif p.type == "split_coil":
-                fr_val = 2800.0 if "passive" in (voicing.harness or "") else 4800.0
-            elif "bridge" in p_key:
-                fr_val = 3200.0 if "passive" in (voicing.harness or "") else 4600.0
-            elif "neck" in p_key:
-                fr_val = 3600.0 if "passive" in (voicing.harness or "") else 5200.0
-            else:
-                fr_val = (
-                    5200.0
-                    if "active" in (voicing.harness or "") or p.has_internal_buffer
-                    else 3500.0
-                )
-
-            if p.q_factor is not None:
-                q_val = p.q_factor
-            elif "bridge" in p_key:
-                q_val = 1.8 if "active" in (voicing.harness or "") else 1.6
-            elif p.type == "split_coil":
-                q_val = 1.7 if "active" in (voicing.harness or "") else 1.4
-            else:
-                q_val = 1.7 if "active" in (voicing.harness or "") else 1.5
+            sub_coils = build_voice_coils_for_pickup(p, active_c_ids, instrument=instrument)
+            fr_val, q_val = infer_pickup_resonance_and_q(
+                p, pickup_key=p_key, harness_str=voicing.harness or ""
+            )
 
             voice_pickups.append(
                 VoicePickupConfig(
@@ -221,63 +191,26 @@ def voicing_to_voice_config(
             )
 
     if voice_pickups:
-        coils = [
-            VoiceCoilConfig(
-                position_from_bridge_m=c.position_from_bridge_m,
-                aperture_width_in=c.aperture_width_in,
-                weight=c.weight * p.weight,
-                polarity=c.polarity * p.polarity,
-                strings=c.strings,
-                pole_type=c.pole_type,
-            )
-            for p in voice_pickups
-            for c in p.coils
-        ]
+        coils = compound_multi_pickup_coils(voice_pickups)
     else:
         primary_key = (
             active_pickup_keys[0] if active_pickup_keys else next(iter(instrument.pickups.keys()))
         )
         pickup = instrument.pickups[primary_key]
-        raw_coils = resolve_pickup_coils(pickup, instrument=instrument)
         active_c_ids = resolve_voicing_active_coils(instrument, voicing, primary_key)
-        if active_c_ids:
-            raw_coils = [c for c in raw_coils if c.id in active_c_ids or not c.id]
-        coils = [
-            VoiceCoilConfig(
-                position_from_bridge_m=c.position_from_bridge_m,
-                aperture_width_in=c.aperture_width_in,
-                weight=c.weight,
-                polarity=c.polarity,
-                strings=c.strings,
-                pole_type=c.pole_type,
-            )
-            for c in raw_coils
-        ]
+        coils = build_voice_coils_for_pickup(pickup, active_c_ids, instrument=instrument)
 
     primary_pickup = (
         instrument.pickups[active_pickup_keys[0]]
         if active_pickup_keys
         else next(iter(instrument.pickups.values()))
     )
-    if primary_pickup.resonant_frequency_hz is not None:
-        fr = primary_pickup.resonant_frequency_hz
-    elif primary_pickup.type == "split_coil":
-        fr = 2800.0 if "passive" in (voicing.harness or "") else 4800.0
-    elif "bridge" in primary_pickup.name.lower():
-        fr = 3200.0 if "passive" in (voicing.harness or "") else 4600.0
-    elif "neck" in primary_pickup.name.lower():
-        fr = 3600.0 if "passive" in (voicing.harness or "") else 5200.0
-    else:
-        fr = 3500.0
-
-    if primary_pickup.q_factor is not None:
-        Q = primary_pickup.q_factor
-    elif primary_pickup.type == "split_coil":
-        Q = 1.4 if "passive" in (voicing.harness or "") else 1.70
-    elif "bridge" in primary_pickup.name.lower():
-        Q = 1.6 if "passive" in (voicing.harness or "") else 1.8
-    else:
-        Q = 1.5 if "passive" in (voicing.harness or "") else 1.70
+    primary_key_val = active_pickup_keys[0] if active_pickup_keys else ""
+    fr, Q = infer_pickup_resonance_and_q(
+        primary_pickup,
+        pickup_key=primary_key_val,
+        harness_str=voicing.harness or "",
+    )
 
     if voice_pickups:
         active_mags = list(dict.fromkeys(p.magnet_type for p in voice_pickups if p.magnet_type))

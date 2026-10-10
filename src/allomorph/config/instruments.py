@@ -107,6 +107,11 @@ INSTRUMENT_ALIASES: dict[str, str] = {
     "41in": "41in_upright_bass",
 }
 
+from allomorph.config.resolvers import (
+    assign_target_to_bundle,
+    find_voicing_by_slug_or_id,
+    parse_target_voicing_token,
+)
 from allomorph.config.schema import InstrumentConfig, TonePackConfig, VoicingConfig
 
 PACKS_CONFIG_DIR = CONFIG_DIR / "packs"
@@ -307,42 +312,20 @@ def partition_instrument_bundles(
         )
         pack_bundles[b_cfg.name] = bundle
 
-    from allomorph.config.voices import VOICES
-
     if catalog_targets is None:
         for b_cfg in pack_cfg.bundles:
             bundle = pack_bundles[b_cfg.name]
             for target_token in b_cfg.targets:
-                if ":" in target_token:
-                    tgt_inst_id, tgt_vid = target_token.split(":", 1)
-                elif target_token in VOICES:
-                    v_obj = VOICES[target_token]
-                    tgt_inst_id = v_obj.instrument_id or inst.id
-                    tgt_vid = v_obj.id
-                else:
-                    tgt_inst_id = inst.id
-                    tgt_vid = target_token
+                tgt_inst_id, tgt_vid = parse_target_voicing_token(
+                    target_token, default_inst_id=inst.id
+                )
 
                 tgt_inst = (
                     INSTRUMENTS[tgt_inst_id]
                     if tgt_inst_id in INSTRUMENTS
                     else load_instrument(tgt_inst_id)
                 )
-                tgt_v = tgt_inst.voicings.get(tgt_vid)
-                if tgt_v is None:
-                    # Look up by tone slug
-                    for v_cand in tgt_inst.voicings.values():
-                        cand_slug = (
-                            v_cand.tone_name.lower()
-                            .replace(" ", "_")
-                            .replace("∕", "_")
-                            .replace("/", "_")
-                            if v_cand.tone_name
-                            else v_cand.id
-                        )
-                        if cand_slug == tgt_vid:
-                            tgt_v = v_cand
-                            break
+                tgt_v = find_voicing_by_slug_or_id(tgt_inst, tgt_vid)
                 if tgt_v is None:
                     raise KeyError(
                         f"Target voicing '{tgt_vid}' not found on instrument '{tgt_inst_id}'. "
@@ -368,26 +351,14 @@ def partition_instrument_bundles(
                 if target_inst_id in INSTRUMENTS
                 else load_instrument(target_inst_id)
             )
-            if target_vid not in target_inst.voicings:
+            target_voicing = find_voicing_by_slug_or_id(target_inst, target_vid)
+            if target_voicing is None:
                 raise KeyError(
                     f"Target voicing '{target_vid}' not found on instrument '{target_inst_id}'. "
                     f"Available voicings: {list(target_inst.voicings.keys())}"
                 )
-            target_voicing = target_inst.voicings[target_vid]
 
-            assigned_b_name = next(iter(pack_bundles.keys()))
-            found = False
-            for b_cfg in pack_cfg.bundles:
-                if target_vid in b_cfg.targets or any(target_vid in t for t in b_cfg.targets):
-                    assigned_b_name = b_cfg.name
-                    found = True
-                    break
-            if not found and len(pack_bundles) > 1:
-                for bn in pack_bundles:
-                    if bn in target_vid.lower():
-                        assigned_b_name = bn
-                        break
-
+            assigned_b_name = assign_target_to_bundle(target_vid, pack_bundles, pack_cfg.bundles)
             target_bundle = pack_bundles[assigned_b_name]
             if is_identity_voicing(inst, target_bundle.source_voicing, target_inst, target_voicing):
                 continue
@@ -424,17 +395,9 @@ def resolve_target_voicing(
     if ":" in str(voicing) and instrument is None:
         inst_part, voicing_part = str(voicing).split(":", 1)
         inst = load_instrument(inst_part)
-        clean_v_part = voicing_part.lower().replace(" ", "_").replace("∕", "_").replace("/", "_")
-        if voicing_part in inst.voicings:
-            return inst, inst.voicings[voicing_part]
-        for v in inst.voicings.values():
-            slug = (
-                v.tone_name.lower().replace(" ", "_").replace("∕", "_").replace("/", "_")
-                if v.tone_name
-                else (v.id or "")
-            )
-            if clean_v_part in (v.id, slug):
-                return inst, v
+        found_v = find_voicing_by_slug_or_id(inst, voicing_part)
+        if found_v is not None:
+            return inst, found_v
 
     # If instrument was provided, check its native voicings first
     if instrument is not None:
@@ -443,16 +406,9 @@ def resolve_target_voicing(
             if not isinstance(instrument, InstrumentConfig)
             else instrument
         )
-        if voicing in inst.voicings:
-            return inst, inst.voicings[voicing]
-        for v in inst.voicings.values():
-            slug = (
-                v.tone_name.lower().replace(" ", "_").replace("∕", "_").replace("/", "_")
-                if v.tone_name
-                else (v.id or "")
-            )
-            if clean_voicing in (v.id, slug):
-                return inst, v
+        found_v = find_voicing_by_slug_or_id(inst, str(voicing))
+        if found_v is not None:
+            return inst, found_v
 
         # Check if voicing matches a declared pickup on the instrument - reject with fail-fast KeyError
         if clean_voicing in inst.pickups or str(voicing) in inst.pickups:
