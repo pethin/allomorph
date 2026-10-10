@@ -12,8 +12,14 @@ from pathlib import Path
 from typing import Any
 
 import numpy as np
-from pydantic import BaseModel, Field
 
+from allomorph.circuit.diagnostics import (
+    CALIBRATION_PEAK_CEILING,
+    AudioAuditRecord,
+    AudioAuditReport,
+    aggregate_audit_report,
+    is_manifest_entry_fresh,
+)
 from allomorph.config.scales import REPO_ROOT
 from allomorph.dsp import (
     compute_lufs,
@@ -23,43 +29,6 @@ from allomorph.dsp import (
 )
 
 WET_AUDIO_DIR = REPO_ROOT / "audio" / "wet"
-CALIBRATION_PEAK_CEILING = 0.9900  # -0.087 dBFS
-
-
-class AudioAuditRecord(BaseModel):
-    """Telemetry report for a single audio file."""
-
-    file_path: str = Field(description="Relative or absolute path to the audio file")
-    file_name: str = Field(description="Base filename")
-    duration_s: float = Field(description="Audio duration in seconds")
-    sample_rate: int = Field(description="Sample rate in Hz")
-    peak_dbfs: float = Field(description="Max sample peak in dBFS")
-    true_peak_linear: float = Field(description="4x oversampled true-peak linear amplitude")
-    true_peak_dbfs: float = Field(description="4x oversampled true-peak in dBFS")
-    rms_dbfs: float = Field(description="Root-mean-square loudness in dBFS")
-    crest_factor_db: float = Field(description="True peak to RMS crest factor in dB")
-    lufs: float | None = Field(
-        default=None, description="ITU-R BS.1770-4 gated integrated loudness in LUFS"
-    )
-    dc_offset: float = Field(description="DC offset mean amplitude")
-    has_clipping: bool = Field(description="True if true peak exceeds the 0.9900 ceiling")
-    is_valid: bool = Field(description="True if audio passed all telemetry invariants")
-
-
-class AudioAuditReport(BaseModel):
-    """Aggregate telemetry report across a catalog of audio files."""
-
-    total_files: int = Field(description="Total files audited")
-    valid_files: int = Field(description="Files passing all telemetry invariants")
-    clipped_files: int = Field(description="Files exceeding the true-peak ceiling")
-    mean_lufs: float | None = Field(default=None, description="Average LUFS across valid files")
-    min_lufs: float | None = Field(default=None, description="Minimum LUFS in catalog")
-    max_lufs: float | None = Field(default=None, description="Maximum LUFS in catalog")
-    mean_true_peak_dbfs: float = Field(description="Average true peak in dBFS")
-    max_true_peak_dbfs: float = Field(description="Maximum true peak in dBFS")
-    records: list[AudioAuditRecord] = Field(
-        default_factory=list, description="Per-file audit records"
-    )
 
 
 def audit_audio_file(path: Path | str) -> AudioAuditRecord:
@@ -225,47 +194,17 @@ def audit_wet_audio_catalog(
                         if isinstance(fentry, dict):
                             p = (mf.parent / fname).resolve()
                             manifest_entries[p] = fentry
-            except json.JSONDecodeError, OSError:
+            except (json.JSONDecodeError, OSError):
                 continue
 
     records: list[AudioAuditRecord] = []
     for wf in wav_files:
         wf_res = wf.resolve()
         entry = manifest_entries.get(wf_res)
-        if (
-            entry is not None
-            and "true_peak_dbfs" in entry
-            and "lufs" in entry
-            and (
-                entry.get("size_bytes") is None
-                or (wf_res.exists() and wf_res.stat().st_size == entry.get("size_bytes"))
-            )
-        ):
+        if is_manifest_entry_fresh(entry, wf_res):
+            assert entry is not None
             records.append(_record_from_manifest(wf_res, entry))
         else:
             records.append(audit_audio_file(wf))
 
-    total = len(records)
-    valid_count = sum(1 for r in records if r.is_valid)
-    clipped_count = sum(1 for r in records if r.has_clipping)
-
-    valid_lufs = [r.lufs for r in records if r.lufs is not None]
-    mean_lufs = float(np.mean(valid_lufs)) if valid_lufs else None
-    min_lufs = min(valid_lufs) if valid_lufs else None
-    max_lufs = max(valid_lufs) if valid_lufs else None
-
-    tp_dbs = [r.true_peak_dbfs for r in records]
-    mean_tp_db = float(np.mean(tp_dbs)) if tp_dbs else -120.0
-    max_tp_db = max(tp_dbs) if tp_dbs else -120.0
-
-    return AudioAuditReport(
-        total_files=total,
-        valid_files=valid_count,
-        clipped_files=clipped_count,
-        mean_lufs=round(mean_lufs, 2) if mean_lufs is not None else None,
-        min_lufs=round(min_lufs, 2) if min_lufs is not None else None,
-        max_lufs=round(max_lufs, 2) if max_lufs is not None else None,
-        mean_true_peak_dbfs=round(mean_tp_db, 2),
-        max_true_peak_dbfs=round(max_tp_db, 2),
-        records=records,
-    )
+    return aggregate_audit_report(records)

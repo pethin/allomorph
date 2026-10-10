@@ -5,13 +5,17 @@ for causal zero-latency alignment, sub-bass DC-blocker transmission, midband bal
 and Farina harmonic distortion (THD, 2nd, and 3rd harmonics).
 """
 
-import math
 from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
 
 import numpy as np
 
+from allomorph.circuit.diagnostics import (
+    compute_stem_level_metrics,
+    evaluate_causal_onset_and_peak,
+    extract_frequency_anchors,
+)
 from allomorph.circuit.forward import simulate_instrument_voicing
 from allomorph.config.schema import InstrumentConfig, PreampConfig, VoicingConfig
 from allomorph.dsp import (
@@ -99,34 +103,14 @@ def debug_voicing_stem(
     )
 
     # Fundamental impulse response onset and peak sample indices
-    h_eval = np.abs(h_time[: gate_taps if gate_taps else len(h_time)])
-    peak_sample = int(np.argmax(h_eval))
-    peak_val = float(h_eval[peak_sample]) if len(h_eval) > 0 else 1.0
-    # Onset threshold set at -40 dBc (1% of peak) to reliably detect acoustic onset
-    # even on extreme sub-bass low-passed resonances (e.g. 190 Hz dub coils)
-    thresh = 0.01 * max(peak_val, 1e-6)
-    onset_candidates = np.where(h_eval >= thresh)[0]
-    onset_sample = int(onset_candidates[0]) if len(onset_candidates) > 0 else peak_sample
-
-    # Causal zero-latency invariant: the impulse response onset must begin at sample 0..4
-    # (no artificial leading zeroes or unaligned dead latency), while multi-pickup spatial arrivals
-    # or heavy tone low-pass group delays may position the maximum peak at sample 0..80.
-    is_causal = (0 <= onset_sample <= 4) and (0 <= peak_sample <= 80)
+    onset_sample, peak_sample, is_causal = evaluate_causal_onset_and_peak(h_time, gate_taps=gate_taps)
 
     # Signal Levels
-    rms = float(np.sqrt(np.mean(y_wet**2)))
-    rms_dbfs = 20.0 * math.log10(max(rms, 1e-9))
-    peak = float(np.max(np.abs(y_wet)))
-    peak_dbfs = 20.0 * math.log10(max(peak, 1e-9))
-    crest_factor = peak_dbfs - rms_dbfs
+    levels = compute_stem_level_metrics(y_wet)
 
     # Frequency Response Anchors
-    mags = np.abs(H_complex)
-    mags_db = 20.0 * np.log10(np.maximum(mags, 1e-6))
-
-    def get_db(f_target: float) -> float:
-        idx = int(np.argmin(np.abs(f_bins - f_target)))
-        return float(np.round(mags_db[idx], 2))
+    mags_db = 20.0 * np.log10(np.maximum(np.abs(H_complex), 1e-6))
+    anchors = extract_frequency_anchors(f_bins, mags_db)
 
     # Farina Harmonic Distortion (THD)
     thd_info = extract_farina_harmonics(
@@ -159,19 +143,19 @@ def debug_voicing_stem(
         is_causal_zero_latency=is_causal,
         onset_sample_index=onset_sample,
         peak_sample_index=peak_sample,
-        crest_factor_db=round(crest_factor, 2),
-        rms_dbfs=round(rms_dbfs, 2),
-        peak_dbfs=round(peak_dbfs, 2),
-        sub_bass_10hz_db=get_db(10.0),
-        sub_bass_20hz_db=get_db(20.0),
-        sub_bass_b0_31hz_db=get_db(30.87),
-        sub_bass_e1_41hz_db=get_db(41.2),
-        mid_500hz_db=get_db(500.0),
-        mid_1khz_db=get_db(1000.0),
-        upper_mid_2khz_db=get_db(2000.0),
-        treble_5khz_db=get_db(5000.0),
-        treble_10khz_db=get_db(10000.0),
-        ultra_20khz_db=get_db(20000.0),
+        crest_factor_db=levels["crest_factor_db"],
+        rms_dbfs=levels["rms_dbfs"],
+        peak_dbfs=levels["peak_dbfs"],
+        sub_bass_10hz_db=anchors["sub_bass_10hz_db"],
+        sub_bass_20hz_db=anchors["sub_bass_20hz_db"],
+        sub_bass_b0_31hz_db=anchors["sub_bass_b0_31hz_db"],
+        sub_bass_e1_41hz_db=anchors["sub_bass_e1_41hz_db"],
+        mid_500hz_db=anchors["mid_500hz_db"],
+        mid_1khz_db=anchors["mid_1khz_db"],
+        upper_mid_2khz_db=anchors["upper_mid_2khz_db"],
+        treble_5khz_db=anchors["treble_5khz_db"],
+        treble_10khz_db=anchors["treble_10khz_db"],
+        ultra_20khz_db=anchors["ultra_20khz_db"],
         thd_percent=thd_info["thd_percent"],
         thd_db=thd_info["thd_db"],
         thd2_percent=thd_info["thd2_percent"],
