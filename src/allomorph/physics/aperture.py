@@ -229,9 +229,7 @@ def get_coil_register(coil: CoilConfig | VoiceCoilConfig) -> str:
     return "all"
 
 
-def numpy_pickup_acoustic_response(
-    freqs: Sequence[float] | np.ndarray,
-    coils: Sequence[CoilConfig | VoiceCoilConfig],
+def build_wave_speed_continuum_partitions(
     scale_length_m: float
     | tuple[float, float]
     | list[float]
@@ -241,15 +239,8 @@ def numpy_pickup_acoustic_response(
     | None = None,
     string_speeds: Sequence[float] | None = None,
     string_names: Sequence[str | int] | None = None,
-) -> np.ndarray:
-    """
-    Computes compound spatial aperture and multi-coil response for an arbitrary
-    array of N physical coils across the continuous wave-speed continuum of the instrument.
-    Completely tuning-agnostic, gauge-agnostic, and string-count-agnostic.
-    Respects geometric register half bindings for split-coil pickups (e.g. P-Bass).
-    """
-    f = np.asarray(freqs, dtype=np.float64)
-
+) -> dict[str, list[WaveSpeedContinuumPoint]]:
+    """Builds and partitions wave-speed continuum points by register half ('lower' vs 'upper')."""
     if (
         isinstance(scale_length_m, (list, tuple, np.ndarray))
         and len(scale_length_m) > 0
@@ -304,10 +295,90 @@ def numpy_pickup_acoustic_response(
     else:
         continuum = generate_wave_speed_continuum(scale_range, num_points=24)
 
-    # Partition continuum points by register half to enable 2D tensor broadcasting
     partitions: dict[str, list[WaveSpeedContinuumPoint]] = {}
     for pt in continuum:
         partitions.setdefault(str(pt.register), []).append(pt)
+    return partitions
+
+
+def compute_string_dispersion_tensor(
+    freqs: np.ndarray,
+    f0_arr: np.ndarray,
+    v0_arr: np.ndarray,
+    f_disp_max: float = 3500.0,
+) -> np.ndarray:
+    """Computes 2D frequency-dependent dispersive wave speeds v_disp(k, f) accounting for string stiffness.
+    Returns array of shape (K, len(freqs)).
+    """
+    b_s = get_inharmonicity_for_f0(f0_arr)
+    f_ratio_sq = (freqs[None, :] / f0_arr[:, None]) ** 2
+    f_cut_sq = (freqs[None, :] / f_disp_max) ** 2
+    disp_factor = 1.0 + b_s[:, None] * f_ratio_sq / (1.0 + f_cut_sq)
+    return v0_arr[:, None] * np.sqrt(disp_factor)
+
+
+def compute_coil_aperture_sinc(
+    freqs: np.ndarray,
+    v_disp: np.ndarray,
+    w_m: float,
+    pole_type: str = "rod",
+) -> np.ndarray:
+    """Computes spatial sensing aperture response for a coil across the 2D dispersion grid (K, len(f))."""
+    beta = 1.0 / 3.0 if pole_type == "blade" else 0.25
+    arg = (math.pi * w_m * freqs[None, :]) / v_disp
+    return 1.0 / np.sqrt(1.0 + beta * (arg**2))
+
+
+def combine_coherent_incoherent_aperture(
+    coil_sum: np.ndarray,
+    p_incoh: np.ndarray,
+    active_coils: Sequence[CoilConfig | VoiceCoilConfig],
+    v0_arr: np.ndarray,
+    freqs: np.ndarray,
+    total_w: float,
+) -> np.ndarray:
+    """Combines coherent and incoherent multi-coil power with C^inf transition sigmoid."""
+    p_coh = np.abs(coil_sum) ** 2
+    if len(active_coils) > 1:
+        delta_x_span = max(c.position_from_bridge_m for c in active_coils) - min(
+            c.position_from_bridge_m for c in active_coils
+        )
+        if delta_x_span > 0.002:
+            eps_quad = 0.18
+            p_coh_reg = p_coh + (eps_quad**2) * p_incoh
+            dc_incoh = sum(abs(c.weight) ** 2 for c in active_coils)
+            dc_norm = math.sqrt(total_w**2 + (eps_quad**2) * dc_incoh) / total_w
+            f_mid = 1.4 * v0_arr[:, None] / delta_x_span
+            f_sigma = np.maximum(0.4 * v0_arr[:, None] / delta_x_span, 1.0)
+            gamma = 0.5 * (1.0 - np.tanh((freqs[None, :] - f_mid) / f_sigma))
+            return np.sqrt(gamma * p_coh_reg + (1.0 - gamma) * p_incoh) / dc_norm
+    return np.abs(coil_sum)
+
+
+def numpy_pickup_acoustic_response(
+    freqs: Sequence[float] | np.ndarray,
+    coils: Sequence[CoilConfig | VoiceCoilConfig],
+    scale_length_m: float
+    | tuple[float, float]
+    | list[float]
+    | Sequence[float]
+    | ScaleConfig
+    | InstrumentConfig
+    | None = None,
+    string_speeds: Sequence[float] | None = None,
+    string_names: Sequence[str | int] | None = None,
+) -> np.ndarray:
+    """Computes compound spatial aperture and multi-coil response for an arbitrary
+    array of N physical coils across the continuous wave-speed continuum of the instrument.
+    Completely tuning-agnostic, gauge-agnostic, and string-count-agnostic.
+    Respects geometric register half bindings for split-coil pickups (e.g. P-Bass).
+    """
+    f = np.asarray(freqs, dtype=np.float64)
+    partitions = build_wave_speed_continuum_partitions(
+        scale_length_m=scale_length_m,
+        string_speeds=string_speeds,
+        string_names=string_names,
+    )
 
     acc = np.zeros_like(f, dtype=np.float64)
     total_pt_weight = 0.0
@@ -327,12 +398,7 @@ def numpy_pickup_acoustic_response(
         v0_arr = np.array([pt.v0 for pt in pts], dtype=np.float64)
         w_arr = np.array([pt.weight for pt in pts], dtype=np.float64)
 
-        b_s = get_inharmonicity_for_f0(f0_arr)
-        f_disp_max = 3500.0
-        disp_factor = 1.0 + b_s[:, None] * ((f[None, :] / f0_arr[:, None]) ** 2) / (
-            1.0 + (f[None, :] / f_disp_max) ** 2
-        )
-        v_disp = v0_arr[:, None] * np.sqrt(disp_factor)
+        v_disp = compute_string_dispersion_tensor(f, f0_arr, v0_arr)
 
         total_w = sum(abs(c.weight) for c in active) or 1.0
         center_pos = sum(c.position_from_bridge_m * abs(c.weight) for c in active) / total_w
@@ -348,32 +414,19 @@ def numpy_pickup_acoustic_response(
             delta_x = pos_m - center_pos
             phase = 2.0 * math.pi * f[None, :] * delta_x / v_disp
             c_pole = c.pole_type or "rod"
-            beta = 1.0 / 3.0 if c_pole == "blade" else 0.25
-            arg = (math.pi * w_m * f[None, :]) / v_disp
-            ap_w = 1.0 / np.sqrt(1.0 + beta * (arg**2))
+            ap_w = compute_coil_aperture_sinc(f, v_disp, w_m, pole_type=c_pole)
             w_eff = weight * ap_w
             coil_sum += (w_eff * polarity) * np.exp(-1j * phase)
             p_incoh += w_eff**2
 
-        p_coh = np.abs(coil_sum) ** 2
-
-        if len(active) > 1:
-            delta_x_span = max(c.position_from_bridge_m for c in active) - min(
-                c.position_from_bridge_m for c in active
-            )
-            if delta_x_span > 0.002:
-                eps_quad = 0.18
-                p_coh_reg = p_coh + (eps_quad**2) * p_incoh
-                dc_incoh = sum(abs(c.weight) ** 2 for c in active)
-                dc_norm = math.sqrt(total_w**2 + (eps_quad**2) * dc_incoh) / total_w
-                f_mid = 1.4 * v0_arr[:, None] / delta_x_span
-                f_sigma = np.maximum(0.4 * v0_arr[:, None] / delta_x_span, 1.0)
-                gamma = 0.5 * (1.0 - np.tanh((f[None, :] - f_mid) / f_sigma))
-                m_blend = np.sqrt(gamma * p_coh_reg + (1.0 - gamma) * p_incoh) / dc_norm
-            else:
-                m_blend = np.abs(coil_sum)
-        else:
-            m_blend = np.abs(coil_sum)
+        m_blend = combine_coherent_incoherent_aperture(
+            coil_sum=coil_sum,
+            p_incoh=p_incoh,
+            active_coils=active,
+            v0_arr=v0_arr,
+            freqs=f,
+            total_w=total_w,
+        )
 
         acc += np.sum(w_arr[:, None] * m_blend, axis=0)
         total_pt_weight += float(np.sum(w_arr))
@@ -394,8 +447,7 @@ def numpy_pickup_macro_aperture(
     string_speeds: Sequence[float] | None = None,
     string_names: Sequence[str | int] | None = None,
 ) -> np.ndarray:
-    """
-    Computes the macro sensing aperture response (smooth spatial low-pass envelope
+    """Computes the macro sensing aperture response (smooth spatial low-pass envelope
     of the individual coil aperture) averaged across the continuous wave-speed continuum,
     without inter-coil phase cancellation nulls or unphysical sinc sidelobes.
     Used for safe, non-inverting deconvolution of multi-coil source pickups.
@@ -403,45 +455,21 @@ def numpy_pickup_macro_aperture(
     f = np.asarray(freqs, dtype=np.float64)
     w_in = coils[0].aperture_width_in if coils else 0.75
     w_m = w_in * 0.0254
-
-    if (
-        isinstance(scale_length_m, (list, tuple, np.ndarray))
-        and len(scale_length_m) > 0
-        and any(float(v) > 10.0 for v in scale_length_m)
-    ):
-        string_speeds = scale_length_m
-        scale_length_m = None
-
-    scale_range = resolve_scale_range(scale_length_m)
-    l_eff = (scale_range[0] + scale_range[1]) / 2.0
-
-    if string_speeds is not None and len(string_speeds) > 0 and len(string_speeds) != 24:
-        continuum = [
-            WaveSpeedContinuumPoint(
-                f0=max(v / (2.0 * l_eff), 15.0),
-                v0=float(v),
-                scale_m=l_eff,
-                register="lower" if i < len(string_speeds) // 2 else "upper",
-                weight=1.0 / len(string_speeds),
-            )
-            for i, v in enumerate(string_speeds)
-        ]
-    else:
-        continuum = generate_wave_speed_continuum(scale_range, num_points=24)
-
     c_pole = (coils[0].pole_type or "rod") if coils else "rod"
-    beta = 1.0 / 3.0 if c_pole == "blade" else 0.25
-    f0_arr = np.array([pt.f0 for pt in continuum], dtype=np.float64)
-    v0_arr = np.array([pt.v0 for pt in continuum], dtype=np.float64)
-    w_arr = np.array([pt.weight for pt in continuum], dtype=np.float64)
-    b_s = get_inharmonicity_for_f0(f0_arr)
-    f_disp_max = 3500.0
-    disp_factor = 1.0 + b_s[:, None] * ((f[None, :] / f0_arr[:, None]) ** 2) / (
-        1.0 + (f[None, :] / f_disp_max) ** 2
+
+    partitions = build_wave_speed_continuum_partitions(
+        scale_length_m=scale_length_m,
+        string_speeds=string_speeds,
+        string_names=string_names,
     )
-    v_disp = v0_arr[:, None] * np.sqrt(disp_factor)
-    arg = (math.pi * w_m * f[None, :]) / v_disp
-    ap_w = 1.0 / np.sqrt(1.0 + beta * (arg**2))
+    all_pts = [pt for pts in partitions.values() for pt in pts]
+    f0_arr = np.array([pt.f0 for pt in all_pts], dtype=np.float64)
+    v0_arr = np.array([pt.v0 for pt in all_pts], dtype=np.float64)
+    w_arr = np.array([pt.weight for pt in all_pts], dtype=np.float64)
+
+    v_disp = compute_string_dispersion_tensor(f, f0_arr, v0_arr)
+    ap_w = compute_coil_aperture_sinc(f, v_disp, w_m, pole_type=c_pole)
+
     total_w = float(np.sum(w_arr))
     return np.sum(w_arr[:, None] * ap_w, axis=0) / total_w if total_w > 0 else np.zeros_like(f)
 
