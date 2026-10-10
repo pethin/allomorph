@@ -45,6 +45,52 @@ VOICE_CONCISE_SLUGS: dict[str, str] = {
 }
 
 
+def format_tri_part_tag(dsp_gen: int, inst_ver: int, voice_ver: int) -> str:
+    """Formats a three-part version tag string e.g. 'v6.1.1'."""
+    return f"v{dsp_gen}.{inst_ver}.{voice_ver}"
+
+
+def sanitize_tone_name_token(token: str) -> str:
+    """Sanitizes filesystem path separators ('/' and '\\') with Unicode Division Slash ('\u2215')
+
+    to maintain a flat directory structure. Idempotent: sanitize(sanitize(x)) == sanitize(x).
+    """
+    return token.strip().replace("/", "\u2215").replace("\\", "\u2215")
+
+
+def compose_zero_scroll_model_name(
+    tone_name: str,
+    position_tag: str | None = None,
+    version_tag: str | None = None,
+    max_len: int | None = None,
+) -> str:
+    """Composes a zero-scroll pedalboard / Tone3000 model display name.
+
+    Format: `Tone Name [Position] v2.1.1` or `Tone Name v2.1.1`.
+    Enforces maximum character ceiling (default 34 chars for unversioned, 64 chars for versioned).
+    """
+    clean_tone = sanitize_tone_name_token(tone_name)
+    if position_tag and position_tag.strip():
+        clean_pos = sanitize_tone_name_token(position_tag)
+        name = f"{clean_tone} [{clean_pos}]"
+    else:
+        name = clean_tone
+
+    if version_tag:
+        clean_ver = sanitize_tone_name_token(version_tag)
+        if clean_ver:
+            name = f"{name} {clean_ver}"
+
+    effective_max = max_len if max_len is not None else (64 if version_tag else 34)
+
+    if len(name) > effective_max:
+        raise ValueError(
+            f"T3K pack filename '{name}' exceeds {effective_max} characters ({len(name)} chars). "
+            f"Tone name '{clean_tone}' or pickup position '{position_tag}' must be shortened."
+        )
+    return name
+
+
 def get_t3k_basename(
     tone_name: str,
     position_name: str | None = None,
@@ -64,29 +110,13 @@ def get_t3k_basename(
     Sanitizes filesystem path separators ('/' and '\\') with Unicode Division Slash ('\u2215')
     to maintain a flat directory structure.
     """
-    clean_tone = tone_name.strip()
-    is_character_tone = preserve_aperture
-    if position_name and position_name.strip() and not is_character_tone:
-        clean_pos = position_name.strip()
-        name = f"{clean_tone} [{clean_pos}]"
-    else:
-        name = clean_tone
-
-    if version_tag:
-        clean_ver = version_tag.strip()
-        if clean_ver:
-            name = f"{name} {clean_ver}"
-
-    name = name.replace("/", "\u2215").replace("\\", "\u2215")
-
-    effective_max = max_length if max_length is not None else (64 if version_tag else 34)
-
-    if len(name) > effective_max:
-        raise ValueError(
-            f"T3K pack filename '{name}' exceeds {effective_max} characters ({len(name)} chars). "
-            f"Tone name '{clean_tone}' or pickup position '{position_name}' must be shortened."
-        )
-    return name
+    pos = None if preserve_aperture else position_name
+    return compose_zero_scroll_model_name(
+        tone_name=tone_name,
+        position_tag=pos,
+        version_tag=version_tag,
+        max_len=max_length,
+    )
 
 
 def resolve_voices(voice_arg: str | Sequence[str] | None) -> list[str]:

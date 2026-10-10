@@ -5,6 +5,8 @@ Provides modular access to physical scales, strings, instruments, target voices,
 
 from allomorph.config.geometry import (
     _infer_pole_type,
+    assign_string_registers_to_coils,
+    compute_coil_offset_from_spacing,
     compute_effective_position,
     resolve_pickup_coils,
     resolve_voice_coils,
@@ -108,6 +110,8 @@ __all__ = [
     "VoiceRegistry",
     "VoicingConfig",
     "_infer_pole_type",
+    "assign_string_registers_to_coils",
+    "compute_coil_offset_from_spacing",
     "compute_effective_position",
     "get_instrument_string",
     "get_preamp",
