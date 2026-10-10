@@ -58,6 +58,7 @@ def test_forward_auto_normalize_fallback_target_dbfs(
         return float("nan")
 
     monkeypatch.setattr("allomorph.circuit.forward.compute_lufs", _mock_nan_lufs)
+    monkeypatch.setattr("allomorph.dsp.conditioning.compute_lufs", _mock_nan_lufs)
 
     sig = np.full(500, 0.05, dtype=np.float64)
     short_in = tmp_path / "tiny.wav"

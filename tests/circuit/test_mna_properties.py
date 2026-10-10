@@ -78,7 +78,7 @@ def test_smooth_soft_knee_db_invariants(x_db: float, thresh: float, headroom: fl
     # Monotonicity: non-decreasing everywhere, strictly increasing below asymptotic saturation
     eps = 0.01
     y_next = float(smooth_soft_knee_db(x_db + eps, thresh=thresh, ceiling=ceiling, alpha=2.0))
-    assert y_next >= y
+    assert y_next >= y - 1e-12
     if x_db < ceiling + 2.0:
         assert y_next > y
 

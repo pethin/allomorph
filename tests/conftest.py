@@ -85,8 +85,7 @@ def guard_no_audio_pollution() -> Generator[None]:
     )
 
 
-@pytest.fixture
-def generic_instrument_config() -> InstrumentConfig:
+def make_generic_instrument_config() -> InstrumentConfig:
     """Returns a synthetic, unbranded single-pickup instrument configuration for SUT tests."""
     from allomorph.config.schema import (
         CoilConfig,
@@ -257,7 +256,12 @@ def generic_instrument_config() -> InstrumentConfig:
 
 
 @pytest.fixture
-def generic_dual_pickup_instrument() -> InstrumentConfig:
+def generic_instrument_config() -> InstrumentConfig:
+    """Returns a synthetic, unbranded single-pickup instrument configuration for SUT tests."""
+    return make_generic_instrument_config()
+
+
+def make_generic_dual_pickup_instrument() -> InstrumentConfig:
     """Returns a synthetic, unbranded dual-pickup instrument configuration for multi-pickup SUT tests."""
     from allomorph.config.schema import (
         CoilConfig,
@@ -436,6 +440,12 @@ def generic_dual_pickup_instrument() -> InstrumentConfig:
             ),
         },
     )
+
+
+@pytest.fixture
+def generic_dual_pickup_instrument() -> InstrumentConfig:
+    """Returns a synthetic, unbranded dual-pickup instrument configuration for multi-pickup SUT tests."""
+    return make_generic_dual_pickup_instrument()
 
 
 @pytest.fixture

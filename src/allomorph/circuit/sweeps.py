@@ -5,21 +5,140 @@ Supports tone pot, volume pot, cable capacitance, tone capacitor, and active EQ 
 """
 
 from collections.abc import Mapping, Sequence
-from typing import Self
+from typing import Literal, Self
 
 import numpy as np
 import polars as pl
 from pydantic import BaseModel, ConfigDict, model_validator
 
+TaperType = Literal["audio_10", "audio_15", "linear", "reverse_audio", "mn_blend"]
+
 from allomorph.circuit.schema import CircuitMetricsRecord
 from allomorph.circuit.solver import solve_mna_harness
 from allomorph.config.schema import (
+    HarnessConfig,
     InstrumentConfig,
     PreampBandConfig,
     PreampConfig,
     VoicingConfig,
 )
 from allomorph.dsp import FREQS
+
+
+def compute_sweep_curve_metrics(
+    freqs: np.ndarray,
+    curve: np.ndarray,
+    param: str,
+    param_value: float,
+    label: str,
+) -> CircuitMetricsRecord:
+    """Extracts key analytical circuit metrics for a single frequency response curve:
+    - f_res_hz: Resonant peak frequency (Hz) within passband (400 Hz - 12 kHz).
+    - peak_db: Resonant peak magnitude (dB).
+    - insertion_loss_db: Low-frequency insertion loss (dB) evaluated near 100 Hz.
+    - peak_boost_db: Resonant peak boost above low-frequency insertion loss (dB).
+    - q_loaded: Loaded circuit quality factor Q = f_res / delta_f.
+    - bandwidth_hz: -3 dB bandwidth around resonant peak (Hz).
+    - cutoff_3db_hz: -3 dB cutoff frequency relative to low-frequency baseline (Hz).
+    - hf_slope_db_oct: High-frequency roll-off slope (dB/octave between 6 kHz and 12 kHz).
+    """
+    f = np.asarray(freqs, dtype=np.float64)
+    c = np.asarray(curve, dtype=np.float64)
+    idx_100 = int(np.argmin(np.abs(f - 100.0)))
+    idx_6k = int(np.argmin(np.abs(f - 6000.0)))
+    idx_12k = int(np.argmin(np.abs(f - 12000.0)))
+    octaves_6k_12k = np.log2(f[idx_12k] / f[idx_6k]) if f[idx_12k] > f[idx_6k] else 1.0
+
+    pb_mask = (f >= 400.0) & (f <= 12000.0)
+    pb_indices = np.where(pb_mask)[0]
+
+    loss_db = float(c[idx_100])
+
+    # Resonant peak search with continuous sub-bin quadratic interpolation
+    if len(pb_indices) > 0:
+        max_pb_idx = pb_indices[int(np.argmax(c[pb_indices]))]
+        if 0 < max_pb_idx < len(f) - 1:
+            y_m1 = float(c[max_pb_idx - 1])
+            y_0 = float(c[max_pb_idx])
+            y_p1 = float(c[max_pb_idx + 1])
+            curv = y_m1 - 2.0 * y_0 + y_p1
+            if curv < -1e-9:
+                delta = float(np.clip(0.5 * (y_m1 - y_p1) / curv, -0.5, 0.5))
+                df = float(f[max_pb_idx + 1] - f[max_pb_idx])
+                f_res = float(f[max_pb_idx] + delta * df)
+                peak_db = float(y_0 - 0.25 * (y_m1 - y_p1) * delta)
+            else:
+                f_res = float(f[max_pb_idx])
+                peak_db = y_0
+        else:
+            f_res = float(f[max_pb_idx])
+            peak_db = float(c[max_pb_idx])
+        peak_boost = peak_db - loss_db
+    else:
+        max_pb_idx = idx_100
+        f_res = float(f[idx_100])
+        peak_db = loss_db
+        peak_boost = 0.0
+
+    # -3 dB bandwidth around resonant peak
+    bw_hz = None
+    q_loaded = None
+    if peak_boost >= 0.5 and 0 < max_pb_idx < len(f) - 1:
+        target_3db = peak_db - 3.0
+
+        # Left crossing (below peak)
+        left_cross = None
+        for j in range(max_pb_idx - 1, -1, -1):
+            if c[j] <= target_3db:
+                denom = c[j + 1] - c[j]
+                frac = (target_3db - c[j]) / denom if abs(denom) > 1e-6 else 0.5
+                left_cross = f[j] + frac * (f[j + 1] - f[j])
+                break
+
+        # Right crossing (above peak)
+        right_cross = None
+        for j in range(max_pb_idx + 1, len(f)):
+            if c[j] <= target_3db:
+                denom = c[j - 1] - c[j]
+                frac = (target_3db - c[j]) / denom if abs(denom) > 1e-6 else 0.5
+                right_cross = f[j] + frac * (f[j - 1] - f[j])
+                break
+
+        if left_cross is not None and right_cross is not None and right_cross > left_cross:
+            bw_hz = float(right_cross - left_cross)
+            q_loaded = float(f_res / bw_hz) if bw_hz > 0 else None
+        elif peak_boost >= 0.2:
+            mp = 10.0 ** (peak_boost / 20.0)
+            if mp > 1.0:
+                q_loaded = float(np.sqrt((mp**2 + mp * np.sqrt(max(0.0, mp**2 - 1.0))) / 2.0))
+                bw_hz = float(f_res / q_loaded) if q_loaded > 0 else None
+
+    # -3 dB cutoff frequency relative to low-frequency baseline (loss_db - 3.0)
+    target_cutoff = loss_db - 3.0
+    cutoff_3db_hz = None
+    for j in range(idx_100, len(f) - 1):
+        if c[j] >= target_cutoff and c[j + 1] < target_cutoff:
+            denom = c[j] - c[j + 1]
+            frac = (c[j] - target_cutoff) / denom if abs(denom) > 1e-6 else 0.5
+            cutoff_3db_hz = float(f[j] + frac * (f[j + 1] - f[j]))
+            break
+
+    # High-frequency slope (dB/octave) between 6 kHz and 12 kHz
+    hf_slope = float((c[idx_12k] - c[idx_6k]) / octaves_6k_12k)
+
+    return CircuitMetricsRecord(
+        param=param,
+        param_value=float(param_value),
+        label=label,
+        f_res_hz=round(f_res, 1) if peak_boost >= 0.5 else None,
+        peak_db=round(peak_db, 2),
+        insertion_loss_db=round(loss_db, 2),
+        peak_boost_db=round(peak_boost, 2),
+        q_loaded=round(q_loaded, 2) if q_loaded is not None else None,
+        bandwidth_hz=round(bw_hz, 1) if bw_hz is not None else None,
+        cutoff_3db_hz=round(cutoff_3db_hz, 1) if cutoff_3db_hz is not None else None,
+        hf_slope_db_oct=round(hf_slope, 2),
+    )
 
 
 class ParametricSweepResult(BaseModel):
@@ -61,8 +180,7 @@ class ParametricSweepResult(BaseModel):
         return [10.0 ** (np.asarray(c, dtype=np.float64) / 20.0) for c in self.curves]
 
     def to_dataframe(self, include_voice_id: bool = False) -> pl.DataFrame:
-        """
-        Converts the sweep results to a Polars DataFrame with columns:
+        """Converts the sweep results to a Polars DataFrame with columns:
         ['frequency', 'magnitude_db', 'param', 'param_value', 'label']
         and optionally 'voice_id'.
         """
@@ -86,123 +204,18 @@ class ParametricSweepResult(BaseModel):
         return pl.DataFrame(data)
 
     def metrics_records(self) -> list[CircuitMetricsRecord]:
-        """
-        Extracts key analytical circuit metrics for each swept curve as CircuitMetricsRecord models:
-          - f_res_hz: Resonant peak frequency (Hz) within passband (400 Hz - 12 kHz).
-          - peak_db: Resonant peak magnitude (dB).
-          - insertion_loss_db: Low-frequency insertion loss (dB) evaluated near 100 Hz.
-          - peak_boost_db: Resonant peak boost above low-frequency insertion loss (dB).
-          - q_loaded: Loaded circuit quality factor Q = f_res / delta_f.
-          - bandwidth_hz: -3 dB bandwidth around resonant peak (Hz).
-          - cutoff_3db_hz: -3 dB cutoff frequency relative to low-frequency baseline (Hz).
-          - hf_slope_db_oct: High-frequency roll-off slope (dB/octave between 6 kHz and 12 kHz).
-        """
+        """Extracts key analytical circuit metrics for each swept curve as CircuitMetricsRecord models."""
         f = np.asarray(self.freqs, dtype=np.float64)
-        idx_100 = int(np.argmin(np.abs(f - 100.0)))
-        idx_6k = int(np.argmin(np.abs(f - 6000.0)))
-        idx_12k = int(np.argmin(np.abs(f - 12000.0)))
-        octaves_6k_12k = np.log2(f[idx_12k] / f[idx_6k]) if f[idx_12k] > f[idx_6k] else 1.0
-
-        pb_mask = (f >= 400.0) & (f <= 12000.0)
-        pb_indices = np.where(pb_mask)[0]
-
-        records: list[CircuitMetricsRecord] = []
-        for i, (val, lbl, c) in enumerate(zip(self.values, self.labels, self.curves)):
-            curve = np.asarray(c, dtype=np.float64)
-            loss_db = float(curve[idx_100])
-
-            # Resonant peak search with continuous sub-bin quadratic interpolation
-            if len(pb_indices) > 0:
-                max_pb_idx = pb_indices[int(np.argmax(curve[pb_indices]))]
-                if 0 < max_pb_idx < len(f) - 1:
-                    y_m1 = float(curve[max_pb_idx - 1])
-                    y_0 = float(curve[max_pb_idx])
-                    y_p1 = float(curve[max_pb_idx + 1])
-                    curv = y_m1 - 2.0 * y_0 + y_p1
-                    if curv < -1e-9:
-                        delta = float(np.clip(0.5 * (y_m1 - y_p1) / curv, -0.5, 0.5))
-                        df = float(f[max_pb_idx + 1] - f[max_pb_idx])
-                        f_res = float(f[max_pb_idx] + delta * df)
-                        peak_db = float(y_0 - 0.25 * (y_m1 - y_p1) * delta)
-                    else:
-                        f_res = float(f[max_pb_idx])
-                        peak_db = y_0
-                else:
-                    f_res = float(f[max_pb_idx])
-                    peak_db = float(curve[max_pb_idx])
-                peak_boost = peak_db - loss_db
-            else:
-                max_pb_idx = idx_100
-                f_res = float(f[idx_100])
-                peak_db = loss_db
-                peak_boost = 0.0
-
-            # -3 dB bandwidth around resonant peak
-            bw_hz = None
-            q_loaded = None
-            if peak_boost >= 0.5 and 0 < max_pb_idx < len(f) - 1:
-                target_3db = peak_db - 3.0
-
-                # Left crossing (below peak)
-                left_cross = None
-                for j in range(max_pb_idx - 1, -1, -1):
-                    if curve[j] <= target_3db:
-                        denom = curve[j + 1] - curve[j]
-                        frac = (target_3db - curve[j]) / denom if abs(denom) > 1e-6 else 0.5
-                        left_cross = f[j] + frac * (f[j + 1] - f[j])
-                        break
-
-                # Right crossing (above peak)
-                right_cross = None
-                for j in range(max_pb_idx + 1, len(f)):
-                    if curve[j] <= target_3db:
-                        denom = curve[j - 1] - curve[j]
-                        frac = (target_3db - curve[j]) / denom if abs(denom) > 1e-6 else 0.5
-                        right_cross = f[j] + frac * (f[j - 1] - f[j])
-                        break
-
-                if left_cross is not None and right_cross is not None and right_cross > left_cross:
-                    bw_hz = float(right_cross - left_cross)
-                    q_loaded = float(f_res / bw_hz) if bw_hz > 0 else None
-                elif peak_boost >= 0.2:
-                    # Analytical 2nd-order lowpass loaded Q from peaking factor Mp = 10^(peak_boost/20)
-                    mp = 10.0 ** (peak_boost / 20.0)
-                    if mp > 1.0:
-                        q_loaded = float(
-                            np.sqrt((mp**2 + mp * np.sqrt(max(0.0, mp**2 - 1.0))) / 2.0)
-                        )
-                        bw_hz = float(f_res / q_loaded) if q_loaded > 0 else None
-
-            # -3 dB cutoff frequency relative to low-frequency baseline (loss_db - 3.0)
-            target_cutoff = loss_db - 3.0
-            cutoff_3db_hz = None
-            for j in range(idx_100, len(f) - 1):
-                if curve[j] >= target_cutoff and curve[j + 1] < target_cutoff:
-                    denom = curve[j] - curve[j + 1]
-                    frac = (curve[j] - target_cutoff) / denom if abs(denom) > 1e-6 else 0.5
-                    cutoff_3db_hz = float(f[j] + frac * (f[j + 1] - f[j]))
-                    break
-
-            # High-frequency slope (dB/octave) between 6 kHz and 12 kHz
-            hf_slope = float((curve[idx_12k] - curve[idx_6k]) / octaves_6k_12k)
-
-            records.append(
-                CircuitMetricsRecord(
-                    param=self.param,
-                    param_value=float(val),
-                    label=lbl,
-                    f_res_hz=round(f_res, 1) if peak_boost >= 0.5 else None,
-                    peak_db=round(peak_db, 2),
-                    insertion_loss_db=round(loss_db, 2),
-                    peak_boost_db=round(peak_boost, 2),
-                    q_loaded=round(q_loaded, 2) if q_loaded is not None else None,
-                    bandwidth_hz=round(bw_hz, 1) if bw_hz is not None else None,
-                    cutoff_3db_hz=round(cutoff_3db_hz, 1) if cutoff_3db_hz is not None else None,
-                    hf_slope_db_oct=round(hf_slope, 2),
-                )
+        return [
+            compute_sweep_curve_metrics(
+                f,
+                np.asarray(c, dtype=np.float64),
+                self.param,
+                float(val),
+                lbl,
             )
-
-        return records
+            for val, lbl, c in zip(self.values, self.labels, self.curves)
+        ]
 
     def metrics(self) -> pl.DataFrame:
         """Extracts key analytical circuit metrics for each swept curve as a Polars DataFrame."""
@@ -310,6 +323,128 @@ def _generate_default_labels(param: str, values: list[float]) -> list[str]:
         return [f"{param}={v}" for v in values]
 
 
+def apply_sweep_parameter_override(
+    harness: HarnessConfig,
+    voicing: VoicingConfig,
+    param: str,
+    value: float,
+    actual_taper: TaperType = "audio_10",
+    preamps: Mapping[str, PreampConfig] | None = None,
+) -> tuple[HarnessConfig, VoicingConfig]:
+    """Applies a single parameter override to deep copies of harness and voicing configs."""
+    v_iter = voicing.model_copy(deep=True)
+    h_iter = harness.model_copy(deep=True)
+    p = param.lower().strip()
+    v = float(value)
+
+    if p in ("tone", "tone_pos", "tone_wiper", "tone_pot"):
+        tone_ctrl_ids = [
+            cid for cid, c in harness.controls.items() if "tone" in cid.lower() or c.cap is not None
+        ]
+        if not tone_ctrl_ids:
+            tone_ctrl_ids = [cid for cid in harness.controls if cid == "tone"]
+        if not tone_ctrl_ids and param in harness.controls:
+            tone_ctrl_ids = [param]
+        for cid in tone_ctrl_ids:
+            v_iter.controls[cid] = v
+            h_iter.controls[cid].taper = actual_taper
+
+    elif p in ("vol", "vol_pos", "volume", "vol_wiper", "volume_pot"):
+        vol_ctrl_ids = [
+            cid for cid, c in harness.controls.items() if "vol" in cid.lower() or cid == "volume"
+        ]
+        if not vol_ctrl_ids and param in harness.controls:
+            vol_ctrl_ids = [param]
+        for cid in vol_ctrl_ids:
+            v_iter.controls[cid] = v
+            h_iter.controls[cid].taper = actual_taper
+
+    elif p in ("blend", "blend_pos", "pan", "balance"):
+        blend_ctrl_ids = [
+            cid
+            for cid, c in harness.controls.items()
+            if c.type == "blend" or "blend" in cid.lower()
+        ]
+        if blend_ctrl_ids:
+            for cid in blend_ctrl_ids:
+                v_iter.controls[cid] = v
+        elif "neck_vol" in harness.controls and "bridge_vol" in harness.controls:
+            if v <= 0.5:
+                v_iter.controls["neck_vol"] = 1.0
+                v_iter.controls["bridge_vol"] = 2.0 * v
+            else:
+                v_iter.controls["neck_vol"] = 2.0 * (1.0 - v)
+                v_iter.controls["bridge_vol"] = 1.0
+        elif "blend" in harness.controls:
+            v_iter.controls["blend"] = v
+
+    elif p in ("cable", "cable_pf", "ccable", "cable_capacitance"):
+        c_pf = v if v > 1e-6 else v * 1e12
+        v_iter.components["cable_pf"] = c_pf
+        h_iter.cable_pf = c_pf
+
+    elif p in ("tone_cap", "ctone", "cap", "tone_capacitance", "tone_cap_nf"):
+        c_val = v * 1e-9 if v > 1e-6 else v
+        for cid, ctrl in harness.controls.items():
+            if "tone" in cid.lower() or ctrl.cap is not None:
+                v_iter.components[f"controls.{cid}.cap"] = c_val
+        v_iter.components["tone_cap"] = c_val
+
+    elif p in ("bass_boost", "preamp_bass", "bass"):
+        h_iter.type = "active_preamp"
+        bands: list[PreampBandConfig] = (
+            [b.model_copy() for b in v_iter.preamp_bands] if v_iter.preamp_bands else []
+        )
+        if not bands and harness.preamp and preamps and harness.preamp in preamps:
+            bands = [b.model_copy() for b in preamps[harness.preamp].bands]
+        shelf_idx = next((i for i, b in enumerate(bands) if b.type == "low_shelf"), None)
+        if shelf_idx is None:
+            bands.append(PreampBandConfig(type="low_shelf", freq_hz=40.0, gain_db=0.0))
+            shelf_idx = len(bands) - 1
+        bands[shelf_idx].gain_db = v
+        v_iter.preamp_bands = bands
+
+    elif p in ("treble_boost", "preamp_treble", "treble"):
+        h_iter.type = "active_preamp"
+        bands = [b.model_copy() for b in v_iter.preamp_bands] if v_iter.preamp_bands else []
+        if not bands and harness.preamp and preamps and harness.preamp in preamps:
+            bands = [b.model_copy() for b in preamps[harness.preamp].bands]
+        shelf_idx = next((i for i, b in enumerate(bands) if b.type == "high_shelf"), None)
+        if shelf_idx is None:
+            bands.append(PreampBandConfig(type="high_shelf", freq_hz=4000.0, gain_db=0.0))
+            shelf_idx = len(bands) - 1
+        bands[shelf_idx].gain_db = v
+        v_iter.preamp_bands = bands
+
+    elif param in harness.controls:
+        v_iter.controls[param] = v
+
+    elif param in v_iter.components or hasattr(v_iter, param):
+        v_iter.components[param] = v
+
+    else:
+        raise ValueError(f"Unsupported sweep parameter: '{param}'")
+
+    return h_iter, v_iter
+
+
+def extract_channel_response(
+    curves_dict: Mapping[str, np.ndarray],
+    pickup_channel: int | str = 0,
+) -> np.ndarray:
+    """Extracts the complex frequency response for a designated pickup channel or sum."""
+    if (
+        pickup_channel in ("sum", -1)
+        or str(pickup_channel).lower() == "sum"
+        or len(curves_dict) <= 1
+    ):
+        return np.sum(list(curves_dict.values()), axis=0)
+
+    ch = int(pickup_channel) if isinstance(pickup_channel, int) else 0
+    vals = list(curves_dict.values())
+    return vals[min(ch, len(vals) - 1)]
+
+
 def compute_parametric_sweep(
     circuit_or_voice: (InstrumentConfig | tuple[InstrumentConfig, VoicingConfig]),
     param: str = "tone",
@@ -325,15 +460,7 @@ def compute_parametric_sweep(
 
     Parameters:
         circuit_or_voice: InstrumentConfig, or (InstrumentConfig, VoicingConfig) tuple.
-        param: Circuit parameter to sweep:
-            - 'tone' / 'tone_pos': Tone pot wiper position (0.0 to 1.0).
-            - 'vol' / 'vol_pos': Volume pot wiper position (0.0 to 1.0).
-            - 'blend' / 'blend_pos': Pickup blend balance (0.0 Neck to 1.0 Bridge, 0.5 center).
-            - 'cable' / 'cable_pf': Cable capacitance in pF (or Farads if < 1e-6).
-            - 'tone_cap' / 'Ctone': Tone capacitance in nF (or Farads if < 1e-6).
-            - 'bass_boost' / 'preamp_bass': Active preamp bass shelf gain in dB.
-            - 'treble_boost' / 'preamp_treble': Active preamp treble shelf gain in dB.
-            - Any specific control name on the instrument's harness (e.g. 'neck_vol', 'bridge_vol').
+        param: Circuit parameter to sweep.
         values: Sequence of numerical parameter values. If None, uses smart defaults.
         freqs: Frequency vector in Hz (defaults to standard 4096-tap FREQS).
         labels: Optional custom string labels for each value.
@@ -373,111 +500,31 @@ def compute_parametric_sweep(
         raise ValueError(f"Length of labels ({len(labels)}) must match values ({len(values)})")
 
     eff_taper = pot_taper.lower().strip()
+    actual_taper: TaperType
     if eff_taper in ("audio", "audio10", "audio_10"):
         actual_taper = "audio_10"
     elif eff_taper in ("audio15", "audio_15", "bourns"):
         actual_taper = "audio_15"
-    elif eff_taper in ("linear", "reverse_audio", "mn_blend"):
-        actual_taper = eff_taper
+    elif eff_taper == "linear":
+        actual_taper = "linear"
+    elif eff_taper == "reverse_audio":
+        actual_taper = "reverse_audio"
+    elif eff_taper == "mn_blend":
+        actual_taper = "mn_blend"
     else:
         actual_taper = "audio_10"
 
-    p = param.lower().strip()
     curves: list[np.ndarray] = []
 
     for v in values:
-        v_iter = voicing.model_copy(deep=True)
-        h_iter = h_base.model_copy(deep=True)
-
-        if p in ("tone", "tone_pos", "tone_wiper", "tone_pot"):
-            tone_ctrl_ids = [
-                cid
-                for cid, c in h_base.controls.items()
-                if "tone" in cid.lower() or c.cap is not None
-            ]
-            if not tone_ctrl_ids:
-                tone_ctrl_ids = [cid for cid in h_base.controls if cid == "tone"]
-            if not tone_ctrl_ids and param in h_base.controls:
-                tone_ctrl_ids = [param]
-            for cid in tone_ctrl_ids:
-                v_iter.controls[cid] = float(v)
-                h_iter.controls[cid].taper = actual_taper
-
-        elif p in ("vol", "vol_pos", "volume", "vol_wiper", "volume_pot"):
-            vol_ctrl_ids = [
-                cid for cid, c in h_base.controls.items() if "vol" in cid.lower() or cid == "volume"
-            ]
-            if not vol_ctrl_ids and param in h_base.controls:
-                vol_ctrl_ids = [param]
-            for cid in vol_ctrl_ids:
-                v_iter.controls[cid] = float(v)
-                h_iter.controls[cid].taper = actual_taper
-
-        elif p in ("blend", "blend_pos", "pan", "balance"):
-            blend_ctrl_ids = [
-                cid
-                for cid, c in h_base.controls.items()
-                if c.type == "blend" or "blend" in cid.lower()
-            ]
-            if blend_ctrl_ids:
-                for cid in blend_ctrl_ids:
-                    v_iter.controls[cid] = float(v)
-            elif "neck_vol" in h_base.controls and "bridge_vol" in h_base.controls:
-                if v <= 0.5:
-                    v_iter.controls["neck_vol"] = 1.0
-                    v_iter.controls["bridge_vol"] = 2.0 * v
-                else:
-                    v_iter.controls["neck_vol"] = 2.0 * (1.0 - v)
-                    v_iter.controls["bridge_vol"] = 1.0
-            elif "blend" in h_base.controls:
-                v_iter.controls["blend"] = float(v)
-
-        elif p in ("cable", "cable_pf", "ccable", "cable_capacitance"):
-            c_pf = v if v > 1e-6 else v * 1e12
-            v_iter.components["cable_pf"] = c_pf
-            h_iter.cable_pf = c_pf
-
-        elif p in ("tone_cap", "ctone", "cap", "tone_capacitance", "tone_cap_nf"):
-            c_val = v * 1e-9 if v > 1e-6 else v
-            for cid, ctrl in h_base.controls.items():
-                if "tone" in cid.lower() or ctrl.cap is not None:
-                    v_iter.components[f"controls.{cid}.cap"] = c_val
-            v_iter.components["tone_cap"] = c_val
-
-        elif p in ("bass_boost", "preamp_bass", "bass"):
-            h_iter.type = "active_preamp"
-            bands: list[PreampBandConfig] = (
-                [b.model_copy() for b in v_iter.preamp_bands] if v_iter.preamp_bands else []
-            )
-            if not bands and h_base.preamp and preamps and h_base.preamp in preamps:
-                bands = [b.model_copy() for b in preamps[h_base.preamp].bands]
-            shelf_idx = next((i for i, b in enumerate(bands) if b.type == "low_shelf"), None)
-            if shelf_idx is None:
-                bands.append(PreampBandConfig(type="low_shelf", freq_hz=40.0, gain_db=0.0))
-                shelf_idx = len(bands) - 1
-            bands[shelf_idx].gain_db = float(v)
-            v_iter.preamp_bands = bands
-
-        elif p in ("treble_boost", "preamp_treble", "treble"):
-            h_iter.type = "active_preamp"
-            bands = [b.model_copy() for b in v_iter.preamp_bands] if v_iter.preamp_bands else []
-            if not bands and h_base.preamp and preamps and h_base.preamp in preamps:
-                bands = [b.model_copy() for b in preamps[h_base.preamp].bands]
-            shelf_idx = next((i for i, b in enumerate(bands) if b.type == "high_shelf"), None)
-            if shelf_idx is None:
-                bands.append(PreampBandConfig(type="high_shelf", freq_hz=4000.0, gain_db=0.0))
-                shelf_idx = len(bands) - 1
-            bands[shelf_idx].gain_db = float(v)
-            v_iter.preamp_bands = bands
-
-        elif param in h_base.controls:
-            v_iter.controls[param] = float(v)
-
-        elif param in v_iter.components or hasattr(v_iter, param):
-            v_iter.components[param] = float(v)
-
-        else:
-            raise ValueError(f"Unsupported sweep parameter: '{param}'")
+        h_iter, v_iter = apply_sweep_parameter_override(
+            harness=h_base,
+            voicing=voicing,
+            param=param,
+            value=v,
+            actual_taper=actual_taper,
+            preamps=preamps,
+        )
 
         curves_dict = solve_mna_harness(
             inst,
@@ -488,17 +535,7 @@ def compute_parametric_sweep(
             preamps=preamps,
         )
 
-        if (
-            pickup_channel in ("sum", -1)
-            or str(pickup_channel).lower() == "sum"
-            or len(curves_dict) <= 1
-        ):
-            total_tr = np.sum(list(curves_dict.values()), axis=0)
-        else:
-            ch = int(pickup_channel) if isinstance(pickup_channel, int) else 0
-            vals = list(curves_dict.values())
-            total_tr = vals[min(ch, len(vals) - 1)]
-
+        total_tr = extract_channel_response(curves_dict, pickup_channel=pickup_channel)
         mag_db = 20.0 * np.log10(np.maximum(np.abs(total_tr), 1e-6))
         curves.append(mag_db)
 

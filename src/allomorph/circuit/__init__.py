@@ -16,6 +16,9 @@ from allomorph.circuit.forward import (
     AUDIO_DIR,
     CALIBRATION_PEAK_CEILING,
     simulate_instrument_voicing,
+    simulate_pickup_transducer_branch,
+    simulate_voicing_dsp,
+    synthesize_multi_pickup_spatial_blend,
 )
 from allomorph.circuit.parser import (
     MAGNET_PROPERTIES,
@@ -46,7 +49,10 @@ from allomorph.circuit.solver import (
 )
 from allomorph.circuit.sweeps import (
     ParametricSweepResult,
+    apply_sweep_parameter_override,
     compute_parametric_sweep,
+    compute_sweep_curve_metrics,
+    extract_channel_response,
 )
 from allomorph.dsp import (
     DEFAULT_INPUT_PATH,
@@ -74,16 +80,22 @@ __all__ = [
     "apply_dahl_hysteresis",
     "apply_elliptical_orbit_projection",
     "apply_oversampled_saturation",
+    "apply_sweep_parameter_override",
     "audit_audio_file",
     "audit_wet_audio_catalog",
     "compute_active_preamp_eq",
     "compute_core_impedance",
     "compute_parametric_sweep",
+    "compute_sweep_curve_metrics",
     "ensure_input_audio_wav",
     "eval_pot_taper",
+    "extract_channel_response",
     "find_default_input_audio",
     "parse_spice_val",
     "simulate_instrument_voicing",
+    "simulate_pickup_transducer_branch",
+    "simulate_voicing_dsp",
     "smooth_soft_knee_db",
     "solve_mna_harness",
+    "synthesize_multi_pickup_spatial_blend",
 ]
