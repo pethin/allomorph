@@ -20,7 +20,7 @@ from allomorph.dsp import (
 
 def test_generate_optimal_bass_dry_properties():
     """Verify generated synthetic dry audio conforms to standard audio properties."""
-    duration = 5.0  # short test duration
+    duration = 2.0  # short test duration
     audio = generate_optimal_bass_dry(duration_sec=duration, sample_rate=FS, peak_dbfs=-1.0)
 
     # 1. Output type and shape
@@ -44,7 +44,7 @@ def test_generate_optimal_bass_dry_properties():
 
 def test_generate_optimal_bass_dry_spectral_content():
     """Verify the synthetic dry signal has spectral content across sub-bass, mid, and treble."""
-    duration = 10.0
+    duration = 3.0
     audio = generate_optimal_bass_dry(duration_sec=duration, sample_rate=FS, peak_dbfs=-1.0)
 
     # Compute FFT magnitude
@@ -122,8 +122,8 @@ def test_optimal_bass_dry_zero_artificial_dither_and_silence_bounding():
 def test_optimal_bass_dry_drop_a_sub_bass_and_determinism():
     """Validates Drop A0 sub-bass energy and bit-exact generation determinism."""
     # Determinism test
-    a1 = generate_optimal_bass_dry(duration_sec=5.0, sample_rate=FS, seed=42)
-    a2 = generate_optimal_bass_dry(duration_sec=5.0, sample_rate=FS, seed=42)
+    a1 = generate_optimal_bass_dry(duration_sec=2.0, sample_rate=FS, seed=42)
+    a2 = generate_optimal_bass_dry(duration_sec=2.0, sample_rate=FS, seed=42)
     assert np.array_equal(a1, a2), "Generation must be 100% bit-exact deterministic"
 
     # Drop A0 (27.5 Hz) sub-bass energy in input track

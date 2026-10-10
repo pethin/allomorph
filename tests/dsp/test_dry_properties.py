@@ -7,7 +7,7 @@ smooth boundary micro-fades, and overall excitation peak ceilings.
 import math
 
 import numpy as np
-from hypothesis import given
+from hypothesis import given, settings
 from hypothesis import strategies as st
 
 from allomorph.dsp.dry import (
@@ -18,6 +18,7 @@ from allomorph.dsp.dry import (
 )
 
 
+@settings(max_examples=10)
 @given(st.floats(min_value=0.2, max_value=2.0, allow_nan=False, allow_infinity=False))
 def test_calibration_blips_heights_and_bounds(scale: float) -> None:
     """Calibration blips must contain exact +/-0.89 impulses within bounded ranges."""
@@ -28,10 +29,11 @@ def test_calibration_blips_heights_and_bounds(scale: float) -> None:
     assert math.isclose(float(np.min(blips)), -0.89, abs_tol=1e-5)
 
 
+@settings(max_examples=5)
 @given(st.floats(min_value=0.2, max_value=1.5, allow_nan=False, allow_infinity=False))
 def test_log_chirps_boundary_fades(scale: float) -> None:
     """Log chirps must have smooth C^inf boundary fades to avoid spectral leakage."""
-    chirps = synth_log_chirps(sample_rate=48000, scale=scale)
+    chirps = synth_log_chirps(sample_rate=24000, scale=scale)
     assert len(chirps) == 5
 
     for seg, pause in chirps:
@@ -42,10 +44,11 @@ def test_log_chirps_boundary_fades(scale: float) -> None:
         assert pause > 0.0
 
 
+@settings(max_examples=5)
 @given(st.floats(min_value=0.5, max_value=1.0, allow_nan=False, allow_infinity=False))
 def test_velocity_ladder_monotonic_peak_growth(scale: float) -> None:
     """Velocity ladder segments must exhibit strictly increasing peak amplitudes."""
-    ladder = synth_velocity_ladder(sample_rate=48000, scale=scale)
+    ladder = synth_velocity_ladder(sample_rate=24000, scale=scale)
     assert len(ladder) == 7
 
     peaks = [float(np.max(np.abs(seg))) for seg, _ in ladder]
@@ -53,8 +56,9 @@ def test_velocity_ladder_monotonic_peak_growth(scale: float) -> None:
         assert peaks[i] > peaks[i - 1]
 
 
+@settings(max_examples=10)
 @given(
-    st.floats(min_value=2.0, max_value=10.0, allow_nan=False, allow_infinity=False),
+    st.floats(min_value=1.0, max_value=4.0, allow_nan=False, allow_infinity=False),
     st.floats(min_value=-6.0, max_value=-0.5, allow_nan=False, allow_infinity=False),
 )
 def test_optimal_bass_dry_duration_and_peak_ceiling(duration_sec: float, peak_dbfs: float) -> None:

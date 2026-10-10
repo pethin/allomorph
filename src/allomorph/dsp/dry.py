@@ -266,10 +266,11 @@ def generate_optimal_bass_dry(
     lead_silence = min(int(0.3 * sample_rate), int(0.05 * total_samples))
     trail_silence = min(int(0.3 * sample_rate), int(0.05 * total_samples))
     cur = lead_silence
+    limit = total_samples - trail_silence
 
     # 1. Calibration blips
     blips = synth_calibration_blips(sample_rate=sample_rate, scale=scale)
-    n_blips = min(len(blips), total_samples - trail_silence - cur)
+    n_blips = min(len(blips), limit - cur)
     if n_blips > 0:
         audio[cur : cur + n_blips] = blips[:n_blips]
         cur += n_blips + max(100, int(0.3 * sample_rate * scale))
@@ -279,7 +280,6 @@ def generate_optimal_bass_dry(
         if len(seg) == 0:
             return
         end_idx = cur + len(seg)
-        limit = total_samples - trail_silence
         if end_idx >= limit:
             avail = max(0, limit - cur)
             if avail > 0:
@@ -291,78 +291,88 @@ def generate_optimal_bass_dry(
         cur = min(end_idx + p_samples, limit)
 
     # 2. Log sweeps
-    for seg, pause in synth_log_chirps(sample_rate=sample_rate, scale=scale):
-        if cur >= total_samples - trail_silence:
-            break
-        append_segment(seg, pause)
+    if cur < limit:
+        for seg, pause in synth_log_chirps(sample_rate=sample_rate, scale=scale):
+            if cur >= limit:
+                break
+            append_segment(seg, pause)
 
     # 3. Velocity ladder
-    for seg, pause in synth_velocity_ladder(sample_rate=sample_rate, scale=scale):
-        if cur >= total_samples - trail_silence:
-            break
-        append_segment(seg, pause)
+    if cur < limit:
+        for seg, pause in synth_velocity_ladder(sample_rate=sample_rate, scale=scale):
+            if cur >= limit:
+                break
+            append_segment(seg, pause)
 
     # 4. Long ring-outs
-    for seg, pause in synth_long_ringouts(sample_rate=sample_rate, scale=scale):
-        if cur >= total_samples - trail_silence:
-            break
-        append_segment(seg, pause)
+    if cur < limit:
+        for seg, pause in synth_long_ringouts(sample_rate=sample_rate, scale=scale):
+            if cur >= limit:
+                break
+            append_segment(seg, pause)
 
     # 5. Modal plucks
-    for seg, pause in synth_modal_plucks(sample_rate=sample_rate, scale=scale):
-        if cur >= total_samples - trail_silence:
-            break
-        append_segment(seg, pause)
+    if cur < limit:
+        for seg, pause in synth_modal_plucks(sample_rate=sample_rate, scale=scale):
+            if cur >= limit:
+                break
+            append_segment(seg, pause)
 
     # 6. Articulations
-    for seg, pause in synth_articulation_bursts(sample_rate=sample_rate, scale=scale):
-        if cur >= total_samples - trail_silence:
-            break
-        append_segment(seg, pause)
+    if cur < limit:
+        for seg, pause in synth_articulation_bursts(sample_rate=sample_rate, scale=scale):
+            if cur >= limit:
+                break
+            append_segment(seg, pause)
 
     # 7. Polyphony and multitone
-    m_rem = max(0, total_samples - trail_silence - cur)
-    for seg, pause in synth_polyphony_and_probes(
-        sample_rate=sample_rate, scale=scale, max_multitone_samples=m_rem
-    ):
-        if cur >= total_samples - trail_silence:
-            break
-        append_segment(seg, pause)
+    m_rem = max(0, limit - cur)
+    if cur < limit and m_rem > 0:
+        for seg, pause in synth_polyphony_and_probes(
+            sample_rate=sample_rate, scale=scale, max_multitone_samples=m_rem
+        ):
+            if cur >= limit:
+                break
+            append_segment(seg, pause)
 
     # 8. Glissandi slides
-    for seg, pause in synth_glissandi_slides(sample_rate=sample_rate, scale=scale):
-        if cur >= total_samples - trail_silence:
-            break
-        append_segment(seg, pause)
+    if cur < limit:
+        for seg, pause in synth_glissandi_slides(sample_rate=sample_rate, scale=scale):
+            if cur >= limit:
+                break
+            append_segment(seg, pause)
 
     # 9. Extended ring-outs and cascades
-    for f_deep in [30.87, 27.50]:
-        if cur >= total_samples - trail_silence:
-            break
-        r_deep = _synth_long_ringout(f_deep, 0.85, max(1.5, 6.0 * scale), sample_rate)
-        append_segment(r_deep, 0.5)
+    if cur < limit:
+        for f_deep in [30.87, 27.50]:
+            if cur >= limit:
+                break
+            r_deep = _synth_long_ringout(f_deep, 0.85, max(1.5, 6.0 * scale), sample_rate)
+            append_segment(r_deep, 0.5)
 
-    for f_trem in [41.20, 55.00]:
-        if cur >= total_samples - trail_silence:
-            break
-        trem = _synth_groove_burst(
-            f_trem, 0.80, bpm=140.0, count=12, sample_rate=sample_rate, technique="pick"
-        )
-        append_segment(trem, 0.4)
+    if cur < limit:
+        for f_trem in [41.20, 55.00]:
+            if cur >= limit:
+                break
+            trem = _synth_groove_burst(
+                f_trem, 0.80, bpm=140.0, count=12, sample_rate=sample_rate, technique="pick"
+            )
+            append_segment(trem, 0.4)
 
-    slap_cascades = [
-        (41.20, 82.41),
-        (55.00, 110.00),
-        (73.42, 146.83),
-        (98.00, 196.00),
-    ]
-    for f_s, f_p in slap_cascades:
-        if cur >= total_samples - trail_silence:
-            break
-        sp_pair = _synth_slap_pop_pair(
-            f_s, f_p, 0.88, gap_ms=65.0, dur=max(0.4, 1.4 * scale), sample_rate=sample_rate
-        )
-        append_segment(sp_pair, 0.4)
+    if cur < limit:
+        slap_cascades = [
+            (41.20, 82.41),
+            (55.00, 110.00),
+            (73.42, 146.83),
+            (98.00, 196.00),
+        ]
+        for f_s, f_p in slap_cascades:
+            if cur >= limit:
+                break
+            sp_pair = _synth_slap_pop_pair(
+                f_s, f_p, 0.88, gap_ms=65.0, dur=max(0.4, 1.4 * scale), sample_rate=sample_rate
+            )
+            append_segment(sp_pair, 0.4)
 
     # 10. Pre-validation training fill
     val_samples = 432_000
@@ -370,34 +380,40 @@ def generate_optimal_bass_dry(
     pre_val_pause_samples = int(0.5 * sample_rate)
     train_fill_limit = val_start - pre_val_pause_samples
 
-    if cur < train_fill_limit - int(0.5 * sample_rate):
+    if total_samples > val_samples and cur < train_fill_limit - int(0.5 * sample_rate):
         dur_fill = (train_fill_limit - cur) / sample_rate
         c_fill = _synth_log_chirp(
             dur_fill, 15.0, 22000.0, 0.35, sample_rate, string_tilt=True, f_corner=1200.0
         )
         append_segment(c_fill, 0.0)
 
-    cur = max(cur, val_start)
+    if total_samples > val_samples:
+        cur = max(cur, val_start)
 
     # 11. Representative validation suite
-    v_ring = _synth_long_ringout(30.87, 0.85, max(1.0, 2.8 * scale), sample_rate)
-    append_segment(v_ring, 0.35)
+    if cur < limit:
+        v_ring = _synth_long_ringout(30.87, 0.85, max(1.0, 2.8 * scale), sample_rate)
+        append_segment(v_ring, 0.35)
 
-    v_groove = _synth_groove_burst(
-        41.20, 0.80, bpm=140.0, count=8, sample_rate=sample_rate, technique="pick"
-    )
-    append_segment(v_groove, 0.35)
+    if cur < limit:
+        v_groove = _synth_groove_burst(
+            41.20, 0.80, bpm=140.0, count=8, sample_rate=sample_rate, technique="pick"
+        )
+        append_segment(v_groove, 0.35)
 
-    v_slap = _synth_slap_pop_pair(
-        41.20, 82.41, 0.88, gap_ms=65.0, dur=max(0.4, 1.4 * scale), sample_rate=sample_rate
-    )
-    append_segment(v_slap, 0.35)
+    if cur < limit:
+        v_slap = _synth_slap_pop_pair(
+            41.20, 82.41, 0.88, gap_ms=65.0, dur=max(0.4, 1.4 * scale), sample_rate=sample_rate
+        )
+        append_segment(v_slap, 0.35)
 
-    v_harm = _synth_natural_harmonic(123.6, 0.75, max(0.4, 1.6 * scale), sample_rate)
-    append_segment(v_harm, 0.35)
+    if cur < limit:
+        v_harm = _synth_natural_harmonic(123.6, 0.75, max(0.4, 1.6 * scale), sample_rate)
+        append_segment(v_harm, 0.35)
 
-    v_pm = _synth_pluck(55.00, 0.82, max(0.3, 0.6 * scale), sample_rate, technique="palm_mute")
-    append_segment(v_pm, 0.0)
+    if cur < limit:
+        v_pm = _synth_pluck(55.00, 0.82, max(0.3, 0.6 * scale), sample_rate, technique="palm_mute")
+        append_segment(v_pm, 0.0)
 
     # Zero-DC centering on active regions
     active_mask = audio != 0.0
