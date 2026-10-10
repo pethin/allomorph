@@ -214,3 +214,30 @@ def test_precision_mids_vs_vintage_distinctness():
     # Treble rolloff at 3 kHz must attenuate by > 15 dB
     idx_3k = int(np.argmin(np.abs(freqs - 3000.0)))
     assert s3[idx_3k] < -15.0
+
+
+def test_multi_pickup_pj_voicings_comb_null_decay():
+    """Validates that multi-pickup voicings (such as PJ Passive and PJ Active) exhibit authentic
+    low-mid spatial interference (~900 Hz scoop) while cross-coherence decay prevents spurious
+    deep comb filter nulls at higher harmonics (2.8 kHz, 4.6 kHz, etc.).
+    """
+    for vid in ["pj_passive", "pj_active", "p_mm_parallel"]:
+        cfg = VOICES[vid]
+        df = build_voice_dataframe(vid, cfg, mode="output")
+        freqs = df["frequency"].to_numpy()
+        mag = df["magnitude_db"].to_numpy()
+
+        # Find local minima deeper than -5 dB
+        minima_idx = [
+            i for i in range(1, len(mag) - 1)
+            if mag[i] < mag[i - 1] and mag[i] < mag[i + 1] and mag[i] < -5.0
+        ]
+        # Must have exactly 1 primary spatial notch (in the 500-1500 Hz range)
+        notch_freqs = [freqs[idx] for idx in minima_idx]
+        assert len(notch_freqs) == 1, (
+            f"{vid} has spurious comb nulls: {notch_freqs}"
+        )
+        assert 500.0 <= notch_freqs[0] <= 1500.0, (
+            f"{vid} primary notch at {notch_freqs[0]:.1f} Hz outside expected [500, 1500] Hz"
+        )
+

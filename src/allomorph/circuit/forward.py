@@ -461,6 +461,7 @@ def simulate_instrument_voicing(
 
             pos_max = max(branch_positions) if branch_positions else 0.0
             H_channels = []
+            H_channels_delayed = []
             peaks = []
             branch_audios = []
 
@@ -488,18 +489,21 @@ def simulate_instrument_voicing(
                     ac = ac * np.asarray(h_saddle, dtype=np.float64)
 
                 fir_ac = synthesize_minimum_phase_fir(ac, num_taps=2048, normalize=False)
-                tau_i = (pos_max - b_pos) / c_mean if len(branch_coils_list) > 1 else 0.0
-                delay_samples = round(tau_i * 48000.0)
-                if 0 < delay_samples < 2048:
-                    fir_ac = [0.0] * delay_samples + fir_ac[: 2048 - delay_samples]
-                peaks.append(int(np.argmax(np.abs(fir_ac))))
-
                 fir_circ = synthesize_minimum_phase_fir(c_curve, num_taps=2048, normalize=False)
                 H_ac_fft = np.fft.rfft(fir_ac, N)
                 H_circ_fft = np.fft.rfft(fir_circ, N)
                 H_channels.append(H_ac_fft * H_circ_fft)
 
-                # Block 1: Transducer Stage for this branch
+                tau_i = (pos_max - b_pos) / c_mean if len(branch_coils_list) > 1 else 0.0
+                delay_samples = round(tau_i * 48000.0)
+                fir_ac_del = list(fir_ac)
+                if 0 < delay_samples < 2048:
+                    fir_ac_del = [0.0] * delay_samples + fir_ac_del[: 2048 - delay_samples]
+                H_ac_del_fft = np.fft.rfft(fir_ac_del, N)
+                H_channels_delayed.append(H_ac_del_fft * H_circ_fft)
+                peaks.append(delay_samples)
+
+                # Block 1: Transducer Stage for this branch (zero latency, starts strictly at sample 0)
                 v_ac = fft_convolve(
                     input_mono, np.asarray(fir_ac, dtype=np.float64), mode="causal"
                 )[:n_samples]
@@ -578,17 +582,17 @@ def simulate_instrument_voicing(
                 branch_audios.append(b_audio)
 
             raw_sum = np.sum(branch_audios, axis=0)
-            H_channels_arr = np.array(H_channels)
+            H_del_arr = np.array(H_channels_delayed)
             delta_samples = max(peaks) - min(peaks) if len(peaks) > 1 else 0
 
-            if len(H_channels_arr) > 1 and delta_samples > 0:
-                P_coh_raw = np.abs(np.sum(H_channels_arr, axis=0)) ** 2
-                P_incoh = np.sum(np.abs(H_channels_arr) ** 2, axis=0)
+            if len(H_del_arr) > 1 and delta_samples > 0:
+                P_coh_raw = np.abs(np.sum(H_del_arr, axis=0)) ** 2
+                P_incoh = np.sum(np.abs(H_del_arr) ** 2, axis=0)
 
                 eps_quad = 0.18
                 P_coh_reg = P_coh_raw + (eps_quad**2) * P_incoh
 
-                H_dc = np.abs(H_channels_arr[:, 0])
+                H_dc = np.abs(H_del_arr[:, 0])
                 total_w = np.sum(H_dc)
                 dc_incoh = np.sum(H_dc**2)
                 dc_norm = (
@@ -605,24 +609,28 @@ def simulate_instrument_voicing(
 
                 M_blend = np.sqrt(gamma * P_coh_reg + (1.0 - gamma) * P_incoh) / dc_norm
 
-                # Universal C^inf Cross-Coherence Decay Filter
-                # Filters saturated branch sum with regularized spectral ratio to model smooth
-                # spatial aperture coherence decay without discarding non-linear dynamics.
-                S_raw = np.abs(np.sum(H_channels_arr, axis=0))
-                H_corr_ratio = M_blend / np.maximum(S_raw, 1e-4)
-                H_corr = np.clip(H_corr_ratio, 10.0 ** (-6.0 / 20.0), 10.0 ** (12.0 / 20.0))
-                fir_corr = synthesize_minimum_phase_fir(H_corr, num_taps=num_taps, normalize=False)
+                # Universal C^inf Cross-Coherence Decay Spatial Filter
+                # Shapes the in-phase sum of saturated pickup branches into the theoretical
+                # blended spatial aperture response, seamlessly transitioning from low-frequency
+                # coherent interference (mid notch) to high-frequency incoherent power summation
+                # without injecting non-invertible comb nulls into the time domain.
+                H_nodelay_arr = np.array(H_channels)
+                S_in_phase = np.abs(np.sum(H_nodelay_arr, axis=0))
+                H_spatial_ratio = M_blend / np.maximum(S_in_phase, 1e-6)
+                fir_spatial = synthesize_minimum_phase_fir(
+                    H_spatial_ratio, num_taps=num_taps, normalize=False
+                )
                 composite_audio = fft_convolve(
-                    raw_sum, np.asarray(fir_corr, dtype=np.float64), mode="causal"
+                    raw_sum, np.asarray(fir_spatial, dtype=np.float64), mode="causal"
                 )[:n_samples]
 
                 mag_spectrum = M_blend
-            elif len(H_channels_arr) > 1:
+            elif len(H_channels) > 1:
                 composite_audio = raw_sum
-                mag_spectrum = np.abs(np.sum(H_channels_arr, axis=0))
+                mag_spectrum = np.abs(np.sum(np.array(H_channels), axis=0))
             else:
                 composite_audio = raw_sum
-                mag_spectrum = np.abs(H_channels_arr[0])
+                mag_spectrum = np.abs(H_channels[0])
 
             h_base = np.interp(f, f_bins, mag_spectrum)
         else:
