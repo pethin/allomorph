@@ -19,6 +19,7 @@ from allomorph.config.instruments import (
     load_all_instruments,
     load_instrument,
     load_tone_pack,
+    resolve_target_voicing,
 )
 from allomorph.config.preamps import (
     PREAMPS,
@@ -123,6 +124,7 @@ __all__ = [
     "parse_spice_unit",
     "resolve_pickup_coils",
     "resolve_scale_range",
+    "resolve_target_voicing",
     "resolve_voice_coils",
     "resolve_voice_pickups",
 ]

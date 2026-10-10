@@ -278,7 +278,9 @@ class ControlElementConfig(AllomorphBaseModel):
     type: Literal["pot", "preamp_band"] = "pot"
     resistance: float = Field(250000.0, gt=0.0)
     taper: Literal["audio_15", "audio_10", "linear", "mn_blend", "reverse_audio"] = "audio_15"
-    cap: float | None = Field(None, gt=0.0, description="Attached capacitor value in Farads (e.g. tone cap)")
+    cap: float | None = Field(
+        None, gt=0.0, description="Attached capacitor value in Farads (e.g. tone cap)"
+    )
     band: str | None = Field(None, description="Preamp band name if type == 'preamp_band'")
     default: float = Field(1.0, ge=0.0, le=1.0, description="Default normalized wiper position")
 
@@ -467,7 +469,9 @@ class PackBundleConfig(AllomorphBaseModel):
     source_voicing: str = Field(
         ..., description="Voicing ID on the source instrument generating the single dry WAV"
     )
-    targets: list[str] = Field(default_factory=list, description="Target voice IDs or tone slugs to simulate")
+    targets: list[str] = Field(
+        default_factory=list, description="Target voice IDs or tone slugs to simulate"
+    )
 
 
 class TonePackConfig(AllomorphBaseModel):

@@ -3,7 +3,7 @@ Allomorph Visualizer - Interactive Altair Charts Generation
 """
 
 import json
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import Any
 
@@ -11,11 +11,11 @@ import altair as alt
 import polars as pl
 
 from allomorph.config.instruments import load_instrument
-from allomorph.config.schema import InstrumentConfig
-from allomorph.config.voices import VOICES
+from allomorph.config.schema import InstrumentConfig, VoiceConfig
 from allomorph.visualizer.dataframe import (
     build_voice_dataframe,
     build_voicings_comparison_data,
+    build_voicings_comparison_dataframe,
 )
 from allomorph.visualizer.portal import RESPONSES_DIR, generate_portal_pages
 
@@ -112,7 +112,11 @@ def render_chart_to_file(
     return target_path
 
 
-def generate_voicings_page(target_html: Path | str | None = None) -> Path:
+def generate_voicings_page(
+    target_html: Path | str | None = None,
+    voices: Mapping[str, VoiceConfig] | None = None,
+    instruments: Mapping[str, InstrumentConfig] | None = None,
+) -> Path:
     """
     Renders the interactive 2D Voicing Comparison page (voicings.html):
     Allows selecting any Source Voicing and Target Voicing from the standard catalog voicings in VOICES.
@@ -128,7 +132,16 @@ def generate_voicings_page(target_html: Path | str | None = None) -> Path:
     target_html = Path(target_html)
     target_html.parent.mkdir(parents=True, exist_ok=True)
 
-    voicings_data = build_voicings_comparison_data(step=1)
+    if voices is None:
+        from allomorph.config.voices import VOICES
+
+        voices = VOICES
+    if instruments is None:
+        from allomorph.config.instruments import INSTRUMENTS
+
+        instruments = INSTRUMENTS
+
+    voicings_data = build_voicings_comparison_data(voices=voices, instruments=instruments, step=1)
     data_json = json.dumps(voicings_data, separators=(",", ":"))
 
     html_content = f"""<!DOCTYPE html>
@@ -738,6 +751,8 @@ def generate_interactive_chart(
     instrument: InstrumentConfig | str = "30in",
     out_html: str | Path | None = None,
     mode: str = "voicings",
+    voices: Mapping[str, VoiceConfig] | None = None,
+    instruments: Mapping[str, InstrumentConfig] | None = None,
 ) -> Path:
     """
     Calculates voice responses and renders an interactive chart.
@@ -748,9 +763,26 @@ def generate_interactive_chart(
       - 'difference': standalone chart strictly plotting the Input/Output Difference curves for this instrument.
     """
     if mode == "voicings":
-        return generate_voicings_page(target_html=Path(out_html) if out_html is not None else None)
+        return generate_voicings_page(
+            target_html=Path(out_html) if out_html is not None else None,
+            voices=voices,
+            instruments=instruments,
+        )
 
-    inst = instrument if isinstance(instrument, InstrumentConfig) else load_instrument(instrument)
+    if voices is None:
+        from allomorph.config.voices import VOICES
+
+        voices = VOICES
+    if instruments is None:
+        from allomorph.config.instruments import INSTRUMENTS
+
+        instruments = INSTRUMENTS
+
+    inst = (
+        instrument
+        if isinstance(instrument, InstrumentConfig)
+        else (instruments.get(instrument) or load_instrument(instrument))
+    )
     inst_id = inst.id
     inst_name = inst.name
 
@@ -767,38 +799,66 @@ def generate_interactive_chart(
     target_path.parent.mkdir(parents=True, exist_ok=True)
 
     print(f"Computing voice frequency responses (mode={mode}, instrument={inst_name})...")
+    src_voicing = next(iter(inst.voicings.values()))
+
+    target_dfs: list[pl.DataFrame] = []
+    diff_dfs: list[pl.DataFrame] = []
+
+    for vid, v_cfg in sorted(voices.items()):
+        t_inst = instruments.get(v_cfg.instrument_id or "")
+        if t_inst is None:
+            continue
+        v_obj = t_inst.voicings.get(vid)
+        if v_obj is None:
+            v_obj = next(
+                (v for v in t_inst.voicings.values() if v.tone_name == v_cfg.tone_name),
+                next(iter(t_inst.voicings.values()), None),
+            )
+        if v_obj is None:
+            continue
+
+        if mode in ("output", "unified"):
+            df_out = build_voice_dataframe(t_inst, v_obj, mode="output")
+            df_out = df_out.with_columns(
+                pl.lit(v_cfg.name).alias("voice_name"),
+                pl.lit(v_cfg.sensor_type).alias("sensor_type"),
+                pl.lit(v_cfg.description).alias("description"),
+            )
+            if mode == "unified":
+                df_out = df_out.with_columns(pl.lit("Output Voice").alias("mode"))
+            target_dfs.append(df_out)
+
+        if mode in ("difference", "unified"):
+            df_diff_pair = build_voicings_comparison_dataframe(
+                source_instrument=inst,
+                source_voicing=src_voicing,
+                target_instrument=t_inst,
+                target_voicing=v_obj,
+            )
+            df_diff = df_diff_pair.filter(pl.col("line_type") == "3. Difference")
+            df_diff = df_diff.with_columns(
+                pl.lit(v_cfg.name).alias("voice_name"),
+                pl.lit(v_cfg.sensor_type).alias("sensor_type"),
+                pl.lit(v_cfg.description).alias("description"),
+            )
+            if mode == "unified":
+                df_diff = df_diff.with_columns(pl.lit("Input/Output Difference").alias("mode"))
+            diff_dfs.append(df_diff)
+
     if mode == "output":
-        dfs = [
-            build_voice_dataframe(vid, cfg, instrument=inst, mode="output")
-            for vid, cfg in VOICES.items()
-        ]
-        master_df = pl.concat(dfs)
+        master_df = pl.concat(target_dfs)
         chart_title = "Allomorph Master Voices: Output Voice Frequency Responses"
         chart_subtitle = f"Target Passive Acoustic Apertures & SPICE Loaded RLC Resonances (Reference: {inst_name})"
         y_title = "Normalized Output Magnitude (dB)"
         y_domain = [-18, 18]
     elif mode == "difference":
-        dfs = [
-            build_voice_dataframe(vid, cfg, instrument=inst, mode="difference")
-            for vid, cfg in VOICES.items()
-        ]
-        master_df = pl.concat(dfs)
+        master_df = pl.concat(diff_dfs)
         chart_title = "Allomorph Master Voices: Input/Output Differential Transfer Functions"
         chart_subtitle = f'Source: {inst_name} -> Target: 34" Standard & 37" Multi-Scale Datums (Δ Transfer Filter)'
         y_title = "Differential Transfer Magnitude (dB)"
         y_domain = [-18, 18]
     else:  # mode == "unified"
-        dfs_out = [
-            build_voice_dataframe(vid, cfg, instrument=inst, mode="output", include_mode_col=True)
-            for vid, cfg in VOICES.items()
-        ]
-        dfs_diff = [
-            build_voice_dataframe(
-                vid, cfg, instrument=inst, mode="difference", include_mode_col=True
-            )
-            for vid, cfg in VOICES.items()
-        ]
-        master_df = pl.concat(dfs_diff + dfs_out)
+        master_df = pl.concat(diff_dfs + target_dfs)
         chart_title = "Allomorph Master Voices: Acoustic & Electrical Response Curves"
         chart_subtitle = f"Interactive View ({inst_name}) — Switch between Input/Output Difference and Output Voice"
         y_title = "Normalized Magnitude / Differential Gain (dB)"

@@ -312,5 +312,3 @@ def eval_pot_taper(pos: float, taper: str = "audio") -> float:
         raise ValueError(
             f"Unknown pot taper '{taper}'. Supported tapers: 'audio', 'audio10', 'audio15', 'linear', 'reverse_audio', 'mn_blend'."
         )
-
-

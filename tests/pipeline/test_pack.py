@@ -166,7 +166,7 @@ def test_export_tone_pack_parallel_bundles_and_cached_stems(
             is_dry = (
                 "dry" in p.name
                 or "34in_standard_jazz" in str(p)
-                or str(voicing) in ("neck_warm", "bridge_open", "pair_open")
+                or getattr(voicing, "id", str(voicing)) in ("neck_warm", "bridge_open", "pair_open")
             )
             val = 0.35 if is_dry else 0.85
             samples = np.array([0.0, val, -val], dtype=np.float32)

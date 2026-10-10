@@ -58,6 +58,17 @@ def resolve_scale_range(
         return val_m, val_m
 
     if isinstance(inst_or_scale, str):
+        clean_s = inst_or_scale.strip().lower()
+        import re
+
+        m_multi = re.match(r"^(\d+(?:\.\d+)?)(?:in)?\s*[-/]\s*(\d+(?:\.\d+)?)\s*in$", clean_s)
+        if m_multi:
+            return float(m_multi.group(1)) * 0.0254, float(m_multi.group(2)) * 0.0254
+        m_single = re.match(r"^(\d+(?:\.\d+)?)\s*in$", clean_s)
+        if m_single:
+            val_m = float(m_single.group(1)) * 0.0254
+            return val_m, val_m
+
         if inst_or_scale in SCALES:
             s_info = SCALES[inst_or_scale]
             if s_info.is_multiscale:

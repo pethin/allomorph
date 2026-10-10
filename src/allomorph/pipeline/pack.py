@@ -249,7 +249,7 @@ VOICE_CATALOG_DESCRIPTIONS: dict[str, dict[str, str]] = {
         "desc": (
             "Acoustic upright double bass bridge piezo: captures the authentic high-tension attack bite, "
             "bridge rocking compliance, and wood-mass roll-off of an acoustic double bass bridge piezo transducer, "
-            'designed specifically as an ultra-high-Z front-end before acoustic IRs (such as 3 Sigma Audio AST '
+            "designed specifically as an ultra-high-Z front-end before acoustic IRs (such as 3 Sigma Audio AST "
             "Double Bass IRs) and preamp stages."
         ),
     },
@@ -474,8 +474,7 @@ def generate_storefront_description(
     if len(bundles) > 1:
         unique_tags = list(
             dict.fromkeys(
-                f"[{b.position_name or b_name.capitalize()}]"
-                for b_name, b in bundles.items()
+                f"[{b.position_name or b_name.capitalize()}]" for b_name, b in bundles.items()
             )
         )
         tags_str = ", ".join(unique_tags)
@@ -624,8 +623,10 @@ def export_tone_pack(
 
         # Determine source voicing version for this bundle
         src_v_id = bundle.source_voicing
-        src_v = inst.voicings.get(src_v_id)
-        source_voice_ver = getattr(src_v, "version", 1) if src_v else 1
+        if src_v_id not in inst.voicings:
+            raise KeyError(f"Source voicing '{src_v_id}' not found on instrument '{inst.id}'.")
+        src_v = inst.voicings[src_v_id]
+        source_voice_ver = getattr(src_v, "version", 1)
 
         # A. Synthesize / Copy Source Audio for this bundle (Tone3000 upload contract requires dry v[dsp].[inst].[voicing].wav)
         dry_v_tag = resolve_tri_part_version(DSP_GENERATION, inst.version, source_voice_ver)
@@ -647,7 +648,7 @@ def export_tone_pack(
             source_wet_path.parent.mkdir(parents=True, exist_ok=True)
             simulate_instrument_voicing(
                 instrument=inst,
-                voicing=src_v_id,
+                voicing=src_v,
                 input_wav=input_wav,
                 output_wav=source_wet_path,
                 max_samples=None,
@@ -657,7 +658,7 @@ def export_tone_pack(
         else:
             simulate_instrument_voicing(
                 instrument=inst,
-                voicing=src_v_id,
+                voicing=src_v,
                 input_wav=input_wav,
                 output_wav=dry_dest,
                 max_samples=max_samples,

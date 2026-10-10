@@ -14,39 +14,71 @@ from allomorph.circuit import (
     apply_active_pickup_dynamics,
     solve_mna_harness,
 )
-from allomorph.config import INSTRUMENTS
 
 
-def test_active_pickup_resonant_frequency_accuracy():
-    """Verify that loaded active pickup circuits match their declared resonant peaks within +-50 Hz."""
-    freqs = np.linspace(20.0, 20000.0, 8000)
+def test_active_pickup_mna_resonant_frequency_generic():
+    """Verify that MNA harness solver calculates the resonant peak of an active pickup circuit
+    matching the theoretical RLC resonance fr = 1 / (2*pi*sqrt(L*C)) within +-50 Hz using generic data.
+    """
+    from allomorph.config.schema import (
+        CoilConfig,
+        HarnessConfig,
+        InstrumentConfig,
+        PickupConfig,
+        VoicingConfig,
+    )
 
-    test_cases = [
-        ("30in_emg_mmtw", "dual_mode", "mmtwx", 2500.0),
-        ("30in_emg_mmtw", "single_mode", "mmtwx", 3500.0),
-        ("32in_custom_pmm", "px_solo", "px", 3200.0),
-        ("32in_custom_pmm", "mm_single", "mmtwx", 3500.0),
-        ("32in_custom_pmm", "mm_dual", "mmtwx", 2500.0),
-        ("32in_fretless_pmm", "pcsx_solo", "pcsx", 2610.0),
-        ("34in_active_emg", "neck_solo", "neck", 4150.0),
-        ("34in_active_emg", "bridge_solo", "bridge", 4150.0),
-    ]
+    L = 2.0
+    C = 1.0e-9
+    f_expected = 1.0 / (2.0 * math.pi * math.sqrt(L * C))
 
-    for inst_id, v_id, pickup_key, expected_fr in test_cases:
-        inst = INSTRUMENTS[inst_id]
-        v = inst.voicings[v_id]
-        h = inst.harnesses[v.harness]
-        curves = solve_mna_harness(inst, h, v, freqs=freqs)
-        assert pickup_key in curves, f"Pickup {pickup_key} not found in curves for {inst_id}:{v_id}"
-        curve = curves[pickup_key]
-        peak_idx = int(np.argmax(curve))
-        peak_f = float(freqs[peak_idx])
+    inst = InstrumentConfig(
+        id="generic_active",
+        name="Generic Active Bass",
+        scale_length_in=34.0,
+        electronics="active",
+        pickups={
+            "act": PickupConfig(
+                name="Active Pickup",
+                position_from_bridge_m=0.10,
+                has_internal_buffer=True,
+                buffer_output_impedance=2000.0,
+                coils=[
+                    CoilConfig(
+                        id="act_c",
+                        position_from_bridge_m=0.10,
+                        L=L,
+                        Rdc=1000.0,
+                        Ccoil=C,
+                        Reddy=100000.0,
+                    )
+                ],
+            )
+        },
+        harnesses={
+            "direct": HarnessConfig(
+                name="Direct",
+                type="passive",
+                wiring=[
+                    ["pickups.act.hot", "out"],
+                    ["pickups.act.cold", "GND"],
+                ],
+            )
+        },
+        voicings={"v_act": VoicingConfig(id="v_act", name="Active Voicing", harness="direct")},
+    )
 
-        error_hz = abs(peak_f - expected_fr)
-        assert error_hz <= 50.0, (
-            f"{inst_id}:{v_id}:{pickup_key} resonant peak {peak_f:.1f} Hz deviates by {error_hz:.1f} Hz "
-            f"from target {expected_fr:.1f} Hz (tolerance +-50 Hz)"
-        )
+    freqs = np.linspace(20.0, 10000.0, 4000)
+    curves = solve_mna_harness(inst, inst.harnesses["direct"], inst.voicings["v_act"], freqs=freqs)
+    mag = next(iter(curves.values()))
+    peak_idx = int(np.argmax(mag))
+    peak_f = float(freqs[peak_idx])
+
+    error_hz = abs(peak_f - f_expected)
+    assert error_hz <= 50.0, (
+        f"Generic active pickup resonant peak {peak_f:.1f} Hz deviates by {error_hz:.1f} Hz "
+        f"from theoretical {f_expected:.1f} Hz (tolerance +-50 Hz)"
+    )
 
 
 def test_x_series_linear_passband_dynamics():
@@ -123,11 +155,15 @@ def test_small_signal_linearity_bypass():
 
 
 def test_active_pickup_output_impedances():
-    """Verify that X-Series declares 2k line driver impedance and Classic declares 10k output impedance."""
-    mmtwx_p = INSTRUMENTS["30in_emg_mmtw"].pickups["mmtwx"]
-    assert mmtwx_p.has_internal_buffer
-    assert mmtwx_p.buffer_output_impedance == 2000.0
+    """Verify PickupConfig modeling of internal buffer line driver output impedances using generic data."""
+    from allomorph.config.schema import PickupConfig
 
-    classic_p = INSTRUMENTS["34in_active_emg"].pickups["neck"]
-    assert classic_p.has_internal_buffer
-    assert classic_p.buffer_output_impedance == 10000.0
+    p_x = PickupConfig(name="x_series", has_internal_buffer=True, buffer_output_impedance=2000.0)
+    assert p_x.has_internal_buffer
+    assert p_x.buffer_output_impedance == 2000.0
+
+    p_classic = PickupConfig(
+        name="classic", has_internal_buffer=True, buffer_output_impedance=10000.0
+    )
+    assert p_classic.has_internal_buffer
+    assert p_classic.buffer_output_impedance == 10000.0

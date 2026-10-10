@@ -4,19 +4,22 @@ Tests for circuit parser, netlist validation, and audio discovery utilities.
 
 import tempfile
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
+
+if TYPE_CHECKING:
+    from allomorph.config.schema import InstrumentConfig
 
 from allomorph.circuit import (
     AUDIO_DIR,
     eval_pot_taper,
     find_default_input_audio,
     parse_spice_val,
-    simulate_voice,
+    simulate_instrument_voicing,
 )
 from allomorph.circuit.parser import MAGNET_PROPERTIES
 from allomorph.circuit.schema import MagnetPropertiesConfig
-from allomorph.config import load_instrument
 
 
 def test_parse_spice_val():
@@ -30,17 +33,15 @@ def test_parse_spice_val():
     assert parse_spice_val("10") == pytest.approx(10.0)
 
 
-def test_default_output_directories():
+def test_default_output_directories(generic_instrument_config: InstrumentConfig):
     """Verify that default outputs are stored in audio/<inst_id>/."""
-    inst_cfg = load_instrument("30in")
-    inst_id = inst_cfg.id
-    assert inst_id == "30in_emg_mmtw"
+    inst_id = generic_instrument_config.id
     inst_audio_dir = AUDIO_DIR / inst_id
     assert inst_audio_dir.parent == AUDIO_DIR
 
 
-def test_sweep_audio_auto_detection():
-    """Verify that simulate_voice automatically finds optimal_bass_dry.wav even if given None or missing input path."""
+def test_sweep_audio_auto_detection(generic_instrument_config: InstrumentConfig):
+    """Verify that simulate_instrument_voicing automatically finds default input audio if given None or missing input path."""
     sweep = find_default_input_audio()
     assert sweep is not None
     assert sweep.exists()
@@ -49,27 +50,25 @@ def test_sweep_audio_auto_detection():
     with tempfile.TemporaryDirectory() as tmpdir:
         out_wav = Path(tmpdir) / "auto_sweep_out.wav"
         # Test with input_wav=None
-        res = simulate_voice(
-            "precision_active",
+        res = simulate_instrument_voicing(
+            instrument=generic_instrument_config,
+            voicing=generic_instrument_config.voicings["generic_voice"],
             input_wav=None,
             output_wav=out_wav,
-            instrument="30in",
             max_samples=4800,
         )
-        assert res is True
-        assert out_wav.exists() and out_wav.stat().st_size > 1000
+        assert res.exists() and res.stat().st_size > 1000
 
         # Test with input_wav pointing to missing file (fallback behavior to input.wav)
         out_wav_fallback = Path(tmpdir) / "fallback_sweep_out.wav"
-        res_fallback = simulate_voice(
-            "precision_active",
+        res_fallback = simulate_instrument_voicing(
+            instrument=generic_instrument_config,
+            voicing=generic_instrument_config.voicings["generic_voice"],
             input_wav="missing_sweep.wav",
             output_wav=out_wav_fallback,
-            instrument="30in",
             max_samples=4800,
         )
-        assert res_fallback is True
-        assert out_wav_fallback.exists() and out_wav_fallback.stat().st_size > 1000
+        assert res_fallback.exists() and res_fallback.stat().st_size > 1000
 
 
 def test_magnet_properties_configuration():

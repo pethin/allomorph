@@ -89,3 +89,81 @@ def test_run_spice_batch_worker_exception_handling(
         jobs=2,
     )
     assert ok is False
+
+
+def test_simulate_all_instrument_voicings(
+    short_dry_audio: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    """Verify simulate_all_instrument_voicings executes for all voicings of an instrument."""
+    from allomorph.circuit import forward
+    from allomorph.pipeline.batch import simulate_all_instrument_voicings
+
+    # Redirect wet audio dir to tmp_path
+    monkeypatch.setattr(forward, "WET_AUDIO_DIR", tmp_path / "wet")
+
+    out_paths = simulate_all_instrument_voicings(
+        instrument="30in_emg_mmtw",
+        input_wav=short_dry_audio,
+        max_samples=1200,
+        jobs=1,
+        force=True,
+    )
+
+    assert len(out_paths) >= 1
+    for p in out_paths:
+        assert p.exists()
+
+
+def test_simulate_voice_wrapper_and_options(short_dry_audio: Path, tmp_path: Path):
+    """Verify simulate_voice wrapper, config object support, and error cases."""
+    from allomorph.config.instruments import load_instrument, resolve_target_voicing
+    from allomorph.pipeline.batch import simulate_voice
+
+    inst = load_instrument("34in_standard_p")
+
+    # 1. Resolve target voicing with colon and tone slug
+    inst_res, v_res = resolve_target_voicing("34in_standard_p:Precision Vintage")
+    assert inst_res.id == "34in_standard_p"
+    assert v_res.id == "vintage_open"
+
+    # 2. simulate_voice basic call
+    out_p = tmp_path / "sim_voice.wav"
+    ok = simulate_voice(
+        "vintage_open",
+        instrument=inst,
+        input_wav=short_dry_audio,
+        output_wav=out_p,
+        max_samples=1200,
+    )
+    assert ok is True
+    assert out_p.exists()
+
+    # 3. simulate_voice with unknown pickup raises KeyError
+    with pytest.raises(KeyError, match="Pickup 'nonexistent_pickup' not found"):
+        simulate_voice(
+            "vintage_open",
+            instrument=inst,
+            input_wav=short_dry_audio,
+            pickup="nonexistent_pickup",
+        )
+
+    # 4. simulate_voice with skip_identity=True
+    skip_p = tmp_path / "skip_out.wav"
+    skip_p.write_bytes(b"temp")
+    res_skip = simulate_voice(
+        "vintage_open",
+        instrument=inst,
+        input_wav=short_dry_audio,
+        output_wav=skip_p,
+        skip_identity=True,
+    )
+    assert res_skip is False
+    assert not skip_p.exists()
+
+    # 5. simulate_voice with non-existent target voice raises KeyError
+    with pytest.raises(KeyError, match="not found"):
+        simulate_voice(
+            "completely_unknown_voicing_12345",
+            instrument=inst,
+            input_wav=short_dry_audio,
+        )

@@ -585,7 +585,7 @@ def train_voice_mlx(
         return False
 
     if not output_wav:
-        from allomorph.circuit.forward import resolve_target_voicing
+        from allomorph.config.instruments import resolve_target_voicing
 
         tgt_inst, tgt_v = resolve_target_voicing(voice, instrument=inst_cfg)
         target_slug = (
@@ -636,9 +636,12 @@ def train_voice_mlx(
                 print(
                     f"[NAM Trainer] Dedicated source stem missing or stale, auto-generating: {candidate_source.name}"
                 )
+                src_v = inst_cfg.voicings.get(src_voicing_id)
+                if src_v is None:
+                    src_v = next(iter(inst_cfg.voicings.values()))
                 reference_path = simulate_instrument_voicing(
-                    instrument=inst_id,
-                    voicing=src_voicing_id,
+                    instrument=inst_cfg,
+                    voicing=src_v,
                     output_wav=candidate_source,
                 )
             except (FileNotFoundError, ValueError, RuntimeError, KeyError, OSError) as e:

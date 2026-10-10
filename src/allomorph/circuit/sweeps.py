@@ -4,22 +4,19 @@ Evaluates exact continuous electrical parameter sweeps across frequencies in < 4
 Supports tone pot, volume pot, cable capacitance, tone capacitor, and active EQ sweeps.
 """
 
-from collections.abc import Sequence
-from pathlib import Path
+from collections.abc import Mapping, Sequence
 from typing import Self
 
 import numpy as np
 import polars as pl
 from pydantic import BaseModel, ConfigDict, model_validator
 
-from allomorph.circuit.forward import resolve_target_voicing
 from allomorph.circuit.schema import CircuitMetricsRecord
 from allomorph.circuit.solver import solve_mna_harness
-from allomorph.config.preamps import PREAMPS
 from allomorph.config.schema import (
     InstrumentConfig,
     PreampBandConfig,
-    VoiceConfig,
+    PreampConfig,
     VoicingConfig,
 )
 from allomorph.dsp import FREQS
@@ -314,27 +311,20 @@ def _generate_default_labels(param: str, values: list[float]) -> list[str]:
 
 
 def compute_parametric_sweep(
-    circuit_or_voice: (
-        str
-        | Path
-        | VoiceConfig
-        | InstrumentConfig
-        | tuple[InstrumentConfig, VoicingConfig]
-    ),
+    circuit_or_voice: (InstrumentConfig | tuple[InstrumentConfig, VoicingConfig]),
     param: str = "tone",
     values: Sequence[float] | np.ndarray | None = None,
     freqs: Sequence[float] | np.ndarray = FREQS,
     labels: list[str] | None = None,
     pickup_channel: int | str = 0,
     pot_taper: str = "audio",
+    preamps: Mapping[str, PreampConfig] | None = None,
 ) -> ParametricSweepResult:
-    """
-    Computes continuous frequency response curves across a swept electrical parameter
+    """Computes continuous frequency response curves across a swept electrical parameter
     using the universal Modified Nodal Analysis (MNA) harness solver.
 
     Parameters:
-        circuit_or_voice: Instrument/voicing identifier, VoiceConfig, InstrumentConfig,
-            or (InstrumentConfig, VoicingConfig) tuple.
+        circuit_or_voice: InstrumentConfig, or (InstrumentConfig, VoicingConfig) tuple.
         param: Circuit parameter to sweep:
             - 'tone' / 'tone_pos': Tone pot wiper position (0.0 to 1.0).
             - 'vol' / 'vol_pos': Volume pot wiper position (0.0 to 1.0).
@@ -349,6 +339,7 @@ def compute_parametric_sweep(
         labels: Optional custom string labels for each value.
         pickup_channel: Output channel index or 'sum' to evaluate (default 0).
         pot_taper: Potentiometer resistance curve: 'audio' (10% CTS), 'audio15' (15% Bourns), or 'linear'.
+        preamps: Optional mapping of preamp configurations for active EQ bands.
 
     Returns:
         ParametricSweepResult containing curves in dB, metadata, and Polars export.
@@ -356,23 +347,15 @@ def compute_parametric_sweep(
     if isinstance(circuit_or_voice, tuple) and len(circuit_or_voice) == 2:
         inst, voicing = circuit_or_voice
         voice_id = voicing.id or (voicing.tone_name if voicing.tone_name else None)
-    elif isinstance(circuit_or_voice, VoiceConfig):
-        voice_id = circuit_or_voice.id
-        inst, voicing = resolve_target_voicing(circuit_or_voice.id or circuit_or_voice.name)
     elif isinstance(circuit_or_voice, InstrumentConfig):
         inst = circuit_or_voice
         voicing = next(iter(circuit_or_voice.voicings.values()))
         voice_id = voicing.id
-    elif isinstance(circuit_or_voice, (str, Path)):
-        v_str = (
-            Path(circuit_or_voice).stem
-            if isinstance(circuit_or_voice, Path)
-            else str(circuit_or_voice)
-        )
-        voice_id = v_str
-        inst, voicing = resolve_target_voicing(v_str)
     else:
-        raise TypeError(f"Invalid circuit_or_voice: {type(circuit_or_voice)}")
+        raise TypeError(
+            f"Invalid circuit_or_voice: {type(circuit_or_voice)}. "
+            "Must be an InstrumentConfig or (InstrumentConfig, VoicingConfig) tuple."
+        )
 
     if voicing.harness not in inst.harnesses:
         raise ValueError(f"Harness '{voicing.harness}' missing from instrument '{inst.id}'")
@@ -422,9 +405,7 @@ def compute_parametric_sweep(
 
         elif p in ("vol", "vol_pos", "volume", "vol_wiper", "volume_pot"):
             vol_ctrl_ids = [
-                cid
-                for cid, c in h_base.controls.items()
-                if "vol" in cid.lower() or cid == "volume"
+                cid for cid, c in h_base.controls.items() if "vol" in cid.lower() or cid == "volume"
             ]
             if not vol_ctrl_ids and param in h_base.controls:
                 vol_ctrl_ids = [param]
@@ -466,15 +447,11 @@ def compute_parametric_sweep(
         elif p in ("bass_boost", "preamp_bass", "bass"):
             h_iter.type = "active_preamp"
             bands: list[PreampBandConfig] = (
-                [b.model_copy() for b in v_iter.preamp_bands]
-                if v_iter.preamp_bands
-                else []
+                [b.model_copy() for b in v_iter.preamp_bands] if v_iter.preamp_bands else []
             )
-            if not bands and h_base.preamp and h_base.preamp in PREAMPS:
-                bands = [b.model_copy() for b in PREAMPS[h_base.preamp].bands]
-            shelf_idx = next(
-                (i for i, b in enumerate(bands) if b.type == "low_shelf"), None
-            )
+            if not bands and h_base.preamp and preamps and h_base.preamp in preamps:
+                bands = [b.model_copy() for b in preamps[h_base.preamp].bands]
+            shelf_idx = next((i for i, b in enumerate(bands) if b.type == "low_shelf"), None)
             if shelf_idx is None:
                 bands.append(PreampBandConfig(type="low_shelf", freq_hz=40.0, gain_db=0.0))
                 shelf_idx = len(bands) - 1
@@ -483,16 +460,10 @@ def compute_parametric_sweep(
 
         elif p in ("treble_boost", "preamp_treble", "treble"):
             h_iter.type = "active_preamp"
-            bands: list[PreampBandConfig] = (
-                [b.model_copy() for b in v_iter.preamp_bands]
-                if v_iter.preamp_bands
-                else []
-            )
-            if not bands and h_base.preamp and h_base.preamp in PREAMPS:
-                bands = [b.model_copy() for b in PREAMPS[h_base.preamp].bands]
-            shelf_idx = next(
-                (i for i, b in enumerate(bands) if b.type == "high_shelf"), None
-            )
+            bands = [b.model_copy() for b in v_iter.preamp_bands] if v_iter.preamp_bands else []
+            if not bands and h_base.preamp and preamps and h_base.preamp in preamps:
+                bands = [b.model_copy() for b in preamps[h_base.preamp].bands]
+            shelf_idx = next((i for i, b in enumerate(bands) if b.type == "high_shelf"), None)
             if shelf_idx is None:
                 bands.append(PreampBandConfig(type="high_shelf", freq_hz=4000.0, gain_db=0.0))
                 shelf_idx = len(bands) - 1
@@ -514,6 +485,7 @@ def compute_parametric_sweep(
             v_iter,
             freqs=f_arr,
             return_complex=True,
+            preamps=preamps,
         )
 
         if (

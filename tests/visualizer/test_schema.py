@@ -67,7 +67,9 @@ def test_visualizer_config_and_chips_schema():
         load_visualizer_config,
     )
 
-    chip = VisualizerChipConfig(label="P vs J", source="precision_vintage", target="jazz_bridge_growl")
+    chip = VisualizerChipConfig(
+        label="P vs J", source="precision_vintage", target="jazz_bridge_growl"
+    )
     assert chip.label == "P vs J"
     assert chip.source == "precision_vintage"
     assert chip.target == "jazz_bridge_growl"

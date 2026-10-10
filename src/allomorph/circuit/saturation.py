@@ -37,6 +37,7 @@ def _dahl_core(x_arr: np.ndarray, eta: float, r: float) -> np.ndarray:
     z[0] = 0.0
     return (1.0 - eta) * x_arr + eta * z
 
+
 @njit(fastmath=True, nogil=True)
 def _lenz_envelope_core(x_arr: np.ndarray, alpha_att: float, alpha_rel: float) -> np.ndarray:
     n = len(x_arr)
@@ -50,6 +51,7 @@ def _lenz_envelope_core(x_arr: np.ndarray, alpha_att: float, alpha_rel: float) -
             e_prev += alpha_rel * (val - e_prev)
         env[i] = e_prev
     return env
+
 
 @njit(fastmath=True, nogil=True)
 def _lenz_velocity_drag_core(
@@ -110,14 +112,7 @@ def _lenz_velocity_drag_core(
             ap_damping = kappa_ap * excess * math.tanh(x_norm / vsat)
             drag_high = 1.0 / (
                 1.0
-                + (
-                    k_sag
-                    + eddy_factor
-                    + pull_damping
-                    + stein_damping
-                    + emf_damping
-                    + ap_damping
-                )
+                + (k_sag + eddy_factor + pull_damping + stein_damping + emf_damping + ap_damping)
                 * excess
             )
             drag_low = (1.0 + 0.15 * kappa_ap * excess) / (
@@ -148,6 +143,7 @@ def _lenz_velocity_drag_core(
         out[i] = drag_low * x_low_prev + drag_high * (x_high + wobble + pitch_sag + ind_mod)
     return out
 
+
 @njit(fastmath=True, nogil=True)
 def _slew_limit_core(x_arr: np.ndarray, max_delta: float) -> np.ndarray:
     n = len(x_arr)
@@ -163,6 +159,7 @@ def _slew_limit_core(x_arr: np.ndarray, max_delta: float) -> np.ndarray:
         out[i] = prev
     return out
 
+
 @njit(fastmath=True, nogil=True)
 def _algebraic_limiter_p8_core(x_arr: np.ndarray, vsat: float) -> np.ndarray:
     n = len(x_arr)
@@ -177,6 +174,7 @@ def _algebraic_limiter_p8_core(x_arr: np.ndarray, vsat: float) -> np.ndarray:
         denom = math.sqrt(math.sqrt(math.sqrt(1.0 + u8)))
         out[i] = val / denom
     return out
+
 
 @njit(fastmath=True, nogil=True)
 def _active_preamp_leveling_core(
@@ -205,6 +203,7 @@ def _active_preamp_leveling_core(
             g = 1.0
         out[i] = val * g
     return out
+
 
 @overload
 def apply_algebraic_rail_limiter(x: float, vsat: float = 0.9900) -> float: ...

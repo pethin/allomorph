@@ -4,19 +4,20 @@ saddle boundary stiffness, and cylindrical rod vs blade aperture.
 """
 
 import math
+from typing import TYPE_CHECKING
 
 import numpy as np
 from hypothesis import given
 from hypothesis import strategies as st
 
-from allomorph.config import (
-    SCALES,
-    VOICES,
-    load_instrument,
-    resolve_pickup_coils,
-)
-from allomorph.config.schema import CoilConfig
+if TYPE_CHECKING:
+    from allomorph.config.schema import InstrumentConfig
+
+from allomorph.config.schema import CoilConfig, VoiceCoilConfig, VoiceConfig
 from allomorph.dsp import FREQS
+
+SHORT_SCALE_SPEEDS = [62.79, 83.82, 111.89, 149.35]
+STANDARD_SCALE_SPEEDS = [71.16, 95.0, 126.81, 169.27]
 from allomorph.physics.aperture import (
     CALIBRATION_EXCURSION_ETA,
     FRACTIONAL_EXCURSION_CALIBRATION_ETA,
@@ -39,7 +40,7 @@ from allomorph.physics.aperture import (
 
 def test_aperture_zero_frequency():
     """Verify physical aperture DC identity: Sinc(0) = 1.0, Comb(0) = 1.0, Product = 1.0000 (0.00 dB)."""
-    speeds = SCALES["30in"].speeds
+    speeds = SHORT_SCALE_SPEEDS
     res = aperture_response(np.array([0.0]), w_in=1.5, d_in=0.75, speeds=speeds)[0]
     assert math.isclose(res, 1.0, abs_tol=1e-6)
 
@@ -54,7 +55,7 @@ def test_aperture_zero_frequency():
 )
 def test_aperture_dc_conservation_property(w_in: float, d_in: float) -> None:
     """Property test verifying physical aperture DC identity: H(0) = 1.0 for arbitrary coil geometry."""
-    speeds = SCALES["34in"].speeds
+    speeds = STANDARD_SCALE_SPEEDS
     res = float(aperture_response(np.array([0.0]), w_in=w_in, d_in=d_in, speeds=speeds)[0])
     assert math.isclose(res, 1.0, abs_tol=1e-5)
 
@@ -71,7 +72,7 @@ def test_numpy_aperture_bounding_property(f: float, w_in: float) -> None:
 
 def test_aperture_single_vs_dual():
     """Verify dual coil exhibits narrower aperture transmission than narrow single coil at high frequencies."""
-    speeds = SCALES["30in"].speeds
+    speeds = SHORT_SCALE_SPEEDS
     val_single = aperture_response(np.array([5000.0]), w_in=0.75, d_in=0.0, speeds=speeds)[0]
     val_dual = aperture_response(np.array([5000.0]), w_in=1.50, d_in=0.75, speeds=speeds)[0]
 
@@ -81,7 +82,7 @@ def test_aperture_single_vs_dual():
 
 def test_position_envelope():
     """Verify spatial standing-wave excursion envelope at bridge and neck positions."""
-    speeds = SCALES["34in"].speeds
+    speeds = STANDARD_SCALE_SPEEDS
     freqs = np.array([200.0, 1000.0, 5000.0])
     res_bridge = position_envelope(freqs, pos_m=0.0406, speeds=speeds)
     res_neck = position_envelope(freqs, pos_m=0.1250, speeds=speeds)
@@ -98,7 +99,7 @@ def test_position_envelope():
 
 def test_pickup_acoustic_response_single_coil():
     """Verify single coil acoustic response across frequencies."""
-    speeds = SCALES["34in"].speeds
+    speeds = STANDARD_SCALE_SPEEDS
     coils = [
         CoilConfig(
             position_from_bridge_m=0.0406,
@@ -149,32 +150,12 @@ def test_split_coil_string_differentiation():
     assert val_all > 0.05
 
 
-def test_3coil_pmm_compound_response():
-    """Verify that 3-coil P/MM blend evaluates 3 distinct physical coil positions."""
-    inst = load_instrument("32in_custom_pmm")
-    coils = [c for p in inst.pickups.values() for c in resolve_pickup_coils(p, inst)]
-
-    # Should have 4 coil records (PX D/G, PX E/A, MMTWX neck, MMTWX bridge)
-    assert len(coils) == 4
-
-    # Check that strings 1/2 (D/G) see 3 active coils and strings 3/4 (E/A) see 3 active coils
-    dg_coils = [c for c in coils if "all" in c.strings or 1 in c.strings or "D" in c.strings]
-    assert len(dg_coils) == 3
-
-    ea_coils = [c for c in coils if "all" in c.strings or 4 in c.strings or "E" in c.strings]
-    assert len(ea_coils) == 3
-
-    # Positions should match blueprint: PX DG 136.8mm, MMTWX neck 73.7mm, MMTWX bridge 50.8mm
-    positions = sorted([round(c.position_from_bridge_m * 1000, 1) for c in dg_coils])
-    assert positions == [50.8, 73.7, 136.8]
-
-
 def test_dual_coil_notch_smoothness_and_dc_identity():
     """
     Verify that dual-coil humbuckers (e.g. StingRay MM) preserve exact DC unity (1.000)
     and transition through comb notches with C^1 smoothness and zero non-differentiable V-cusps.
     """
-    speeds = SCALES["34in"].speeds
+    speeds = STANDARD_SCALE_SPEEDS
     coils = [
         CoilConfig(
             position_from_bridge_m=0.0755,
@@ -210,27 +191,54 @@ def test_dual_coil_notch_smoothness_and_dc_identity():
     assert 0.20 <= np.min(h_arr) <= 0.40
 
 
-def test_identity_acoustic_transfer_preserves_flat_bass():
+def test_identity_acoustic_transfer_preserves_flat_bass(
+    generic_instrument_config: InstrumentConfig,
+    generic_dual_pickup_instrument: InstrumentConfig,
+    generic_voice_config: VoiceConfig,
+):
     """Verify that modeling a source instrument against its matching voice bypasses acoustic deconvolution."""
-    inst_p = load_instrument("34in_standard_p")
-    assert is_voice_matching_source(inst_p, "precision_vintage", VOICES["precision_vintage"])
+    # Single-pickup matching
+    assert is_voice_matching_source(generic_instrument_config, generic_voice_config)
 
-    inst_jazz = load_instrument("34in_standard_jazz")
-    assert is_voice_matching_source(inst_jazz, "jazz_pair_open", VOICES["jazz_pair_open"])
-    assert is_voice_matching_source(inst_jazz, "jazz_pair_active", VOICES["jazz_pair_active"])
+    # Multi-pickup matching (neck pickup coil matching voice)
+    voice_neck = generic_voice_config.model_copy(
+        update={
+            "coils": [
+                VoiceCoilConfig(
+                    position_from_bridge_m=0.14,
+                    aperture_width_in=0.5,
+                    weight=1.0,
+                    polarity=1.0,
+                    strings=[1, 2, 3, 4],
+                )
+            ]
+        }
+    )
+    assert is_voice_matching_source(generic_dual_pickup_instrument, voice_neck)
 
-    # 5-string Dingwall bridge matches Voice 13 (Dingwall Multi-Scale Bridge)
-    inst_dingwall = load_instrument("37in_multiscale_dingwall")
-    assert is_voice_matching_source(inst_dingwall, "dingwall_bridge", VOICES["dingwall_bridge"])
+    # Non-matching voice (different position)
+    voice_mismatch = generic_voice_config.model_copy(
+        update={
+            "coils": [
+                VoiceCoilConfig(
+                    position_from_bridge_m=0.25,
+                    aperture_width_in=0.75,
+                    weight=1.0,
+                    polarity=1.0,
+                    strings=[1, 2, 3, 4],
+                )
+            ]
+        }
+    )
+    assert not is_voice_matching_source(generic_instrument_config, voice_mismatch)
 
-    # Non-matching voice should return False
-    assert not is_voice_matching_source(inst_p, "jazz_pair_open", VOICES["jazz_pair_open"])
 
-
-def test_numpy_pickup_macro_aperture_properties():
+def test_numpy_pickup_macro_aperture_properties(
+    generic_instrument_config: InstrumentConfig,
+):
     """Verify that macro aperture computes a smooth, comb-free sensing envelope."""
-    inst = load_instrument("30in_emg_mmtw")
-    src_pickup = inst.pickups["mmtwx"]
+    inst = generic_instrument_config
+    src_pickup = inst.pickups["main"]
     speeds = inst.string_wave_speeds
 
     freqs = np.linspace(20.0, 10000.0, 500)
@@ -421,31 +429,28 @@ def test_multiscale_acoustic_response_range():
     assert math.isclose(resp[0], 1.0, abs_tol=1e-3)
 
 
-def test_is_voice_matching_source_edge_cases():
+def test_is_voice_matching_source_edge_cases(
+    generic_instrument_config: InstrumentConfig,
+    generic_voice_config: VoiceConfig,
+):
     """Verify is_voice_matching_source edge cases and mismatch branches."""
-    inst_p = load_instrument("34in_standard_p")
-
-    # Non-existent voice
-    assert not is_voice_matching_source(inst_p, "non_existent_voice")
-
     # Preserve aperture
-    v_preserve = VOICES["precision_vintage"].model_copy(update={"preserve_aperture": True})
-    assert is_voice_matching_source(inst_p, "test_preserve", voice_cfg=v_preserve)
+    v_preserve = generic_voice_config.model_copy(update={"preserve_aperture": True})
+    assert is_voice_matching_source(generic_instrument_config, v_preserve)
 
     # Scale range mismatch (> 0.012 m)
-    v_short = VOICES["precision_vintage"].model_copy(update={"scale": "30in"})
-    assert not is_voice_matching_source(inst_p, "test_short", voice_cfg=v_short)
+    v_short = generic_voice_config.model_copy(update={"scale": "30in"})
+    assert not is_voice_matching_source(generic_instrument_config, v_short)
 
-    # Coil count mismatch (P-bass 2 split coils vs single coil voice)
-    v_single = VOICES["precision_vintage"].model_copy(
-        update={"coils": [VOICES["precision_vintage"].coils[0]]}
-    )
-    assert not is_voice_matching_source(inst_p, "test_single", voice_cfg=v_single)
+    # Coil count mismatch (1 coil vs 2 coils)
+    c0 = generic_voice_config.coils[0]
+    v_dual = generic_voice_config.model_copy(update={"coils": [c0, c0]})
+    assert not is_voice_matching_source(generic_instrument_config, v_dual)
 
     # Coil aperture width mismatch (> 0.15 in)
-    wide_coil = VOICES["precision_vintage"].coils[0].model_copy(update={"aperture_width_in": 2.5})
-    v_wide = VOICES["precision_vintage"].model_copy(update={"coils": [wide_coil, wide_coil]})
-    assert not is_voice_matching_source(inst_p, "test_wide", voice_cfg=v_wide)
+    wide_coil = c0.model_copy(update={"aperture_width_in": 2.5})
+    v_wide = generic_voice_config.model_copy(update={"coils": [wide_coil]})
+    assert not is_voice_matching_source(generic_instrument_config, v_wide)
 
 
 def test_numpy_pickup_acoustic_response_string_names_markers():

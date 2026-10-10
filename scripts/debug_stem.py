@@ -79,12 +79,12 @@ def main() -> None:
 
         pass_count = 0
         total_count = 0
-        for inst_id, inst in sorted(INSTRUMENTS.items()):
-            for v_id in sorted(inst.voicings.keys()):
+        for _inst_id, inst in sorted(INSTRUMENTS.items()):
+            for _v_id, v_cfg in sorted(inst.voicings.items()):
                 total_count += 1
                 report = debug_voicing_stem(
-                    voice_id=v_id,
-                    instrument=inst_id,
+                    instrument=inst,
+                    voicing=v_cfg,
                     drive_dbfs=args.drive_dbfs,
                     gate_taps=gate_taps,
                     export_dir=args.output_dir,
@@ -98,6 +98,8 @@ def main() -> None:
         )
         return
 
+    from allomorph.config.instruments import resolve_target_voicing
+
     target_voices: list[str] = []
     if args.all:
         target_voices = sorted(VOICES.keys())
@@ -110,9 +112,10 @@ def main() -> None:
 
     pass_count = 0
     for vid in target_voices:
+        inst, v_cfg = resolve_target_voicing(vid, instrument=args.instrument)
         report = debug_voicing_stem(
-            voice_id=vid,
-            instrument=args.instrument,
+            instrument=inst,
+            voicing=v_cfg,
             drive_dbfs=args.drive_dbfs,
             gate_taps=gate_taps,
             export_dir=args.output_dir,

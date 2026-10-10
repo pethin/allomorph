@@ -1,5 +1,5 @@
 """
-Tests for circuit simulation CLI in allomorph.circuit.cli.
+Tests for circuit simulation CLI in allomorph.pipeline.sim_cli.
 """
 
 from pathlib import Path
@@ -7,7 +7,7 @@ from typing import Any
 
 import pytest
 
-from allomorph.circuit.cli import main
+from allomorph.pipeline.sim_cli import main
 
 
 def test_circuit_cli_argument_forwarding(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
@@ -18,7 +18,7 @@ def test_circuit_cli_argument_forwarding(tmp_path: Path, monkeypatch: pytest.Mon
         calls.append(kwargs)
         return tmp_path / "out.wav"
 
-    monkeypatch.setattr("allomorph.circuit.cli.simulate_instrument_voicing", _mock_sim)
+    monkeypatch.setattr("allomorph.pipeline.sim_cli.simulate_instrument_voicing", _mock_sim)
 
     dummy_input = tmp_path / "input.wav"
     dummy_input.write_bytes(b"dummy")
@@ -48,8 +48,12 @@ def test_circuit_cli_argument_forwarding(tmp_path: Path, monkeypatch: pytest.Mon
 
     assert len(calls) == 1
     call = calls[0]
-    assert call.get("instrument") == "34in_standard_p"
-    assert call.get("voicing") == "vintage_open"
+    inst = call.get("instrument")
+    assert inst is not None
+    assert inst.id == "34in_standard_p"
+    voicing = call.get("voicing")
+    assert voicing is not None
+    assert voicing.id == "vintage_open"
     assert call.get("normalize") == "rms"
     assert call.get("target_dbfs") == -22.5
     assert call.get("vol_pos") == 0.8

@@ -4,30 +4,27 @@ Calculates magnitude frequency responses for target voicings, frontend deconvolu
 and composite signal flow stages using Polars and NumPy.
 """
 
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from typing import Any
 
 import numpy as np
 import polars as pl
 
-from allomorph.config.instruments import (
-    load_instrument,
+from allomorph.circuit.forward import simulate_instrument_voicing
+from allomorph.config.schema import (
+    InstrumentConfig,
+    PreampConfig,
+    StringPresetConfig,
+    VoiceConfig,
+    VoicingConfig,
 )
-from allomorph.config.schema import InstrumentConfig
-from allomorph.config.voices import VOICES
+from allomorph.dsp import deconvolve_log_sweep, synthesize_fast_log_sweep
 
 NUM_POINTS = 600
 F_MIN = 20.0
 F_MAX = 20000.0
 
 log_freqs = [F_MIN * (F_MAX / F_MIN) ** (i / (NUM_POINTS - 1)) for i in range(NUM_POINTS)]
-
-_OUTPUT_VOICE_DF_CACHE: dict[str, pl.DataFrame] = {}
-_DIFF_VOICE_DF_CACHE: dict[tuple[str, str, str], pl.DataFrame] = {}
-
-
-_TARGET_DFS_CACHE: dict[int, dict[str, tuple[str, np.ndarray]]] = {}
-
 
 _FAST_SWEEP_EXCITATION: np.ndarray | None = None
 
@@ -36,8 +33,6 @@ def get_fast_sweep_excitation() -> np.ndarray:
     """Precomputes and caches the deterministic 16k logarithmic sine sweep excitation."""
     global _FAST_SWEEP_EXCITATION
     if _FAST_SWEEP_EXCITATION is None:
-        from allomorph.dsp import synthesize_fast_log_sweep
-
         _FAST_SWEEP_EXCITATION = synthesize_fast_log_sweep(
             n_samples=16384,
             f_start=10.0,
@@ -50,113 +45,83 @@ def get_fast_sweep_excitation() -> np.ndarray:
     return _FAST_SWEEP_EXCITATION
 
 
+_VOICING_CURVE_CACHE: dict[tuple[str, str], np.ndarray] = {}
+
+
 def build_voice_dataframe(
-    voice_id: str,
-    cfg: Any,
-    instrument: InstrumentConfig | str = "30in",
+    instrument: InstrumentConfig,
+    voicing: VoicingConfig,
     mode: str = "output",
     include_mode_col: bool = False,
+    preamps: Mapping[str, PreampConfig] | None = None,
+    strings: Mapping[str, StringPresetConfig] | None = None,
 ) -> pl.DataFrame:
-    from allomorph.circuit.forward import simulate_instrument_voicing
-    from allomorph.dsp import deconvolve_log_sweep
-
-    inst = load_instrument(instrument)
+    """Computes a frequency response DataFrame for a specified instrument voicing."""
     x_sweep = get_fast_sweep_excitation()
-
-    # Fast in-memory forward simulation evaluated in pure linear mode for visualizer curves
-    y_wet = simulate_instrument_voicing(
-        instrument=inst,
-        voicing=voice_id,
-        input_audio=x_sweep,
-        return_audio=True,
-        normalize="none",
-        dc_block=False,
-        apply_saturation=False,
-        apply_dither=False,
-    )
-
-    # Regularized Farina deconvolution with causal 8192-tap impulse gating
-    f_bins, H_complex, _ = deconvolve_log_sweep(y_wet, x_sweep, sr=48000, gate_taps=8192)
-    H_emp = np.abs(H_complex)
-
     freqs = np.asarray(log_freqs, dtype=np.float64)
-    mag_raw = np.interp(freqs, f_bins, H_emp)
 
-    mag_db = 20.0 * np.log10(np.maximum(mag_raw, 1e-4))
+    inst_id = instrument.id or ""
+    v_id = voicing.id or ""
+    cache_key = (inst_id, v_id) if inst_id and v_id else None
 
-    mid_mask = (freqs >= 100.0) & (freqs <= 800.0)
-    if len(mag_db[mid_mask]) > 0:
-        mag_db = mag_db - np.median(mag_db[mid_mask])
+    if cache_key is not None and cache_key in _VOICING_CURVE_CACHE:
+        mag_db = _VOICING_CURVE_CACHE[cache_key]
+    else:
+        # Fast in-memory forward simulation evaluated in pure linear mode for visualizer curves
+        y_wet = simulate_instrument_voicing(
+            instrument=instrument,
+            voicing=voicing,
+            input_audio=x_sweep,
+            return_audio=True,
+            normalize="none",
+            dc_block=False,
+            apply_saturation=False,
+            apply_dither=False,
+            preamps=preamps,
+            strings=strings,
+        )
 
+        # Regularized Farina deconvolution with causal 8192-tap impulse gating
+        f_bins, H_complex, _ = deconvolve_log_sweep(y_wet, x_sweep, sr=48000, gate_taps=8192)
+        H_emp = np.abs(H_complex)
+
+        mag_raw = np.interp(freqs, f_bins, H_emp)
+        mag_db = 20.0 * np.log10(np.maximum(mag_raw, 1e-4))
+
+        mid_mask = (freqs >= 100.0) & (freqs <= 800.0)
+        if len(mag_db[mid_mask]) > 0:
+            mag_db = mag_db - np.median(mag_db[mid_mask])
+
+        if cache_key is not None:
+            _VOICING_CURVE_CACHE[cache_key] = mag_db
+
+    sensor_type = "magnetic"
+    if (
+        voicing.harness in instrument.harnesses
+        and instrument.harnesses[voicing.harness].type == "direct"
+    ):
+        sensor_type = "direct"
+    elif any(
+        "piezo" in (p.type.lower() + (p.id or "").lower()) for p in instrument.pickups.values()
+    ):
+        sensor_type = "bridge_force"
+
+    voice_id = voicing.id or "default_voicing"
+    vname = voicing.name or voice_id
     df = pl.DataFrame(
         {
             "frequency": np.round(freqs, 1).tolist(),
             "magnitude_db": np.round(mag_db, 2).tolist(),
-            "line_type": [f"Target: {cfg.name}"] * len(freqs),
+            "line_type": [f"Target: {vname}"] * len(freqs),
             "voice_id": [voice_id] * len(freqs),
+            "voice_name": [vname] * len(freqs),
+            "sensor_type": [sensor_type] * len(freqs),
+            "description": [voicing.description or vname] * len(freqs),
         }
     )
     if include_mode_col:
         df = df.with_columns(pl.lit(mode.capitalize()).alias("mode"))
     return df
-
-
-def get_visualizer_voicing_ids() -> list[str]:
-    """Discovers all target and source voicings declared across tone packs and visualizer.toml."""
-    from allomorph.config.instruments import PACKS_CONFIG_DIR, load_tone_pack
-    from allomorph.visualizer.schema import load_visualizer_config
-
-    vcfg = load_visualizer_config()
-    discovered: list[str] = []
-
-    def _add_voice(v_token: str) -> None:
-        if v_token in VOICES:
-            vid = VOICES[v_token].id
-            if vid not in discovered:
-                discovered.append(vid)
-
-    if PACKS_CONFIG_DIR.is_dir():
-        for p in sorted(PACKS_CONFIG_DIR.glob("*.toml")):
-            pack = load_tone_pack(p)
-            for b in pack.bundles:
-                _add_voice(f"{pack.instrument}:{b.source_voicing}")
-                _add_voice(b.source_voicing)
-                for tgt in b.targets:
-                    _add_voice(tgt)
-
-    for extra in vcfg.additional_source_voicings:
-        _add_voice(extra)
-    for extra in vcfg.additional_target_voicings:
-        _add_voice(extra)
-    for chip in vcfg.chips:
-        _add_voice(chip.source)
-        _add_voice(chip.target)
-    _add_voice(vcfg.default_source)
-    _add_voice(vcfg.default_target)
-
-    # Ensure all registered catalog target voices are included
-    for vid in sorted(VOICES.keys()):
-        if vid not in discovered:
-            discovered.append(vid)
-
-    return discovered
-
-
-def get_cached_target_dfs(step: int = 1) -> dict[str, tuple[str, np.ndarray]]:
-    """Caches precomputed target voice responses downsampled by step."""
-    if step in _TARGET_DFS_CACHE:
-        return _TARGET_DFS_CACHE[step]
-
-    target_dfs: dict[str, tuple[str, np.ndarray]] = {}
-    for vid in get_visualizer_voicing_ids():
-        cfg = VOICES[vid]
-        vname = cfg.name
-        vdf = build_voice_dataframe(vid, cfg, mode="output")
-        mag_full = np.asarray(vdf["magnitude_db"], dtype=np.float64)
-        target_dfs[vid] = (vname, mag_full[::step] if step > 1 else mag_full)
-
-    _TARGET_DFS_CACHE[step] = target_dfs
-    return target_dfs
 
 
 VOICE_FAMILIES: dict[str, str] = {
@@ -193,44 +158,80 @@ VOICE_FAMILIES: dict[str, str] = {
 }
 
 
-def build_voicings_comparison_data(step: int = 3) -> dict[str, Any]:
+def build_voicings_comparison_data(
+    voices: Mapping[str, VoiceConfig] | None = None,
+    instruments: Mapping[str, InstrumentConfig] | None = None,
+    step: int = 3,
+    preamps: Mapping[str, PreampConfig] | None = None,
+    strings: Mapping[str, StringPresetConfig] | None = None,
+) -> dict[str, Any]:
     """
     Builds the compact data structure containing frequency responses and metadata
-    for all target voicings in VOICES.
-    Used by voicings.html to display the 3-line graph:
-      - Line 1: Source Voicing (H_src)
-      - Line 2: Target Voicing (H_tgt)
-      - Line 3: Difference (H_diff = H_tgt - H_src)
-    When Source == Target, the difference line evaluates to exact 0.00 dB.
+    for all target voicings in the provided voices map.
     """
-    from allomorph.config.instruments import INSTRUMENTS
     from allomorph.visualizer.schema import load_visualizer_config
+
+    if voices is None:
+        from allomorph.config.voices import VOICES
+
+        voices = VOICES
+    if instruments is None:
+        from allomorph.config.instruments import INSTRUMENTS
+
+        instruments = INSTRUMENTS
+
+    if preamps is None:
+        from allomorph.config.preamps import PREAMPS
+
+        preamps = PREAMPS
+    if strings is None:
+        from allomorph.config.strings import STRINGS
+
+        strings = STRINGS
 
     vcfg = load_visualizer_config()
     freqs = np.asarray(log_freqs[::step], dtype=np.float64)
     f_pts = np.round(freqs, 1).tolist()
 
-    target_dfs = get_cached_target_dfs(step=step)
-
     voices_dict: dict[str, dict[str, Any]] = {}
     instruments_dict: dict[str, dict[str, Any]] = {}
     families_set: set[str] = set()
 
-    for vid, (vname, db_tgt) in sorted(target_dfs.items()):
-        v_obj = VOICES[vid]
+    for vid, v_obj in sorted(voices.items()):
+        inst_id = v_obj.instrument_id or ""
+        inst = instruments.get(inst_id)
+        if inst is None:
+            continue
+
+        voicing_cfg = inst.voicings.get(vid)
+        if voicing_cfg is None:
+            # Match by tone_name or fallback to first voicing
+            match = next(
+                (v for v in inst.voicings.values() if v.tone_name == v_obj.tone_name),
+                next(iter(inst.voicings.values()), None),
+            )
+            if match is None:
+                continue
+            voicing_cfg = match
+
+        vdf = build_voice_dataframe(
+            inst,
+            voicing_cfg,
+            mode="output",
+            preamps=preamps,
+            strings=strings,
+        )
+        mag_full = np.asarray(vdf["magnitude_db"], dtype=np.float64)
+        db_tgt = mag_full[::step] if step > 1 else mag_full
+
+        vname = v_obj.name
         family = VOICE_FAMILIES.get(vid, "Specialty")
         families_set.add(family)
         rms_db = compute_curve_rms_db(db_tgt)
 
-        inst_id = v_obj.instrument_id or ""
-        inst = INSTRUMENTS.get(inst_id)
-        inst_name = inst.name if inst else "Other"
-        inst_scale = (
-            float(inst.scale_length_in)
-            if (inst is not None and inst.scale_length_in is not None)
-            else 34.0
-        )
-        inst_label = f'{inst_name} ({inst_scale:.1f}")' if inst else "Other"
+        inst_name = inst.name
+        inst_scale = float(inst.scale_length_in) if inst.scale_length_in is not None else 34.0
+        inst_label = f'{inst_name} ({inst_scale:.1f}")'
 
         if inst_id not in instruments_dict:
             instruments_dict[inst_id] = {
@@ -315,32 +316,44 @@ def compute_curve_rms_db(mag_db: np.ndarray | Sequence[float] | pl.Series) -> fl
 
 
 def build_voicings_comparison_dataframe(
-    source_id: str = "precision_vintage",
-    target_id: str = "jazz_bridge_growl",
+    source_instrument: InstrumentConfig,
+    source_voicing: VoicingConfig,
+    target_instrument: InstrumentConfig,
+    target_voicing: VoicingConfig,
     step: int = 1,
+    preamps: Mapping[str, PreampConfig] | None = None,
+    strings: Mapping[str, StringPresetConfig] | None = None,
 ) -> pl.DataFrame:
     """
     Constructs a 3-line Polars DataFrame comparing a Source Voicing and Target Voicing:
       1. Source Voicing (H_src)
       2. Target Voicing (H_tgt)
       3. Normalized Difference (Norm. Diff = H_tgt,norm - H_src,norm)
-    When source_id == target_id, the differential line evaluates to exact 0.00 dB.
+    When source == target, the differential line evaluates to exact 0.00 dB.
     """
-    if source_id not in VOICES:
-        raise KeyError(f"Source voice '{source_id}' not found in VOICES: {list(VOICES.keys())}")
-    if target_id not in VOICES:
-        raise KeyError(f"Target voice '{target_id}' not found in VOICES: {list(VOICES.keys())}")
-
     freqs = np.asarray(log_freqs[::step], dtype=np.float64)
     n_pts = len(freqs)
     f_pts = np.round(freqs, 1).tolist()
 
-    target_dfs = get_cached_target_dfs(step=step)
+    df_src = build_voice_dataframe(
+        source_instrument, source_voicing, preamps=preamps, strings=strings
+    )
+    df_tgt = build_voice_dataframe(
+        target_instrument, target_voicing, preamps=preamps, strings=strings
+    )
 
-    src_name, db_src = target_dfs[source_id]
-    tgt_name, db_tgt = target_dfs[target_id]
+    db_src_full = np.asarray(df_src["magnitude_db"], dtype=np.float64)
+    db_tgt_full = np.asarray(df_tgt["magnitude_db"], dtype=np.float64)
 
-    if source_id == target_id:
+    db_src = db_src_full[::step] if step > 1 else db_src_full
+    db_tgt = db_tgt_full[::step] if step > 1 else db_tgt_full
+
+    src_name = source_voicing.name or source_voicing.id or "source"
+    tgt_name = target_voicing.name or target_voicing.id or "target"
+    source_id = source_voicing.id or "source"
+    target_id = target_voicing.id or "target"
+
+    if source_instrument.id == target_instrument.id and source_voicing.id == target_voicing.id:
         db_diff = np.zeros(n_pts, dtype=np.float64)
     else:
         db_diff = np.round(db_tgt - db_src, 2)
@@ -362,6 +375,10 @@ def build_voicings_comparison_dataframe(
             "line_type": line_type_col,
             "voice_id": vid_col,
             "voice_name": vname_col,
+            "sensor_type": ["magnetic"] * (n_pts * 3),
+            "description": [src_name] * n_pts
+            + [tgt_name] * n_pts
+            + [f"{tgt_name} - {src_name}"] * n_pts,
         }
     )
 

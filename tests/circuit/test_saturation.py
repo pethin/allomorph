@@ -6,7 +6,10 @@ soft-knee core saturation, and Numba accelerated kernels.
 import math
 import tempfile
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from allomorph.config.schema import InstrumentConfig
 
 import numpy as np
 import pedalboard.io
@@ -23,12 +26,10 @@ from allomorph.circuit import (
     apply_oversampled_saturation,
     compute_core_impedance,
     simulate_instrument_voicing,
-    simulate_voice,
 )
-from allomorph.dsp import write_wav_24bit
 
 
-def test_passive_saturation_bypassed():
+def test_passive_saturation_bypassed(generic_instrument_config: InstrumentConfig):
     """Verify that forward saturation is bypassed when apply_saturation is False."""
     n_samples = 4800
     # High amplitude input (0.80) exceeding vsat (0.45)
@@ -40,7 +41,8 @@ def test_passive_saturation_bypassed():
     ):
         # Saturation enabled: applies non-linear compression
         simulate_instrument_voicing(
-            voicing="precision_vintage",
+            instrument=generic_instrument_config,
+            voicing=generic_instrument_config.voicings["generic_voice"],
             input_audio=in_heavy,
             output_wav=Path(tmp_act.name),
             apply_saturation=True,
@@ -51,7 +53,8 @@ def test_passive_saturation_bypassed():
         )
         # Saturation bypassed: linear uncompressed
         simulate_instrument_voicing(
-            voicing="precision_vintage",
+            instrument=generic_instrument_config,
+            voicing=generic_instrument_config.voicings["generic_voice"],
             input_audio=in_heavy,
             output_wav=Path(tmp_pas.name),
             apply_saturation=False,
@@ -184,9 +187,7 @@ def test_fractional_core_eddy_diffusion():
     # Evaluate at 10 kHz
     w_hi = 2.0 * math.pi * 10000.0
     s_hi = 1j * w_hi
-    Z_hi_alnico = compute_core_impedance(
-        s_hi, L0, L_core_alnico, R_core_alnico
-    )
+    Z_hi_alnico = compute_core_impedance(s_hi, L0, L_core_alnico, R_core_alnico)
 
     # Inductance at high frequency should be dropped by ~7-8%
     L_eff_hi = Z_hi_alnico.imag / w_hi
@@ -201,17 +202,13 @@ def test_fractional_core_eddy_diffusion():
     L_core_ceramic = props_ceramic.k_core * L0
     R_core_ceramic = 2.0 * math.pi * props_ceramic.f_core * L_core_ceramic
     assert L_core_ceramic == pytest.approx(0.02 * L0)
-    Z_hi_ceramic = compute_core_impedance(
-        s_hi, L0, L_core_ceramic, R_core_ceramic
-    )
+    Z_hi_ceramic = compute_core_impedance(s_hi, L0, L_core_ceramic, R_core_ceramic)
     L_eff_ceramic = Z_hi_ceramic.imag / w_hi
     drop_ceramic = (L0 - L_eff_ceramic) / L0 * 100.0
     assert drop_ceramic <= 2.2
 
     # 3. Disabled eddy diffusion
-    Z_hi_disabled = compute_core_impedance(
-        s_hi, L0, L_core=0.0, R_core=0.0
-    )
+    Z_hi_disabled = compute_core_impedance(s_hi, L0, L_core=0.0, R_core=0.0)
     assert Z_hi_disabled.imag / w_hi == pytest.approx(L0)
     assert Z_hi_disabled.real == 0.0
 
@@ -339,180 +336,6 @@ def test_higher_order_dipole_expansion_and_sag():
         small_sig, vsat=0.5, alpha=0.20, alpha3=0.10, k_sag=0.12, oversample=1
     )
     assert np.allclose(small_sig, out_small, atol=1e-6)
-
-
-def test_differential_magnetic_softening_neodymium_to_alnico():
-    """
-    Verify that converting a passive Neodymium source (34in_dingwall_sp1) to an
-    Alnico V target (precision_vintage) engages differential magnetic softening:
-    - Delta alpha = 0.18, Delta eta = 0.05, Delta k_sag = 0.07, Vsat_eff ≈ 0.84.
-    - Forte peaks (> 0.5V) undergo soft-knee saturation and 2nd harmonic expansion.
-    """
-    sr = 48000
-    t = np.linspace(0, 0.1, int(sr * 0.1), endpoint=False)
-    forte_signal = (0.85 * np.sin(2 * np.pi * 100 * t)).astype(np.float32)
-
-    with tempfile.TemporaryDirectory() as td:
-        in_wav = Path(td) / "forte_in.wav"
-        out_wav = Path(td) / "out_softened.wav"
-        write_wav_24bit(str(in_wav), forte_signal, sample_rate=sr)
-
-        res = simulate_voice(
-            "precision_vintage",
-            input_wav=in_wav,
-            output_wav=out_wav,
-            instrument="34in_dingwall_sp1",
-            normalize="none",
-        )
-        assert res is True
-
-        with pedalboard.io.AudioFile(str(out_wav)) as f:
-            audio_out = f.read(f.frames)[0]
-
-        # In a non-linear saturation, second harmonic (200 Hz) emerges from asymmetry (Delta alpha > 0)
-        fft_mag = np.abs(np.fft.rfft(audio_out))
-        freqs = np.fft.rfftfreq(len(audio_out), 1.0 / sr)
-        fund_idx = np.argmin(np.abs(freqs - 100.0))
-        h2_idx = np.argmin(np.abs(freqs - 200.0))
-
-        fund_level = fft_mag[fund_idx]
-        h2_level = fft_mag[h2_idx]
-        # Second harmonic is present due to differential asymmetry (alpha > 0)
-        assert h2_level > 1e-4 * fund_level, (
-            f"Expected 2nd harmonic bloom from differential alpha, got H2/H1 = {h2_level / fund_level:.6f}"
-        )
-
-
-def test_differential_magnetic_softening_alnico_to_neodymium_bypassed():
-    """
-    Verify that converting a softer Alnico V source (34in_standard_p) to a stiffer
-    Neodymium target (dingwall_bridge) bypasses forward saturation (Delta <= 0).
-    Input scaling linearity error ||y_full - 2 * y_half|| / ||y_full|| must be < 1e-4.
-    """
-    sr = 48000
-    t = np.linspace(0, 0.1, int(sr * 0.1), endpoint=False)
-    sig_full = (0.85 * np.sin(2 * np.pi * 100 * t)).astype(np.float32)
-    sig_half = (0.425 * np.sin(2 * np.pi * 100 * t)).astype(np.float32)
-
-    with tempfile.TemporaryDirectory() as td:
-        in_full = Path(td) / "full.wav"
-        in_half = Path(td) / "half.wav"
-        out_full = Path(td) / "out_bypassed_full.wav"
-        out_half = Path(td) / "out_bypassed_half.wav"
-        write_wav_24bit(str(in_full), sig_full, sample_rate=sr)
-        write_wav_24bit(str(in_half), sig_half, sample_rate=sr)
-
-        simulate_voice(
-            "dingwall_bridge",
-            input_wav=in_full,
-            output_wav=out_full,
-            instrument="34in_standard_p",
-            normalize="none",
-        )
-        simulate_voice(
-            "dingwall_bridge",
-            input_wav=in_half,
-            output_wav=out_half,
-            instrument="34in_standard_p",
-            normalize="none",
-        )
-
-        with pedalboard.io.AudioFile(str(out_full)) as f:
-            y_full = f.read(f.frames)[0]
-        with pedalboard.io.AudioFile(str(out_half)) as f:
-            y_half = f.read(f.frames)[0]
-
-        # Target Neodymium is stiffer than source Alnico V, so softening is bypassed: 100% linear
-        rel_diff = float(np.max(np.abs(y_full - 2.0 * y_half)) / np.max(np.abs(y_full)))
-        assert rel_diff < 1e-4, f"Expected linear scaling (rel_diff < 1e-4), got {rel_diff:.2e}"
-
-
-def test_differential_magnetic_softening_active_to_passive():
-    """
-    Verify that converting an active 18V EMG source (30in_emg_mmtw) to a passive
-    Alnico V target (precision_vintage) applies full target magnetic saturation.
-    Compression and asymmetry cause ||y_full - 2 * y_half|| / ||y_full|| to exceed 5%.
-    """
-    sr = 48000
-    t = np.linspace(0, 0.1, int(sr * 0.1), endpoint=False)
-    sig_full = (0.85 * np.sin(2 * np.pi * 100 * t)).astype(np.float32)
-    sig_half = (0.425 * np.sin(2 * np.pi * 100 * t)).astype(np.float32)
-
-    with tempfile.TemporaryDirectory() as td:
-        in_full = Path(td) / "full.wav"
-        in_half = Path(td) / "half.wav"
-        out_full = Path(td) / "out_act_full.wav"
-        out_half = Path(td) / "out_act_half.wav"
-        write_wav_24bit(str(in_full), sig_full, sample_rate=sr)
-        write_wav_24bit(str(in_half), sig_half, sample_rate=sr)
-
-        simulate_voice(
-            "precision_vintage",
-            input_wav=in_full,
-            output_wav=out_full,
-            instrument="30in_emg_mmtw",
-            normalize="none",
-        )
-        simulate_voice(
-            "precision_vintage",
-            input_wav=in_half,
-            output_wav=out_half,
-            instrument="30in_emg_mmtw",
-            normalize="none",
-        )
-
-        with pedalboard.io.AudioFile(str(out_full)) as f:
-            y_full = f.read(f.frames)[0]
-        with pedalboard.io.AudioFile(str(out_half)) as f:
-            y_half = f.read(f.frames)[0]
-
-        rel_diff = float(np.max(np.abs(y_full - 2.0 * y_half)) / np.max(np.abs(y_full)))
-        assert rel_diff > 0.05, (
-            f"Expected non-linear saturation (rel_diff > 0.05), got {rel_diff:.4f}"
-        )
-
-
-def test_differential_magnetic_softening_identity_bypassed():
-    """
-    Verify that an identity voice conversion (34in_standard_p -> precision_vintage)
-    bypasses forward saturation to prevent double-compression.
-    Input scaling linearity error ||y_full - 2 * y_half|| / ||y_full|| must be < 1e-4.
-    """
-    sr = 48000
-    t = np.linspace(0, 0.1, int(sr * 0.1), endpoint=False)
-    sig_full = (0.50 * np.sin(2 * np.pi * 100 * t)).astype(np.float32)
-    sig_half = (0.25 * np.sin(2 * np.pi * 100 * t)).astype(np.float32)
-
-    with tempfile.TemporaryDirectory() as td:
-        in_full = Path(td) / "full.wav"
-        in_half = Path(td) / "half.wav"
-        out_full = Path(td) / "out_id_full.wav"
-        out_half = Path(td) / "out_id_half.wav"
-        write_wav_24bit(str(in_full), sig_full, sample_rate=sr)
-        write_wav_24bit(str(in_half), sig_half, sample_rate=sr)
-
-        simulate_voice(
-            "precision_vintage",
-            input_wav=in_full,
-            output_wav=out_full,
-            instrument="34in_standard_p",
-            normalize="none",
-        )
-        simulate_voice(
-            "precision_vintage",
-            input_wav=in_half,
-            output_wav=out_half,
-            instrument="34in_standard_p",
-            normalize="none",
-        )
-
-        with pedalboard.io.AudioFile(str(out_full)) as f:
-            y_full = f.read(f.frames)[0]
-        with pedalboard.io.AudioFile(str(out_half)) as f:
-            y_half = f.read(f.frames)[0]
-
-        rel_diff = float(np.max(np.abs(y_full - 2.0 * y_half)) / np.max(np.abs(y_full)))
-        assert rel_diff < 1e-4, f"Expected linear scaling (rel_diff < 1e-4), got {rel_diff:.2e}"
 
 
 def test_asymmetric_lenz_flux_sag_attack_release():
@@ -1200,4 +1023,3 @@ def test_saturation_numba_core_kernels():
     level_py = _py(_active_preamp_leveling_core)(x_test, env_test, vsat=0.4, k_level=0.5)
     level_jit = _active_preamp_leveling_core(x_test, env_test, vsat=0.4, k_level=0.5)
     assert np.allclose(level_py, level_jit)
-

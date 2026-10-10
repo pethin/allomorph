@@ -333,7 +333,10 @@ def partition_instrument_bundles(
                     # Look up by tone slug
                     for v_cand in tgt_inst.voicings.values():
                         cand_slug = (
-                            v_cand.tone_name.lower().replace(" ", "_").replace("∕", "_").replace("/", "_")
+                            v_cand.tone_name.lower()
+                            .replace(" ", "_")
+                            .replace("∕", "_")
+                            .replace("/", "_")
                             if v_cand.tone_name
                             else v_cand.id
                         )
@@ -399,3 +402,91 @@ def partition_instrument_bundles(
             )
         return pack_bundles
 
+
+def resolve_target_voicing(
+    voicing: VoicingConfig | str,
+    instrument: InstrumentConfig | str | Path | None = None,
+) -> tuple[InstrumentConfig, VoicingConfig]:
+    """Resolves an instrument and voicing from either a native voicing ID or a universal voice slug."""
+    if isinstance(voicing, VoicingConfig):
+        inst = (
+            load_instrument(instrument)
+            if instrument is not None and not isinstance(instrument, InstrumentConfig)
+            else (instrument if isinstance(instrument, InstrumentConfig) else None)
+        )
+        if inst is None:
+            raise ValueError("Must provide instrument when voicing is a VoicingConfig")
+        return inst, voicing
+
+    clean_voicing = str(voicing).lower().replace(" ", "_").replace("∕", "_").replace("/", "_")
+
+    # If canonical reference "instrument:voicing" is supplied without explicit instrument, parse it
+    if ":" in str(voicing) and instrument is None:
+        inst_part, voicing_part = str(voicing).split(":", 1)
+        inst = load_instrument(inst_part)
+        clean_v_part = voicing_part.lower().replace(" ", "_").replace("∕", "_").replace("/", "_")
+        if voicing_part in inst.voicings:
+            return inst, inst.voicings[voicing_part]
+        for v in inst.voicings.values():
+            slug = (
+                v.tone_name.lower().replace(" ", "_").replace("∕", "_").replace("/", "_")
+                if v.tone_name
+                else (v.id or "")
+            )
+            if clean_v_part in (v.id, slug):
+                return inst, v
+
+    # If instrument was provided, check its native voicings first
+    if instrument is not None:
+        inst = (
+            load_instrument(instrument)
+            if not isinstance(instrument, InstrumentConfig)
+            else instrument
+        )
+        if voicing in inst.voicings:
+            return inst, inst.voicings[voicing]
+        for v in inst.voicings.values():
+            slug = (
+                v.tone_name.lower().replace(" ", "_").replace("∕", "_").replace("/", "_")
+                if v.tone_name
+                else (v.id or "")
+            )
+            if clean_voicing in (v.id, slug):
+                return inst, v
+
+        # Check if voicing matches a declared pickup on the instrument - reject with fail-fast KeyError
+        if clean_voicing in inst.pickups or str(voicing) in inst.pickups:
+            p_key = clean_voicing if clean_voicing in inst.pickups else str(voicing)
+            raise KeyError(
+                f"Pickup '{p_key}' cannot be used as a target voicing. All voicings must be "
+                f"explicitly defined under [voicings]. Available voicings on '{inst.id}': {list(inst.voicings.keys())}"
+            )
+
+    # Search STANDARD_CATALOG_TARGETS and SOURCE_CATALOG_VOICINGS across all instruments
+    for iid, vid in list(STANDARD_CATALOG_TARGETS) + list(SOURCE_CATALOG_VOICINGS):
+        t_inst = load_instrument(iid)
+        if vid in t_inst.voicings:
+            t_v = t_inst.voicings[vid]
+            slug = (
+                t_v.tone_name.lower().replace(" ", "_").replace("∕", "_").replace("/", "_")
+                if t_v.tone_name
+                else vid
+            )
+            if clean_voicing in (vid, slug, (t_v.id or "").lower()):
+                return t_inst, t_v
+
+    # Fallback error reporting
+    if instrument is not None:
+        inst = (
+            load_instrument(instrument)
+            if not isinstance(instrument, InstrumentConfig)
+            else instrument
+        )
+        raise KeyError(
+            f"Voicing or pickup '{voicing}' not found on instrument '{inst.id}'. "
+            f"Available voicings: {list(inst.voicings.keys())}, pickups: {list(inst.pickups.keys())}"
+        )
+
+    raise KeyError(
+        f"Target voicing '{voicing}' could not be resolved from any instrument in catalog."
+    )

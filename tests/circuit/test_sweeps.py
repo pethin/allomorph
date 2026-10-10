@@ -1,25 +1,32 @@
 """
 Tests for instantaneous continuous parametric circuit sweeps in Allomorph.
 Verifies tone pot sweep, volume pot sweep, cable capacitance sweep,
-active EQ sweeps, Polars DataFrame generation, and performance benchmark (< 180 ms for 100 MNA solves).
+active EQ sweeps, Polars DataFrame generation, and performance benchmark (< 180 ms for 100 MNA solves)
+using synthetic generic test instruments.
 """
 
 import time
+from typing import TYPE_CHECKING
 
 import numpy as np
 import polars as pl
 import pytest
 
-from allomorph.circuit.forward import resolve_target_voicing
+if TYPE_CHECKING:
+    from allomorph.config.schema import InstrumentConfig
+
 from allomorph.circuit.sweeps import (
+    ParametricSweepResult,
     compute_parametric_sweep,
 )
 from allomorph.dsp import FREQS
 
 
-def test_tone_pot_sweep_treble_cut():
+def test_tone_pot_sweep_treble_cut(generic_instrument_config: InstrumentConfig):
     """Tone pot sweep (0.0 -> 1.0) must show progressive treble cut (> 20 dB at 5 kHz)."""
-    res = compute_parametric_sweep("precision_vintage", param="tone", values=[0.0, 0.25, 0.5, 0.75, 1.0])
+    res = compute_parametric_sweep(
+        generic_instrument_config, param="tone", values=[0.0, 0.25, 0.5, 0.75, 1.0]
+    )
 
     assert len(res.curves) == 5
     f_arr = np.asarray(res.freqs)
@@ -38,9 +45,11 @@ def test_tone_pot_sweep_treble_cut():
         assert mags_5k[i] <= mags_5k[i + 1] + 1e-6
 
 
-def test_volume_pot_sweep_attenuation():
+def test_volume_pot_sweep_attenuation(generic_instrument_config: InstrumentConfig):
     """Volume pot sweep (0.0 -> 1.0) must show cable loading attenuation."""
-    res = compute_parametric_sweep("precision_vintage", param="vol", values=[0.0, 0.25, 0.5, 0.75, 1.0])
+    res = compute_parametric_sweep(
+        generic_instrument_config, param="vol", values=[0.0, 0.25, 0.5, 0.75, 1.0]
+    )
 
     assert len(res.curves) == 5
     f_arr = np.asarray(res.freqs)
@@ -55,9 +64,11 @@ def test_volume_pot_sweep_attenuation():
     assert mag_full > mag_zero + 50.0
 
 
-def test_cable_capacitance_resonance_downshift():
+def test_cable_capacitance_resonance_downshift(generic_instrument_config: InstrumentConfig):
     """Cable capacitance sweep (500 to 1500 pF) must show resonance downshifting."""
-    res = compute_parametric_sweep("precision_vintage", param="cable", values=[500.0, 750.0, 1000.0, 1500.0])
+    res = compute_parametric_sweep(
+        generic_instrument_config, param="cable", values=[500.0, 750.0, 1000.0, 1500.0]
+    )
 
     assert len(res.curves) == 4
     f_arr = np.asarray(res.freqs)
@@ -85,9 +96,12 @@ def test_cable_capacitance_resonance_downshift():
         assert mags_4k[i] > mags_4k[i + 1]
 
 
-def test_active_preamp_boost_sweep():
+def test_active_preamp_boost_sweep(generic_instrument_config: InstrumentConfig):
     """Active preamp bass boost sweep must increase low-frequency gain."""
-    res = compute_parametric_sweep("jazz_pair_active", param="bass_boost", values=[0.0, 6.0, 12.0])
+    v_act = generic_instrument_config.voicings["active"]
+    res = compute_parametric_sweep(
+        (generic_instrument_config, v_act), param="bass_boost", values=[0.0, 6.0, 12.0]
+    )
 
     assert len(res.curves) == 3
     f_arr = np.asarray(res.freqs)
@@ -99,18 +113,18 @@ def test_active_preamp_boost_sweep():
     assert boost > 8.0, f"Expected active bass boost at 40 Hz, got {boost:.2f} dB"
 
 
-def test_sweep_performance_benchmark():
+def test_sweep_performance_benchmark(generic_instrument_config: InstrumentConfig):
     """100-step parametric MNA sweep must execute in < 180 ms."""
     values = np.linspace(0.0, 1.0, 100)
 
     # Warm-up run
-    compute_parametric_sweep("precision_vintage", param="tone", values=[0.0, 1.0])
+    compute_parametric_sweep(generic_instrument_config, param="tone", values=[0.0, 1.0])
 
     runs = []
     res = None
     for _ in range(5):
         t0 = time.perf_counter()
-        res = compute_parametric_sweep("precision_vintage", param="tone", values=values)
+        res = compute_parametric_sweep(generic_instrument_config, param="tone", values=values)
         runs.append((time.perf_counter() - t0) * 1000.0)
 
     best_ms = float(min(runs))
@@ -121,9 +135,9 @@ def test_sweep_performance_benchmark():
     )
 
 
-def test_to_dataframe_schema():
+def test_to_dataframe_schema(generic_instrument_config: InstrumentConfig):
     """to_dataframe() must return a Polars DataFrame with the expected columns."""
-    res = compute_parametric_sweep("precision_vintage", param="tone", values=[0.0, 0.5, 1.0])
+    res = compute_parametric_sweep(generic_instrument_config, param="tone", values=[0.0, 0.5, 1.0])
 
     df = res.to_dataframe()
     assert isinstance(df, pl.DataFrame)
@@ -132,14 +146,15 @@ def test_to_dataframe_schema():
     assert len(df) == len(FREQS) * 3
 
     # Test with include_voice_id=True
-    res.voice_id = "precision_vintage"
+    res.voice_id = "generic_voice"
     df_voice = res.to_dataframe(include_voice_id=True)
     assert "voice_id" in df_voice.columns
 
 
-def test_circuit_state_restoration():
+def test_circuit_state_restoration(generic_instrument_config: InstrumentConfig):
     """Parametric sweep must not permanently alter the instrument voicing state."""
-    inst, voicing = resolve_target_voicing("precision_vintage")
+    inst = generic_instrument_config
+    voicing = inst.voicings["passive_open"]
     orig_tone = voicing.controls.get("tone")
 
     compute_parametric_sweep((inst, voicing), param="tone", values=[0.1, 0.5, 0.9])
@@ -149,9 +164,9 @@ def test_circuit_state_restoration():
     assert voicing.controls.get("tone") == orig_tone
 
 
-def test_curves_linear():
+def test_curves_linear(generic_instrument_config: InstrumentConfig):
     """Verify curves_linear property properly converts dB curves to linear scale."""
-    res = compute_parametric_sweep("precision_vintage", param="tone", values=[0.0, 1.0])
+    res = compute_parametric_sweep(generic_instrument_config, param="tone", values=[0.0, 1.0])
     lin_curves = res.curves_linear
     assert len(lin_curves) == 2
     for c_db, c_lin in zip(res.curves, lin_curves):
@@ -159,9 +174,12 @@ def test_curves_linear():
         assert np.allclose(c_lin, expected_lin)
 
 
-def test_metrics_and_summary_table(capsys: pytest.CaptureFixture[str]):
+def test_metrics_and_summary_table(
+    generic_instrument_config: InstrumentConfig,
+    capsys: pytest.CaptureFixture[str],
+):
     """Verify analytical metrics computation and summary table printing."""
-    res = compute_parametric_sweep("precision_vintage", param="tone", values=[0.2, 0.8])
+    res = compute_parametric_sweep(generic_instrument_config, param="tone", values=[0.2, 0.8])
     records = res.metrics_records()
     assert len(records) == 2
     for r in records:
@@ -177,10 +195,11 @@ def test_metrics_and_summary_table(capsys: pytest.CaptureFixture[str]):
     assert "Setting / Label" in captured.out
 
 
-def test_active_preamp_treble_boost_sweep():
+def test_active_preamp_treble_boost_sweep(generic_instrument_config: InstrumentConfig):
     """Active preamp treble boost sweep must increase high-frequency gain."""
+    v_act = generic_instrument_config.voicings["active"]
     res = compute_parametric_sweep(
-        "jazz_pair_active", param="treble_boost", values=[0.0, 6.0, 12.0]
+        (generic_instrument_config, v_act), param="treble_boost", values=[0.0, 6.0, 12.0]
     )
     assert len(res.curves) == 3
     f_arr = np.asarray(res.freqs)
@@ -189,12 +208,11 @@ def test_active_preamp_treble_boost_sweep():
     assert boost > 4.0, f"Expected active treble boost at 4 kHz, got {boost:.2f} dB"
 
 
-def test_tone_cap_sweep():
+def test_tone_cap_sweep(generic_instrument_config: InstrumentConfig):
     """Tone cap sweep (10 nF to 100 nF) with rolled-off tone pot must downshift resonant peak frequency."""
-    inst, voicing = resolve_target_voicing("precision_vintage")
-    v_rolled = voicing.model_copy(deep=True)
-    v_rolled.controls["tone"] = 0.0
-    res = compute_parametric_sweep((inst, v_rolled), param="tone_cap", values=[10e-9, 47e-9, 100e-9])
+    inst = generic_instrument_config
+    voicing = inst.voicings["passive_warm"]
+    res = compute_parametric_sweep((inst, voicing), param="tone_cap", values=[10e-9, 47e-9, 100e-9])
     assert len(res.curves) == 3
     records = res.metrics_records()
     f_res_list = [r.f_res_hz for r in records if r.f_res_hz is not None]
@@ -203,30 +221,31 @@ def test_tone_cap_sweep():
             assert f_res_list[i] >= f_res_list[i + 1]
 
 
-def test_sweeps_polymorphic_inputs_and_edge_cases():
+def test_sweeps_polymorphic_inputs_and_edge_cases(
+    generic_instrument_config: InstrumentConfig,
+    generic_dual_pickup_instrument: InstrumentConfig,
+):
     """Verify compute_parametric_sweep polymorphic inputs, metrics, and error handling."""
-    from allomorph.config import VOICES
-    from allomorph.config.instruments import load_instrument
-
-    inst = load_instrument("34in_standard_jazz")
-
-    # 1. Blend sweep with separate neck_vol and bridge_vol (Jazz Bass)
+    # 1. Blend sweep with separate neck_vol and bridge_vol (generic dual-pickup instrument)
+    v_blend = generic_dual_pickup_instrument.voicings["blend_controls"]
     res_blend = compute_parametric_sweep(
-        "34in_standard_jazz:pair_open", param="blend", values=[0.0, 0.5, 1.0]
+        (generic_dual_pickup_instrument, v_blend), param="blend", values=[0.0, 0.5, 1.0]
     )
     assert len(res_blend.curves) == 3
 
-    # 2. Polymorphic inputs: VoiceConfig, InstrumentConfig
-    vcfg = VOICES["precision_vintage"]
-    res_vcfg = compute_parametric_sweep(vcfg, param="tone", pot_taper="audio_15")
+    # 2. Polymorphic inputs: (InstrumentConfig, VoicingConfig), InstrumentConfig
+    v_open = generic_instrument_config.voicings["passive_open"]
+    res_vcfg = compute_parametric_sweep(
+        (generic_instrument_config, v_open), param="tone", pot_taper="audio_15"
+    )
     assert len(res_vcfg.curves) > 0
 
-    res_inst = compute_parametric_sweep(inst, param="vol", pot_taper="linear")
+    res_inst = compute_parametric_sweep(generic_instrument_config, param="vol", pot_taper="linear")
     assert len(res_inst.curves) > 0
 
     # 3. Custom labels and print_metrics
     res_custom = compute_parametric_sweep(
-        "precision_vintage",
+        generic_instrument_config,
         param="cable",
         values=[200.0, 750.0],
         labels=["200pF", "750pF"],
@@ -241,16 +260,15 @@ def test_sweeps_polymorphic_inputs_and_edge_cases():
 
     with pytest.raises(ValueError, match="Length of labels"):
         compute_parametric_sweep(
-            "precision_vintage", param="tone", values=[0.0, 1.0], labels=["OnlyOne"]
+            generic_instrument_config, param="tone", values=[0.0, 1.0], labels=["OnlyOne"]
         )
 
 
-def test_sweeps_bass_treble_boost_and_unsupported_params():
+def test_sweeps_bass_treble_boost_and_unsupported_params(
+    generic_instrument_config: InstrumentConfig,
+):
     """Verify sweeps with active bass and treble boost, linear curves, and errors."""
-    from allomorph.circuit.sweeps import ParametricSweepResult, compute_parametric_sweep
-    from allomorph.config.instruments import load_instrument
-
-    inst = load_instrument("34in_standard_p")
+    inst = generic_instrument_config
 
     # Cable sweep with default values
     res_cable = compute_parametric_sweep(inst, param="cable")
@@ -283,4 +301,3 @@ def test_sweeps_bass_treble_boost_and_unsupported_params():
             curves=[np.array([0.0])],  # length 1 vs freqs length 2
             labels=["1.0"],
         )
-

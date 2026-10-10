@@ -277,7 +277,7 @@ def main(argv: Sequence[str] | None = None):
         return
 
     if args.stage == "sim":
-        from allomorph.circuit.forward import simulate_all_instrument_voicings
+        from allomorph.pipeline.batch import simulate_all_instrument_voicings
 
         for inst in instruments_to_run:
             print(f"\n[Simulation] Simulating all voicings for {inst}...")
@@ -377,7 +377,7 @@ def main(argv: Sequence[str] | None = None):
 
     if args.stage == "all":
         print("\n--- Step 1: Direct Forward Simulation of Voicings ---")
-        from allomorph.circuit.forward import simulate_all_instrument_voicings
+        from allomorph.pipeline.batch import simulate_all_instrument_voicings
 
         for inst in instruments_to_run:
             simulate_all_instrument_voicings(

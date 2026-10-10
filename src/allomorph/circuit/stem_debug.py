@@ -6,12 +6,14 @@ and Farina harmonic distortion (THD, 2nd, and 3rd harmonics).
 """
 
 import math
+from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
 
 import numpy as np
 
-from allomorph.circuit.forward import resolve_target_voicing, simulate_instrument_voicing
+from allomorph.circuit.forward import simulate_instrument_voicing
+from allomorph.config.schema import InstrumentConfig, PreampConfig, VoicingConfig
 from allomorph.dsp import (
     deconvolve_log_sweep,
     extract_farina_harmonics,
@@ -54,20 +56,20 @@ class StemDiagnosticReport:
 
 
 def debug_voicing_stem(
-    voice_id: str,
-    instrument: str | None = None,
+    instrument: InstrumentConfig,
+    voicing: VoicingConfig,
     drive_dbfs: float = -20.5,
     gate_taps: int | None = 4096,
     export_dir: Path | str | None = None,
     n_samples: int = 16384,
     sr: int = 48000,
+    preamps: Mapping[str, PreampConfig] | None = None,
 ) -> StemDiagnosticReport:
     """Renders a fast logarithmic sine sweep through simulate_instrument_voicing() and returns
-
     a comprehensive diagnostic report evaluating causal latency, frequency response,
     sub-bass transmission, and non-linear harmonic saturation.
     """
-    inst, vcfg = resolve_target_voicing(voice_id, instrument=instrument)
+    voice_id = voicing.id or (voicing.tone_name if voicing.tone_name else "voice")
 
     x_sweep = synthesize_fast_log_sweep(
         n_samples=n_samples,
@@ -79,11 +81,12 @@ def debug_voicing_stem(
     )
 
     y_wet = simulate_instrument_voicing(
-        instrument=inst,
-        voicing=vcfg,
+        instrument=instrument,
+        voicing=voicing,
         input_audio=x_sweep,
         return_audio=True,
         normalize="none",
+        preamps=preamps,
     )
 
     f_bins, H_complex, h_time = deconvolve_log_sweep(
@@ -140,8 +143,8 @@ def debug_voicing_stem(
     if export_dir is not None:
         p_dir = Path(export_dir)
         p_dir.mkdir(parents=True, exist_ok=True)
-        out_wav_path = p_dir / f"stem_{inst.id}_{voice_id}.wav"
-        ir_wav_path = p_dir / f"ir_{inst.id}_{voice_id}.wav"
+        out_wav_path = p_dir / f"stem_{instrument.id}_{voice_id}.wav"
+        ir_wav_path = p_dir / f"ir_{instrument.id}_{voice_id}.wav"
         write_wav_24bit(out_wav_path, y_wet.astype(np.float32), sr)
         write_wav_24bit(
             ir_wav_path,
@@ -151,7 +154,7 @@ def debug_voicing_stem(
 
     return StemDiagnosticReport(
         voice_id=voice_id,
-        instrument_id=inst.id,
+        instrument_id=instrument.id,
         drive_dbfs=drive_dbfs,
         is_causal_zero_latency=is_causal,
         onset_sample_index=onset_sample,

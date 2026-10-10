@@ -331,4 +331,3 @@ def test_generated_pack_storefront_descriptions():
             assert tone_base in expected_basenames, (
                 f"Instrument {inst_id} voicing '{tone_base}' does not match any bundle target base name"
             )
-

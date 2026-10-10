@@ -10,6 +10,7 @@ from pathlib import Path
 import pytest
 
 from allomorph.config.instruments import INSTRUMENTS
+from allomorph.config.schema import InstrumentConfig
 from allomorph.config.voices import VOICES
 from allomorph.naming import get_t3k_basename
 from allomorph.pipeline.schema import (
@@ -173,18 +174,21 @@ def test_write_manifest_and_sha256(tmp_path: Path):
     assert nam_entry["size_bytes"] == dummy_nam.stat().st_size
 
 
-def test_simulate_instrument_pickup_with_version_tag(tmp_path: Path):
+def test_simulate_instrument_pickup_with_version_tag(
+    tmp_path: Path, generic_instrument_config: InstrumentConfig
+):
     """Verify simulate_instrument_voicing creates wet pickup stem and records manifest when requested."""
     from allomorph.circuit.forward import simulate_instrument_voicing
 
+    v_cfg = generic_instrument_config.voicings["generic_voice"]
     wet_p = simulate_instrument_voicing(
-        instrument="30in_emg_mmtw",
-        voicing="mmtw_dual",
-        output_wav=tmp_path / "mmtw_dual.wav",
+        instrument=generic_instrument_config,
+        voicing=v_cfg,
+        output_wav=tmp_path / "generic_voice.wav",
         max_samples=2048,
     )
     assert wet_p.exists()
-    assert wet_p.name == "mmtw_dual.wav"
+    assert wet_p.name == "generic_voice.wav"
 
     manifest_p = wet_p.parent / "manifest.json"
     assert manifest_p.exists()

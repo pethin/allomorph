@@ -49,7 +49,7 @@ def test_pipeline_cli_all_input_wav_propagation(tmp_path: Path, monkeypatch: pyt
     def _mock_viz(*args: Any, **kwargs: Any) -> None:
         viz_calls.append((args, kwargs))
 
-    monkeypatch.setattr("allomorph.circuit.forward.simulate_all_instrument_voicings", _mock_sim)
+    monkeypatch.setattr("allomorph.pipeline.batch.simulate_all_instrument_voicings", _mock_sim)
     monkeypatch.setattr("allomorph.pipeline.pack.export_tone_pack", _mock_pack)
     monkeypatch.setattr("allomorph.pipeline.cli.run_visualization", _mock_viz)
 
@@ -159,7 +159,7 @@ def test_pipeline_cli_sim_stage(monkeypatch: pytest.MonkeyPatch):
     def _mock_sim(inst: Any, **kwargs: Any) -> None:
         sim_calls.append((inst, kwargs))
 
-    monkeypatch.setattr("allomorph.circuit.forward.simulate_all_instrument_voicings", _mock_sim)
+    monkeypatch.setattr("allomorph.pipeline.batch.simulate_all_instrument_voicings", _mock_sim)
     main(argv=["--stage", "sim", "--instrument", "30in", "--max-samples", "2400"])
     assert len(sim_calls) == 1
     assert sim_calls[0][0] == "30in_emg_mmtw"
@@ -221,4 +221,3 @@ def test_pipeline_cli_clean_audio(tmp_path: Path, monkeypatch: pytest.MonkeyPatc
     main(argv=["--clean-audio", "--stage", "viz"])
     assert not (audio_dir / "test_file.wav").exists()
     assert not sub_dir.exists()
-

@@ -17,7 +17,9 @@ def test_voice_parameter_validity():
         assert isinstance(cfg, VoiceConfig), f"{vid} is not a VoiceConfig instance"
         assert cfg.name and cfg.description
         assert cfg.fr > 0
-        is_active = bool(cfg.instrument_id and "active" in cfg.instrument_id) or cfg.sensor_type == "direct"
+        is_active = (
+            bool(cfg.instrument_id and "active" in cfg.instrument_id) or cfg.sensor_type == "direct"
+        )
         max_fr = 20000.0 if (cfg.preserve_aperture or is_active) else 6000.0
         assert 200.0 <= cfg.fr <= max_fr, f"{vid} fr outside audible musical range: {cfg.fr}"
         assert cfg.Q > 0
@@ -52,7 +54,9 @@ def test_voice_netlist_existence():
                 break
         if v_match is None:
             v_match = next(iter(inst.voicings.values()))
-        assert v_match.harness in inst.harnesses, f"Harness '{v_match.harness}' missing from {inst.id}"
+        assert v_match.harness in inst.harnesses, (
+            f"Harness '{v_match.harness}' missing from {inst.id}"
+        )
         harness = inst.harnesses[v_match.harness]
         curves = solve_mna_harness(inst, harness, v_match, freqs=FREQS)
         assert len(curves) >= 1

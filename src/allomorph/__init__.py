@@ -15,6 +15,7 @@ if "tkinter" not in sys.modules:
     try:
         import tkinter  # noqa: F401
     except ModuleNotFoundError:  # pragma: no cover
+
         def _dummy_mainloop(*args: object, **kwargs: object) -> None:
             pass
 
@@ -43,10 +44,10 @@ from allomorph.circuit import (
     audit_audio_file,
     audit_wet_audio_catalog,
     find_default_input_audio,
-    resolve_target_voicing,
-    simulate_all_instrument_voicings,
     simulate_instrument_voicing,
-    simulate_voice,
+)
+from allomorph.config import (
+    resolve_target_voicing,
 )
 from allomorph.config.geometry import (
     compute_effective_position,
@@ -104,6 +105,10 @@ from allomorph.physics import (
     generate_wave_speed_continuum,
     numpy_pickup_acoustic_response,
     numpy_pickup_macro_aperture,
+)
+from allomorph.pipeline.batch import (
+    simulate_all_instrument_voicings,
+    simulate_voice,
 )
 from allomorph.version import (
     ALLOMORPH_VERSION,

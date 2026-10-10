@@ -176,8 +176,10 @@ def test_guardrail_5_3_active_preamp_dc_transmission():
     to prevent unphysical sub-audible inversion steps and Gibbs truncation ripples."""
     s_dc = 1j * 2.0 * math.pi * 1e-6
 
+    from allomorph.config.preamps import PREAMPS
+
     for preamp_type in ["sadowsky_2band", "stingray_2band", "aguilar_3band", "dingwall_active"]:
-        H_eq = compute_active_preamp_eq(preamp_type, s_dc)
+        H_eq = compute_active_preamp_eq(PREAMPS[preamp_type], s_dc)
         mag_dc = abs(H_eq)
         assert mag_dc >= 0.999, (
             f"Preamp {preamp_type} DC magnitude was {mag_dc:.4f} (expected >= 1.0). "
@@ -204,7 +206,7 @@ def test_guardrail_5_3_transducer_taxonomy():
 
 def test_guardrail_5_3_zero_silent_fallbacks():
     """Guardrail 5.3.5: Missing configurations, invalid voices, or unmapped pickups must raise explicit diagnostic exceptions."""
-    from allomorph.circuit.forward import resolve_target_voicing
+    from allomorph.config.instruments import resolve_target_voicing
 
     inst = load_instrument("34in_standard_jazz")
 
@@ -274,13 +276,16 @@ def test_guardrail_5_3_difference_high_frequency_ceiling():
     """Guardrail 5.3: Differential voicing curves (Target - Source) must not exhibit
     spurious high-frequency treble boost artifacts (> +2.0 dB relative to passband)
     arising from deconvolution noise floor clamping when targeting darker/series voicings."""
-    from allomorph.visualizer.dataframe import _TARGET_DFS_CACHE, build_voice_dataframe
+    from allomorph.config.instruments import resolve_target_voicing
+    from allomorph.visualizer.dataframe import _VOICING_CURVE_CACHE, build_voice_dataframe
 
-    _TARGET_DFS_CACHE.clear()
+    _VOICING_CURVE_CACHE.clear()
 
     # Specifically test P/MM Parallel (Source) -> P/MM Series (Target)
-    df_par = build_voice_dataframe("p_mm_parallel", VOICES["p_mm_parallel"])
-    df_ser = build_voice_dataframe("p_mm_series", VOICES["p_mm_series"])
+    inst_par, v_par = resolve_target_voicing("p_mm_parallel")
+    inst_ser, v_ser = resolve_target_voicing("p_mm_series")
+    df_par = build_voice_dataframe(inst_par, v_par)
+    df_ser = build_voice_dataframe(inst_ser, v_ser)
 
     freqs = np.array(df_par["frequency"])
     mag_par = np.array(df_par["magnitude_db"])

@@ -6,8 +6,9 @@ loaded RLC circuit, active preamps, and string mechanics into 24-bit PCM wet ste
 
 import functools
 import math
+from collections.abc import Mapping
 from pathlib import Path
-from typing import Any, Literal, overload
+from typing import Literal, overload
 
 import numpy as np
 import pedalboard
@@ -20,10 +21,14 @@ from allomorph.circuit.saturation import (
 )
 from allomorph.circuit.solver import solve_mna_harness
 from allomorph.config.geometry import compute_effective_position, resolve_pickup_coils
-from allomorph.config.instruments import INSTRUMENTS, load_instrument
 from allomorph.config.scales import REPO_ROOT, resolve_scale_range
-from allomorph.config.schema import InstrumentConfig, VoicingConfig
-from allomorph.config.strings import STRINGS, get_instrument_string
+from allomorph.config.schema import (
+    InstrumentConfig,
+    PreampConfig,
+    StringPresetConfig,
+    VoicingConfig,
+)
+from allomorph.config.strings import get_instrument_string
 from allomorph.dsp import (
     FREQS,
     NUM_TAPS,
@@ -65,104 +70,10 @@ def _get_white_noise_vector(n: int) -> np.ndarray:
     return rng.normal(0.0, 1.0, n).astype(np.float64)
 
 
-def resolve_target_voicing(
-    voicing: VoicingConfig | str,
-    instrument: InstrumentConfig | str | Path | None = None,
-) -> tuple[InstrumentConfig, VoicingConfig]:
-    """Resolves an instrument and voicing from either a native voicing ID or a universal voice slug."""
-    if isinstance(voicing, VoicingConfig):
-        inst = (
-            load_instrument(instrument)
-            if instrument is not None and not isinstance(instrument, InstrumentConfig)
-            else (instrument if isinstance(instrument, InstrumentConfig) else None)
-        )
-        if inst is None:
-            raise ValueError("Must provide instrument when voicing is a VoicingConfig")
-        return inst, voicing
-
-    clean_voicing = str(voicing).lower().replace(" ", "_").replace("∕", "_").replace("/", "_")
-
-    # If canonical reference "instrument:voicing" is supplied without explicit instrument, parse it
-    if ":" in str(voicing) and instrument is None:
-        inst_part, voicing_part = str(voicing).split(":", 1)
-        inst = load_instrument(inst_part)
-        clean_v_part = voicing_part.lower().replace(" ", "_").replace("∕", "_").replace("/", "_")
-        if voicing_part in inst.voicings:
-            return inst, inst.voicings[voicing_part]
-        for v in inst.voicings.values():
-            slug = (
-                v.tone_name.lower().replace(" ", "_").replace("∕", "_").replace("/", "_")
-                if v.tone_name
-                else (v.id or "")
-            )
-            if clean_v_part in (v.id, slug):
-                return inst, v
-
-    # If instrument was provided, check its native voicings first
-    if instrument is not None:
-        inst = (
-            load_instrument(instrument)
-            if not isinstance(instrument, InstrumentConfig)
-            else instrument
-        )
-        if voicing in inst.voicings:
-            return inst, inst.voicings[voicing]
-        for v in inst.voicings.values():
-            slug = (
-                v.tone_name.lower().replace(" ", "_").replace("∕", "_").replace("/", "_")
-                if v.tone_name
-                else (v.id or "")
-            )
-            if clean_voicing in (v.id, slug):
-                return inst, v
-
-        # Check if voicing matches a declared pickup on the instrument - reject with fail-fast KeyError
-        if clean_voicing in inst.pickups or str(voicing) in inst.pickups:
-            p_key = clean_voicing if clean_voicing in inst.pickups else str(voicing)
-            raise KeyError(
-                f"Pickup '{p_key}' cannot be used as a target voicing. All voicings must be "
-                f"explicitly defined under [voicings]. Available voicings on '{inst.id}': {list(inst.voicings.keys())}"
-            )
-
-    # Search STANDARD_CATALOG_TARGETS and SOURCE_CATALOG_VOICINGS across all instruments
-    from allomorph.config.instruments import (
-        SOURCE_CATALOG_VOICINGS,
-        STANDARD_CATALOG_TARGETS,
-    )
-
-    for iid, vid in list(STANDARD_CATALOG_TARGETS) + list(SOURCE_CATALOG_VOICINGS):
-        t_inst = load_instrument(iid)
-        if vid in t_inst.voicings:
-            t_v = t_inst.voicings[vid]
-            slug = (
-                t_v.tone_name.lower().replace(" ", "_").replace("∕", "_").replace("/", "_")
-                if t_v.tone_name
-                else vid
-            )
-            if clean_voicing in (vid, slug, (t_v.id or "").lower()):
-                return t_inst, t_v
-
-    # Fallback error reporting
-    if instrument is not None:
-        inst = (
-            load_instrument(instrument)
-            if not isinstance(instrument, InstrumentConfig)
-            else instrument
-        )
-        raise KeyError(
-            f"Voicing or pickup '{voicing}' not found on instrument '{inst.id}'. "
-            f"Available voicings: {list(inst.voicings.keys())}, pickups: {list(inst.pickups.keys())}"
-        )
-
-    raise KeyError(
-        f"Target voicing '{voicing}' could not be resolved from any instrument in catalog."
-    )
-
-
 @overload
 def simulate_instrument_voicing(
-    instrument: InstrumentConfig | str | Path | None = ...,
-    voicing: VoicingConfig | str = ...,
+    instrument: InstrumentConfig,
+    voicing: VoicingConfig,
     input_wav: Path | str | None = ...,
     input_audio: np.ndarray | None = ...,
     output_wav: Path | str | None = ...,
@@ -179,13 +90,15 @@ def simulate_instrument_voicing(
     normalize: str = ...,
     target_dbfs: float | None = ...,
     force: bool = ...,
+    preamps: Mapping[str, PreampConfig] | None = ...,
+    strings: Mapping[str, StringPresetConfig] | None = ...,
 ) -> Path: ...
 
 
 @overload
 def simulate_instrument_voicing(
-    instrument: InstrumentConfig | str | Path | None = ...,
-    voicing: VoicingConfig | str = ...,
+    instrument: InstrumentConfig,
+    voicing: VoicingConfig,
     input_wav: Path | str | None = ...,
     input_audio: np.ndarray | None = ...,
     output_wav: None = None,
@@ -202,13 +115,15 @@ def simulate_instrument_voicing(
     normalize: str = ...,
     target_dbfs: float | None = ...,
     force: bool = ...,
+    preamps: Mapping[str, PreampConfig] | None = ...,
+    strings: Mapping[str, StringPresetConfig] | None = ...,
 ) -> np.ndarray: ...
 
 
 @overload
 def simulate_instrument_voicing(
-    instrument: InstrumentConfig | str | Path | None = ...,
-    voicing: VoicingConfig | str = ...,
+    instrument: InstrumentConfig,
+    voicing: VoicingConfig,
     input_wav: Path | str | None = ...,
     input_audio: np.ndarray | None = ...,
     output_wav: Path | str = ...,
@@ -225,12 +140,14 @@ def simulate_instrument_voicing(
     normalize: str = ...,
     target_dbfs: float | None = ...,
     force: bool = ...,
+    preamps: Mapping[str, PreampConfig] | None = ...,
+    strings: Mapping[str, StringPresetConfig] | None = ...,
 ) -> tuple[Path, np.ndarray]: ...
 
 
 def simulate_instrument_voicing(
-    instrument: InstrumentConfig | str | Path | None = None,
-    voicing: VoicingConfig | str = "default_voicing",
+    instrument: InstrumentConfig,
+    voicing: VoicingConfig,
     input_wav: Path | str | None = None,
     input_audio: np.ndarray | None = None,
     output_wav: Path | str | None = None,
@@ -247,6 +164,8 @@ def simulate_instrument_voicing(
     normalize: str = "auto",
     target_dbfs: float | None = None,
     force: bool = False,
+    preamps: Mapping[str, PreampConfig] | None = None,
+    strings: Mapping[str, StringPresetConfig] | None = None,
 ) -> Path | tuple[Path, np.ndarray] | np.ndarray:
     """
     Simulates a physical instrument voicing digital twin directly from dry string excitation.
@@ -261,7 +180,8 @@ def simulate_instrument_voicing(
     Synthesizes a causal minimum-phase FIR starting at sample 0 (zero latency).
     Exports 24-bit 48 kHz PCM audio with calibrated LUFS volume matching and 4x true-peak ceiling protection.
     """
-    inst, voicing_cfg = resolve_target_voicing(voicing, instrument=instrument)
+    inst = instrument
+    voicing_cfg = voicing
     voicing_id = (
         voicing_cfg.tone_name.lower().replace(" ", "_").replace("∕", "_").replace("/", "_")
         if voicing_cfg.tone_name
@@ -308,6 +228,11 @@ def simulate_instrument_voicing(
                 return out_path, audio_cached
             return out_path
 
+    if preamps is None:
+        from allomorph.config.preamps import PREAMPS
+
+        preamps = PREAMPS
+
     # Resolve active harness and MNA
     harness_id = voicing_cfg.harness
     used_mna = bool(getattr(inst, "harnesses", None) and harness_id in inst.harnesses)
@@ -339,7 +264,9 @@ def simulate_instrument_voicing(
     input_mono = raw_audio[0] if raw_audio.ndim > 1 else raw_audio
     n_samples = len(input_mono)
 
-    curves_dict = solve_mna_harness(inst, inst.harnesses[harness_id], voicing_cfg, freqs=f)
+    curves_dict = solve_mna_harness(
+        inst, inst.harnesses[harness_id], voicing_cfg, freqs=f, preamps=preamps
+    )
 
     def _lookup_curve(*keys: str) -> np.ndarray:
         for k in keys:
@@ -369,10 +296,14 @@ def simulate_instrument_voicing(
     h_preamp = np.ones_like(f, dtype=np.float64)
 
     # 3. Viscoelastic String Wrap Damping H_wrap(f)
-    inst_string = get_instrument_string(inst)
+    inst_string = get_instrument_string(inst, strings=strings)
     target_string = (
-        STRINGS[voicing_cfg.string_preset_override]
-        if voicing_cfg.string_preset_override and voicing_cfg.string_preset_override in STRINGS
+        strings[voicing_cfg.string_preset_override]
+        if (
+            voicing_cfg.string_preset_override
+            and strings
+            and voicing_cfg.string_preset_override in strings
+        )
         else inst_string
     )
     if voicing_cfg.sensor_type == "direct":
@@ -401,8 +332,7 @@ def simulate_instrument_voicing(
         w0 = 2.0 * np.pi * f_rock
         s = 1j * w
         h_rock = np.abs(
-            (s**2 + (g_rock * w0 / q_rock) * s + w0**2)
-            / (s**2 + (w0 / q_rock) * s + w0**2)
+            (s**2 + (g_rock * w0 / q_rock) * s + w0**2) / (s**2 + (w0 / q_rock) * s + w0**2)
         )
 
         # 2. Bridge structure wood mass inertial roll-off above 3.2 kHz
@@ -516,16 +446,8 @@ def simulate_instrument_voicing(
                     if sp_mag not in MAGNET_PROPERTIES:
                         raise KeyError(f"Unrecognized magnet type: '{sp_mag}'")
                     sp_props = MAGNET_PROPERTIES[sp_mag]
-                    sp_vsat = (
-                        float(sp.vsat)
-                        if sp.vsat is not None
-                        else float(sp_props.vsat)
-                    )
-                    sp_alpha = (
-                        float(sp.alpha)
-                        if sp.alpha is not None
-                        else float(sp_props.alpha)
-                    )
+                    sp_vsat = float(sp.vsat) if sp.vsat is not None else float(sp_props.vsat)
+                    sp_alpha = float(sp.alpha) if sp.alpha is not None else float(sp_props.alpha)
                     drive_db = float(getattr(voicing_cfg, "gain_db", 0.0) or 0.0)
                     drive_in = v_ac if drive_db == 0.0 else v_ac * (10.0 ** (drive_db / 20.0))
                     emf = apply_oversampled_saturation(
@@ -563,11 +485,7 @@ def simulate_instrument_voicing(
                 sub_p = branch_sub_pickups[i][0]
                 sub_active_var = sub_p.active_variant
                 if sub_active_var is not None and apply_saturation:
-                    sub_vsat = (
-                        float(sub_p.vsat)
-                        if sub_p.vsat is not None
-                        else 2.40
-                    )
+                    sub_vsat = float(sub_p.vsat) if sub_p.vsat is not None else 2.40
                     b_audio = apply_active_pickup_dynamics(
                         v_coil.astype(np.float32),
                         vsat=sub_vsat,
@@ -685,9 +603,8 @@ def simulate_instrument_voicing(
         v_ac = fft_convolve(input_mono, fir_ac_np, mode="causal")[:n_samples]
 
         # Magnetic core saturation produces open-circuit coil EMF
-        has_direct_dynamics = (
-            voicing_cfg.sensor_type == "direct"
-            and (pickup_cfg is not None and pickup_cfg.vsat is not None)
+        has_direct_dynamics = voicing_cfg.sensor_type == "direct" and (
+            pickup_cfg is not None and pickup_cfg.vsat is not None
         )
         if apply_saturation and (voicing_cfg.sensor_type == "magnetic" or has_direct_dynamics):
             sp = pickup_cfg if pickup_cfg is not None else next(iter(inst.pickups.values()))
@@ -697,12 +614,8 @@ def simulate_instrument_voicing(
             if sp_mag not in MAGNET_PROPERTIES:
                 raise KeyError(f"Unrecognized magnet type: '{sp_mag}'")
             sp_props = MAGNET_PROPERTIES[sp_mag]
-            mag_vsat = (
-                float(sp.vsat) if sp.vsat is not None else float(sp_props.vsat)
-            )
-            sp_alpha = (
-                float(sp.alpha) if sp.alpha is not None else float(sp_props.alpha)
-            )
+            mag_vsat = float(sp.vsat) if sp.vsat is not None else float(sp_props.vsat)
+            sp_alpha = float(sp.alpha) if sp.alpha is not None else float(sp_props.alpha)
             drive_db = float(getattr(voicing_cfg, "gain_db", 0.0) or 0.0)
             drive_in = v_ac if drive_db == 0.0 else v_ac * (10.0 ** (drive_db / 20.0))
             emf = apply_oversampled_saturation(
@@ -756,11 +669,7 @@ def simulate_instrument_voicing(
         v_coil = fft_convolve(emf, fir_elec_np, mode="causal")[:n_samples]
 
         # Active pickup internal op-amp dynamics
-        active_var = (
-            pickup_cfg.active_variant
-            if pickup_cfg is not None
-            else None
-        )
+        active_var = pickup_cfg.active_variant if pickup_cfg is not None else None
         if active_var is not None and apply_saturation:
             v_sat = (
                 float(pickup_cfg.vsat)
@@ -899,158 +808,3 @@ def simulate_instrument_voicing(
 
     assert out_path is not None
     return out_path
-
-
-def simulate_all_instrument_voicings(
-    instrument: InstrumentConfig | str | Path | None = None,
-    input_wav: Path | str | None = None,
-    max_samples: int | None = None,
-    jobs: int | None = None,
-    force: bool = False,
-) -> list[Path]:
-    """
-    Simulates all native voicings for a specified instrument (or all instruments in catalog).
-    Outputs files to audio/wet/<inst_id>/<voicing_id>.wav.
-    """
-    if instrument is not None:
-        target_insts = [
-            load_instrument(instrument)
-            if not isinstance(instrument, InstrumentConfig)
-            else instrument
-        ]
-    else:
-        target_insts = list(INSTRUMENTS.values())
-
-    exported_paths: list[Path] = []
-    tasks: list[tuple[InstrumentConfig, VoicingConfig | str]] = []
-    for inst in target_insts:
-        for voicing in inst.voicings.values():
-            tasks.append((inst, voicing))
-
-    def _sim(item: tuple[InstrumentConfig, VoicingConfig | str]) -> Path:
-        i, v = item
-        return simulate_instrument_voicing(
-            instrument=i,
-            voicing=v,
-            input_wav=input_wav,
-            max_samples=max_samples,
-            force=force,
-        )
-
-    eff_jobs = jobs if jobs is not None and jobs > 0 else 1
-    if eff_jobs > 1 and len(tasks) > 1:
-        from concurrent.futures import ThreadPoolExecutor
-
-        with ThreadPoolExecutor(max_workers=eff_jobs) as executor:
-            exported_paths = list(executor.map(_sim, tasks))
-    else:
-        exported_paths = [_sim(t) for t in tasks]
-
-    return exported_paths
-
-
-def simulate_voice(
-    voice: str,
-    output_wav: Path | str | None = None,
-    input_wav: Path | str | None = None,
-    instrument: InstrumentConfig | str | Path | None = None,
-    normalize: str = "auto",
-    target_dbfs: float | None = None,
-    max_samples: int | None = None,
-    config: Any = None,
-    pickup: str | None = None,
-    force: bool = False,
-    **kwargs: Any,
-) -> bool:
-    """
-    Simulates an instrument voicing digital twin.
-    Dispatches directly to simulate_instrument_voicing.
-    """
-    if config is not None:
-        inst_target = config.instrument or instrument
-        out_target = config.output_wav or output_wav
-        in_target = config.input_wav or input_wav
-        max_s = config.max_samples or max_samples
-        skip_id = getattr(config, "skip_identity", False)
-        norm = getattr(config, "normalize", normalize)
-        tgt_db = getattr(config, "target_dbfs", target_dbfs)
-        force_val = getattr(config, "force", force)
-    else:
-        inst_target = instrument
-        out_target = output_wav
-        in_target = input_wav
-        max_s = max_samples
-        skip_id = kwargs.get("skip_identity", False)
-        norm = normalize
-        tgt_db = target_dbfs
-        force_val = force
-
-    if inst_target is not None:
-        inst_obj = (
-            load_instrument(inst_target)
-            if not isinstance(inst_target, InstrumentConfig)
-            else inst_target
-        )
-        if pickup and pickup != "auto" and pickup not in inst_obj.pickups:
-            raise KeyError(
-                f"Pickup '{pickup}' not found on instrument '{inst_obj.id}'. "
-                f"Available pickups: {list(inst_obj.pickups.keys())}"
-            )
-        if inst_obj.electronics == "passive":
-            p_key = pickup or (next(iter(inst_obj.pickups.keys())) if inst_obj.pickups else "p")
-            if p_key in inst_obj.pickups and not inst_obj.harnesses:
-                raise ValueError(
-                    f"Passive instrument '{inst_obj.id}' pickup '{p_key}' "
-                    f"does not define a control harness. Passive source pickups require an explicit "
-                    f"circuit harness for forward circuit simulation."
-                )
-
-        from allomorph.physics import is_voice_matching_source
-
-        is_id = is_voice_matching_source(inst_obj, voice)
-        if skip_id and is_id:
-            if out_target and Path(out_target).exists():
-                Path(out_target).unlink()
-            return False
-
-        apply_sat = kwargs.get("apply_saturation", True)
-        p_key = pickup or (next(iter(inst_obj.pickups.keys())) if inst_obj.pickups else None)
-        src_p = inst_obj.pickups.get(p_key) if p_key else None
-        src_mag = (src_p.magnet_type if src_p else None) or (
-            "active" if inst_obj.electronics == "active" else "alnico_v"
-        )
-        src_props = MAGNET_PROPERTIES.get(src_mag, MAGNET_PROPERTIES["alnico_v"])
-
-        try:
-            t_inst, v_cfg = resolve_target_voicing(voice, instrument=inst_obj)
-            from allomorph.config.voices import resolve_voicing_active_pickups
-
-            tgt_act = resolve_voicing_active_pickups(t_inst, v_cfg)
-            tgt_p = t_inst.pickups.get(tgt_act[0]) if tgt_act else None
-            tgt_mag = (tgt_p.magnet_type if tgt_p else None) or "alnico_v"
-            tgt_props = MAGNET_PROPERTIES.get(tgt_mag, MAGNET_PROPERTIES["alnico_v"])
-            if is_id or (
-                float(tgt_props.alpha) <= float(src_props.alpha)
-                and float(tgt_props.vsat) >= float(src_props.vsat)
-            ):
-                apply_sat = False
-        except KeyError:
-            pass
-    else:
-        apply_sat = kwargs.get("apply_saturation", True)
-
-    try:
-        out = simulate_instrument_voicing(
-            instrument=inst_target,
-            voicing=voice,
-            input_wav=in_target,
-            output_wav=out_target,
-            max_samples=max_s,
-            apply_saturation=apply_sat,
-            normalize=norm,
-            target_dbfs=tgt_db,
-            force=force_val,
-        )
-        return out.exists()
-    except KeyError:
-        raise KeyError(f"Target voice '{voice}' not found")

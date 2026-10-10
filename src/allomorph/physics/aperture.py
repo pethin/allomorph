@@ -11,8 +11,6 @@ from collections.abc import Sequence
 import numpy as np
 
 from allomorph.config.geometry import resolve_pickup_coils, resolve_voice_coils
-from allomorph.config.instruments import load_instrument
-from allomorph.config.scales import SCALES
 from allomorph.config.schema import (
     CoilConfig,
     InstrumentConfig,
@@ -20,7 +18,6 @@ from allomorph.config.schema import (
     VoiceCoilConfig,
     VoiceConfig,
 )
-from allomorph.config.voices import VOICES
 from allomorph.dsp import cinf_smoothstep
 from allomorph.physics.schema import WaveSpeedContinuumPoint
 from allomorph.physics.strings import (
@@ -157,33 +154,25 @@ def compute_pickup_isolation_leveling(
 
 
 def is_voice_matching_source(
-    instrument: InstrumentConfig | str,
-    voice_id: str,
-    voice_cfg: VoiceConfig | None = None,
+    instrument: InstrumentConfig,
+    voice_cfg: VoiceConfig,
 ) -> bool:
     """
     Determines if a target voice matches the source instrument's physical scale and pickup geometry,
     meaning zero spatial or acoustic transfer is required (identity transformation).
     Tuning- and string-count-agnostic: matches on physical scale length and coil geometry.
     """
-    inst = load_instrument(instrument) if isinstance(instrument, str) else instrument
-    vcfg = voice_cfg or VOICES.get(voice_id)
-    if vcfg is None:
-        return False
-
-    if vcfg.preserve_aperture:
+    if voice_cfg.preserve_aperture:
         return True
 
-    src_range = resolve_scale_range(inst)
-    tgt_scale = vcfg.scale
-    tgt_scale_info = SCALES.get(tgt_scale)
-    tgt_range = resolve_scale_range(tgt_scale_info)
+    src_range = resolve_scale_range(instrument)
+    tgt_range = resolve_scale_range(voice_cfg.scale)
 
     # Scale match based on physical vibrating length range (within 1.2 cm)
     if abs(src_range[0] - tgt_range[0]) > 0.012 or abs(src_range[1] - tgt_range[1]) > 0.012:
         return False
 
-    tgt_coils = resolve_voice_coils(vcfg)
+    tgt_coils = resolve_voice_coils(voice_cfg)
     if not tgt_coils:
         return False
 
@@ -201,14 +190,16 @@ def is_voice_matching_source(
         return True
 
     # 1. Check each physical pickup in isolation
-    for p in inst.pickups.values():
-        p_coils = resolve_pickup_coils(p, inst)
+    for p in instrument.pickups.values():
+        p_coils = resolve_pickup_coils(p, instrument)
         if _coils_match(p_coils):
             return True
 
     # 2. Check full instrument coil ensemble (e.g. Jazz pair)
-    if len(inst.pickups) > 1:
-        all_coils = [c for p in inst.pickups.values() for c in resolve_pickup_coils(p, inst)]
+    if len(instrument.pickups) > 1:
+        all_coils = [
+            c for p in instrument.pickups.values() for c in resolve_pickup_coils(p, instrument)
+        ]
         if _coils_match(all_coils):
             return True
 

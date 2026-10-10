@@ -72,9 +72,14 @@ def resolve_voicing_active_pickups(
         return all_pickups
 
     from allomorph.circuit.solver import solve_mna_harness
+    from allomorph.config.preamps import PREAMPS
 
     curves = solve_mna_harness(
-        instrument, harnesses[h_id], voicing, freqs=np.array([200.0, 1000.0], dtype=np.float64)
+        instrument,
+        harnesses[h_id],
+        voicing,
+        freqs=np.array([200.0, 1000.0], dtype=np.float64),
+        preamps=PREAMPS,
     )
     max_trans = (
         max(float(np.max(np.abs(curves[p]))) for p in all_pickups if p in curves)
@@ -107,9 +112,14 @@ def resolve_voicing_active_coils(
         return [c.id for c in p_cfg.coils if c.id]
 
     from allomorph.circuit.solver import solve_mna_harness
+    from allomorph.config.preamps import PREAMPS
 
     curves = solve_mna_harness(
-        instrument, harnesses[h_id], voicing, freqs=np.array([200.0, 1000.0], dtype=np.float64)
+        instrument,
+        harnesses[h_id],
+        voicing,
+        freqs=np.array([200.0, 1000.0], dtype=np.float64),
+        preamps=PREAMPS,
     )
     all_c_keys = [
         k for c in p_cfg.coils if c.id for k in [f"{pickup_key}.{c.id}", f"{p_cfg.id}.{c.id}", c.id]
@@ -142,7 +152,7 @@ def voicing_to_voice_config(
         if voicing.tone_name
         else (voicing.id or "voice")
     )
-    
+
     # 1. Determine active pickups
     active_pickup_keys = resolve_voicing_active_pickups(instrument, voicing)
 
@@ -181,7 +191,11 @@ def voicing_to_voice_config(
             elif "neck" in p_key:
                 fr_val = 3600.0 if "passive" in (voicing.harness or "") else 5200.0
             else:
-                fr_val = 5200.0 if "active" in (voicing.harness or "") or p.has_internal_buffer else 3500.0
+                fr_val = (
+                    5200.0
+                    if "active" in (voicing.harness or "") or p.has_internal_buffer
+                    else 3500.0
+                )
 
             if p.q_factor is not None:
                 q_val = p.q_factor
@@ -220,7 +234,9 @@ def voicing_to_voice_config(
             for c in p.coils
         ]
     else:
-        primary_key = active_pickup_keys[0] if active_pickup_keys else next(iter(instrument.pickups.keys()))
+        primary_key = (
+            active_pickup_keys[0] if active_pickup_keys else next(iter(instrument.pickups.keys()))
+        )
         pickup = instrument.pickups[primary_key]
         raw_coils = resolve_pickup_coils(pickup, instrument=instrument)
         active_c_ids = resolve_voicing_active_coils(instrument, voicing, primary_key)

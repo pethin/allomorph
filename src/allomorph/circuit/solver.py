@@ -7,7 +7,7 @@ Jordan after-effect permeability dispersion, and Wiener-regularized deconvolutio
 
 import functools
 import math
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from typing import overload
 
 import numpy as np
@@ -260,19 +260,21 @@ def compute_active_preamp_transfer(
 
 
 def compute_active_preamp_eq(
-    preamp_spec: str | PreampConfig | Sequence[PreampBandConfig], s: complex | np.ndarray
+    preamp_spec: str | PreampConfig | Sequence[PreampBandConfig],
+    s: complex | np.ndarray,
+    preamps: Mapping[str, PreampConfig] | None = None,
 ) -> np.ndarray:
-    """
-    Evaluates analog active preamp contour transfer function.
+    """Evaluates analog active preamp contour transfer function.
+
     Accepts:
-      - str (preset name): looks up in PREAMPS catalog (e.g. 'sadowsky_2band', 'stingray_2band')
+      - str (preset name): looks up in preamps mapping
       - PreampConfig: evaluates preamp model
       - Sequence[PreampBandConfig]: evaluates sequence of band configs
     """
     if isinstance(preamp_spec, str):
-        from allomorph.config.preamps import get_preamp
-
-        preset = get_preamp(preamp_spec)
+        if preamps is None or preamp_spec not in preamps:
+            raise KeyError(f"Preamp '{preamp_spec}' required but not provided in preamps mapping.")
+        preset = preamps[preamp_spec]
         return compute_active_preamp_transfer(preset.bands, s, gain_db=float(preset.gain_db))
     elif isinstance(preamp_spec, PreampConfig):
         return compute_active_preamp_transfer(
@@ -404,12 +406,18 @@ def solve_mna_harness(
     voicing: VoicingConfig,
     freqs: Sequence[float] | np.ndarray = FREQS,
     return_complex: bool = False,
+    preamps: Mapping[str, PreampConfig] | None = None,
 ) -> dict[str, np.ndarray]:
     """
     Vectorized Modified Nodal Analysis (MNA) solver for multi-harness, multi-coil bass circuits.
     Solves Y(s) * V(s) = I(s) across all frequency bins simultaneously in <0.3 ms (>3000x real-time).
     Seamlessly handles 1V/1T, 2V/1T, 2V/2T, series/parallel switches, mutual coupling, and active preamps.
     """
+    if preamps is None:
+        from allomorph.config.preamps import PREAMPS
+
+        preamps = PREAMPS
+
     f = np.asarray(freqs, dtype=np.float64)
     w = 2.0 * np.pi * f
     s = 1j * w
@@ -540,7 +548,9 @@ def solve_mna_harness(
                 alpha_tone = 0.988
                 w0 = 2.0 * np.pi * 1000.0
                 s_ratio = np.where(w > 0.0, w / w0, 0.0)
-                kappa_tone = 1j * (w0 * float(c_tone)) * np.exp(1j * (alpha_tone - 1.0) * (np.pi / 2.0))
+                kappa_tone = (
+                    1j * (w0 * float(c_tone)) * np.exp(1j * (alpha_tone - 1.0) * (np.pi / 2.0))
+                )
                 Y_c = kappa_tone * (s_ratio**alpha_tone)
                 Y_tone = Y_c / (1.0 + Y_c * r_rheo) if r_rheo > 0.0 else Y_c
 
@@ -658,19 +668,35 @@ def solve_mna_harness(
                 f"pickups.{p_id}.{c.id}.Rdc",
                 active_components.get(f"pickups.{p_id}.Rdc", c.Rdc if c.Rdc is not None else None),
             )
-            Rdc = float(Rdc_val) if Rdc_val is not None else (float(c.Rdc) if c.Rdc is not None else 8000.0)
+            Rdc = (
+                float(Rdc_val)
+                if Rdc_val is not None
+                else (float(c.Rdc) if c.Rdc is not None else 8000.0)
+            )
 
             Reddy_val = active_components.get(
                 f"pickups.{p_id}.{c.id}.Reddy",
-                active_components.get(f"pickups.{p_id}.Reddy", c.Reddy if c.Reddy is not None else None),
+                active_components.get(
+                    f"pickups.{p_id}.Reddy", c.Reddy if c.Reddy is not None else None
+                ),
             )
-            Reddy = float(Reddy_val) if Reddy_val is not None else (float(c.Reddy) if c.Reddy is not None else 100000.0)
+            Reddy = (
+                float(Reddy_val)
+                if Reddy_val is not None
+                else (float(c.Reddy) if c.Reddy is not None else 100000.0)
+            )
 
             Ccoil_val = active_components.get(
                 f"pickups.{p_id}.{c.id}.Ccoil",
-                active_components.get(f"pickups.{p_id}.Ccoil", c.Ccoil if c.Ccoil is not None else None),
+                active_components.get(
+                    f"pickups.{p_id}.Ccoil", c.Ccoil if c.Ccoil is not None else None
+                ),
             )
-            Ccoil = float(Ccoil_val) if Ccoil_val is not None else (float(c.Ccoil) if c.Ccoil is not None else 80e-12)
+            Ccoil = (
+                float(Ccoil_val)
+                if Ccoil_val is not None
+                else (float(c.Ccoil) if c.Ccoil is not None else 80e-12)
+            )
 
             mag_type = c.pole_type or p_cfg.magnet_type or "alnico_v"
             props = MAGNET_PROPERTIES.get(mag_type, MAGNET_PROPERTIES["alnico_v"])
@@ -884,9 +910,12 @@ def solve_mna_harness(
         if voicing.preamp_bands:
             H_eq = compute_active_preamp_transfer(voicing.preamp_bands, s, gain_db=voicing.gain_db)
         elif harness.preamp:
-            from allomorph.config.preamps import get_preamp
-
-            preamp_spec = get_preamp(harness.preamp)
+            if preamps is None or harness.preamp not in preamps:
+                raise KeyError(
+                    f"Preamp '{harness.preamp}' required by harness '{harness.name}' "
+                    "but not provided in preamps mapping."
+                )
+            preamp_spec = preamps[harness.preamp]
             adjusted_bands = []
             for b in preamp_spec.bands:
                 b_gain = b.gain_db
@@ -953,4 +982,3 @@ def solve_mna_harness(
     if return_complex:
         return H_coils
     return {k: np.abs(v) for k, v in H_coils.items()}
-

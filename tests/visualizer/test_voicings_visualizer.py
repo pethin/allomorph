@@ -73,6 +73,8 @@ def test_build_voicings_comparison_data_performance_and_bounds():
 
 def test_voicings_comparison_identity_and_differential_math():
     """Validates that identity pairings evaluate to exact 0.00 dB, and difference equals Target - Source."""
+    from allomorph.config.instruments import resolve_target_voicing
+
     # 1. Identity pair: Source == Target -> H_diff == 0.00 dB everywhere
     test_identities = [
         "precision_vintage",
@@ -81,12 +83,15 @@ def test_voicings_comparison_identity_and_differential_math():
         "upright_piezo",
     ]
     for vid in test_identities:
-        df_id = build_voicings_comparison_dataframe(vid, vid, step=1)
+        inst, v_cfg = resolve_target_voicing(vid)
+        df_id = build_voicings_comparison_dataframe(inst, v_cfg, inst, v_cfg, step=1)
         s3 = df_id.filter(df_id["line_type"] == "3. Difference")["magnitude_db"]
         assert (s3 == 0.0).all(), f"Identity pair {vid} -> {vid} did not evaluate to 0.00 dB"
 
     # 2. Transformative pair: Source + Difference == Target everywhere
-    df_diff = build_voicings_comparison_dataframe("precision_vintage", "jazz_bridge_growl", step=1)
+    s_inst, s_v_cfg = resolve_target_voicing("precision_vintage")
+    t_inst, t_v_cfg = resolve_target_voicing("jazz_bridge_growl")
+    df_diff = build_voicings_comparison_dataframe(s_inst, s_v_cfg, t_inst, t_v_cfg, step=1)
     s1 = df_diff.filter(df_diff["line_type"] == "1. Source Voicing")["magnitude_db"].to_numpy()
     s2 = df_diff.filter(df_diff["line_type"] == "2. Target Voicing")["magnitude_db"].to_numpy()
     s3 = df_diff.filter(df_diff["line_type"] == "3. Difference")["magnitude_db"].to_numpy()

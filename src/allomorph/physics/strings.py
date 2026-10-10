@@ -10,7 +10,7 @@ from typing import overload
 
 import numpy as np
 
-from allomorph.config.scales import SCALES, resolve_scale_range
+from allomorph.config.scales import resolve_scale_range
 from allomorph.config.schema import InstrumentConfig, ScaleConfig, StringPresetConfig
 from allomorph.config.strings import get_voice_string
 from allomorph.physics.schema import WaveSpeedContinuumPoint
@@ -147,12 +147,10 @@ def generate_wave_speed_continuum(
     if isinstance(scale_length_m, (tuple, list)) and len(scale_length_m) == 2:
         l_min_m = float(min(scale_length_m))
         l_max_m = float(max(scale_length_m))
-    elif isinstance(scale_length_m, (ScaleConfig, InstrumentConfig)) or (
-        isinstance(scale_length_m, str) and scale_length_m in SCALES
-    ):
+    elif isinstance(scale_length_m, (ScaleConfig, InstrumentConfig, str)):
         l_min_m, l_max_m = resolve_scale_range(scale_length_m)
     else:
-        val = float(scale_length_m) if isinstance(scale_length_m, (int, float, str)) else 0.8636
+        val = float(scale_length_m) if isinstance(scale_length_m, (int, float)) else 0.8636
         l_min_m = val
         l_max_m = val
 
@@ -190,55 +188,73 @@ def resolve_scale_length(
             return float(sum(scale_length_m)) / 2.0
         if isinstance(scale_length_m, (int, float)) and scale_length_m > 0:
             return float(scale_length_m)
-    for s_info in SCALES.values():
-        speeds = s_info.speeds
-        if len(speeds) == len(string_speeds) and np.allclose(speeds, string_speeds, rtol=0.005):
-            return s_info.scale_m
-    if len(string_speeds) == 5:
-        sc_30 = SCALES.get("30in")
-        if sc_30 and np.allclose(string_speeds[:4], sc_30.speeds, rtol=0.005):
-            return 0.762
-        sc_32 = SCALES.get("32in")
-        if sc_32 and np.allclose(string_speeds[:4], sc_32.speeds, rtol=0.005):
-            return 0.8128
+
+    n = len(string_speeds)
+    if n == 4:
+        f0_cand = [41.2034, 55.0000, 73.4162, 97.9989]  # EADG
+    elif n == 5:
+        # Low B: (30.87, 41.20, ...) vs High C: (41.20, ..., 130.81)
+        if string_speeds[0] < 60.0:
+            f0_cand = [30.8677, 41.2034, 55.0000, 73.4162, 97.9989]  # BEADG
+        else:
+            f0_cand = [41.2034, 55.0000, 73.4162, 97.9989, 130.8128]  # EADGC
+    elif n == 6:
+        f0_cand = [30.8677, 41.2034, 55.0000, 73.4162, 97.9989, 130.8128]  # BEADGC
+    else:
+        return 0.8636
+
+    l_estimates = [v / (2.0 * f) for v, f in zip(string_speeds, f0_cand)]
+    median_l = float(np.median(l_estimates))
+    for std_l in (0.762, 0.8128, 0.8636, 0.889):
+        if abs(median_l - std_l) < 0.005:
+            return std_l
     return 0.8636
 
 
 def infer_string_names(
-    string_speeds: Sequence[float], scale_length_m: float | None = None
+    string_speeds: Sequence[float],
+    scale_length_m: float | tuple[float, float] | list[float] | None = None,
 ) -> list[str]:
     """Infers note names for each string in string_speeds based on physical tuning physics."""
     n = len(string_speeds)
-    if scale_length_m is not None and scale_length_m > 0:
-        l_eff = scale_length_m
-    else:
-        if n == 4:
-            for s_key in ["30in", "32in", "34in", "multiscale", "upright"]:
-                sc = SCALES.get(s_key)
-                if sc and np.allclose(string_speeds, sc.speeds, rtol=0.005):
-                    return ["E", "A", "D", "G"]
-        elif n == 5:
-            if np.allclose(string_speeds, [53.28, 71.16, 95.0, 126.81, 169.27], rtol=0.005):
-                return ["B", "E", "A", "D", "G"]
-            if np.allclose(string_speeds, [58.02, 75.88, 99.19, 129.60, 169.27], rtol=0.005):
-                return ["B", "E", "A", "D", "G"]
-            sc_multi = SCALES.get("multiscale_super")
-            if sc_multi and np.allclose(string_speeds, sc_multi.speeds, rtol=0.005):
-                return ["B", "E", "A", "D", "G"]
-            if np.allclose(string_speeds, [71.16, 95.0, 126.81, 169.27, 225.69], rtol=0.005):
-                return ["E", "A", "D", "G", "C"]
-            if np.allclose(string_speeds, [62.79, 83.82, 111.89, 149.35, 199.36], rtol=0.005):
-                return ["E", "A", "D", "G", "C"]
-        elif n == 6 and np.allclose(
-            string_speeds, [53.28, 71.16, 95.0, 126.81, 169.27, 225.69], rtol=0.005
-        ):
-            return ["B", "E", "A", "D", "G", "C"]
+    if n == 0:
+        return []
 
+    l_per_string: list[float] | None = None
+    if isinstance(scale_length_m, (tuple, list)) and len(scale_length_m) == 2:
+        l_min_m = float(min(scale_length_m))
+        l_max_m = float(max(scale_length_m))
+        if l_max_m - l_min_m > 1e-4 and n > 1:
+            l_per_string = [l_max_m - (i / (n - 1)) * (l_max_m - l_min_m) for i in range(n)]
+
+    if l_per_string is None:
+        if n == 4:
+            f0_cand = [41.2034, 55.0000, 73.4162, 97.9989]
+        elif n == 5:
+            f0_cand = (
+                [30.8677, 41.2034, 55.0000, 73.4162, 97.9989]
+                if string_speeds[0] < 60.0
+                else [41.2034, 55.0000, 73.4162, 97.9989, 130.8128]
+            )
+        elif n == 6:
+            f0_cand = [30.8677, 41.2034, 55.0000, 73.4162, 97.9989, 130.8128]
+        else:
+            f0_cand = None
+
+        if f0_cand is not None:
+            l_est = [v / (2.0 * f) for v, f in zip(string_speeds, f0_cand)]
+            if l_est[0] - l_est[-1] > 0.03 and all(
+                l_est[i] - l_est[i + 1] > 0.005 for i in range(n - 1)
+            ):
+                l_per_string = l_est
+
+    if l_per_string is None:
         l_eff = resolve_scale_length(string_speeds, scale_length_m)
+        l_per_string = [l_eff] * n
 
     names: list[str] = []
-    for v in string_speeds:
-        f0 = v / (2.0 * l_eff)
+    for v, l_str in zip(string_speeds, l_per_string):
+        f0 = v / (2.0 * l_str)
         names.append(pitch_to_note_name(f0))
     return names
 

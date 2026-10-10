@@ -15,10 +15,7 @@ from allomorph.circuit.audit import (
 from allomorph.circuit.forward import (
     AUDIO_DIR,
     CALIBRATION_PEAK_CEILING,
-    resolve_target_voicing,
-    simulate_all_instrument_voicings,
     simulate_instrument_voicing,
-    simulate_voice,
 )
 from allomorph.circuit.parser import (
     MAGNET_PROPERTIES,
@@ -40,7 +37,6 @@ from allomorph.circuit.saturation import (
 from allomorph.config.scales import REPO_ROOT
 
 MODELS_DIR = REPO_ROOT / "models"
-from allomorph.circuit.cli import main
 from allomorph.circuit.solver import (
     DisjointSet,
     compute_active_preamp_eq,
@@ -86,12 +82,8 @@ __all__ = [
     "ensure_input_audio_wav",
     "eval_pot_taper",
     "find_default_input_audio",
-    "main",
     "parse_spice_val",
-    "resolve_target_voicing",
-    "simulate_all_instrument_voicings",
     "simulate_instrument_voicing",
-    "simulate_voice",
     "smooth_soft_knee_db",
     "solve_mna_harness",
 ]

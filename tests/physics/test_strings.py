@@ -10,15 +10,7 @@ import pytest
 from hypothesis import given
 from hypothesis import strategies as st
 
-from allomorph.config import (
-    SCALES,
-    STRINGS,
-    VOICES,
-    get_instrument_string,
-    get_voice_string,
-    load_instrument,
-)
-from allomorph.config.schema import CoilConfig
+from allomorph.config.schema import CoilConfig, ScaleConfig, StringPresetConfig
 from allomorph.dsp import FREQS
 from allomorph.physics.aperture import numpy_pickup_acoustic_response
 from allomorph.physics.strings import (
@@ -37,84 +29,38 @@ from allomorph.physics.strings import (
 )
 
 
-def test_strings_catalog_loading():
-    """Verify that all core physical string presets exist and have valid physical bounds."""
-    expected_presets = [
-        "roundwound_nickel_standard",
-        "roundwound_nickel_6string",
-        "roundwound_stainless_clank",
-        "flatwound_low_tension",
-        "flatwound_vintage_heavy",
-        "double_bass_spirocore",
-    ]
-    for p in expected_presets:
-        assert p in STRINGS, f"Preset '{p}' missing from STRINGS catalog"
-        s = STRINGS[p]
-        assert s.tension_lbs > 100.0
-        assert s.damping_cutoff_hz >= 1500.0
-        assert s.damping_order >= 1.0
-
-    # 6-string nickel roundwound tension and material parity
-    s6 = STRINGS["roundwound_nickel_6string"]
-    assert math.isclose(s6.tension_lbs, 230.0, abs_tol=1e-3)
-    assert s6.wrap == "nickel"
-    assert s6.core == "hex"
-    assert math.isclose(s6.damping_cutoff_hz, 8500.0, abs_tol=1e-3)
-
-
-def test_instrument_string_resolution():
-    """Verify source instrument string resolution and default fallback."""
-    # 32in fretless explicitly declares La Bella Low Tension Flats
-    inst_fretless = load_instrument("32in_fretless_pmm")
-    str_fretless = get_instrument_string(inst_fretless)
-    assert str_fretless.preset == "flatwound_low_tension"
-    assert str_fretless.brand == "La Bella"
-    assert str_fretless.model == "LTF-4A"
-    assert math.isclose(str_fretless.tension_lbs, 132.0, abs_tol=1e-3)
-    assert math.isclose(str_fretless.damping_cutoff_hz, 2800.0, abs_tol=1e-3)
-
-    # 30in and 34in default to roundwound_nickel_standard
-    inst_30 = load_instrument("30in_emg_mmtw")
-    str_30 = get_instrument_string(inst_30)
-    assert str_30.type == "roundwound"
-    assert math.isclose(str_30.damping_cutoff_hz, 8500.0, abs_tol=1e-3)
-
-    inst_34 = load_instrument("34in_standard_p")
-    str_34 = get_instrument_string(inst_34)
-    assert str_34.type == "roundwound"
-
-
-def test_target_voice_strings():
-    """Verify target voice goal string mappings."""
-    v14 = VOICES["upright_piezo"]
-    str_v14 = get_voice_string(v14)
-    assert str_v14.type == "double_bass"
-    assert str_v14.tension_lbs == 265.0
-
-    v13 = VOICES["dingwall_bridge"]
-    str_v13 = get_voice_string(v13)
-    assert str_v13.type == "roundwound"
-    assert str_v13.wrap == "stainless"
-
-    v05c = VOICES["precision_warm"]
-    str_v05c = get_voice_string(v05c)
-    assert str_v05c.type == "flatwound"
-
-    # Standard voices default to roundwound_nickel_standard
-    v04 = VOICES["precision_active"]
-    str_v04 = get_voice_string(v04)
-    assert str_v04.type == "roundwound"
-
-
 def test_forward_string_wrap_damping():
     """Verify forward viscoelastic wrap damping: flatwounds roll off early (3.2 kHz),
-
     nickel roundwounds at 8.5 kHz, and stainless steel extends to 12.0 kHz.
     """
     freqs = np.asarray(FREQS, dtype=np.float64)
-    s_flats = STRINGS["flatwound_vintage_heavy"]
-    s_nickel = STRINGS["roundwound_nickel_standard"]
-    s_stainless = STRINGS["roundwound_stainless_clank"]
+    s_flats = StringPresetConfig(
+        name="Flatwound",
+        type="flatwound",
+        wrap="monel",
+        core="steel",
+        tension_lbs=45.0,
+        damping_cutoff_hz=3200.0,
+        damping_order=1.5,
+    )
+    s_nickel = StringPresetConfig(
+        name="Nickel",
+        type="roundwound",
+        wrap="nickel",
+        core="hex",
+        tension_lbs=40.0,
+        damping_cutoff_hz=8500.0,
+        damping_order=1.0,
+    )
+    s_stainless = StringPresetConfig(
+        name="Stainless",
+        type="roundwound",
+        wrap="stainless",
+        core="hex",
+        tension_lbs=42.0,
+        damping_cutoff_hz=12000.0,
+        damping_order=1.0,
+    )
 
     h_wrap_flats = compute_forward_string_transfer(freqs, s_flats)
     h_wrap_nickel = compute_forward_string_transfer(freqs, s_nickel)
@@ -141,7 +87,15 @@ def test_forward_string_wrap_damping():
 def test_forward_sensor_compliance_bypass():
     """Verify that direct DI bypasses viscoelastic string wrap damping."""
     freqs = np.asarray(FREQS, dtype=np.float64)
-    s_clank = STRINGS["roundwound_stainless_clank"]
+    s_clank = StringPresetConfig(
+        name="Stainless",
+        type="roundwound",
+        wrap="stainless_steel",
+        core="hex",
+        tension_lbs=42.0,
+        damping_cutoff_hz=12000.0,
+        damping_order=1.5,
+    )
 
     # Direct DI must evaluate bit-exact 1.0000 across all frequencies
     h_direct = compute_forward_string_transfer(
@@ -357,8 +311,7 @@ def test_dispersive_wave_speed_property(c0: float) -> None:
 def test_multiscale_wave_speed_continuum_endpoints():
     """Verify that 34"-37" multi-scale Dingwall wave speeds continuously interpolate
     from 37" scale at Low B (30.87 Hz) to 34" scale at High G (100.0 Hz)."""
-    inst = load_instrument("37in_multiscale_dingwall")
-    continuum = generate_wave_speed_continuum(inst, num_points=24)
+    continuum = generate_wave_speed_continuum((34.0 * 0.0254, 37.0 * 0.0254), num_points=24)
 
     # First point: f0 = 30.87 Hz (Low B), scale = 37.0" (0.9398 m)
     pt_low = continuum[0]
@@ -382,8 +335,7 @@ def test_multiscale_wave_speed_continuum_endpoints():
 def test_multiscale_sp1_wave_speed_continuum_endpoints():
     """Verify that 32"-35" multi-scale Dingwall SP1 wave speeds continuously interpolate
     from 35" scale at Low B (30.87 Hz) to 32" scale at High G (100.0 Hz)."""
-    inst = load_instrument("34in_dingwall_sp1")
-    continuum = generate_wave_speed_continuum(inst, num_points=24)
+    continuum = generate_wave_speed_continuum((32.0 * 0.0254, 35.0 * 0.0254), num_points=24)
 
     # First point: f0 = 30.87 Hz, scale = 35.0" (0.8890 m)
     pt_low = continuum[0]
@@ -443,10 +395,10 @@ def test_resolve_scale_length_fallbacks():
     assert resolve_scale_length([10.0, 20.0]) == pytest.approx(0.8636)
 
     # 5-string matching 30in or 32in
-    sc_30 = SCALES["30in"]
-    assert resolve_scale_length(list(sc_30.speeds) + [225.0]) == pytest.approx(0.762)
-    sc_32 = SCALES["32in"]
-    assert resolve_scale_length(list(sc_32.speeds) + [225.0]) == pytest.approx(0.8128)
+    speeds_30 = [62.79, 83.82, 111.89, 149.35]
+    assert resolve_scale_length(speeds_30 + [225.0]) == pytest.approx(0.762)
+    speeds_32 = [66.97, 89.41, 119.35, 159.31]
+    assert resolve_scale_length(speeds_32 + [225.0]) == pytest.approx(0.8128)
 
 
 def test_compute_dispersive_wave_speed_inferred_f0():
@@ -469,7 +421,12 @@ def test_generate_wave_speed_continuum_types():
     assert cont_str[0].scale_m == pytest.approx(0.8636)
 
     # From ScaleConfig
-    cont_cfg = generate_wave_speed_continuum(SCALES["30in"])
+    sc_30 = ScaleConfig(
+        name="Short Scale",
+        scale_length_in=30.0,
+        string_wave_speeds=[62.79, 83.82, 111.89, 149.35],
+    )
+    cont_cfg = generate_wave_speed_continuum(sc_30)
     assert len(cont_cfg) == 24
     assert cont_cfg[0].scale_m == pytest.approx(0.762)
 

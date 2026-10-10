@@ -63,8 +63,6 @@ def test_load_all_instruments():
     assert "30in_emg_mmtw" in all_insts
 
 
-
-
 def test_partition_instrument_bundles_single_pickup():
     """Verify bundle partitioning for a single-pickup instrument."""
     from allomorph.config.instruments import partition_instrument_bundles
@@ -109,7 +107,9 @@ def test_is_identity_voicing_exact_and_different():
     inst_j = load_instrument("34in_standard_jazz")
 
     # Cross-instrument is always False
-    assert is_identity_voicing(inst_p, "vintage_open", inst_j, inst_j.voicings["pair_open"]) is False
+    assert (
+        is_identity_voicing(inst_p, "vintage_open", inst_j, inst_j.voicings["pair_open"]) is False
+    )
 
     # Within instrument: check voice that matches
     p_voice = inst_p.voicings.get("vintage_open")
@@ -205,3 +205,64 @@ def test_load_instrument_filename_directly():
     """Verify loading instrument using just filename."""
     cfg = load_instrument("34in_standard_p.toml")
     assert cfg.id == "34in_standard_p"
+
+
+def test_3coil_pmm_compound_response():
+    """Verify that 3-coil P/MM blend evaluates 3 distinct physical coil positions."""
+    from allomorph.config.geometry import resolve_pickup_coils
+
+    inst = load_instrument("32in_custom_pmm")
+    coils = [c for p in inst.pickups.values() for c in resolve_pickup_coils(p, inst)]
+
+    # Should have 4 coil records (PX D/G, PX E/A, MMTWX neck, MMTWX bridge)
+    assert len(coils) == 4
+
+    # Check that strings 1/2 (D/G) see 3 active coils and strings 3/4 (E/A) see 3 active coils
+    dg_coils = [c for c in coils if "all" in c.strings or 1 in c.strings or "D" in c.strings]
+    assert len(dg_coils) == 3
+
+    ea_coils = [c for c in coils if "all" in c.strings or 4 in c.strings or "E" in c.strings]
+    assert len(ea_coils) == 3
+
+    # Positions should match blueprint: PX DG 136.8mm, MMTWX neck 73.7mm, MMTWX bridge 50.8mm
+    positions = sorted([round(c.position_from_bridge_m * 1000, 1) for c in dg_coils])
+    assert positions == [50.8, 73.7, 136.8]
+
+
+def test_catalog_instruments_voice_matching_source():
+    """Verify is_voice_matching_source across matching and non-matching catalog pairs."""
+    from allomorph.config.voices import VOICES
+    from allomorph.physics.aperture import is_voice_matching_source
+
+    inst_p = load_instrument("34in_standard_p")
+    assert is_voice_matching_source(inst_p, VOICES["precision_vintage"])
+
+    inst_jazz = load_instrument("34in_standard_jazz")
+    assert is_voice_matching_source(inst_jazz, VOICES["jazz_pair_open"])
+    assert is_voice_matching_source(inst_jazz, VOICES["jazz_pair_active"])
+
+    inst_dingwall = load_instrument("37in_multiscale_dingwall")
+    assert is_voice_matching_source(inst_dingwall, VOICES["dingwall_bridge"])
+
+    # Non-matching voice should return False
+    assert not is_voice_matching_source(inst_p, VOICES["jazz_pair_open"])
+
+
+def test_resolve_target_voicing_errors():
+    """Verify diagnostic exceptions in resolve_target_voicing."""
+    from allomorph.config.instruments import resolve_target_voicing
+
+    inst = load_instrument("34in_standard_p")
+    voicing = inst.voicings["vintage_open"]
+
+    # Passing VoicingConfig without instrument raises ValueError
+    with pytest.raises(ValueError, match="Must provide instrument"):
+        resolve_target_voicing(voicing, instrument=None)
+
+    # Passing pickup name as voicing raises KeyError per Guardrail 5.3.4
+    with pytest.raises(KeyError, match="cannot be used as a target voicing"):
+        resolve_target_voicing("split_p", instrument=inst)
+
+    # Missing voicing raises KeyError
+    with pytest.raises(KeyError, match="could not be resolved"):
+        resolve_target_voicing("non_existent_voicing_xyz")

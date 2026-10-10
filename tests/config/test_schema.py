@@ -340,7 +340,9 @@ def test_instrument_config_harness_and_voicing_validation():
                 default="both",
                 positions={
                     "neck": SwitchPositionConfig(connect=[["neck_wiper", "out"]]),
-                    "both": SwitchPositionConfig(connect=[["neck_wiper", "out"], ["bridge_wiper", "out"]]),
+                    "both": SwitchPositionConfig(
+                        connect=[["neck_wiper", "out"], ["bridge_wiper", "out"]]
+                    ),
                     "bridge": SwitchPositionConfig(connect=[["bridge_wiper", "out"]]),
                 },
             )
@@ -383,7 +385,9 @@ def test_instrument_config_harness_and_voicing_validation():
         InstrumentConfig(
             id="bad_ctl",
             harnesses={"passive": harness_passive},
-            voicings={"v": VoicingConfig(name="Bad", harness="passive", controls={"bogus_knob": 0.5})},
+            voicings={
+                "v": VoicingConfig(name="Bad", harness="passive", controls={"bogus_knob": 0.5})
+            },
         )
 
     # Control value out of [0.0, 1.0] raises ValueError
@@ -391,7 +395,9 @@ def test_instrument_config_harness_and_voicing_validation():
         InstrumentConfig(
             id="bad_range",
             harnesses={"passive": harness_passive},
-            voicings={"v": VoicingConfig(name="Bad", harness="passive", controls={"neck_vol": 1.5})},
+            voicings={
+                "v": VoicingConfig(name="Bad", harness="passive", controls={"neck_vol": 1.5})
+            },
         )
 
     # Unknown switch name raises KeyError
@@ -399,7 +405,9 @@ def test_instrument_config_harness_and_voicing_validation():
         InstrumentConfig(
             id="bad_sw",
             harnesses={"passive": harness_passive},
-            voicings={"v": VoicingConfig(name="Bad", harness="passive", switches={"coil_tap": "single"})},
+            voicings={
+                "v": VoicingConfig(name="Bad", harness="passive", switches={"coil_tap": "single"})
+            },
         )
 
     # Unknown switch position raises KeyError
@@ -407,7 +415,11 @@ def test_instrument_config_harness_and_voicing_validation():
         InstrumentConfig(
             id="bad_pos",
             harnesses={"passive": harness_passive},
-            voicings={"v": VoicingConfig(name="Bad", harness="passive", switches={"pickup_selector": "sideways"})},
+            voicings={
+                "v": VoicingConfig(
+                    name="Bad", harness="passive", switches={"pickup_selector": "sideways"}
+                )
+            },
         )
 
 
@@ -451,7 +463,9 @@ def test_voicing_config_rejects_misplaced_hardware_fields():
                 {
                     "name": "Test",
                     "harness": "passive",
-                    forbidden_field: 1.0 if "hz" in forbidden_field or forbidden_field == "q_factor" else "alnico_v",
+                    forbidden_field: 1.0
+                    if "hz" in forbidden_field or forbidden_field == "q_factor"
+                    else "alnico_v",
                 }
             )
         assert "extra_forbidden" in str(exc_info.value)
@@ -501,4 +515,3 @@ def test_pickup_config_rejects_bundle_name():
             }
         )
     assert "extra_forbidden" in str(exc_info.value)
-

@@ -79,7 +79,7 @@ allomorph/
 │   ├── analyze_voices.py     # Polars + Altair frequency curve visualizer
 │   ├── train_nam.py          # Local NAM A2 PyTorch/MPS GPU trainer
 │   └── generate_tone3000_artwork.py # Tone3000 storefront artwork generator
-├── tests/                    # Hierarchical test suite (circuit/, config/, dsp/, physics/, pipeline/, tone3000/, visualizer/, test_guardrails.py)
+├── tests/                    # Hierarchical test suite (circuit/, config/, dsp/, integration/, physics/, pipeline/, tone3000/, visualizer/, test_guardrails.py)
 └── tone3000/                 # Tone3000 storefront packs, artwork, and documentation
     ├── assets/               # Production-ready vector SVG and 1024x1024 JPG artwork
     └── docs/                 # Standardized storefront product descriptions and catalog

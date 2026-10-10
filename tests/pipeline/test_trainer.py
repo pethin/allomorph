@@ -658,5 +658,3 @@ def test_main_entrypoints(monkeypatch: pytest.MonkeyPatch) -> None:
     with pytest.raises(SystemExit) as exc_info2:
         runpy.run_module("allomorph.trainer.__main__", run_name="__main__")
     assert exc_info2.value.code == 0
-
-

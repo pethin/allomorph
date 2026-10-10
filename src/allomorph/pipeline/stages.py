@@ -9,6 +9,10 @@ import sys
 from pathlib import Path
 
 from allomorph.circuit.forward import simulate_instrument_voicing
+from allomorph.config.instruments import load_instrument, resolve_target_voicing
+from allomorph.config.preamps import PREAMPS
+from allomorph.config.schema import InstrumentConfig
+from allomorph.config.strings import STRINGS
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 
@@ -49,12 +53,20 @@ def run_circuit_simulation(
             "Allomorph uses the built-in native Apple Silicon WAV SPICE engine."
         )
     try:
+        inst_obj = (
+            load_instrument(instrument)
+            if not isinstance(instrument, InstrumentConfig)
+            else instrument
+        )
+        t_inst, v_cfg = resolve_target_voicing(voice, instrument=inst_obj)
         out = simulate_instrument_voicing(
-            instrument=instrument,
-            voicing=voice,
+            instrument=t_inst,
+            voicing=v_cfg,
             input_wav=input_wav,
             output_wav=output_wav,
             max_samples=max_samples,
+            preamps=PREAMPS,
+            strings=STRINGS,
         )
         return out.exists()
     except (RuntimeError, ValueError, KeyError, OSError) as e:

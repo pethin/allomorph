@@ -10,6 +10,9 @@ import numpy as np
 
 from allomorph.circuit.audio import find_default_input_audio
 from allomorph.circuit.forward import simulate_instrument_voicing
+from allomorph.config.instruments import load_instrument, resolve_target_voicing
+from allomorph.config.preamps import PREAMPS
+from allomorph.config.strings import STRINGS
 from allomorph.naming import resolve_instruments, resolve_voices
 
 
@@ -244,7 +247,13 @@ def main(argv: list[str] | None = None) -> None:
 
         target_voices = resolve_voices(args.voice)
         for vid in target_voices:
-            res = compute_parametric_sweep(vid, param=args.sweep, pot_taper=args.pot_taper)
+            inst, voicing_cfg = resolve_target_voicing(vid)
+            res = compute_parametric_sweep(
+                (inst, voicing_cfg),
+                param=args.sweep,
+                pot_taper=args.pot_taper,
+                preamps=PREAMPS,
+            )
             print(
                 "\n========================================================================================="
             )
@@ -283,17 +292,19 @@ def main(argv: list[str] | None = None) -> None:
     in_path = Path(input_wav) if input_wav else None
     out_path = Path(args.out) if args.out else None
 
-    for inst in instruments:
+    for inst_id in instruments:
         out_target = out_path
         if out_path and len(instruments) > 1 and not out_path.is_dir():
             stem = out_path.stem
             suffix = out_path.suffix
-            out_target = out_path.parent / f"{stem}_{inst}{suffix}"
+            out_target = out_path.parent / f"{stem}_{inst_id}{suffix}"
 
+        inst = load_instrument(inst_id)
         for v in voices:
+            inst_resolved, voicing_cfg = resolve_target_voicing(v, instrument=inst)
             simulate_instrument_voicing(
-                instrument=inst,
-                voicing=v,
+                instrument=inst_resolved,
+                voicing=voicing_cfg,
                 input_wav=in_path,
                 output_wav=out_target if (out_target and len(voices) == 1) else None,
                 max_samples=args.max_samples,
@@ -306,6 +317,8 @@ def main(argv: list[str] | None = None) -> None:
                 dc_block=dc_block,
                 normalize=args.normalize,
                 target_dbfs=args.target_dbfs,
+                preamps=PREAMPS,
+                strings=STRINGS,
             )
 
 

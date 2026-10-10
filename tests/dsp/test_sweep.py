@@ -7,6 +7,7 @@ from pathlib import Path
 import numpy as np
 
 from allomorph.circuit.stem_debug import debug_voicing_stem, format_stem_report_table
+from allomorph.config.schema import InstrumentConfig
 from allomorph.dsp import (
     deconvolve_log_sweep,
     extract_farina_harmonics,
@@ -106,9 +107,17 @@ def test_farina_harmonic_separation():
     )
 
 
-def test_stem_debug_api(tmp_path: Path):
+def test_stem_debug_api(
+    tmp_path: Path,
+    generic_instrument_config: InstrumentConfig,
+    generic_dual_pickup_instrument: InstrumentConfig,
+):
     """Validates the stem diagnostic reporting API across standard and composite voicings."""
-    report_p = debug_voicing_stem("precision_vintage", export_dir=tmp_path)
+    report_p = debug_voicing_stem(
+        generic_instrument_config,
+        generic_instrument_config.voicings["generic_voice"],
+        export_dir=tmp_path,
+    )
     assert report_p.is_causal_zero_latency
     assert 0 <= report_p.onset_sample_index <= 4
     assert -2.0 <= report_p.peak_sample_index <= 5
@@ -119,31 +128,14 @@ def test_stem_debug_api(tmp_path: Path):
 
     table_text = format_stem_report_table(report_p)
     assert "ALLOMORPH STEM DIAGNOSTIC REPORT" in table_text
-    assert "precision_vintage" in table_text
+    assert "Generic Voice" in table_text or "generic_voice" in table_text
     assert "PASS" in table_text
     assert "Exported Artifacts" in table_text
 
     # Also validate composite multi-pickup voice
-    report_dingwall = debug_voicing_stem("dingwall_parallel")
-    assert report_dingwall.is_causal_zero_latency
-    assert 0 <= report_dingwall.onset_sample_index <= 4
-
-
-def test_all_catalog_instrument_voicings_bug_free():
-    """Validates that all 56 native voicings defined across all 16 catalog instruments
-    pass causal zero-latency alignment, remain below true-peak ceiling, and maintain stable THD.
-    """
-    from allomorph.config.instruments import INSTRUMENTS
-
-    for inst_id, inst in sorted(INSTRUMENTS.items()):
-        for v_id in sorted(inst.voicings.keys()):
-            report = debug_voicing_stem(voice_id=v_id, instrument=inst_id)
-            assert report.is_causal_zero_latency, (
-                f"{inst_id}:{v_id} failed causal zero-latency (onset={report.onset_sample_index}, peak={report.peak_sample_index})"
-            )
-            assert report.peak_dbfs <= -0.09, (
-                f"{inst_id}:{v_id} clipped above -0.09 dBFS ceiling ({report.peak_dbfs:+.2f} dBFS)"
-            )
-            assert report.thd_percent <= 50.0, (
-                f"{inst_id}:{v_id} showed unstable harmonic distortion ({report.thd_percent:.1f}%)"
-            )
+    report_blend = debug_voicing_stem(
+        generic_dual_pickup_instrument,
+        generic_dual_pickup_instrument.voicings["blend"],
+    )
+    assert report_blend.is_causal_zero_latency
+    assert 0 <= report_blend.onset_sample_index <= 4

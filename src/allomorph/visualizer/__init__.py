@@ -102,9 +102,16 @@ def main(argv: Sequence[str] | None = None) -> None:
 
     if args.debug_stem:
         from allomorph.circuit.stem_debug import debug_voicing_stem, format_stem_report_table
+        from allomorph.config.instruments import resolve_target_voicing
+        from allomorph.config.preamps import PREAMPS
 
         inst_arg = None if args.instrument == "all" else args.instrument
-        report = debug_voicing_stem(voice_id=args.debug_stem, instrument=inst_arg)
+        t_inst, v_cfg = resolve_target_voicing(args.debug_stem, instrument=inst_arg)
+        report = debug_voicing_stem(
+            instrument=t_inst,
+            voicing=v_cfg,
+            preamps=PREAMPS,
+        )
         print(format_stem_report_table(report))
         return
 
