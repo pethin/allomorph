@@ -1,17 +1,37 @@
 {
   "bundle": "neck",
-  "source_voicing": "neck_warm",
+  "source_voicing": "p_warm",
   "position_name": "Neck",
   "base_dry_file": "input.wav",
   "base_dry_sha256": "7b361f99d72cf978d39e28e5e8b461b168eaee31919f63e4153ba76ce0609401",
   "dry_file": "dry v6.1.1.wav",
   "dry_version": "v6.1.1",
-  "dry_sha256": "4717bef8d187474c28f233882bb57914539c43df01ea7e14b1bff22fb8068580",
-  "instrument_id": "34in_standard_jazz",
+  "dry_sha256": "d3775fb8804ca562ee81deb329820dfe9dda63e2bda651ddb1c766a1871efa0a",
+  "instrument_id": "30in_mustang_pj",
   "instrument_version": 1,
   "source_voicing_version": 1,
   "stem_count": 7,
   "stems": [
+    {
+      "filename": "Mudbucker Deep [Neck] v6.1.1.wav",
+      "target_instrument": "30in_gibson_eb0",
+      "target_instrument_version": 1,
+      "target_voicing": "neck_deep",
+      "target_voicing_version": 1,
+      "version": "v6.1.1",
+      "tone_name": "Mudbucker Deep",
+      "sha256": "a7a7c46005424bc5ad47e7cbb0f634edb173cbc272bc92f4e3ef1b441f200f0c"
+    },
+    {
+      "filename": "Upright Piezo [Neck] v6.1.1.wav",
+      "target_instrument": "41in_upright_bass",
+      "target_instrument_version": 1,
+      "target_voicing": "bridge_piezo",
+      "target_voicing_version": 1,
+      "version": "v6.1.1",
+      "tone_name": "Upright Piezo",
+      "sha256": "c1680abaf9a34b75f1817f60877a34dd0c5ebcc39d3ac258b677924f3e25fbfa"
+    },
     {
       "filename": "Precision Vintage [Neck] v6.1.1.wav",
       "target_instrument": "34in_standard_p",
@@ -61,26 +81,6 @@
       "version": "v6.1.1",
       "tone_name": "Precision Dub",
       "sha256": "c169a88db22f36a6e387edfcb2c77286414014fd865e1224c5b70273a84ae5e0"
-    },
-    {
-      "filename": "Mudbucker Deep [Neck] v6.1.1.wav",
-      "target_instrument": "30in_gibson_eb0",
-      "target_instrument_version": 1,
-      "target_voicing": "neck_deep",
-      "target_voicing_version": 1,
-      "version": "v6.1.1",
-      "tone_name": "Mudbucker Deep",
-      "sha256": "a7a7c46005424bc5ad47e7cbb0f634edb173cbc272bc92f4e3ef1b441f200f0c"
-    },
-    {
-      "filename": "Upright Piezo [Neck] v6.1.1.wav",
-      "target_instrument": "41in_upright_bass",
-      "target_instrument_version": 1,
-      "target_voicing": "bridge_piezo",
-      "target_voicing_version": 1,
-      "version": "v6.1.1",
-      "tone_name": "Upright Piezo",
-      "sha256": "c1680abaf9a34b75f1817f60877a34dd0c5ebcc39d3ac258b677924f3e25fbfa"
     }
   ]
 }

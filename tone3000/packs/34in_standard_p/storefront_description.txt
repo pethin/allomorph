@@ -1,6 +1,6 @@
 ALLOMORPH: 34" STANDARD P-BASS EDITION
 
-Transform your 34" Standard P-Bass into 23 legendary active, vintage, modern, and acoustic pickup configurations.
+Transform your 34" Standard P-Bass into 19 legendary active, vintage, modern, and acoustic pickup configurations.
 
 
 OVERVIEW
@@ -36,7 +36,7 @@ QUICK INSTRUMENT SETUP
 Plug straight in. All pickup positioning, pot loading, tone capacitor shaping, and active preamp EQs are handled automatically by the models.
 
 
-THE 23 DIGITAL TWIN VOICINGS
+THE 19 DIGITAL TWIN VOICINGS
 
 
 Jazz Bass Family
@@ -56,76 +56,64 @@ The unmistakable Jaco Pastorius tone: rolling the neck volume back just a touch 
 05. Jazz Bridge Open v6.1.1
 Solo '60s bridge single-coil. Tight, laser-focused midrange bite and percussive attack, perfect for 16th-note funk and fast staccato fingerstyle.
 
-06. Jazz Neck Warm v6.1.1
-Solo '60s neck single-coil. Deep, warm, and round with a woody low-end bloom that rivals a P-bass while retaining single-coil openness.
-
 
 Music Man StingRay Family
 
-07. StingRay Parallel v6.1.1
+06. StingRay Parallel v6.1.1
 The iconic Music Man StingRay sound: thunderous low end, aggressive metallic slap clank, and that hollow midrange scoop heard on thousands of hit records.
 
-08. StingRay Series v6.1.1
+07. StingRay Series v6.1.1
 StingRay wired in series for a hotter, thicker signal with punchy low-mids and an aggressive, in-your-face rock bark.
 
 
 P/J Bass Family
 
-09. PJ Active v6.1.1
+08. PJ Active v6.1.1
 Modern active P/J punch (Sadowsky/Spector style). Combines thick split-coil body with bridge single-coil cut, boosted by a powerful active 2-band EQ.
 
-10. PJ Passive v6.1.1
+09. PJ Passive v6.1.1
 Classic '80s rock P/J tone (Fender Precision Special / Yamaha BB). Thick hard-rock punch with aggressive midrange bite and authoritative low-end grunt.
 
 
 P/MM Modern Hybrids
 
-11. P∕MM Parallel v6.1.1
+10. P∕MM Parallel v6.1.1
 Modern boutique session hybrid (Sandberg California / Lakland style). Blends the warm body of a P-bass neck with the punchy slap bite of a Music Man bridge humbucker.
 
-12. P∕MM Series v6.1.1
+11. P∕MM Series v6.1.1
 P-bass neck and Music Man bridge wired in series for a massive wall of sound with immense low-mid thrust and heavy overdrive sustain.
 
 
 Progressive & Classic Rock Legends
 
-13. Rickenbacker Clank v6.1.1
+12. Rickenbacker Clank v6.1.1
 The quintessential prog-rock clank (Chris Squire / Geddy Lee). Tight, lean low end with biting, aggressive pick attack and cutting upper-mid grit.
 
-14. Rickenbacker Open v6.1.1
-Modern 4003 bridge tone with the vintage capacitor bypassed. Fuller low-end body and punch while retaining that signature biting Rickenbacker top-end cut.
-
-15. Dingwall Bridge v6.1.1
+13. Dingwall Bridge v6.1.1
 Modern progressive metal tone: razor-sharp pick clank, extreme note clarity, and piano-like low-B definition tailored for drop tunings and heavy distortion.
 
-16. Dingwall Middle v6.1.1
-FD3 middle pickup solo: focused, aggressive low-mid grunt and punchy growl with exceptional articulation across all registers.
-
-17. Dingwall Parallel v6.1.1
-FD3 bridge and middle coils in parallel: modern scooped aggression with ultra-fast transient attack, tight sub-bass, and pristine harmonic sparkle.
-
-18. Mudbucker Deep v6.1.1
+14. Mudbucker Deep v6.1.1
 The legendary Gibson "Mudbucker": a dark, colossal wall of pure vintage bass rumble with zero top-end harshness—pure '60s and '70s British blues-rock.
 
 
 Acoustic Transducers
 
-19. Upright Piezo v6.1.1
+15. Upright Piezo v6.1.1
 Acoustic upright double bass bridge piezo: captures the authentic high-tension attack bite, bridge rocking compliance, and wood-mass roll-off of an acoustic double bass bridge piezo transducer, designed specifically as an ultra-high-Z front-end before acoustic IRs (such as 3 Sigma Audio AST Double Bass IRs) and preamp stages.
 
 
 Precision Bass & Tone Shaper Family
 
-20. Precision Active v6.1.1
+16. Precision Active v6.1.1
 Modern active ceramic split-coil P-bass tone with 2-band preamp. Punchy, articulate, and wideband with authoritative low-end weight and bright transient clarity—built for modern rock, gospel, and mix cutting authority.
 
-21. Precision Mids v6.1.1
+17. Precision Mids v6.1.1
 Vintage P-bass with a modern vocal low-mid punch. Cuts finger clatter and high-end sizzle while keeping a muscular, forward presence in a busy mix.
 
-22. Precision Warm v6.1.1
+18. Precision Warm v6.1.1
 The legendary Motown flatwound sound (James Jamerson / Pino Palladino). Fat, pillowy sub-bass thump with rolled-off highs that glues the groove together.
 
-23. Precision Dub v6.1.1
+19. Precision Dub v6.1.1
 Ultra-deep vintage '50s dub spec. Pure, earth-shaking sub-bass thump with zero top-end click—perfect for reggae, dub, hip-hop, and classic R&B.
 
 

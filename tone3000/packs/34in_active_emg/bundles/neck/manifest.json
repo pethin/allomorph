@@ -1,16 +1,16 @@
 {
   "bundle": "neck",
-  "pickup_key": "neck",
+  "source_voicing": "neck_solo",
   "position_name": "Neck",
   "base_dry_file": "input.wav",
   "base_dry_sha256": "7b361f99d72cf978d39e28e5e8b461b168eaee31919f63e4153ba76ce0609401",
   "dry_file": "dry v6.1.1.wav",
   "dry_version": "v6.1.1",
-  "dry_sha256": "2ebe2fe679ac77e0ebbbcf68007b23e8af1224c4166c71218b6603fee472c7a5",
+  "dry_sha256": "da11d250048e1621df85e47779fb4b660c6fc85a321ea4af7b719c6d2e35191b",
   "instrument_id": "34in_active_emg",
   "instrument_version": 1,
   "source_voicing_version": 1,
-  "stem_count": 9,
+  "stem_count": 7,
   "stems": [
     {
       "filename": "Precision Vintage [Neck] v6.1.1.wav",
@@ -20,7 +20,17 @@
       "target_voicing_version": 1,
       "version": "v6.1.1",
       "tone_name": "Precision Vintage",
-      "sha256": "949f3715e9c39b0357d6dace8f96fc93ee7b3af42a99cb247623684e12014cdc"
+      "sha256": "a3cfb3e9364976cb8d98fe9d8f4707670d2567ddd7b21cf4f462872dfa9e9876"
+    },
+    {
+      "filename": "Precision Active [Neck] v6.1.1.wav",
+      "target_instrument": "34in_standard_p",
+      "target_instrument_version": 1,
+      "target_voicing": "modern_active",
+      "target_voicing_version": 1,
+      "version": "v6.1.1",
+      "tone_name": "Precision Active",
+      "sha256": "c041cdd4e4a1698e14015d0f17c4da128ea8589a962a69f8f04b2d4fdd1d2263"
     },
     {
       "filename": "Precision Mids [Neck] v6.1.1.wav",
@@ -30,7 +40,7 @@
       "target_voicing_version": 1,
       "version": "v6.1.1",
       "tone_name": "Precision Mids",
-      "sha256": "4194c4b003f90079807c55e121a4839b630c42677e8844415f57180ceb61a2d2"
+      "sha256": "2e906ec83099616c5c11cac1218ec58e0ab43776dc4825d798f1dd52243e4eed"
     },
     {
       "filename": "Precision Warm [Neck] v6.1.1.wav",
@@ -40,17 +50,7 @@
       "target_voicing_version": 1,
       "version": "v6.1.1",
       "tone_name": "Precision Warm",
-      "sha256": "8a3d0b84d150681eae1b3b369d89f46873e0369cc9d547bcccc4847fad83d0c1"
-    },
-    {
-      "filename": "Precision Active [Neck] v6.1.1.wav",
-      "target_instrument": "34in_standard_pj",
-      "target_instrument_version": 1,
-      "target_voicing": "neck_active",
-      "target_voicing_version": 1,
-      "version": "v6.1.1",
-      "tone_name": "Precision Active",
-      "sha256": "88239a13c3577bc66fd99366074ed2cb59b12f8f9683ed12c0226b2912847ec2"
+      "sha256": "4dc7efc9ae5ac84ff6e953f710ff2d556cc106c7fd5842e2e6609921b536b42a"
     },
     {
       "filename": "Precision Dub [Neck] v6.1.1.wav",
@@ -60,27 +60,7 @@
       "target_voicing_version": 1,
       "version": "v6.1.1",
       "tone_name": "Precision Dub",
-      "sha256": "e00696482c52b5e4732b543b61e56488ad3301c4e5053cfa7179076994a5936a"
-    },
-    {
-      "filename": "Jazz Neck Warm [Neck] v6.1.1.wav",
-      "target_instrument": "34in_standard_jazz",
-      "target_instrument_version": 1,
-      "target_voicing": "neck_warm",
-      "target_voicing_version": 1,
-      "version": "v6.1.1",
-      "tone_name": "Jazz Neck Warm",
-      "sha256": "4af26d9f30fa062405df5597532bdad628563bfb9b5e8c290d3abfe544961fe1"
-    },
-    {
-      "filename": "Dingwall Middle [Neck] v6.1.1.wav",
-      "target_instrument": "37in_multiscale_dingwall",
-      "target_instrument_version": 1,
-      "target_voicing": "middle_growl",
-      "target_voicing_version": 1,
-      "version": "v6.1.1",
-      "tone_name": "Dingwall Middle",
-      "sha256": "2de698cb63bcfe35ca40485cd40777dbb4f2b3008f612637914a336f528f2d34"
+      "sha256": "c169a88db22f36a6e387edfcb2c77286414014fd865e1224c5b70273a84ae5e0"
     },
     {
       "filename": "Mudbucker Deep [Neck] v6.1.1.wav",
@@ -90,7 +70,7 @@
       "target_voicing_version": 1,
       "version": "v6.1.1",
       "tone_name": "Mudbucker Deep",
-      "sha256": "41a5ff110dad6848529e2034012ad52d4b04c2f68fac5a9bdbedbef8f06dfb8f"
+      "sha256": "a7a7c46005424bc5ad47e7cbb0f634edb173cbc272bc92f4e3ef1b441f200f0c"
     },
     {
       "filename": "Upright Piezo [Neck] v6.1.1.wav",
@@ -100,7 +80,7 @@
       "target_voicing_version": 1,
       "version": "v6.1.1",
       "tone_name": "Upright Piezo",
-      "sha256": "aa39ac202ad80e70025139bce38a541b94d1c2cd63e190a4850053148080a26b"
+      "sha256": "c1680abaf9a34b75f1817f60877a34dd0c5ebcc39d3ac258b677924f3e25fbfa"
     }
   ]
 }

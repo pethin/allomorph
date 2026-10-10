@@ -1,7 +1,7 @@
 ==============================================================================
 TONE3000 UPLOAD BUNDLE: BRIDGE
 ==============================================================================
-Source Instrument: 34" Active EMG Bass (Option C Baseline)
+Source Instrument: 30" Mustang Bass PJ (Short Scale)
 Pickup Position: Bridge
 Physical Switch Setting on Bass: Bridge
 Tone Knob Setting: 100% (Wide Open)

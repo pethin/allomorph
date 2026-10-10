@@ -1,0 +1,76 @@
+{
+  "bundle": "parallel",
+  "source_voicing": "pair_parallel",
+  "position_name": "Parallel",
+  "base_dry_file": "input.wav",
+  "base_dry_sha256": "7b361f99d72cf978d39e28e5e8b461b168eaee31919f63e4153ba76ce0609401",
+  "dry_file": "dry v6.1.1.wav",
+  "dry_version": "v6.1.1",
+  "dry_sha256": "67de56bd409c948ebfe9646791176cca60bf7b6071f49867ac2983725d506cd9",
+  "instrument_id": "34in_standard_pj",
+  "instrument_version": 1,
+  "source_voicing_version": 1,
+  "stem_count": 6,
+  "stems": [
+    {
+      "filename": "Jazz Pair Active [Parallel] v6.1.1.wav",
+      "target_instrument": "34in_standard_jazz",
+      "target_instrument_version": 1,
+      "target_voicing": "pair_active",
+      "target_voicing_version": 1,
+      "version": "v6.1.1",
+      "tone_name": "Jazz Pair Active",
+      "sha256": "b0996830d25761c94320527e02db681594309b340a558ebc78182aeb8daee7a5"
+    },
+    {
+      "filename": "Jazz Pair Open [Parallel] v6.1.1.wav",
+      "target_instrument": "34in_standard_jazz",
+      "target_instrument_version": 1,
+      "target_voicing": "pair_open",
+      "target_voicing_version": 1,
+      "version": "v6.1.1",
+      "tone_name": "Jazz Pair Open",
+      "sha256": "b341c83f057a93ef571978fd24dbdbdabfdc6c48cb4c183c803a88f49acc90a9"
+    },
+    {
+      "filename": "Jazz Pair Mids [Parallel] v6.1.1.wav",
+      "target_instrument": "34in_standard_jazz",
+      "target_instrument_version": 1,
+      "target_voicing": "pair_mids",
+      "target_voicing_version": 1,
+      "version": "v6.1.1",
+      "tone_name": "Jazz Pair Mids",
+      "sha256": "e25f1c5c4a6e5a0ee345e245dbbce6cee729edd75b3c52772c437cf23601222c"
+    },
+    {
+      "filename": "P\u2215MM Parallel [Parallel] v6.1.1.wav",
+      "target_instrument": "34in_active_pmm",
+      "target_instrument_version": 1,
+      "target_voicing": "pmm_parallel",
+      "target_voicing_version": 1,
+      "version": "v6.1.1",
+      "tone_name": "P\u2215MM Parallel",
+      "sha256": "71f38a2386919943c6916d7c418b7f89218c0c3fe494bdd5f7eb135907b015c0"
+    },
+    {
+      "filename": "P\u2215MM Series [Parallel] v6.1.1.wav",
+      "target_instrument": "34in_active_pmm",
+      "target_instrument_version": 1,
+      "target_voicing": "pmm_series",
+      "target_voicing_version": 1,
+      "version": "v6.1.1",
+      "tone_name": "P\u2215MM Series",
+      "sha256": "b3f3b16b9d60905e8bff073a44b96f517d615bf3f18c615fac86dc6840bea795"
+    },
+    {
+      "filename": "PJ Active [Parallel] v6.1.1.wav",
+      "target_instrument": "34in_standard_pj",
+      "target_instrument_version": 1,
+      "target_voicing": "pair_active",
+      "target_voicing_version": 1,
+      "version": "v6.1.1",
+      "tone_name": "PJ Active",
+      "sha256": "8e9a59d76c90d7c5aa78a91f81555028c13ee5737b277cfcfe94d6f73f7e113c"
+    }
+  ]
+}

@@ -1,16 +1,16 @@
 {
   "bundle": "bridge",
-  "source_voicing": "bridge_solo",
+  "source_voicing": "j_growl",
   "position_name": "Bridge",
   "base_dry_file": "input.wav",
   "base_dry_sha256": "7b361f99d72cf978d39e28e5e8b461b168eaee31919f63e4153ba76ce0609401",
   "dry_file": "dry v6.1.1.wav",
   "dry_version": "v6.1.1",
-  "dry_sha256": "ac6d8a84ea890008f84fa5a600e8b97ab93627af756fe7c393c45480a1e491d3",
-  "instrument_id": "34in_active_emg",
+  "dry_sha256": "8145b6b69f4524074ad61c39e197ab1d220f1a0b55d025b1c072bac98541ec83",
+  "instrument_id": "34in_standard_pj",
   "instrument_version": 1,
   "source_voicing_version": 1,
-  "stem_count": 6,
+  "stem_count": 5,
   "stems": [
     {
       "filename": "Jazz Bridge Growl [Bridge] v6.1.1.wav",
@@ -21,16 +21,6 @@
       "version": "v6.1.1",
       "tone_name": "Jazz Bridge Growl",
       "sha256": "d76415ee1fb1eef6c9a559e137e7bfa6a428f0f442294f77d8f15b8373caac65"
-    },
-    {
-      "filename": "Jazz Bridge Open [Bridge] v6.1.1.wav",
-      "target_instrument": "34in_standard_jazz",
-      "target_instrument_version": 1,
-      "target_voicing": "bridge_open",
-      "target_voicing_version": 1,
-      "version": "v6.1.1",
-      "tone_name": "Jazz Bridge Open",
-      "sha256": "48dfb13bcee4fbe80c4b69a411813e3b5588585ce955e1c2b144af0c277ffad5"
     },
     {
       "filename": "StingRay Parallel [Bridge] v6.1.1.wav",

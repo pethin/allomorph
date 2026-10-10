@@ -7,17 +7,17 @@
   "dsp_generation": 6,
   "bundles": {
     "neck": {
-      "pickup_key": "neck",
+      "source_voicing": "neck_solo",
       "position_name": "Neck",
       "base_dry_file": "input.wav",
       "base_dry_sha256": "7b361f99d72cf978d39e28e5e8b461b168eaee31919f63e4153ba76ce0609401",
       "dry_file": "dry v6.1.1.wav",
       "dry_version": "v6.1.1",
-      "dry_sha256": "208989635b4b7a4c202682f1ed04f50152d6a5cc1093e5eea7f41084d4693aa4",
+      "dry_sha256": "7102c15280eac03f6c4968d7676fefa55a3f50ccd1ae1f57544af3a23c4f8e7d",
       "instrument_id": "34in_preamp_soapbar",
       "instrument_version": 1,
       "source_voicing_version": 1,
-      "stem_count": 9,
+      "stem_count": 7,
       "stems": [
         {
           "filename": "Precision Vintage [Neck] v6.1.1.wav",
@@ -27,7 +27,17 @@
           "target_voicing_version": 1,
           "version": "v6.1.1",
           "tone_name": "Precision Vintage",
-          "sha256": "949f3715e9c39b0357d6dace8f96fc93ee7b3af42a99cb247623684e12014cdc"
+          "sha256": "a3cfb3e9364976cb8d98fe9d8f4707670d2567ddd7b21cf4f462872dfa9e9876"
+        },
+        {
+          "filename": "Precision Active [Neck] v6.1.1.wav",
+          "target_instrument": "34in_standard_p",
+          "target_instrument_version": 1,
+          "target_voicing": "modern_active",
+          "target_voicing_version": 1,
+          "version": "v6.1.1",
+          "tone_name": "Precision Active",
+          "sha256": "c041cdd4e4a1698e14015d0f17c4da128ea8589a962a69f8f04b2d4fdd1d2263"
         },
         {
           "filename": "Precision Mids [Neck] v6.1.1.wav",
@@ -37,7 +47,7 @@
           "target_voicing_version": 1,
           "version": "v6.1.1",
           "tone_name": "Precision Mids",
-          "sha256": "4194c4b003f90079807c55e121a4839b630c42677e8844415f57180ceb61a2d2"
+          "sha256": "2e906ec83099616c5c11cac1218ec58e0ab43776dc4825d798f1dd52243e4eed"
         },
         {
           "filename": "Precision Warm [Neck] v6.1.1.wav",
@@ -47,17 +57,7 @@
           "target_voicing_version": 1,
           "version": "v6.1.1",
           "tone_name": "Precision Warm",
-          "sha256": "8a3d0b84d150681eae1b3b369d89f46873e0369cc9d547bcccc4847fad83d0c1"
-        },
-        {
-          "filename": "Precision Active [Neck] v6.1.1.wav",
-          "target_instrument": "34in_standard_pj",
-          "target_instrument_version": 1,
-          "target_voicing": "neck_active",
-          "target_voicing_version": 1,
-          "version": "v6.1.1",
-          "tone_name": "Precision Active",
-          "sha256": "88239a13c3577bc66fd99366074ed2cb59b12f8f9683ed12c0226b2912847ec2"
+          "sha256": "4dc7efc9ae5ac84ff6e953f710ff2d556cc106c7fd5842e2e6609921b536b42a"
         },
         {
           "filename": "Precision Dub [Neck] v6.1.1.wav",
@@ -67,27 +67,7 @@
           "target_voicing_version": 1,
           "version": "v6.1.1",
           "tone_name": "Precision Dub",
-          "sha256": "e00696482c52b5e4732b543b61e56488ad3301c4e5053cfa7179076994a5936a"
-        },
-        {
-          "filename": "Jazz Neck Warm [Neck] v6.1.1.wav",
-          "target_instrument": "34in_standard_jazz",
-          "target_instrument_version": 1,
-          "target_voicing": "neck_warm",
-          "target_voicing_version": 1,
-          "version": "v6.1.1",
-          "tone_name": "Jazz Neck Warm",
-          "sha256": "4af26d9f30fa062405df5597532bdad628563bfb9b5e8c290d3abfe544961fe1"
-        },
-        {
-          "filename": "Dingwall Middle [Neck] v6.1.1.wav",
-          "target_instrument": "37in_multiscale_dingwall",
-          "target_instrument_version": 1,
-          "target_voicing": "middle_growl",
-          "target_voicing_version": 1,
-          "version": "v6.1.1",
-          "tone_name": "Dingwall Middle",
-          "sha256": "2de698cb63bcfe35ca40485cd40777dbb4f2b3008f612637914a336f528f2d34"
+          "sha256": "c169a88db22f36a6e387edfcb2c77286414014fd865e1224c5b70273a84ae5e0"
         },
         {
           "filename": "Mudbucker Deep [Neck] v6.1.1.wav",
@@ -97,7 +77,7 @@
           "target_voicing_version": 1,
           "version": "v6.1.1",
           "tone_name": "Mudbucker Deep",
-          "sha256": "41a5ff110dad6848529e2034012ad52d4b04c2f68fac5a9bdbedbef8f06dfb8f"
+          "sha256": "a7a7c46005424bc5ad47e7cbb0f634edb173cbc272bc92f4e3ef1b441f200f0c"
         },
         {
           "filename": "Upright Piezo [Neck] v6.1.1.wav",
@@ -107,22 +87,22 @@
           "target_voicing_version": 1,
           "version": "v6.1.1",
           "tone_name": "Upright Piezo",
-          "sha256": "aa39ac202ad80e70025139bce38a541b94d1c2cd63e190a4850053148080a26b"
+          "sha256": "c1680abaf9a34b75f1817f60877a34dd0c5ebcc39d3ac258b677924f3e25fbfa"
         }
       ]
     },
     "bridge": {
-      "pickup_key": "bridge",
+      "source_voicing": "bridge_solo",
       "position_name": "Bridge",
       "base_dry_file": "input.wav",
       "base_dry_sha256": "7b361f99d72cf978d39e28e5e8b461b168eaee31919f63e4153ba76ce0609401",
       "dry_file": "dry v6.1.1.wav",
       "dry_version": "v6.1.1",
-      "dry_sha256": "301bae15ce2115b681f0a5239cd0d666117efff29c69c2e6a12afe20c892e043",
+      "dry_sha256": "3ed64f3f8132a1b1b4b693caef62379c5e3127d9760904c63666ffa0b73ad80d",
       "instrument_id": "34in_preamp_soapbar",
       "instrument_version": 1,
       "source_voicing_version": 1,
-      "stem_count": 7,
+      "stem_count": 6,
       "stems": [
         {
           "filename": "Jazz Bridge Growl [Bridge] v6.1.1.wav",
@@ -132,7 +112,7 @@
           "target_voicing_version": 1,
           "version": "v6.1.1",
           "tone_name": "Jazz Bridge Growl",
-          "sha256": "6be5989bb92bacd2e5235e65b04b7fd56fbc5b418d76712e1616d2581c71ecc5"
+          "sha256": "d76415ee1fb1eef6c9a559e137e7bfa6a428f0f442294f77d8f15b8373caac65"
         },
         {
           "filename": "Jazz Bridge Open [Bridge] v6.1.1.wav",
@@ -142,7 +122,7 @@
           "target_voicing_version": 1,
           "version": "v6.1.1",
           "tone_name": "Jazz Bridge Open",
-          "sha256": "2fc1659518be618fa079d4d64b58ab68e78800df94938c5b5a810219177523a8"
+          "sha256": "48dfb13bcee4fbe80c4b69a411813e3b5588585ce955e1c2b144af0c277ffad5"
         },
         {
           "filename": "StingRay Parallel [Bridge] v6.1.1.wav",
@@ -152,7 +132,7 @@
           "target_voicing_version": 1,
           "version": "v6.1.1",
           "tone_name": "StingRay Parallel",
-          "sha256": "92847bb8845dd72e4b2421540aad901e17e8337364cf2dd44b7eec7886ce39de"
+          "sha256": "92e87922f3ae79163e48034caf7568272d99301c5e03a94a5030a5a384039395"
         },
         {
           "filename": "StingRay Series [Bridge] v6.1.1.wav",
@@ -162,17 +142,7 @@
           "target_voicing_version": 1,
           "version": "v6.1.1",
           "tone_name": "StingRay Series",
-          "sha256": "46cc4a30c7378e5fa83ec2ecf54c2112f7e5c4e6dfa7e2633d08230532b2ff22"
-        },
-        {
-          "filename": "Dingwall Bridge [Bridge] v6.1.1.wav",
-          "target_instrument": "37in_multiscale_dingwall",
-          "target_instrument_version": 1,
-          "target_voicing": "bridge_clank",
-          "target_voicing_version": 1,
-          "version": "v6.1.1",
-          "tone_name": "Dingwall Bridge",
-          "sha256": "5fa345b39dcda1a226b783c42b61ab98a87409333830e3b7ab81d962569fefd4"
+          "sha256": "ab13c87af5180130ecdc08e1f7e85e65e8748308be5fdfad108e7c51abf687a4"
         },
         {
           "filename": "Rickenbacker Clank [Bridge] v6.1.1.wav",
@@ -182,22 +152,22 @@
           "target_voicing_version": 1,
           "version": "v6.1.1",
           "tone_name": "Rickenbacker Clank",
-          "sha256": "5d165de290e06ce45218a0871accfe4008c0a1b6b617f63636a8dcce0168fd67"
+          "sha256": "65fa128322c51ef8c933b3caa89fe6f6d8c1142c9161a4b219f491d9db15d652"
         },
         {
-          "filename": "Rickenbacker Open [Bridge] v6.1.1.wav",
-          "target_instrument": "33in_rickenbacker_4003",
+          "filename": "Dingwall Bridge [Bridge] v6.1.1.wav",
+          "target_instrument": "37in_multiscale_dingwall",
           "target_instrument_version": 1,
-          "target_voicing": "bridge_open",
+          "target_voicing": "bridge_clank",
           "target_voicing_version": 1,
           "version": "v6.1.1",
-          "tone_name": "Rickenbacker Open",
-          "sha256": "9549acbc44ad5475a6457b62f8057e070272963179969c7be9974a8a81b81cbd"
+          "tone_name": "Dingwall Bridge",
+          "sha256": "5540f6aaf106bda84a6603c0585b4b94f6f644c5a9fe2436df194b1290169f75"
         }
       ]
     },
-    "pair_parallel": {
-      "pickup_key": "pair_parallel",
+    "parallel": {
+      "source_voicing": "pair_parallel",
       "position_name": "Parallel",
       "base_dry_file": "input.wav",
       "base_dry_sha256": "7b361f99d72cf978d39e28e5e8b461b168eaee31919f63e4153ba76ce0609401",
@@ -207,7 +177,7 @@
       "instrument_id": "34in_preamp_soapbar",
       "instrument_version": 1,
       "source_voicing_version": 1,
-      "stem_count": 8,
+      "stem_count": 7,
       "stems": [
         {
           "filename": "Jazz Pair Open [Parallel] v6.1.1.wav",
@@ -217,7 +187,7 @@
           "target_voicing_version": 1,
           "version": "v6.1.1",
           "tone_name": "Jazz Pair Open",
-          "sha256": "8531cd200306a2aa54e7985f5107d165de4288c275a58eb487f6f54fdb0f127f"
+          "sha256": "b341c83f057a93ef571978fd24dbdbdabfdc6c48cb4c183c803a88f49acc90a9"
         },
         {
           "filename": "Jazz Pair Mids [Parallel] v6.1.1.wav",
@@ -227,7 +197,7 @@
           "target_voicing_version": 1,
           "version": "v6.1.1",
           "tone_name": "Jazz Pair Mids",
-          "sha256": "55dba29c62906107a64ca238ce32b26b159a426b172ebdedbd24a6819614c611"
+          "sha256": "e25f1c5c4a6e5a0ee345e245dbbce6cee729edd75b3c52772c437cf23601222c"
         },
         {
           "filename": "Jazz Pair Active [Parallel] v6.1.1.wav",
@@ -237,37 +207,7 @@
           "target_voicing_version": 1,
           "version": "v6.1.1",
           "tone_name": "Jazz Pair Active",
-          "sha256": "ccbb92fa439f733acbe16670cc8247a2fc8c64580c98baa84461e5c8d954bcea"
-        },
-        {
-          "filename": "Dingwall Parallel [Parallel] v6.1.1.wav",
-          "target_instrument": "37in_multiscale_dingwall",
-          "target_instrument_version": 1,
-          "target_voicing": "pair_parallel",
-          "target_voicing_version": 1,
-          "version": "v6.1.1",
-          "tone_name": "Dingwall Parallel",
-          "sha256": "05a0da030eaac728eefd2e07e4ab0d4c18477c74af020573395f09bd2bc96455"
-        },
-        {
-          "filename": "PJ Passive [Parallel] v6.1.1.wav",
-          "target_instrument": "34in_standard_pj",
-          "target_instrument_version": 1,
-          "target_voicing": "pair_parallel",
-          "target_voicing_version": 1,
-          "version": "v6.1.1",
-          "tone_name": "PJ Passive",
-          "sha256": "67de56bd409c948ebfe9646791176cca60bf7b6071f49867ac2983725d506cd9"
-        },
-        {
-          "filename": "PJ Active [Parallel] v6.1.1.wav",
-          "target_instrument": "34in_standard_pj",
-          "target_instrument_version": 1,
-          "target_voicing": "pair_active",
-          "target_voicing_version": 1,
-          "version": "v6.1.1",
-          "tone_name": "PJ Active",
-          "sha256": "7449714d570a3165fb0cd92952c44f4aac73e256684e88edc2cd8d4c1e790972"
+          "sha256": "b0996830d25761c94320527e02db681594309b340a558ebc78182aeb8daee7a5"
         },
         {
           "filename": "P\u2215MM Parallel [Parallel] v6.1.1.wav",
@@ -277,7 +217,7 @@
           "target_voicing_version": 1,
           "version": "v6.1.1",
           "tone_name": "P\u2215MM Parallel",
-          "sha256": "e089014dd545062a460de9586e236c82cc455a4882589cac72d634975aafcada"
+          "sha256": "71f38a2386919943c6916d7c418b7f89218c0c3fe494bdd5f7eb135907b015c0"
         },
         {
           "filename": "P\u2215MM Series [Parallel] v6.1.1.wav",
@@ -287,7 +227,27 @@
           "target_voicing_version": 1,
           "version": "v6.1.1",
           "tone_name": "P\u2215MM Series",
-          "sha256": "29215b4b0a1a3d92ff698298350eed5bba2cdac98b4b41c291ae584893311209"
+          "sha256": "b3f3b16b9d60905e8bff073a44b96f517d615bf3f18c615fac86dc6840bea795"
+        },
+        {
+          "filename": "PJ Active [Parallel] v6.1.1.wav",
+          "target_instrument": "34in_standard_pj",
+          "target_instrument_version": 1,
+          "target_voicing": "pair_active",
+          "target_voicing_version": 1,
+          "version": "v6.1.1",
+          "tone_name": "PJ Active",
+          "sha256": "8e9a59d76c90d7c5aa78a91f81555028c13ee5737b277cfcfe94d6f73f7e113c"
+        },
+        {
+          "filename": "PJ Passive [Parallel] v6.1.1.wav",
+          "target_instrument": "34in_standard_pj",
+          "target_instrument_version": 1,
+          "target_voicing": "pair_parallel",
+          "target_voicing_version": 1,
+          "version": "v6.1.1",
+          "tone_name": "PJ Passive",
+          "sha256": "5e27fd3d9407e70dcc69edd2235fbc6aa8cce7f002ce3baa7019debaae47d758"
         }
       ]
     }

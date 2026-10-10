@@ -76,6 +76,9 @@ def export_tone_pack(
         load_instrument(instrument) if not isinstance(instrument, InstrumentConfig) else instrument
     )
 
+    # 1. Partition instrument into pickup bundles first to validate before creating directories
+    bundles = partition_instrument_bundles(inst, catalog_targets=catalog_targets)
+
     pack_dir = Path(output_dir) if output_dir else PACKS_DIR / inst.id
     bundles_dir = pack_dir / "bundles"
     nam_dir = pack_dir / "nam"
@@ -84,8 +87,10 @@ def export_tone_pack(
     if train:
         nam_dir.mkdir(parents=True, exist_ok=True)
 
-    # 1. Partition instrument into pickup bundles
-    bundles = partition_instrument_bundles(inst, catalog_targets=catalog_targets)
+    # Prune any stale/extraneous bundle directories not declared in bundles
+    for existing_item in bundles_dir.iterdir():
+        if existing_item.is_dir() and existing_item.name not in bundles:
+            shutil.rmtree(existing_item)
 
     manifest_path = pack_dir / "manifest.json"
     if not overwrite and manifest_path.exists():

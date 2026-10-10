@@ -422,3 +422,44 @@ def test_export_tone_pack_artwork_candidates(
         assert (out_d / "manifest.json").exists()
 
     assert len(train_called) == 4
+
+
+def test_export_tone_pack_prunes_stale_bundles(tmp_path: Path, mini_dry_audio: Path):
+    """Verify that export_tone_pack prunes stale/extraneous bundle directories."""
+    inst = load_instrument("34in_standard_p")
+    out_dir = tmp_path / "test_prune_pack"
+
+    # Pre-populate bundles_dir with a stale legacy bundle directory
+    stale_bundle_dir = out_dir / "bundles" / "split_p"
+    stale_bundle_dir.mkdir(parents=True)
+    (stale_bundle_dir / "stale.txt").write_text("obsolete", encoding="utf-8")
+
+    targets = [("34in_standard_jazz", "bridge_growl")]
+    export_tone_pack(
+        instrument=inst,
+        output_dir=out_dir,
+        input_wav=mini_dry_audio,
+        max_samples=1200,
+        catalog_targets=targets,
+        overwrite=True,
+    )
+
+    bundles_dir = out_dir / "bundles"
+    assert (bundles_dir / "split").exists()
+    assert not stale_bundle_dir.exists()
+
+
+def test_export_tone_pack_unconfigured_no_dir_leak(tmp_path: Path, mini_dry_audio: Path):
+    """Verify that an instrument without a tone pack raises FileNotFoundError without creating directories."""
+    inst = load_instrument("30in_emg_mmtw")
+    out_dir = tmp_path / "test_unconfigured_pack"
+
+    with pytest.raises(FileNotFoundError, match="Tone pack configuration not found"):
+        export_tone_pack(
+            instrument=inst,
+            output_dir=out_dir,
+            input_wav=mini_dry_audio,
+            max_samples=1200,
+        )
+
+    assert not out_dir.exists()
