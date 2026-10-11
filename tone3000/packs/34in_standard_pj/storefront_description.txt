@@ -46,73 +46,73 @@ THE 17 DIGITAL TWIN VOICINGS
 
 Jazz Bass Family
 
-01. Jazz Pair Active [Parallel] v6.1.1
+01. Jazz Pair Active [Parallel]
 The quintessential NYC active slap tone: tight, massive sub-bass and crisp, glassy highs with a scooped midrange that pops right out of a dense mix.
 
-02. Jazz Pair Open [Parallel] v6.1.1
+02. Jazz Pair Open [Parallel]
 The golden-era '60s Jazz Bass sound. Both pickups wide open deliver that iconic hollow midrange scoop, warm low-mids, and smooth, singing top-end.
 
-03. Jazz Pair Mids [Parallel] v6.1.1
+03. Jazz Pair Mids [Parallel]
 Jazz Bass pair with a vocal midrange punch. Thickens up your fingerstyle attack and smooths out harsh fret clank while keeping every note articulate.
 
-04. Jazz Bridge Growl [Bridge] v6.1.1
+04. Jazz Bridge Growl [Bridge]
 The unmistakable Jaco Pastorius tone: rolling the neck volume back just a touch unlocks that singing, vocal, honky bridge growl without losing low-end body.
 
 
 Music Man StingRay Family
 
-05. StingRay Parallel [Bridge] v6.1.1
+05. StingRay Parallel [Bridge]
 The iconic Music Man StingRay sound: thunderous low end, aggressive metallic slap clank, and that hollow midrange scoop heard on thousands of hit records.
 
-06. StingRay Series [Bridge] v6.1.1
+06. StingRay Series [Bridge]
 StingRay wired in series for a hotter, thicker signal with punchy low-mids and an aggressive, in-your-face rock bark.
 
 
 P/J Bass Family
 
-07. PJ Active [Parallel] v6.1.1
+07. PJ Active [Parallel]
 Modern active P/J punch (Sadowsky/Spector style). Combines thick split-coil body with bridge single-coil cut, boosted by a powerful active 2-band EQ.
 
 
 P/MM Modern Hybrids
 
-08. P∕MM Parallel [Parallel] v6.1.1
+08. P∕MM Parallel [Parallel]
 Modern boutique session hybrid (Sandberg California / Lakland style). Blends the warm body of a P-bass neck with the punchy slap bite of a Music Man bridge humbucker.
 
-09. P∕MM Series [Parallel] v6.1.1
+09. P∕MM Series [Parallel]
 P-bass neck and Music Man bridge wired in series for a massive wall of sound with immense low-mid thrust and heavy overdrive sustain.
 
 
 Progressive & Classic Rock Legends
 
-10. Rickenbacker Clank [Bridge] v6.1.1
+10. Rickenbacker Clank [Bridge]
 The quintessential prog-rock clank (Chris Squire / Geddy Lee). Tight, lean low end with biting, aggressive pick attack and cutting upper-mid grit.
 
-11. Dingwall Bridge [Bridge] v6.1.1
+11. Dingwall Bridge [Bridge]
 Modern progressive metal tone: razor-sharp pick clank, extreme note clarity, and piano-like low-B definition tailored for drop tunings and heavy distortion.
 
-12. Mudbucker Deep [Neck] v6.1.1
+12. Mudbucker Deep [Neck]
 The legendary Gibson "Mudbucker": a dark, colossal wall of pure vintage bass rumble with zero top-end harshness—pure '60s and '70s British blues-rock.
 
 
 Acoustic Transducers
 
-13. Upright Piezo [Neck] v6.1.1
+13. Upright Piezo [Neck]
 Acoustic upright double bass bridge piezo: captures the authentic high-tension attack bite, bridge rocking compliance, and wood-mass roll-off of an acoustic double bass bridge piezo transducer, designed specifically as an ultra-high-Z front-end before acoustic IRs (such as 3 Sigma Audio AST Double Bass IRs) and preamp stages.
 
 
 Precision Bass & Tone Shaper Family
 
-14. Precision Active [Neck] v6.1.1
+14. Precision Active [Neck]
 Modern active ceramic split-coil P-bass tone with 2-band preamp. Punchy, articulate, and wideband with authoritative low-end weight and bright transient clarity—built for modern rock, gospel, and mix cutting authority.
 
-15. Precision Mids [Neck] v6.1.1
+15. Precision Mids [Neck]
 Vintage P-bass with a modern vocal low-mid punch. Cuts finger clatter and high-end sizzle while keeping a muscular, forward presence in a busy mix.
 
-16. Precision Warm [Neck] v6.1.1
+16. Precision Warm [Neck]
 The legendary Motown flatwound sound (James Jamerson / Pino Palladino). Fat, pillowy sub-bass thump with rolled-off highs that glues the groove together.
 
-17. Precision Dub [Neck] v6.1.1
+17. Precision Dub [Neck]
 Ultra-deep vintage '50s dub spec. Pure, earth-shaking sub-bass thump with zero top-end click—perfect for reggae, dub, hip-hop, and classic R&B.
 
 

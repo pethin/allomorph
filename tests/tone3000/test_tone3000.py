@@ -243,7 +243,7 @@ def test_generated_pack_storefront_descriptions():
     4. Exact License and Trademark Disclaimer text.
     5. Word-wrap friendliness: descriptions and paragraphs are single continuous lines.
     6. Tone3000 character limit (<= 10,000 chars).
-    7. All target voicings are enumerated in order with valid version tags.
+    7. All target voicings are enumerated in order without version tags (zero-scroll display names).
     """
     from allomorph.config.instruments import INSTRUMENTS, partition_instrument_bundles
     from allomorph.naming import get_t3k_basename
@@ -303,7 +303,7 @@ def test_generated_pack_storefront_descriptions():
             f"Instrument {inst_id} exceeds 10,000 characters: {len(content)}"
         )
 
-        # 6. Voicing entries match bundle targets and have valid version tags
+        # 6. Voicing entries match bundle targets and omit version tags
         voicing_lines = [
             line.strip() for line in content.splitlines() if re.match(r"^\d{2}\.", line.strip())
         ]
@@ -323,11 +323,14 @@ def test_generated_pack_storefront_descriptions():
                 )
 
         for vline in voicing_lines:
-            assert re.match(r"^\d{2}\. .+ v\d+\.\d+\.\d+$", vline), (
-                f"Instrument {inst_id} voicing line missing version tag: '{vline}'"
+            assert not re.search(r" v\d+\.\d+\.\d+", vline), (
+                f"Instrument {inst_id} voicing line must not contain version tag: '{vline}'"
+            )
+            assert re.match(r"^\d{2}\. .+$", vline), (
+                f"Instrument {inst_id} voicing line malformed: '{vline}'"
             )
             tone_entry = re.sub(r"^\d{2}\. ", "", vline)
-            tone_base = re.sub(r" v\d+\.\d+\.\d+$", "", tone_entry)
-            assert tone_base in expected_basenames, (
-                f"Instrument {inst_id} voicing '{tone_base}' does not match any bundle target base name"
+            assert tone_entry in expected_basenames, (
+                f"Instrument {inst_id} voicing '{tone_entry}' does not match any bundle target base name"
             )
+

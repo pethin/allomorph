@@ -29,11 +29,11 @@ def test_family_sort_key_native_priority():
 
 def test_target_sort_key_ordering():
     """Verify target ordering inside a family matches the curated order."""
-    item1 = ("precision_vintage", "Precision Vintage v2.1.1", "desc", "Precision Bass & Tone Shaper Family")
-    item2 = ("precision_dub", "Precision Dub v2.1.1", "desc", "Precision Bass & Tone Shaper Family")
+    item1 = ("precision_vintage", "Precision Vintage", "desc", "Precision Bass & Tone Shaper Family")
+    item2 = ("precision_dub", "Precision Dub", "desc", "Precision Bass & Tone Shaper Family")
     assert _target_sort_key(item1) < _target_sort_key(item2)
 
-    item_unknown = ("unknown_slug", "Unknown v2.1.1", "desc", "Precision Bass & Tone Shaper Family")
+    item_unknown = ("unknown_slug", "Unknown", "desc", "Precision Bass & Tone Shaper Family")
     assert _target_sort_key(item_unknown) == 99
 
 
@@ -104,8 +104,8 @@ def test_build_storefront_instrument_setup_multi_bundle():
 def test_build_storefront_voicings_catalog():
     """Verify numbering and grouped rendering of the target catalog."""
     target_items = [
-        ("precision_vintage", "Precision Vintage v2.1.1", "Classic P sound", "Precision Bass & Tone Shaper Family"),
-        ("jazz_pair_open", "Jazz Pair Open v2.1.1", "Classic J pair", "Jazz Bass Family"),
+        ("precision_vintage", "Precision Vintage", "Classic P sound", "Precision Bass & Tone Shaper Family"),
+        ("jazz_pair_open", "Jazz Pair Open", "Classic J pair", "Jazz Bass Family"),
     ]
     sorted_families = ["Precision Bass & Tone Shaper Family", "Jazz Bass Family"]
     grouped = {
@@ -115,9 +115,9 @@ def test_build_storefront_voicings_catalog():
     lines = build_storefront_voicings_catalog(target_items, sorted_families, grouped)
     text = "\n".join(lines)
     assert "THE 2 DIGITAL TWIN VOICINGS" in text
-    assert "01. Precision Vintage v2.1.1" in text
+    assert "01. Precision Vintage" in text
     assert "Classic P sound" in text
-    assert "02. Jazz Pair Open v2.1.1" in text
+    assert "02. Jazz Pair Open" in text
     assert "Classic J pair" in text
 
 
@@ -134,6 +134,8 @@ def test_build_storefront_legal_disclaimer():
 
 def test_generate_storefront_description_integration():
     """Verify end-to-end storefront description generation for standard P bass."""
+    import re
+
     inst = load_instrument("34in_standard_p")
     bundles = partition_instrument_bundles(inst)
     desc = generate_storefront_description(inst, bundles)
@@ -144,3 +146,10 @@ def test_generate_storefront_description_integration():
     assert "DIGITAL TWIN VOICINGS" in desc
     assert "LICENSE & DISCLAIMER" in desc
     assert desc.endswith("\n")
+
+    # Verify no version tags are present in numbered voicing lines
+    voicing_lines = [line.strip() for line in desc.splitlines() if re.match(r"^\d{2}\.", line.strip())]
+    assert len(voicing_lines) == 19
+    for vline in voicing_lines:
+        assert not re.search(r" v\d+\.\d+\.\d+", vline), f"Found version tag in storefront line: '{vline}'"
+

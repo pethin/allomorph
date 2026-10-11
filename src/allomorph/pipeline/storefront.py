@@ -11,7 +11,6 @@ from collections.abc import Mapping, Sequence
 from typing import TYPE_CHECKING
 
 from allomorph.naming import get_t3k_basename
-from allomorph.version import DSP_GENERATION, resolve_tri_part_version
 
 if TYPE_CHECKING:
     from allomorph.config.instruments import VoicingBundle
@@ -530,15 +529,9 @@ def generate_storefront_description(
                 display_name = raw_tone
                 desc = f"{t.voicing.name} ({t.instrument.name})"
 
-            target_v_tag = resolve_tri_part_version(
-                DSP_GENERATION,
-                t.instrument.version,
-                t.voicing.version,
-            )
             stem_base = get_t3k_basename(
                 tone_name=display_name,
                 position_name=pos_tag,
-                version_tag=target_v_tag,
             )
 
             target_items.append((slug, stem_base, desc, family))
