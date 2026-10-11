@@ -53,9 +53,7 @@ def extract_wav_metrics(wav_path: Path | str) -> dict[str, Any]:
         metrics["true_peak_dbfs"] = round(compute_true_peak_dbfs(audio), 2)
         lufs_val = compute_lufs(audio, sample_rate=sr)
         metrics["lufs"] = (
-            round(lufs_val, 2)
-            if not (math.isinf(lufs_val) or math.isnan(lufs_val))
-            else None
+            round(lufs_val, 2) if not (math.isinf(lufs_val) or math.isnan(lufs_val)) else None
         )
         metrics["dc_offset"] = round(float(np.mean(mono)), 6)
     return metrics

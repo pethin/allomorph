@@ -1,6 +1,6 @@
 # Allomorph - Native Virtual Analog (VA) Circuit Simulation Engine
 
-This document provides a comprehensive technical reference for the native Virtual Analog (VA) circuit simulation engine implemented in [`allomorph.circuit`](file:///Users/peter/Projects/pethin/passivizer/src/allomorph/circuit) and exposed via the `allomorph-sim` CLI entrypoint. The engine replaces external SPICE dependencies (LTspice, ngspice) with an analytical nodal solver and state-space non-linear magnetic emulator optimized for Apple Silicon (`arm64`), executing at $>1500\times$ real-time speed.
+This document provides a comprehensive technical reference for the native Virtual Analog (VA) circuit simulation engine implemented in [`allomorph.circuit`](../src/allomorph/circuit) and exposed via the `allomorph-sim` CLI entrypoint. The engine replaces external SPICE dependencies (LTspice, ngspice) with an analytical nodal solver and state-space non-linear magnetic emulator optimized for Apple Silicon (`arm64`), executing at $>1500\times$ real-time speed.
 
 ---
 

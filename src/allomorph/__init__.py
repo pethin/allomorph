@@ -4,9 +4,13 @@ Allomorph - Universal Pickup & Transducer Analog Modeling Engine
 
 __version__ = "0.5.0"
 
+import os
 import sys
 import types
 from typing import Any
+
+# Enable TF32 for AMD ROCm hipBLASLt and PyTorch matrix cores
+os.environ.setdefault("HIPBLASLT_ALLOW_TF32", "1")
 
 # Headless Tkinter fallback: neural-amp-modeler's core trainer imports tkinter at top-level
 # for an unused GUI warning modal. On headless Linux environments or systems without python3-tk,
@@ -36,8 +40,13 @@ if "tkinter" not in sys.modules:
             Button = _DummyTkWidget
             Misc = _DummyTkMisc
             mainloop = _dummy_mainloop
+            filedialog: Any = None
 
-        sys.modules["tkinter"] = _DummyTkModule("tkinter")
+        dummy_tk = _DummyTkModule("tkinter")
+        dummy_filedialog = _DummyTkModule("tkinter.filedialog")
+        dummy_tk.filedialog = dummy_filedialog
+        sys.modules["tkinter"] = dummy_tk
+        sys.modules["tkinter.filedialog"] = dummy_filedialog
 
 from allomorph.circuit import (
     CALIBRATION_PEAK_CEILING,

@@ -6,7 +6,7 @@
   "base_dry_sha256": "7b361f99d72cf978d39e28e5e8b461b168eaee31919f63e4153ba76ce0609401",
   "dry_file": "dry v6.1.1.wav",
   "dry_version": "v6.1.1",
-  "dry_sha256": "3ed64f3f8132a1b1b4b693caef62379c5e3127d9760904c63666ffa0b73ad80d",
+  "dry_sha256": "25a1f093b6987217cbd66ed2ac1f17c408fd29913d634db66631686523ff7c0a",
   "instrument_id": "34in_preamp_soapbar",
   "instrument_version": 1,
   "source_voicing_version": 1,
@@ -20,7 +20,7 @@
       "target_voicing_version": 1,
       "version": "v6.1.1",
       "tone_name": "Jazz Bridge Growl",
-      "sha256": "d76415ee1fb1eef6c9a559e137e7bfa6a428f0f442294f77d8f15b8373caac65"
+      "sha256": "a65018f8793e291b8a711b8302b476d52b6e4b062ef626185af716792956d338"
     },
     {
       "filename": "Jazz Bridge Open [Bridge] v6.1.1.wav",
@@ -30,7 +30,7 @@
       "target_voicing_version": 1,
       "version": "v6.1.1",
       "tone_name": "Jazz Bridge Open",
-      "sha256": "48dfb13bcee4fbe80c4b69a411813e3b5588585ce955e1c2b144af0c277ffad5"
+      "sha256": "1ede0c63a13c442792f66e5d05bd19ee9dcd913adf13f123ad8081e2ec5c2dc1"
     },
     {
       "filename": "StingRay Parallel [Bridge] v6.1.1.wav",
@@ -40,7 +40,7 @@
       "target_voicing_version": 1,
       "version": "v6.1.1",
       "tone_name": "StingRay Parallel",
-      "sha256": "92e87922f3ae79163e48034caf7568272d99301c5e03a94a5030a5a384039395"
+      "sha256": "70def6960457578f6710ebea71ccf1711dcb8aa3de71e3885ca972ba3ad1ca46"
     },
     {
       "filename": "StingRay Series [Bridge] v6.1.1.wav",
@@ -50,7 +50,7 @@
       "target_voicing_version": 1,
       "version": "v6.1.1",
       "tone_name": "StingRay Series",
-      "sha256": "ab13c87af5180130ecdc08e1f7e85e65e8748308be5fdfad108e7c51abf687a4"
+      "sha256": "1b0f930af98795ac1c4d2ab3b33ccd186aa6ef998d4f1a91dbd36cddace60cf7"
     },
     {
       "filename": "Rickenbacker Clank [Bridge] v6.1.1.wav",
@@ -60,7 +60,7 @@
       "target_voicing_version": 1,
       "version": "v6.1.1",
       "tone_name": "Rickenbacker Clank",
-      "sha256": "65fa128322c51ef8c933b3caa89fe6f6d8c1142c9161a4b219f491d9db15d652"
+      "sha256": "53e5382e8d0075ccad6809fecb3b810f03d1330eb717a8170280ca6834187762"
     },
     {
       "filename": "Dingwall Bridge [Bridge] v6.1.1.wav",
@@ -70,7 +70,7 @@
       "target_voicing_version": 1,
       "version": "v6.1.1",
       "tone_name": "Dingwall Bridge",
-      "sha256": "5540f6aaf106bda84a6603c0585b4b94f6f644c5a9fe2436df194b1290169f75"
+      "sha256": "e5b14ec9382001cbda712771d623e6ce7c83f9312a3189e7daa2a230cfb3ecae"
     }
   ]
 }

@@ -17,6 +17,23 @@ from allomorph.config.schema import (
     TonePackConfig,
     VoiceCoilConfig,
 )
+from allomorph.trainer.constants import (
+    DEFAULT_ETA_MIN,
+    DEFAULT_HP_HIGH_CUTOFF,
+    DEFAULT_HP_HIGH_ESR_WEIGHT,
+    DEFAULT_HP_MID_CUTOFF,
+    DEFAULT_HP_MID_ESR_WEIGHT,
+    DEFAULT_LR_SCHEDULER,
+    DEFAULT_LR_T_MAX,
+    DEFAULT_MAX_EPOCHS,
+    DEFAULT_MIN_DELTA,
+    DEFAULT_MIN_EPOCHS,
+    DEFAULT_MRSTFT_WEIGHT,
+    DEFAULT_MSE_WEIGHT,
+    DEFAULT_PATIENCE,
+    DEFAULT_PRE_EMPH_COEF,
+    DEFAULT_PRE_EMPH_WEIGHT,
+)
 
 __all__ = [
     "ArtworkPackConfig",
@@ -91,19 +108,12 @@ class NamTrainingMetadata(AllomorphBaseModel):
 
     model_config = ConfigDict(extra="allow", validate_assignment=True)
 
-    esr: float | None = None
-    validation_esr: float | None = None
-    validation_esr_a2_full: float | None = None
-    validation_esr_a2_lite: float | None = None
-    validation_esr_ch8: float | None = None
-    validation_esr_ch3: float | None = None
-    validation_esr_aggregate: float | None = None
-    differential_esr: float | None = None
-    differential_esr_ch3: float | None = None
+    validation_spectral_loss: float | None = None
+    validation_spectral_loss_a2_full: float | None = None
+    validation_spectral_loss_a2_lite: float | None = None
     mrstft_loss: float | None = None
     mrstft_loss_ch3: float | None = None
-    baseline_mrstft: float | None = None
-    differential_mrstft: float | None = None
+    esr_pre_loss: float | None = None
     consecutive_gates_met: int | None = None
     epochs_trained: int | None = None
     stop_reason: str | None = None
@@ -179,54 +189,79 @@ class NamTrainingConfig(AllomorphBaseModel):
     reference_wav: Path | str | None = None
     models_dir: Path | str = Field(default=Path("models"))
     epochs: int = Field(
-        default=40,
+        default=DEFAULT_MAX_EPOCHS,
         gt=0,
-        description="Maximum number of training epochs (default: 40 for Architecture 2 schedule)",
+        description=f"Maximum number of training epochs (default: {DEFAULT_MAX_EPOCHS} for Architecture 2 schedule)",
     )
     min_epochs: int = Field(
-        default=20,
+        default=DEFAULT_MIN_EPOCHS,
         ge=0,
-        description="Warmup epoch floor covering initial exploration before early stopping can engage (default: 20)",
+        description=f"Warmup epoch floor covering initial exploration before early stopping can engage (default: {DEFAULT_MIN_EPOCHS})",
     )
     patience: int = Field(
-        default=8,
+        default=DEFAULT_PATIENCE,
         ge=0,
-        description="Patience epochs for plateau early stopping (default: 8, set 0 to disable)",
+        description=f"Patience epochs for plateau early stopping (default: {DEFAULT_PATIENCE}, set 0 to disable)",
     )
     min_delta: float = Field(
-        default=1.0e-6,
+        default=DEFAULT_MIN_DELTA,
         ge=0.0,
-        description="Minimum loss improvement to reset plateau patience (default: 1.0e-6)",
+        description=f"Minimum loss improvement to reset plateau patience (default: {DEFAULT_MIN_DELTA})",
+    )
+    mse_weight: float = Field(
+        default=DEFAULT_MSE_WEIGHT,
+        ge=0.0,
+        description=f"Raw MSE loss weight for low-frequency amplitude anchoring (default: {DEFAULT_MSE_WEIGHT})",
     )
     pre_emph_weight: float = Field(
-        default=0.25,
+        default=DEFAULT_PRE_EMPH_WEIGHT,
         ge=0.0,
-        description="Pre-emphasis loss weight for equalizing high-frequency resonance (default: 0.25)",
+        description=f"Pre-emphasis loss weight for equalizing high-frequency resonance (default: {DEFAULT_PRE_EMPH_WEIGHT})",
     )
     pre_emph_coef: float = Field(
-        default=0.85,
+        default=DEFAULT_PRE_EMPH_COEF,
         ge=0.0,
         le=1.0,
-        description="Pre-emphasis filter coefficient (default: 0.85)",
+        description=f"Pre-emphasis filter coefficient (default: {DEFAULT_PRE_EMPH_COEF})",
     )
     mrstft_weight: float = Field(
-        default=0.0010,
+        default=DEFAULT_MRSTFT_WEIGHT,
         ge=0.0,
-        description="Multi-Resolution STFT loss weight (default: 0.0010)",
+        description=f"Multi-Resolution STFT loss weight (default: {DEFAULT_MRSTFT_WEIGHT})",
+    )
+    hp_mid_esr_weight: float = Field(
+        default=DEFAULT_HP_MID_ESR_WEIGHT,
+        ge=0.0,
+        description=f"3 kHz high-pass energy-normalized ESR loss weight (default: {DEFAULT_HP_MID_ESR_WEIGHT})",
+    )
+    hp_mid_cutoff: float = Field(
+        default=DEFAULT_HP_MID_CUTOFF,
+        ge=0.0,
+        description=f"3 kHz high-pass FIR cutoff in Hz (default: {DEFAULT_HP_MID_CUTOFF})",
+    )
+    hp_high_esr_weight: float = Field(
+        default=DEFAULT_HP_HIGH_ESR_WEIGHT,
+        ge=0.0,
+        description=f"7 kHz high-pass energy-normalized ESR loss weight (default: {DEFAULT_HP_HIGH_ESR_WEIGHT})",
+    )
+    hp_high_cutoff: float = Field(
+        default=DEFAULT_HP_HIGH_CUTOFF,
+        ge=0.0,
+        description=f"7 kHz high-pass FIR cutoff in Hz (default: {DEFAULT_HP_HIGH_CUTOFF})",
     )
     lr_scheduler: str = Field(
-        default="cosine",
-        description="Learning rate scheduler schedule: 'cosine' (monotonic clamped) or 'exponential'",
+        default=DEFAULT_LR_SCHEDULER,
+        description="Learning rate scheduler schedule: 'exponential' or 'cosine'",
     )
     eta_min: float = Field(
-        default=1e-5,
+        default=DEFAULT_ETA_MIN,
         ge=0.0,
-        description="Minimum learning rate floor for CosineAnnealingLR (default: 1e-5)",
+        description=f"Minimum learning rate floor for CosineAnnealingLR (default: {DEFAULT_ETA_MIN})",
     )
     lr_t_max: int = Field(
-        default=40,
+        default=DEFAULT_LR_T_MAX,
         ge=5,
-        description="Cosine decay period (T_max in epochs, default: 40)",
+        description=f"Cosine decay period (T_max in epochs, default: {DEFAULT_LR_T_MAX})",
     )
     batch_size: int | str = Field(
         default="auto",
@@ -254,7 +289,7 @@ class NamTrainingConfig(AllomorphBaseModel):
     )
     engine: str = Field(
         default="auto",
-        description="Underlying neural training engine ('auto', 'mlx', 'torch')",
+        description="Underlying neural training engine ('auto', 'torch')",
     )
     seed: int | None = Field(
         default=None,

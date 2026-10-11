@@ -29,7 +29,12 @@ def test_family_sort_key_native_priority():
 
 def test_target_sort_key_ordering():
     """Verify target ordering inside a family matches the curated order."""
-    item1 = ("precision_vintage", "Precision Vintage", "desc", "Precision Bass & Tone Shaper Family")
+    item1 = (
+        "precision_vintage",
+        "Precision Vintage",
+        "desc",
+        "Precision Bass & Tone Shaper Family",
+    )
     item2 = ("precision_dub", "Precision Dub", "desc", "Precision Bass & Tone Shaper Family")
     assert _target_sort_key(item1) < _target_sort_key(item2)
 
@@ -104,7 +109,12 @@ def test_build_storefront_instrument_setup_multi_bundle():
 def test_build_storefront_voicings_catalog():
     """Verify numbering and grouped rendering of the target catalog."""
     target_items = [
-        ("precision_vintage", "Precision Vintage", "Classic P sound", "Precision Bass & Tone Shaper Family"),
+        (
+            "precision_vintage",
+            "Precision Vintage",
+            "Classic P sound",
+            "Precision Bass & Tone Shaper Family",
+        ),
         ("jazz_pair_open", "Jazz Pair Open", "Classic J pair", "Jazz Bass Family"),
     ]
     sorted_families = ["Precision Bass & Tone Shaper Family", "Jazz Bass Family"]
@@ -148,8 +158,11 @@ def test_generate_storefront_description_integration():
     assert desc.endswith("\n")
 
     # Verify no version tags are present in numbered voicing lines
-    voicing_lines = [line.strip() for line in desc.splitlines() if re.match(r"^\d{2}\.", line.strip())]
+    voicing_lines = [
+        line.strip() for line in desc.splitlines() if re.match(r"^\d{2}\.", line.strip())
+    ]
     assert len(voicing_lines) == 19
     for vline in voicing_lines:
-        assert not re.search(r" v\d+\.\d+\.\d+", vline), f"Found version tag in storefront line: '{vline}'"
-
+        assert not re.search(r" v\d+\.\d+\.\d+", vline), (
+            f"Found version tag in storefront line: '{vline}'"
+        )

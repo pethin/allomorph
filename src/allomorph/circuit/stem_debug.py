@@ -103,7 +103,9 @@ def debug_voicing_stem(
     )
 
     # Fundamental impulse response onset and peak sample indices
-    onset_sample, peak_sample, is_causal = evaluate_causal_onset_and_peak(h_time, gate_taps=gate_taps)
+    onset_sample, peak_sample, is_causal = evaluate_causal_onset_and_peak(
+        h_time, gate_taps=gate_taps
+    )
 
     # Signal Levels
     levels = compute_stem_level_metrics(y_wet)

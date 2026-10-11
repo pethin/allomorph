@@ -82,14 +82,14 @@ def test_nam_export_metadata_validation():
     """Verify NamExportMetadata and nested instrument/voice metadata validation."""
     meta = NamExportMetadata(
         training=NamTrainingMetadata(
-            esr=0.0004,
-            validation_esr=0.0004,
-            validation_esr_a2_full=0.0004,
-            validation_esr_a2_lite=0.0018,
-            differential_esr=0.015,
+            validation_spectral_loss=0.0004,
+            validation_spectral_loss_a2_full=0.0004,
+            validation_spectral_loss_a2_lite=0.0018,
+            esr_pre_loss=0.0003,
             mrstft_loss=0.0008,
+            mrstft_loss_ch3=0.0012,
             epochs_trained=85,
-            stop_reason="Dual-Gate ESR & Delta Met",
+            stop_reason="Dual-Gate Loss Met",
             epochs=100,
         ),
         license="PolyForm Noncommercial License 1.0.0",
@@ -113,13 +113,14 @@ def test_nam_export_metadata_validation():
     )
     assert meta.source_instrument.id == "30in"
     assert meta.target_voicing.id == "precision_vintage"
-    assert meta.training.esr == 0.0004
-    assert meta.training.validation_esr_a2_full == 0.0004
-    assert meta.training.validation_esr_a2_lite == 0.0018
-    assert meta.training.differential_esr == 0.015
+    assert meta.training.validation_spectral_loss == 0.0004
+    assert meta.training.validation_spectral_loss_a2_full == 0.0004
+    assert meta.training.validation_spectral_loss_a2_lite == 0.0018
+    assert meta.training.esr_pre_loss == 0.0003
     assert meta.training.mrstft_loss == 0.0008
+    assert meta.training.mrstft_loss_ch3 == 0.0012
     assert meta.training.epochs_trained == 85
-    assert meta.training.stop_reason == "Dual-Gate ESR & Delta Met"
+    assert meta.training.stop_reason == "Dual-Gate Loss Met"
     assert meta.source_instrument.voicing.name == "EMG MMTWX"
 
     # Rejection of missing required fields
@@ -134,19 +135,20 @@ def test_nam_training_config_validation():
     assert cfg.pack is None
     assert cfg.overwrite is False
     assert cfg.voice == "all"
-    assert cfg.epochs == 40
-    assert cfg.min_epochs == 20
+    assert cfg.epochs == 60
+    assert cfg.min_epochs == 35
     assert cfg.batch_size == "auto"
     assert cfg.precision == "auto"
     assert cfg.num_workers == "auto"
-    assert cfg.patience == 8
-    assert cfg.min_delta == 1.0e-6
-    assert cfg.pre_emph_weight == 0.25
+    assert cfg.patience == 6
+    assert cfg.min_delta == 1.0e-4
+    assert cfg.mse_weight == 1.0
+    assert cfg.pre_emph_weight == 0.0
     assert cfg.pre_emph_coef == 0.85
-    assert cfg.mrstft_weight == 0.0010
-    assert cfg.lr_scheduler == "cosine"
-    assert cfg.eta_min == 1e-5
-    assert cfg.lr_t_max == 40
+    assert cfg.mrstft_weight == 0.0
+    assert cfg.lr_scheduler == "exponential"
+    assert cfg.eta_min == 5e-4
+    assert cfg.lr_t_max == 45
     assert cfg.engine == "auto"
 
     # Valid custom configuration

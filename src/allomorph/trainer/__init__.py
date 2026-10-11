@@ -22,6 +22,10 @@ from allomorph.trainer.constants import (
     DEFAULT_BATCH_SIZE,
     DEFAULT_ENGINE,
     DEFAULT_ETA_MIN,
+    DEFAULT_HP_HIGH_CUTOFF,
+    DEFAULT_HP_HIGH_ESR_WEIGHT,
+    DEFAULT_HP_MID_CUTOFF,
+    DEFAULT_HP_MID_ESR_WEIGHT,
     DEFAULT_LR_SCHEDULER,
     DEFAULT_LR_T_MAX,
     DEFAULT_MAX_EPOCHS,
@@ -29,6 +33,7 @@ from allomorph.trainer.constants import (
     DEFAULT_MIN_EPOCHS,
     DEFAULT_MRSTFT_FFT_SIZES,
     DEFAULT_MRSTFT_WEIGHT,
+    DEFAULT_MSE_WEIGHT,
     DEFAULT_NUM_WORKERS,
     DEFAULT_PATIENCE,
     DEFAULT_PRE_EMPH_COEF,
@@ -48,7 +53,6 @@ from allomorph.trainer.core import (
     detect_apple_silicon_tier,
     find_sweep_input,
     get_hardware_device_name,
-    is_mlx_available,
     resolve_hardware_batch_size,
     resolve_hardware_num_workers,
     resolve_hardware_precision,
@@ -147,6 +151,12 @@ def add_trainer_arguments(parser: argparse.ArgumentParser) -> None:
         help=f"Minimum loss improvement to reset plateau patience (default: {DEFAULT_MIN_DELTA})",
     )
     _add_arg(
+        "--mse-weight",
+        type=float,
+        default=DEFAULT_MSE_WEIGHT,
+        help=f"Raw MSE loss weight for low-frequency amplitude anchoring (default: {DEFAULT_MSE_WEIGHT})",
+    )
+    _add_arg(
         "--pre-emph-weight",
         type=float,
         default=DEFAULT_PRE_EMPH_WEIGHT,
@@ -163,6 +173,30 @@ def add_trainer_arguments(parser: argparse.ArgumentParser) -> None:
         type=float,
         default=DEFAULT_MRSTFT_WEIGHT,
         help=f"Multi-Resolution STFT loss weight (default: {DEFAULT_MRSTFT_WEIGHT})",
+    )
+    _add_arg(
+        "--hp-mid-esr-weight",
+        type=float,
+        default=DEFAULT_HP_MID_ESR_WEIGHT,
+        help=f"3 kHz high-pass energy-normalized ESR loss weight (default: {DEFAULT_HP_MID_ESR_WEIGHT})",
+    )
+    _add_arg(
+        "--hp-mid-cutoff",
+        type=float,
+        default=DEFAULT_HP_MID_CUTOFF,
+        help=f"3 kHz high-pass FIR cutoff in Hz (default: {DEFAULT_HP_MID_CUTOFF})",
+    )
+    _add_arg(
+        "--hp-high-esr-weight",
+        type=float,
+        default=DEFAULT_HP_HIGH_ESR_WEIGHT,
+        help=f"7 kHz high-pass energy-normalized ESR loss weight (default: {DEFAULT_HP_HIGH_ESR_WEIGHT})",
+    )
+    _add_arg(
+        "--hp-high-cutoff",
+        type=float,
+        default=DEFAULT_HP_HIGH_CUTOFF,
+        help=f"7 kHz high-pass FIR cutoff in Hz (default: {DEFAULT_HP_HIGH_CUTOFF})",
     )
     _add_arg(
         "--lr-scheduler",
@@ -259,7 +293,7 @@ def add_trainer_arguments(parser: argparse.ArgumentParser) -> None:
         "--engine",
         choices=list(VALID_ENGINES),
         default=DEFAULT_ENGINE,
-        help=f"Underlying neural network training engine ('auto', 'mlx', 'torch'; default: '{DEFAULT_ENGINE}')",
+        help=f"Underlying neural network training engine ('auto', 'torch'; default: '{DEFAULT_ENGINE}')",
     )
     _add_arg(
         "--seed",
@@ -307,9 +341,14 @@ def main(argv: Sequence[str] | None = None) -> int:
             "min_epochs": getattr(args, "min_epochs", DEFAULT_MIN_EPOCHS),
             "patience": getattr(args, "patience", DEFAULT_PATIENCE),
             "min_delta": getattr(args, "min_delta", DEFAULT_MIN_DELTA),
+            "mse_weight": getattr(args, "mse_weight", DEFAULT_MSE_WEIGHT),
             "pre_emph_weight": getattr(args, "pre_emph_weight", DEFAULT_PRE_EMPH_WEIGHT),
             "pre_emph_coef": getattr(args, "pre_emph_coef", DEFAULT_PRE_EMPH_COEF),
             "mrstft_weight": getattr(args, "mrstft_weight", DEFAULT_MRSTFT_WEIGHT),
+            "hp_mid_esr_weight": getattr(args, "hp_mid_esr_weight", DEFAULT_HP_MID_ESR_WEIGHT),
+            "hp_mid_cutoff": getattr(args, "hp_mid_cutoff", DEFAULT_HP_MID_CUTOFF),
+            "hp_high_esr_weight": getattr(args, "hp_high_esr_weight", DEFAULT_HP_HIGH_ESR_WEIGHT),
+            "hp_high_cutoff": getattr(args, "hp_high_cutoff", DEFAULT_HP_HIGH_CUTOFF),
             "lr_scheduler": getattr(args, "lr_scheduler", DEFAULT_LR_SCHEDULER),
             "eta_min": getattr(args, "eta_min", DEFAULT_ETA_MIN),
             "lr_t_max": getattr(args, "lr_t_max", DEFAULT_LR_T_MAX),
@@ -360,6 +399,7 @@ __all__ = [
     "DEFAULT_MIN_EPOCHS",
     "DEFAULT_MRSTFT_FFT_SIZES",
     "DEFAULT_MRSTFT_WEIGHT",
+    "DEFAULT_MSE_WEIGHT",
     "DEFAULT_NUM_WORKERS",
     "DEFAULT_PATIENCE",
     "DEFAULT_PRECISION",
@@ -384,7 +424,6 @@ __all__ = [
     "extract_trainer_metrics",
     "find_sweep_input",
     "get_hardware_device_name",
-    "is_mlx_available",
     "main",
     "resolve_hardware_batch_size",
     "resolve_hardware_num_workers",

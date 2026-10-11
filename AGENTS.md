@@ -14,7 +14,7 @@ Welcome to **Allomorph**. This repository houses an analog digital twin and univ
 
 2. **Planned Bass (32" Medium Scale):**
    - Routing: Reverse EMG PX split (Ceramic blades, $f_r = 3.2\text{ kHz}$, $122.8\text{ mm}$ from bridge) + EMG MMTWX (Ceramic & Steel blades, $62.2\text{ mm}$ centerline, $50.8\text{ mm}$ bridge coil) with EMG ABCX active blend.
-   - Reference: `/Users/peter/Projects/pethin/medium-scale-bass/Pickup Placement - P_MM.md`.
+   - Reference: `Pickup Placement - P_MM.md`.
 
 ### Target Instruments & Tonal Scalings
 - **Standard 34" Scale:** Standard Fender ($125.0\text{ mm}$ P, $155.6\text{ mm}$ 60s J neck, $63.5\text{ mm}$ 60s J bridge) and Music Man ($66.0\text{ mm}$ StingRay).
@@ -72,6 +72,8 @@ allomorph/
 │   ├── circuit_theory.md     # Differential equations, 500k volume pot, treble bleed
 │   ├── aperture_math.md      # Aperture sinc, wave speeds, multi-scale filters
 │   ├── anagram_workflow.md   # Darkglass Anagram Block 1 routing & banks
+│   ├── trainer_spectral_loss_optimization.md # Self-normalizing multi-band ESR loss & convergence proofs
+│   ├── trainer_early_stopping_architecture.md # Anti-drift Pareto stopping & in-memory checkpoint restoration
 │   ├── frequency_responses.html # Master interactive portal
 │   └── frequency_responses/     # Per-instrument standalone Altair visualizations
 ├── models/                   # Trained Neural Amp Modeler (.nam) models (models/<instrument>/)
@@ -101,7 +103,7 @@ The models produced by Allomorph are loaded into **Block 1** (as a high-impedanc
 
 ## 5. Architectural Guardrails (Core Invariants)
 
-All code contributions must strictly satisfy the following normative invariants (verified automatically via `tests/test_guardrails.py`). Complete mathematical proofs and derivations are documented in [`docs/architectural_guardrails.md`](file:///Users/peter/Projects/pethin/passivizer/docs/architectural_guardrails.md).
+All code contributions must strictly satisfy the following normative invariants (verified automatically via `tests/test_guardrails.py`). Complete mathematical proofs and derivations are documented in [`docs/architectural_guardrails.md`](docs/architectural_guardrails.md).
 
 ### 5.1 Spatial Acoustics, Scale Physics & Continuum Routing
 1. **Dynamic Spatial Boundaries:** Derive comb null and de-combing taper boundaries dynamically from delays ($\bar{c}/x_{\text{src}}$); never hardcode static cutoff bins.
@@ -133,7 +135,7 @@ All code contributions must strictly satisfy the following normative invariants 
 2. **Coupled System & Harness Controls:** Solve coupled $2\times 2$ nodal transfer matrix for parallel coils, hyperbolic transmission line admittance ($\tanh(\gamma)/\gamma$), and interactive volume/tone wiper splitting with cable capacitance loading ($P_{\text{vol}}, P_{\text{tone}}$).
 
 ### 5.6 Tone Naming, Bassist Lexicon & Display Character Budgets
-All target voice naming, Tone3000 model exports (`.nam`), wet audio stems, and storefront listings must satisfy the normative guidelines in [`docs/tone_naming_guidelines.md`](file:///Users/peter/Projects/pethin/passivizer/docs/tone_naming_guidelines.md):
+All target voice naming, Tone3000 model exports (`.nam`), wet audio stems, and storefront listings must satisfy the normative guidelines in [`docs/tone_naming_guidelines.md`](docs/tone_naming_guidelines.md):
 1. **First-Principles Grammar:** Every tone name must follow the strict 2-to-3 token grammar: `[Family] [Configuration] [Voicing Modifier]`. Combined with physical switch positions and version tags, the full model name is: `[Tone Name] [Pickup Position] v[dsp].[inst].[voice]`.
 2. **Pedalboard Zero-Scroll Target ($\le 34$ chars):** The Darkglass Anagram screen displays 34 characters without scrolling. All 24 target voices must achieve 100% zero-scroll ($\le 34$ characters) on stage including pickup position and version tag.
 3. **Character Length Hard Limit ($\le 64$ chars):** The Tone3000 uploader enforces a strict 64-character ceiling on model filenames (excluding `.nam`). Filenames exceeding 64 characters raise diagnostic `ValueError` exceptions in `get_t3k_basename()`.

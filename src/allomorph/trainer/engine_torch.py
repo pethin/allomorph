@@ -7,11 +7,13 @@ Architecture 2 (A2) using PyTorch Lightning and the upstream neural-amp-modeler 
 from __future__ import annotations
 
 import contextlib
-import math
+import os
 import shutil
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
+
+import numpy as np
 
 from allomorph.config import (
     VOICES,
@@ -35,12 +37,17 @@ from allomorph.trainer.callbacks import (
 from allomorph.trainer.constants import (
     DEFAULT_BATCH_SIZE,
     DEFAULT_ETA_MIN,
+    DEFAULT_HP_HIGH_CUTOFF,
+    DEFAULT_HP_HIGH_ESR_WEIGHT,
+    DEFAULT_HP_MID_CUTOFF,
+    DEFAULT_HP_MID_ESR_WEIGHT,
     DEFAULT_LR_SCHEDULER,
     DEFAULT_LR_T_MAX,
     DEFAULT_MAX_EPOCHS,
     DEFAULT_MIN_DELTA,
     DEFAULT_MIN_EPOCHS,
     DEFAULT_MRSTFT_WEIGHT,
+    DEFAULT_MSE_WEIGHT,
     DEFAULT_NUM_WORKERS,
     DEFAULT_PATIENCE,
     DEFAULT_PRE_EMPH_COEF,
@@ -61,14 +68,65 @@ AUDIO_DIR = REPO_ROOT / "audio"
 MODELS_DIR = REPO_ROOT / "models"
 
 
+def design_fir_highpass(num_taps: int, cutoff_hz: float, fs: float = 48000.0) -> np.ndarray:
+    """Designs a zero-phase linear-phase FIR high-pass filter matching scipy bit-for-bit using pure NumPy.
+
+    Constructs windowed-sinc impulse response with symmetric Hamming window and unity passband scaling at Nyquist.
+    """
+    nyq = 0.5 * fs
+    left = cutoff_hz / nyq
+    alpha = 0.5 * (num_taps - 1)
+    m = np.arange(num_taps, dtype=np.float64) - alpha
+    h = np.sinc(m) - left * np.sinc(left * m)
+    win = 0.54 - 0.46 * np.cos(2.0 * np.pi * np.arange(num_taps) / (num_taps - 1))
+    h = h * win
+    s = np.sum(h * np.cos(np.pi * m))
+    h = h / s
+    return h.astype(np.float32)
+
+
+class NormalizedHighPassESRLoss:
+    """Zero-phase linear-phase FIR high-pass ESR loss with batch energy normalization.
+
+    Neutralizes physical harmonic energy decay so high-frequency differentiator taps
+    receive full 1.0-scale gradient updates from Epoch 1.
+    """
+
+    def __init__(self, cutoff_hz: float, num_taps: int = 31, fs: float = 48000.0) -> None:
+        import torch
+
+        self.taps = design_fir_highpass(num_taps, cutoff_hz, fs=fs)
+        self.kernel = torch.from_numpy(self.taps).view(1, 1, -1)
+        self.padding = num_taps // 2
+
+    def __call__(self, preds: Any, targets: Any) -> Any:
+        import torch
+        import torch.nn.functional as F
+
+        orig_shape = preds.shape
+        p_2d = preds.reshape(-1, 1, orig_shape[-1])
+        t_2d = targets.reshape(-1, 1, orig_shape[-1])
+        kernel = self.kernel.to(device=preds.device, dtype=preds.dtype)
+        p_hp = F.conv1d(p_2d, kernel, padding=self.padding)
+        t_hp = F.conv1d(t_2d, kernel, padding=self.padding)
+        err = torch.sum((p_hp - t_hp) ** 2)
+        norm = torch.sum(t_hp ** 2) + 1e-8
+        return err / norm
+
+
 def configure_a2_architecture(
     nam_core: Any,
     min_epochs: int = DEFAULT_MIN_EPOCHS,
     patience: int = DEFAULT_PATIENCE,
     min_delta: float = DEFAULT_MIN_DELTA,
+    mse_weight: float = DEFAULT_MSE_WEIGHT,
     pre_emph_weight: float = DEFAULT_PRE_EMPH_WEIGHT,
     pre_emph_coef: float = DEFAULT_PRE_EMPH_COEF,
     mrstft_weight: float = DEFAULT_MRSTFT_WEIGHT,
+    hp_mid_weight: float = DEFAULT_HP_MID_ESR_WEIGHT,
+    hp_mid_cutoff: float = DEFAULT_HP_MID_CUTOFF,
+    hp_high_weight: float = DEFAULT_HP_HIGH_ESR_WEIGHT,
+    hp_high_cutoff: float = DEFAULT_HP_HIGH_CUTOFF,
     lr_scheduler: str = DEFAULT_LR_SCHEDULER,
     eta_min: float = DEFAULT_ETA_MIN,
     lr_t_max: int = DEFAULT_LR_T_MAX,
@@ -80,8 +138,8 @@ def configure_a2_architecture(
     """Configure NAM Architecture 2 packed model submodels, loss weighting, and adaptive early stopping.
 
     Configures dual-tier slimmable PackedWaveNet (channels_3 A2 Lite + channels_8 A2 Full) for Tone3000 A2 recognition.
-    Injects pre-emphasis loss (alpha=0.85) and MRSTFT (0.0010) to equalize high-frequency pickup resonance gradients.
-    Hooks LinearWarmupCallback (5 epochs) and AllomorphAdaptiveStopping (composite val_loss plateau).
+    Injects Self-Normalizing Multi-Band High-Pass ESR Loss to neutralize treble harmonic decay and accelerate differentiator tap convergence.
+    Hooks LinearWarmupCallback (5 epochs) and AllomorphAdaptiveStopping.
     """
     from allomorph.trainer.core import resolve_hardware_num_workers, resolve_hardware_precision
 
@@ -98,6 +156,165 @@ def configure_a2_architecture(
             torch.backends.cudnn.benchmark = torch.cuda.is_available()
     except ImportError:
         pass
+
+    import nam.train.lightning_module as lm
+
+    hp_mid_fn = (
+        NormalizedHighPassESRLoss(cutoff_hz=hp_mid_cutoff) if hp_mid_weight > 0.0 else None
+    )
+    hp_high_fn = (
+        NormalizedHighPassESRLoss(cutoff_hz=hp_high_cutoff) if hp_high_weight > 0.0 else None
+    )
+
+    # 1. Patch LossConfig.parse_config to preserve mse_weight
+    orig_loss_parse = getattr(lm.LossConfig, "_orig_parse_config", lm.LossConfig.parse_config)
+    lm.LossConfig._orig_parse_config = orig_loss_parse
+
+    def patched_loss_parse(config: dict[str, Any]) -> dict[str, Any]:
+        d = orig_loss_parse(config)
+        d["mse_weight"] = config.get("mse_weight", mse_weight)
+        return d
+
+    lm.LossConfig.parse_config = staticmethod(patched_loss_parse)
+
+    # 2. Patch PackedLightningModule._get_loss_dict to respect mse_weight and multi-band ESR
+    orig_get_loss_dict = getattr(
+        lm.PackedLightningModule, "_orig_get_loss_dict", lm.PackedLightningModule._get_loss_dict
+    )
+    lm.PackedLightningModule._orig_get_loss_dict = orig_get_loss_dict
+
+    def patched_get_loss_dict(self: Any, preds: Any, targets: Any) -> dict[str, Any]:
+        loss_dict: dict[str, Any] = {}
+
+        eff_mse_weight = self._loss_config.mse_weight
+        if eff_mse_weight is not None and eff_mse_weight > 0.0:
+            if self._loss_config.fourier:
+                loss_dict["MSE_FFT"] = lm._LossItem(eff_mse_weight, lm._mse_fft(preds, targets))
+            else:
+                loss_dict["MSE"] = lm._LossItem(eff_mse_weight, self._mse_loss(preds, targets))
+
+        if hp_mid_fn is not None and hp_mid_weight > 0.0:
+            loss_dict["ESR_HP_mid"] = lm._LossItem(hp_mid_weight, hp_mid_fn(preds, targets))
+
+        if hp_high_fn is not None and hp_high_weight > 0.0:
+            loss_dict["ESR_HP_high"] = lm._LossItem(hp_high_weight, hp_high_fn(preds, targets))
+
+        if self._loss_config.pre_emph_weight is not None:
+
+            loss_dict["Pre-emphasized MSE"] = lm._LossItem(
+                self._loss_config.pre_emph_weight,
+                self._mse_loss(preds, targets, pre_emph_coef=self._loss_config.pre_emph_coef),
+            )
+        if self._loss_config.mrstft_weight is not None:
+            loss_dict["MRSTFT"] = lm._LossItem(
+                self._loss_config.mrstft_weight, self._mrstft_loss(preds, targets)
+            )
+        if self._loss_config.pre_emph_mrstft_weight is not None:
+            loss_dict["Pre-emphasized MRSTFT"] = lm._LossItem(
+                self._loss_config.pre_emph_mrstft_weight,
+                self._mrstft_loss(
+                    preds, targets, pre_emph_coef=self._loss_config.pre_emph_mrstft_coef
+                ),
+            )
+        dc_weight = self._loss_config.dc_weight
+        if dc_weight is not None and dc_weight > 0.0:
+            mean_dims = torch.arange(1, preds.ndim).tolist()
+            dc_loss = torch.nn.MSELoss()(preds.mean(dim=mean_dims), targets.mean(dim=mean_dims))
+            loss_dict["DC MSE"] = lm._LossItem(dc_weight, dc_loss)
+
+        if self._loss_config.custom_losses is not None:
+            for name, loss in self._loss_config.custom_losses.items():
+                loss_dict[name] = lm._LossItem(loss.weight, loss.func(preds, targets))
+
+        return loss_dict
+
+    lm.PackedLightningModule._get_loss_dict = patched_get_loss_dict
+
+    # 3. Patch PackedLightningModule.validation_step to evaluate Composite Spectral Loss
+    orig_val_step = getattr(
+        lm.PackedLightningModule, "_orig_validation_step", lm.PackedLightningModule.validation_step
+    )
+    lm.PackedLightningModule._orig_validation_step = orig_val_step
+
+    def patched_validation_step(self: Any, batch: Any, batch_idx: int) -> Any:
+        preds, targets, loss_dicts = self._shared_step(batch)
+        logs: dict[str, Any] = {}
+        val_losses: list[Any] = []
+        submodel_spectral: list[Any] = []
+
+        pre_coef = (
+            self._loss_config.pre_emph_coef if self._loss_config.pre_emph_coef is not None else 0.90
+        )
+        for i, loss_dict in enumerate(loss_dicts):
+            p_i = preds[:, i, :]
+            # Raw ESR
+            esr_item = self._esr_loss(p_i, targets)
+            loss_dict["ESR"] = lm._LossItem(None, esr_item)
+
+            # Pre-emphasized ESR
+            p_pre = lm._apply_pre_emphasis_filter(p_i, pre_coef)
+            t_pre = lm._apply_pre_emphasis_filter(targets, pre_coef)
+            esr_pre_item = self._esr_loss(p_pre, t_pre)
+            loss_dict["ESR_pre"] = lm._LossItem(None, esr_pre_item)
+
+            # MRSTFT
+            if "MRSTFT" in loss_dict and loss_dict["MRSTFT"].value is not None:
+                mrstft_item = loss_dict["MRSTFT"].value
+            else:
+                mrstft_item = self._mrstft_loss(p_i, targets)
+                loss_dict["MRSTFT"] = lm._LossItem(None, mrstft_item)
+
+            # Composite spectral loss for this submodel (for telemetry)
+            spectral_item = 0.50 * esr_pre_item + 0.40 * mrstft_item + 0.10 * esr_item
+            loss_dict["Spectral"] = lm._LossItem(None, spectral_item)
+
+            submodel_spectral.append(spectral_item)
+
+            # Evaluate exact Multi-Band loss for this submodel
+            weighted_items = [
+                item.weight * item.value
+                for item in loss_dict.values()
+                if item.weight is not None and item.weight > 0.0 and item.value is not None
+            ]
+            submodel_mb_loss = sum(weighted_items) if weighted_items else esr_item
+
+            val_losses.append(submodel_mb_loss)
+            logs[f"val_loss_packed_{i}"] = submodel_mb_loss
+            logs[f"mb_loss_packed_{i}"] = submodel_mb_loss
+            logs[f"Spectral_packed_{i}"] = spectral_item
+            logs[f"ESR_pre_packed_{i}"] = esr_pre_item
+
+            for key, item in loss_dict.items():
+                logs[f"{key}_packed_{i}"] = item.value
+
+        loss_keys = sorted({key for loss_dict in loss_dicts for key in loss_dict})
+        for key in loss_keys:
+            values = [loss_dict[key].value for loss_dict in loss_dicts if key in loss_dict]
+            if values:
+                logs[key] = sum(values)
+
+        # 2:1 prioritization of Full (index 1) over Lite (index 0) on Multi-Band Validation Loss
+        if len(val_losses) >= 2:
+            composite_val = val_losses[1] + 0.50 * val_losses[0]
+        elif val_losses:
+            composite_val = val_losses[0]
+        else:
+            composite_val = sum(val_losses)
+
+        if len(submodel_spectral) >= 2:
+            composite_spectral = submodel_spectral[1] + 0.50 * submodel_spectral[0]
+        elif submodel_spectral:
+            composite_spectral = submodel_spectral[0]
+        else:
+            composite_spectral = composite_val
+
+        logs["val_loss"] = composite_val
+        logs["val_mb_loss"] = composite_val
+        logs["val_spectral_loss"] = composite_spectral
+        self.log_dict(logs)
+        return composite_val
+
+    lm.PackedLightningModule.validation_step = patched_validation_step
 
     orig_detect_input_version = getattr(
         nam_core, "_orig_detect_input_version", nam_core._detect_input_version
@@ -167,6 +384,7 @@ def configure_a2_architecture(
         if "loss" not in cfg:
             new_loss: dict[str, Any] = {}
             cfg["loss"] = new_loss
+        cfg["loss"]["mse_weight"] = mse_weight
         if pre_emph_weight > 0.0:
             cfg["loss"]["pre_emph_weight"] = pre_emph_weight
             cfg["loss"]["pre_emph_coef"] = pre_emph_coef
@@ -213,7 +431,14 @@ def configure_a2_architecture(
         **kwargs: Any,
     ) -> list[Any]:
         callbacks: list[Any] = orig_get_callbacks(None, *args, **kwargs)
+        # Strip early stopping and PackedBestCheckpoint to ensure final weights are preserved without epoch reversion
+        callbacks = [
+            c
+            for c in callbacks
+            if not hasattr(c, "patience") and type(c).__name__ != "PackedBestCheckpoint"
+        ]
         effective_min_epochs = (
+
             min_epochs_override if min_epochs_override is not None else min_epochs
         )
 
@@ -259,9 +484,14 @@ def train_voice_torch(
     min_epochs: int = DEFAULT_MIN_EPOCHS,
     patience: int = DEFAULT_PATIENCE,
     min_delta: float = DEFAULT_MIN_DELTA,
+    mse_weight: float = DEFAULT_MSE_WEIGHT,
     pre_emph_weight: float = DEFAULT_PRE_EMPH_WEIGHT,
     pre_emph_coef: float = DEFAULT_PRE_EMPH_COEF,
     mrstft_weight: float = DEFAULT_MRSTFT_WEIGHT,
+    hp_mid_weight: float = DEFAULT_HP_MID_ESR_WEIGHT,
+    hp_mid_cutoff: float = DEFAULT_HP_MID_CUTOFF,
+    hp_high_weight: float = DEFAULT_HP_HIGH_ESR_WEIGHT,
+    hp_high_cutoff: float = DEFAULT_HP_HIGH_CUTOFF,
     lr_scheduler: str = DEFAULT_LR_SCHEDULER,
     eta_min: float = DEFAULT_ETA_MIN,
     lr_t_max: int = DEFAULT_LR_T_MAX,
@@ -289,10 +519,15 @@ def train_voice_torch(
             if torch.cuda.is_available():
                 torch.cuda.manual_seed_all(seed)
 
+        os.environ.setdefault("HIPBLASLT_ALLOW_TF32", "1")
         if hasattr(torch, "set_float32_matmul_precision"):
             torch.set_float32_matmul_precision("high")
-        if hasattr(torch, "backends") and hasattr(torch.backends, "cudnn"):
-            torch.backends.cudnn.benchmark = torch.cuda.is_available()
+        if hasattr(torch, "backends"):
+            if hasattr(torch.backends, "cuda") and hasattr(torch.backends.cuda, "matmul"):
+                torch.backends.cuda.matmul.allow_tf32 = True
+            if hasattr(torch.backends, "cudnn"):
+                torch.backends.cudnn.allow_tf32 = True
+                torch.backends.cudnn.benchmark = torch.cuda.is_available()
     except ImportError as e:
         print(f"Error: Failed to import 'neural-amp-modeler' ({e}).")
         print("Please run `uv sync` to ensure project dependencies are installed:")
@@ -501,9 +736,14 @@ def train_voice_torch(
         min_epochs=min_epochs,
         patience=patience,
         min_delta=min_delta,
+        mse_weight=mse_weight,
         pre_emph_weight=pre_emph_weight,
         pre_emph_coef=pre_emph_coef,
         mrstft_weight=mrstft_weight,
+        hp_mid_weight=hp_mid_weight,
+        hp_mid_cutoff=hp_mid_cutoff,
+        hp_high_weight=hp_high_weight,
+        hp_high_cutoff=hp_high_cutoff,
         lr_scheduler=lr_scheduler,
         eta_min=eta_min,
         lr_t_max=lr_t_max,
@@ -534,8 +774,9 @@ def train_voice_torch(
         f"  Schedule:    {lr_scheduler} (epochs={epochs}, T_max={lr_t_max}, eta_min={eta_min:.1e})"
     )
     print(
-        f"  Convergence: Adaptive plateau patience={patience} on composite val_loss (min_delta={min_delta:.1e})"
+        f"  Convergence: Adaptive plateau patience={patience} on composite val_spectral_loss (min_delta={min_delta:.1e})"
     )
+    print(f"  MSE Loss:    weight={mse_weight:.4f}")
     if pre_emph_weight > 0:
         print(f"  Pre-Emph:    weight={pre_emph_weight:.2f}, coef={pre_emph_coef:.2f}")
     if mrstft_weight > 0:
@@ -592,32 +833,33 @@ def train_voice_torch(
     stop_reason = stopping_cb.stop_reason if stopping_cb is not None else None
 
     raw_meta = train_output.metadata.model_dump()
-    vesr = raw_meta.get("validation_esr")
-    best_studio_esr = cb.best_esr if (cb is not None and cb.best_esr < float("inf")) else vesr
-    best_lite_esr = (
-        cb.best_ch3_esr
-        if (cb is not None and cb.best_ch3_esr is not None and cb.best_ch3_esr < float("inf"))
-        else None
+    for k in list(raw_meta.keys()):
+        if "esr" in k.lower():
+            raw_meta.pop(k, None)
+
+    best_studio_spec = (
+        cb.best_spectral_ch8 if (cb is not None and cb.best_spectral_ch8 < float("inf")) else None
     )
-    best_lite_mrstft = (
-        cb.best_ch3_mrstft
-        if (cb is not None and cb.best_ch3_mrstft is not None and cb.best_ch3_mrstft < float("inf"))
+    best_lite_spec = (
+        cb.best_spectral_ch3 if (cb is not None and cb.best_spectral_ch3 < float("inf")) else None
+    )
+    best_esr_pre = (
+        cb.best_esr_pre
+        if (cb is not None and cb.best_esr_pre is not None and cb.best_esr_pre < float("inf"))
         else None
     )
 
-    if best_studio_esr is not None:
-        raw_meta["validation_esr"] = best_studio_esr
-        raw_meta["validation_esr_a2_full"] = best_studio_esr
-        raw_meta["validation_esr_ch8"] = best_studio_esr
-    if best_lite_esr is not None:
-        raw_meta["validation_esr_a2_lite"] = best_lite_esr
-        raw_meta["validation_esr_ch3"] = best_lite_esr
-    if vesr is not None:
-        raw_meta["validation_esr_aggregate"] = vesr
-    if best_lite_mrstft is not None:
-        raw_meta["mrstft_loss_ch3"] = best_lite_mrstft
+    if best_studio_spec is not None:
+        raw_meta["validation_spectral_loss"] = best_studio_spec
+        raw_meta["validation_spectral_loss_a2_full"] = best_studio_spec
+    if best_lite_spec is not None:
+        raw_meta["validation_spectral_loss_a2_lite"] = best_lite_spec
+    if best_esr_pre is not None:
+        raw_meta["esr_pre_loss"] = best_esr_pre
     if best_mrstft is not None:
         raw_meta["mrstft_loss"] = best_mrstft
+    if cb is not None and cb.best_ch3_mrstft is not None and cb.best_ch3_mrstft < float("inf"):
+        raw_meta["mrstft_loss_ch3"] = cb.best_ch3_mrstft
     if epochs_trained is not None:
         raw_meta["epochs_trained"] = epochs_trained
     if stop_reason is not None:
@@ -681,6 +923,20 @@ def train_voice_torch(
         "target_voicing": meta_dump["target_voicing"],
     }
 
+    stopping_cb = getattr(nam_core, "_last_stopping_callback", None)
+    if (
+        stopping_cb is not None
+        and getattr(stopping_cb, "best_state_dict", None) is not None
+        and getattr(stopping_cb, "best_epoch", None) is not None
+    ):
+        pareto_score = getattr(stopping_cb, "best_pareto_score", float("inf"))
+        q_info = f", Pareto Q: {pareto_score:.6f}" if pareto_score < float("inf") else ""
+        print(
+            f"\n[NAM Trainer] Applying optimal Pareto multi-band checkpoint from epoch {stopping_cb.best_epoch:03d} "
+            f"(val_loss: {stopping_cb.best_val_loss:.6f}{q_info})"
+        )
+        train_output.model.net.load_state_dict(stopping_cb.best_state_dict)
+
     export_net: Any = train_output.model.net
     export_net.export(
         str(inst_models_dir),
@@ -707,24 +963,17 @@ def train_voice_torch(
         print(f"  Model Title:   {model_title}")
         print(f"  Source Bass:   {inst_name}")
         print(f"  Source Voicing: {src_voicing_name} ({src_eff_pos_mm:.1f}mm)")
-        if train_output.metadata.validation_esr is not None:
-            vesr_val = float(train_output.metadata.validation_esr)
-            best_studio_val: float = (
-                cb.best_esr if (cb is not None and cb.best_esr < float("inf")) else vesr_val
+        if best_studio_spec is not None:
+            lite_disp = (
+                f" | {best_lite_spec:.5f} (A2 Lite Ch3)" if best_lite_spec is not None else ""
             )
-            ch8_db = 10.0 * math.log10(max(best_studio_val, 1e-12))
-            lite_disp = ""
-            if best_lite_esr is not None:
-                lite_db = 10.0 * math.log10(max(best_lite_esr, 1e-12))
-                lite_disp = f" | {best_lite_esr:.6f} (A2 Lite Ch3, {lite_db:+.2f} dB)"
-            agg_disp = f" | {vesr_val:.6f} (Aggregate)"
-            print(
-                f"  Validation ESR: {best_studio_val:.6f} (A2 Full Ch8, {ch8_db:+.2f} dB){lite_disp}{agg_disp}"
-            )
+            print(f"  Validation Spectral Loss: {best_studio_spec:.5f} (A2 Full Ch8){lite_disp}")
+            if best_esr_pre is not None:
+                print(f"  Validation ESR_pre:       {best_esr_pre:.5f}")
             if best_mrstft is not None:
-                print(f"  Validation MRSTFT: {best_mrstft:.6f}")
+                print(f"  Validation MRSTFT:        {best_mrstft:.6f}")
             if stop_reason:
-                print(f"  Termination:   {stop_reason}")
+                print(f"  Termination:              {stop_reason}")
         print("  Ready for Darkglass Anagram Block 1 (Preamp) loading.")
         return True
     else:

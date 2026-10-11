@@ -4,12 +4,14 @@ Provides dataset preparation, baseline delta & spectral distance computation,
 NAM Architecture 2 model configuration, and model export with studio reference metadata.
 """
 
+from __future__ import annotations
+
 import os
 import platform
 import subprocess
 import sys
 from pathlib import Path
-from typing import Any, override
+from typing import TYPE_CHECKING, Any, override
 
 from allomorph.config import InstrumentConfig
 from allomorph.naming import (
@@ -17,17 +19,24 @@ from allomorph.naming import (
     resolve_instruments,
     resolve_voices,
 )
-from allomorph.pipeline.schema import NamTrainingConfig
+
+if TYPE_CHECKING:
+    from allomorph.pipeline.schema import NamTrainingConfig
 from allomorph.trainer.constants import (
     DEFAULT_BATCH_SIZE,
     DEFAULT_ENGINE,
     DEFAULT_ETA_MIN,
+    DEFAULT_HP_HIGH_CUTOFF,
+    DEFAULT_HP_HIGH_ESR_WEIGHT,
+    DEFAULT_HP_MID_CUTOFF,
+    DEFAULT_HP_MID_ESR_WEIGHT,
     DEFAULT_LR_SCHEDULER,
     DEFAULT_LR_T_MAX,
     DEFAULT_MAX_EPOCHS,
     DEFAULT_MIN_DELTA,
     DEFAULT_MIN_EPOCHS,
     DEFAULT_MRSTFT_WEIGHT,
+    DEFAULT_MSE_WEIGHT,
     DEFAULT_NUM_WORKERS,
     DEFAULT_PATIENCE,
     DEFAULT_PRE_EMPH_COEF,
@@ -44,7 +53,12 @@ DEFAULT_INPUT_PATH = get_default_input_path()
 
 
 def setup_headless_environment() -> None:
-    """Configures MIOpen runtime parameters, matplotlib backend, and headless Tkinter shim."""
+    """Configures MIOpen runtime parameters, Apple Silicon MPS optimizations, matplotlib backend, and headless Tkinter shim."""
+    # Apple Silicon Metal Performance Shaders (MPS) optimizations for PyTorch
+    os.environ.setdefault("PYTORCH_ENABLE_MPS_FALLBACK", "0")
+    os.environ.setdefault("PYTORCH_MPS_FAST_MATH", "1")
+    os.environ.setdefault("PYTORCH_MPS_PREFER_METAL", "1")
+
     # ROCm / MIOpen optimizations for AMD GPUs (e.g. RDNA 3/4, gfx1201)
     os.environ.setdefault("TORCH_BLAS_PREFER_HIPBLASLT", "0")
     os.environ.setdefault("MIOPEN_FIND_MODE", "FAST")
@@ -118,52 +132,32 @@ def setup_headless_environment() -> None:
                 Button = _DummyTkWidget
                 Misc = _DummyTkMisc
                 mainloop = _dummy_mainloop
+                filedialog: Any = None
 
-            sys.modules["tkinter"] = _DummyTkModule("tkinter")
+            dummy_tk = _DummyTkModule("tkinter")
+            dummy_filedialog = _DummyTkModule("tkinter.filedialog")
+            dummy_tk.filedialog = dummy_filedialog
+            sys.modules["tkinter"] = dummy_tk
+            sys.modules["tkinter.filedialog"] = dummy_filedialog
 
 
 setup_headless_environment()
 
 
-def is_mlx_available() -> bool:
-    """Checks whether Apple Silicon MLX with Metal GPU acceleration is available."""
-    try:
-        from allomorph.trainer.engine_mlx import is_mlx_available as _check
-
-        return bool(_check())
-    except ImportError, RuntimeError, OSError:
-        return False
-
-
 def resolve_trainer_engine(engine: str = DEFAULT_ENGINE) -> str:
-    """Resolves trainer engine ('mlx' or 'torch').
-    - 'auto': chooses 'mlx' if is_mlx_available() else 'torch'
-    - 'mlx': requires is_mlx_available(), raises RuntimeError if unavailable
+    """Resolves trainer engine ('auto', 'torch').
+    - 'auto': chooses 'torch'
     - 'torch': uses PyTorch
     """
     engine_clean = engine.lower().strip()
     if engine_clean not in VALID_ENGINES:
         raise ValueError(f"Invalid engine '{engine}'. Valid options: {VALID_ENGINES}")
-
-    if engine_clean == "auto":
-        return "mlx" if is_mlx_available() else "torch"
-    if engine_clean == "mlx":
-        if not is_mlx_available():
-            raise RuntimeError(
-                "MLX engine requested, but Apple Silicon MLX with Metal GPU is not available."
-            )
-        return "mlx"
     return "torch"
 
 
 def get_hardware_device_name(engine: str = DEFAULT_ENGINE) -> str:
     """Returns human-readable name of active accelerator or CPU."""
-    try:
-        resolved = resolve_trainer_engine(engine)
-        if resolved == "mlx":
-            return "Apple Silicon (MLX Metal)"
-    except RuntimeError, ValueError:
-        pass
+    _ = resolve_trainer_engine(engine)
 
     try:
         import torch
@@ -239,56 +233,53 @@ def resolve_hardware_batch_size(
         return int(batch_size)
 
     try:
-        if engine == "mlx" or (engine == "auto" and is_mlx_available()):
+        import torch
+
+        is_mps = hasattr(torch.backends, "mps") and torch.backends.mps.is_available()
+        is_apple_silicon = sys.platform == "darwin" and platform.machine() == "arm64"
+        if is_mps or is_apple_silicon:
             tier = detect_apple_silicon_tier()
             # Max (30-40 GPU cores, 48-64MB SLC) and Ultra (60-80 GPU cores, 96-128MB SLC)
             # saturate workgroups at batch size 16 without cache spilling.
-            # Base (7-10 GPU cores) and Pro (14-20 GPU cores) remain at batch size 8
-            # to stay within their 8-24MB L2/SLC cache boundaries.
+            # Base (7-10 GPU cores) and Pro (14-20 GPU cores) scale to batch size 8
+            # to stay within their 8-24MB L2/SLC cache boundaries and reduce unified memory pressure.
             if tier in ("max", "ultra"):
                 return 16
             return 8
 
-        import torch
-
         if torch.cuda.is_available():
-            _free, total_bytes = torch.cuda.mem_get_info()
-            total_gb = total_bytes / (1024**3)
-            # High-end GPU (e.g. RX 9070 XT 16GB, RTX 4080/4090): 32
-            # Yields ~42 batches/epoch, optimal 17.4s epoch speed
-            if total_gb >= 12.0:
-                return 32
-            if total_gb >= 6.0:
-                return 16
-            return 8
-        if hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
-            total_ram_gb = (os.sysconf("SC_PAGE_SIZE") * os.sysconf("SC_PHYS_PAGES")) / (1024**3)
-            return 32 if total_ram_gb >= 32.0 else 16
-        return 8
+            # Upstream NAM / Tone3000 standard is batch size 16 for optimal stochastic updates
+            return 16
+        return 16
     except ImportError, RuntimeError, OSError:
         return 16
 
 
 def resolve_hardware_precision(precision: str = DEFAULT_PRECISION) -> str:
-    """Dynamically resolves PyTorch Lightning precision based on device capabilities."""
+    """Dynamically resolves PyTorch Lightning precision based on device capabilities.
+
+    - Apple Silicon MPS: '32-true' (Fast float32 execution on Apple Silicon)
+    - NVIDIA CUDA: '32-true' (Leverages TensorFloat-32 / TF32 on Ampere and newer architectures)
+    - AMD ROCm (HIP): 'bf16-mixed' (Leverages native RDNA/CDNA BFloat16 matrix cores, 15x faster than FP32 fallback, no underflow)
+    - CPU: '32-true'
+    """
     if precision != "auto":
         return precision
 
     try:
         import torch
 
-        if torch.cuda.is_available():
-            # Check for ROCm/HIP: Composable Kernel in ROCm 7.14 has an upstream bug
-            # where bfloat16 grouped convolution backward prints descriptor spam to stdout.
-            # 16-mixed is 5.6% faster on RDNA 4 (646ms vs 683ms) and completely silent.
-            is_hip = bool(getattr(torch.version, "hip", None))
-            if is_hip:
-                return "16-mixed"
-            if hasattr(torch.cuda, "is_bf16_supported") and torch.cuda.is_bf16_supported():
-                return "bf16-mixed"
-            return "16-mixed"
         if hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
             return "32-true"
+
+        if torch.cuda.is_available():
+            is_hip = bool(getattr(torch.version, "hip", None))
+            if is_hip:
+                # AMD ROCm: BFloat16 leverages native hardware matrix cores with 8-bit FP32 exponent
+                return "bf16-mixed"
+            # NVIDIA CUDA: Ampere and newer natively accelerate TF32 under 32-true
+            return "32-true"
+
         return "32-true"
     except ImportError, RuntimeError:
         return "32-true"
@@ -429,9 +420,14 @@ def train_voice(
     min_epochs: int = DEFAULT_MIN_EPOCHS,
     patience: int = DEFAULT_PATIENCE,
     min_delta: float = DEFAULT_MIN_DELTA,
+    mse_weight: float = DEFAULT_MSE_WEIGHT,
     pre_emph_weight: float = DEFAULT_PRE_EMPH_WEIGHT,
     pre_emph_coef: float = DEFAULT_PRE_EMPH_COEF,
     mrstft_weight: float = DEFAULT_MRSTFT_WEIGHT,
+    hp_mid_weight: float = DEFAULT_HP_MID_ESR_WEIGHT,
+    hp_mid_cutoff: float = DEFAULT_HP_MID_CUTOFF,
+    hp_high_weight: float = DEFAULT_HP_HIGH_ESR_WEIGHT,
+    hp_high_cutoff: float = DEFAULT_HP_HIGH_CUTOFF,
     lr_scheduler: str = DEFAULT_LR_SCHEDULER,
     eta_min: float = DEFAULT_ETA_MIN,
     lr_t_max: int = DEFAULT_LR_T_MAX,
@@ -449,41 +445,7 @@ def train_voice(
     seed: int | None = DEFAULT_SEED,
 ) -> bool:
     """Trains a Neural Amp Modeler Architecture 2 model container using the configured engine."""
-    resolved_engine = resolve_trainer_engine(engine)
-    if resolved_engine == "mlx":
-        from allomorph.trainer.engine_mlx import train_voice_mlx
-
-        return train_voice_mlx(
-            instrument=instrument,
-            voice=voice,
-            source_voicing=source_voicing,
-            input_wav=input_wav,
-            output_wav=output_wav,
-            reference_wav=reference_wav,
-            models_dir=models_dir,
-            epochs=epochs,
-            min_epochs=min_epochs,
-            patience=patience,
-            min_delta=min_delta,
-            pre_emph_weight=pre_emph_weight,
-            pre_emph_coef=pre_emph_coef,
-            mrstft_weight=mrstft_weight,
-            lr_scheduler=lr_scheduler,
-            eta_min=eta_min,
-            lr_t_max=lr_t_max,
-            batch_size=batch_size,
-            precision=precision,
-            num_workers=num_workers,
-            silent=silent,
-            save_plot=save_plot,
-            fast_dev_run=fast_dev_run,
-            basename=basename,
-            version_tag=version_tag,
-            no_manifest=no_manifest,
-            include_identity=include_identity,
-            seed=seed,
-        )
-
+    _ = resolve_trainer_engine(engine)
     from allomorph.trainer.engine_torch import train_voice_torch
 
     return train_voice_torch(
@@ -498,9 +460,14 @@ def train_voice(
         min_epochs=min_epochs,
         patience=patience,
         min_delta=min_delta,
+        mse_weight=mse_weight,
         pre_emph_weight=pre_emph_weight,
         pre_emph_coef=pre_emph_coef,
         mrstft_weight=mrstft_weight,
+        hp_mid_weight=hp_mid_weight,
+        hp_mid_cutoff=hp_mid_cutoff,
+        hp_high_weight=hp_high_weight,
+        hp_high_cutoff=hp_high_cutoff,
         lr_scheduler=lr_scheduler,
         eta_min=eta_min,
         lr_t_max=lr_t_max,
@@ -534,6 +501,10 @@ def train_voices_from_config(cli_cfg: NamTrainingConfig) -> bool:
                 min_epochs=cli_cfg.min_epochs,
                 patience=cli_cfg.patience,
                 min_delta=cli_cfg.min_delta,
+                mse_weight=cli_cfg.mse_weight,
+                pre_emph_weight=cli_cfg.pre_emph_weight,
+                pre_emph_coef=cli_cfg.pre_emph_coef,
+                mrstft_weight=cli_cfg.mrstft_weight,
                 batch_size=cli_cfg.batch_size,
                 precision=cli_cfg.precision,
                 num_workers=cli_cfg.num_workers,
@@ -577,9 +548,14 @@ def train_voices_from_config(cli_cfg: NamTrainingConfig) -> bool:
                 min_epochs=cli_cfg.min_epochs,
                 patience=cli_cfg.patience,
                 min_delta=cli_cfg.min_delta,
+                mse_weight=cli_cfg.mse_weight,
                 pre_emph_weight=cli_cfg.pre_emph_weight,
                 pre_emph_coef=cli_cfg.pre_emph_coef,
                 mrstft_weight=cli_cfg.mrstft_weight,
+                hp_mid_weight=cli_cfg.hp_mid_esr_weight,
+                hp_mid_cutoff=cli_cfg.hp_mid_cutoff,
+                hp_high_weight=cli_cfg.hp_high_esr_weight,
+                hp_high_cutoff=cli_cfg.hp_high_cutoff,
                 lr_scheduler=cli_cfg.lr_scheduler,
                 eta_min=cli_cfg.eta_min,
                 lr_t_max=cli_cfg.lr_t_max,
@@ -622,7 +598,6 @@ __all__ = [
     "configure_a2_architecture",
     "find_sweep_input",
     "get_hardware_device_name",
-    "is_mlx_available",
     "resolve_hardware_batch_size",
     "resolve_hardware_num_workers",
     "resolve_hardware_precision",

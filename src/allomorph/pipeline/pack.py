@@ -33,6 +33,26 @@ from allomorph.pipeline.storefront import (
     VOICE_SLUG_ALIASES,
     generate_storefront_description,
 )
+from allomorph.trainer.constants import (
+    DEFAULT_BATCH_SIZE,
+    DEFAULT_ETA_MIN,
+    DEFAULT_HP_HIGH_CUTOFF,
+    DEFAULT_HP_HIGH_ESR_WEIGHT,
+    DEFAULT_HP_MID_CUTOFF,
+    DEFAULT_HP_MID_ESR_WEIGHT,
+    DEFAULT_LR_SCHEDULER,
+    DEFAULT_LR_T_MAX,
+    DEFAULT_MAX_EPOCHS,
+    DEFAULT_MIN_DELTA,
+    DEFAULT_MIN_EPOCHS,
+    DEFAULT_MRSTFT_WEIGHT,
+    DEFAULT_MSE_WEIGHT,
+    DEFAULT_NUM_WORKERS,
+    DEFAULT_PATIENCE,
+    DEFAULT_PRE_EMPH_COEF,
+    DEFAULT_PRE_EMPH_WEIGHT,
+    DEFAULT_PRECISION,
+)
 from allomorph.version import (
     DSP_GENERATION,
     compute_file_sha256,
@@ -54,7 +74,6 @@ def _sha256_file(path: Path) -> str:
         while chunk := f.read(65536):
             h.update(chunk)
     return h.hexdigest()
-
 
 
 def export_tone_pack(
@@ -400,16 +419,24 @@ def train_tone_pack(
     pack: InstrumentConfig | str | Path,
     voice: str = "all",
     overwrite: bool = False,
-    epochs: int = 40,
-    min_epochs: int = 20,
-    patience: int = 8,
-    min_delta: float = 1.0e-6,
-    batch_size: int | str = "auto",
-    precision: str = "auto",
-    num_workers: int | str = "auto",
-    lr_scheduler: str = "cosine",
-    eta_min: float = 1e-5,
-    lr_t_max: int = 40,
+    epochs: int = DEFAULT_MAX_EPOCHS,
+    min_epochs: int = DEFAULT_MIN_EPOCHS,
+    patience: int = DEFAULT_PATIENCE,
+    min_delta: float = DEFAULT_MIN_DELTA,
+    mse_weight: float = DEFAULT_MSE_WEIGHT,
+    pre_emph_weight: float = DEFAULT_PRE_EMPH_WEIGHT,
+    pre_emph_coef: float = DEFAULT_PRE_EMPH_COEF,
+    mrstft_weight: float = DEFAULT_MRSTFT_WEIGHT,
+    hp_mid_weight: float = DEFAULT_HP_MID_ESR_WEIGHT,
+    hp_mid_cutoff: float = DEFAULT_HP_MID_CUTOFF,
+    hp_high_weight: float = DEFAULT_HP_HIGH_ESR_WEIGHT,
+    hp_high_cutoff: float = DEFAULT_HP_HIGH_CUTOFF,
+    batch_size: int | str = DEFAULT_BATCH_SIZE,
+    precision: str = DEFAULT_PRECISION,
+    num_workers: int | str = DEFAULT_NUM_WORKERS,
+    lr_scheduler: str = DEFAULT_LR_SCHEDULER,
+    eta_min: float = DEFAULT_ETA_MIN,
+    lr_t_max: int = DEFAULT_LR_T_MAX,
     fast_dev_run: bool = False,
     engine: str = "auto",
     seed: int | None = None,
@@ -507,15 +534,14 @@ def train_tone_pack(
             raw_tone = s_info.get("tone_name", "")
             raw_slug = raw_tone.lower().replace(" ", "_").replace("∕", "_").replace("/", "_")
             target_voicing = s_info.get("target_voicing", "")
-            canonical_voice = VOICE_SLUG_ALIASES.get(target_voicing, target_voicing)
+            canonical_voice = VOICE_SLUG_ALIASES.get(raw_slug, raw_slug)
             if canonical_voice not in VOICES:
-                canonical_voice = VOICE_SLUG_ALIASES.get(raw_slug, raw_slug)
+                canonical_voice = VOICE_SLUG_ALIASES.get(target_voicing, target_voicing)
 
             if selected_voices is not None:
                 matches_filter = (
-                    target_voicing in selected_voices
+                    raw_slug in selected_voices
                     or canonical_voice in selected_voices
-                    or raw_slug in selected_voices
                 )
                 if not matches_filter:
                     continue
@@ -570,6 +596,14 @@ def train_tone_pack(
                 min_epochs=min_epochs,
                 patience=patience,
                 min_delta=min_delta,
+                mse_weight=mse_weight,
+                pre_emph_weight=pre_emph_weight,
+                pre_emph_coef=pre_emph_coef,
+                mrstft_weight=mrstft_weight,
+                hp_mid_weight=hp_mid_weight,
+                hp_mid_cutoff=hp_mid_cutoff,
+                hp_high_weight=hp_high_weight,
+                hp_high_cutoff=hp_high_cutoff,
                 batch_size=batch_size,
                 precision=precision,
                 num_workers=num_workers,
@@ -582,6 +616,7 @@ def train_tone_pack(
                 include_identity=False,
                 engine=engine,
                 seed=seed,
+                silent=False,
             )
             if not ok:
                 print(f"[Tone Pack Trainer] Warning: Training failed for {target_nam.name}")

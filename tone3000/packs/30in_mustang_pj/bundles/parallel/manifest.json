@@ -6,7 +6,7 @@
   "base_dry_sha256": "7b361f99d72cf978d39e28e5e8b461b168eaee31919f63e4153ba76ce0609401",
   "dry_file": "dry v6.1.1.wav",
   "dry_version": "v6.1.1",
-  "dry_sha256": "b612f8829a05373b0302dc8a23ecd3056184134d926b62a2adfb7fcb6229c9f5",
+  "dry_sha256": "4661355217f93d8f41ba9618c1c703ff8710c0d1ef5b2d9e3e46a0e98ddcc6a6",
   "instrument_id": "30in_mustang_pj",
   "instrument_version": 1,
   "source_voicing_version": 1,
@@ -20,7 +20,7 @@
       "target_voicing_version": 1,
       "version": "v6.1.1",
       "tone_name": "Jazz Pair Active",
-      "sha256": "b0996830d25761c94320527e02db681594309b340a558ebc78182aeb8daee7a5"
+      "sha256": "f11e7d2852047bafa964fb60ef0dc0144aec0daa08290abfc185440681e3d527"
     },
     {
       "filename": "Jazz Pair Open [Parallel] v6.1.1.wav",
@@ -30,7 +30,7 @@
       "target_voicing_version": 1,
       "version": "v6.1.1",
       "tone_name": "Jazz Pair Open",
-      "sha256": "b341c83f057a93ef571978fd24dbdbdabfdc6c48cb4c183c803a88f49acc90a9"
+      "sha256": "b066efed5ca7a778567a78fe18d7637344a34c1bec8520b8bc811f98c31958c9"
     },
     {
       "filename": "Jazz Pair Mids [Parallel] v6.1.1.wav",
@@ -40,7 +40,7 @@
       "target_voicing_version": 1,
       "version": "v6.1.1",
       "tone_name": "Jazz Pair Mids",
-      "sha256": "e25f1c5c4a6e5a0ee345e245dbbce6cee729edd75b3c52772c437cf23601222c"
+      "sha256": "3d4f3385a017d8c9f406b8abfafdaeb83dd1d1efcc457b86fcde78a897695fc0"
     },
     {
       "filename": "P\u2215MM Parallel [Parallel] v6.1.1.wav",
@@ -50,7 +50,7 @@
       "target_voicing_version": 1,
       "version": "v6.1.1",
       "tone_name": "P\u2215MM Parallel",
-      "sha256": "71f38a2386919943c6916d7c418b7f89218c0c3fe494bdd5f7eb135907b015c0"
+      "sha256": "fb8a7cd7c5e7245d23466688c6f80524a3ec51a08490a43df9744cac20cb0d17"
     },
     {
       "filename": "P\u2215MM Series [Parallel] v6.1.1.wav",
@@ -60,7 +60,7 @@
       "target_voicing_version": 1,
       "version": "v6.1.1",
       "tone_name": "P\u2215MM Series",
-      "sha256": "b3f3b16b9d60905e8bff073a44b96f517d615bf3f18c615fac86dc6840bea795"
+      "sha256": "565317cf04d7987ad2b9e1eb2f878c4905fb6bbc177ac0d7726d6b668b7277a0"
     },
     {
       "filename": "PJ Active [Parallel] v6.1.1.wav",
@@ -70,7 +70,7 @@
       "target_voicing_version": 1,
       "version": "v6.1.1",
       "tone_name": "PJ Active",
-      "sha256": "8e9a59d76c90d7c5aa78a91f81555028c13ee5737b277cfcfe94d6f73f7e113c"
+      "sha256": "167f61f8f56386629faa6f4d1cb1d92837441d170acb8676e2ef79cd54725db4"
     },
     {
       "filename": "PJ Passive [Parallel] v6.1.1.wav",
@@ -80,7 +80,7 @@
       "target_voicing_version": 1,
       "version": "v6.1.1",
       "tone_name": "PJ Passive",
-      "sha256": "5e27fd3d9407e70dcc69edd2235fbc6aa8cce7f002ce3baa7019debaae47d758"
+      "sha256": "5d3838f4f7d9f13c44c209063c70f6532511f2ff0a18c5b121b2901c98449e4d"
     }
   ]
 }

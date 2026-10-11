@@ -31,7 +31,9 @@ def test_pipeline_cli_pack_input_wav_propagation(tmp_path: Path, monkeypatch: py
     assert kwargs.get("overwrite") is True
 
 
-def test_pipeline_cli_stage_pack_all_packs_selected(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+def test_pipeline_cli_stage_pack_all_packs_selected(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
     """Verify that when all packs are selected (--stage pack --force without specific instrument/pack),
     only existing packs in config/packs/ are exported, and undeclared instruments are never called.
     """
@@ -69,7 +71,9 @@ def test_pipeline_cli_stage_pack_pack_all_flag(tmp_path: Path, monkeypatch: pyte
     assert calls == sorted(TONE_PACKS.keys())
 
 
-def test_pipeline_cli_stage_pack_explicit_pack_alias(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+def test_pipeline_cli_stage_pack_explicit_pack_alias(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
     """Verify that --pack with an alias resolves to the target pack."""
     calls: list[str] = []
 

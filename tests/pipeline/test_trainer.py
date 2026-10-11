@@ -61,16 +61,16 @@ def test_default_training_hyperparameters():
         train_voice,
     )
 
-    assert DEFAULT_MAX_EPOCHS == 40
-    assert DEFAULT_MIN_EPOCHS == 20
-    assert DEFAULT_PATIENCE == 8
-    assert DEFAULT_MIN_DELTA == 1.0e-6
+    assert DEFAULT_MAX_EPOCHS == 60
+    assert DEFAULT_MIN_EPOCHS == 35
+    assert DEFAULT_PATIENCE == 6
+    assert DEFAULT_MIN_DELTA == 1.0e-4
     assert DEFAULT_BATCH_SIZE == "auto"
     assert DEFAULT_PRECISION == "auto"
     assert DEFAULT_NUM_WORKERS == "auto"
-    assert DEFAULT_LR_SCHEDULER == "cosine"
-    assert DEFAULT_ETA_MIN == 1e-5
-    assert DEFAULT_LR_T_MAX == 40
+    assert DEFAULT_LR_SCHEDULER == "exponential"
+    assert DEFAULT_ETA_MIN == 5e-4
+    assert DEFAULT_LR_T_MAX == 45
 
     sig = inspect.signature(train_voice)
     assert sig.parameters["epochs"].default == DEFAULT_MAX_EPOCHS
@@ -139,6 +139,7 @@ def test_train_nam_cli_schedule_and_patience_parsing():
         DEFAULT_MAX_EPOCHS,
         DEFAULT_MIN_DELTA,
         DEFAULT_MIN_EPOCHS,
+        DEFAULT_MSE_WEIGHT,
         DEFAULT_NUM_WORKERS,
         DEFAULT_PATIENCE,
         DEFAULT_PRECISION,
@@ -154,6 +155,7 @@ def test_train_nam_cli_schedule_and_patience_parsing():
     assert args.min_epochs == DEFAULT_MIN_EPOCHS
     assert args.patience == DEFAULT_PATIENCE
     assert args.min_delta == DEFAULT_MIN_DELTA
+    assert args.mse_weight == DEFAULT_MSE_WEIGHT
     assert args.batch_size == DEFAULT_BATCH_SIZE
     assert args.precision == DEFAULT_PRECISION
     assert args.num_workers == DEFAULT_NUM_WORKERS
@@ -172,6 +174,8 @@ def test_train_nam_cli_schedule_and_patience_parsing():
             "7",
             "--min-delta",
             "1e-5",
+            "--mse-weight",
+            "0.05",
             "--batch-size",
             "32",
             "--precision",
@@ -190,6 +194,7 @@ def test_train_nam_cli_schedule_and_patience_parsing():
     assert custom_args.min_epochs == 8
     assert custom_args.patience == 7
     assert custom_args.min_delta == 1e-5
+    assert custom_args.mse_weight == 0.05
     assert custom_args.batch_size == 32
     assert custom_args.precision == "bf16-mixed"
     assert custom_args.num_workers == 4
@@ -557,9 +562,12 @@ def test_train_voice_torch_fast_dev_run(tmp_path: Path):
 
 def test_apple_silicon_tier_detection(monkeypatch: pytest.MonkeyPatch) -> None:
     """Verify detect_apple_silicon_tier classifies Apple Silicon chip families correctly."""
+    import platform
     import subprocess
 
     from allomorph.trainer.core import detect_apple_silicon_tier
+
+    monkeypatch.setattr(platform, "system", lambda: "Darwin")
 
     def _mock_sysctl(brand: str) -> Any:
         def _runner(*args: object, **kwargs: object) -> subprocess.CompletedProcess[str]:
@@ -585,18 +593,58 @@ def test_apple_silicon_tier_detection(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def test_resolve_hardware_batch_size_branches(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Verify resolve_hardware_batch_size across MLX and PyTorch backends."""
+    """Verify resolve_hardware_batch_size with integers, strings, and Apple Silicon tiers."""
     from allomorph.trainer.core import resolve_hardware_batch_size
 
-    # MLX branches
-    monkeypatch.setattr("allomorph.trainer.core.detect_apple_silicon_tier", lambda: "ultra")
-    assert resolve_hardware_batch_size("auto", engine="mlx") == 16
+    # Integer and string inputs
+    assert resolve_hardware_batch_size(32) == 32
+    assert resolve_hardware_batch_size("24") == 24
+    assert resolve_hardware_batch_size("auto") in (8, 16)
+
+    # Apple Silicon tier tests: lower batch size to 8 on base/pro, 16 on max/ultra
+    monkeypatch.setattr("sys.platform", "darwin")
+    monkeypatch.setattr("platform.machine", lambda: "arm64")
 
     monkeypatch.setattr("allomorph.trainer.core.detect_apple_silicon_tier", lambda: "base")
-    assert resolve_hardware_batch_size("auto", engine="mlx") == 8
+    assert resolve_hardware_batch_size("auto") == 8
 
-    # String integer
-    assert resolve_hardware_batch_size("24") == 24
+    monkeypatch.setattr("allomorph.trainer.core.detect_apple_silicon_tier", lambda: "pro")
+    assert resolve_hardware_batch_size("auto") == 8
+
+    monkeypatch.setattr("allomorph.trainer.core.detect_apple_silicon_tier", lambda: "max")
+    assert resolve_hardware_batch_size("auto") == 16
+
+    monkeypatch.setattr("allomorph.trainer.core.detect_apple_silicon_tier", lambda: "ultra")
+    assert resolve_hardware_batch_size("auto") == 16
+
+
+def test_resolve_trainer_engine_and_mps_env() -> None:
+    """Verify resolve_trainer_engine dispatches to torch, raises on removed engines, and verifies MPS environment."""
+    import os
+
+    from allomorph.trainer.core import (
+        get_hardware_device_name,
+        resolve_trainer_engine,
+        setup_headless_environment,
+    )
+
+    setup_headless_environment()
+    assert os.environ.get("PYTORCH_ENABLE_MPS_FALLBACK") == "0"
+    assert os.environ.get("PYTORCH_MPS_FAST_MATH") == "1"
+    assert os.environ.get("PYTORCH_MPS_PREFER_METAL") == "1"
+
+    assert resolve_trainer_engine("auto") == "torch"
+    assert resolve_trainer_engine("torch") == "torch"
+
+    with pytest.raises(ValueError, match="Invalid engine 'mlx'"):
+        resolve_trainer_engine("mlx")
+
+    with pytest.raises(ValueError, match="Invalid engine 'invalid'"):
+        resolve_trainer_engine("invalid")
+
+    device_name = get_hardware_device_name()
+    assert isinstance(device_name, str)
+    assert len(device_name) > 0
 
 
 def test_train_voices_from_config_and_main(monkeypatch: pytest.MonkeyPatch) -> None:

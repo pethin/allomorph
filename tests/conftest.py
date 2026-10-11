@@ -42,8 +42,13 @@ if "tkinter" not in sys.modules:
             Button = _DummyTkWidget
             Misc = _DummyTkMisc
             mainloop = _dummy_mainloop
+            filedialog: Any = None
 
-        sys.modules["tkinter"] = _DummyTkModule("tkinter")
+        dummy_tk = _DummyTkModule("tkinter")
+        dummy_filedialog = _DummyTkModule("tkinter.filedialog")
+        dummy_tk.filedialog = dummy_filedialog
+        sys.modules["tkinter"] = dummy_tk
+        sys.modules["tkinter.filedialog"] = dummy_filedialog
 
 import pytest
 from hypothesis import Verbosity, settings
