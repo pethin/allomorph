@@ -211,5 +211,18 @@
         }
       ]
     }
+  },
+  "models": {
+    "Jazz Pair Active v6.1.1.nam": {
+      "filename": "Jazz Pair Active v6.1.1.nam",
+      "bundle": "split",
+      "target_instrument": "34in_standard_jazz",
+      "target_instrument_version": 1,
+      "target_voicing": "pair_active",
+      "target_voicing_version": 1,
+      "version": "v6.1.1",
+      "tone_name": "Jazz Pair Active",
+      "sha256": "daea61bd5565d33edc57e0e042ba1fd88de6b1849126a1f507b71a73a0f72faa"
+    }
   }
 }
