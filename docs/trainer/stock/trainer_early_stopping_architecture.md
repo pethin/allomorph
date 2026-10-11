@@ -169,13 +169,13 @@ The architecture was validated by modeling the **34" Active Music Man StingRay (
 
 ### 6.1 System Constants (`src/allomorph/trainer/constants.py`)
 ```python
-DEFAULT_MIN_EPOCHS: int = 35          # Warmup floor protecting differentiator formation
-DEFAULT_MAX_EPOCHS: int = 60          # Studio schedule budget
-DEFAULT_PATIENCE: int = 6             # Plateau patience window in epochs
-DEFAULT_MIN_DELTA: float = 1.0e-4     # Meaningful loss improvement threshold
-DEFAULT_MSE_WEIGHT: float = 1.00      # Time-domain waveform MSE weight
+DEFAULT_MIN_EPOCHS: int = 35  # Warmup floor protecting differentiator formation
+DEFAULT_MAX_EPOCHS: int = 60  # Studio schedule budget
+DEFAULT_PATIENCE: int = 6  # Plateau patience window in epochs
+DEFAULT_MIN_DELTA: float = 1.0e-4  # Meaningful loss improvement threshold
+DEFAULT_MSE_WEIGHT: float = 1.00  # Time-domain waveform MSE weight
 DEFAULT_HP_MID_ESR_WEIGHT: float = 0.50  # 3 kHz High-Pass ESR weight
-DEFAULT_HP_HIGH_ESR_WEIGHT: float = 0.50 # 7 kHz High-Pass ESR weight
+DEFAULT_HP_HIGH_ESR_WEIGHT: float = 0.50  # 7 kHz High-Pass ESR weight
 ```
 
 ### 6.2 Callback Integration (`src/allomorph/trainer/callbacks.py`)

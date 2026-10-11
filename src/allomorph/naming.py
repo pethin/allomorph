@@ -190,7 +190,7 @@ def resolve_instruments(instrument_arg: str | Sequence[str] | None) -> list[str]
             iid = cfg.id
             if iid not in resolved:
                 resolved.append(iid)
-        except (FileNotFoundError, KeyError):
+        except FileNotFoundError, KeyError:
             matches = [iid for iid in all_playable if iid.startswith(token) or token in iid]
             if matches:
                 for m in matches:
@@ -262,7 +262,7 @@ def resolve_packs(
                         cfg = load_instrument(token)
                         if cfg.id in TONE_PACKS:
                             matched_id = cfg.id
-                    except (FileNotFoundError, KeyError):
+                    except FileNotFoundError, KeyError:
                         pass
 
                 if matched_id is not None:

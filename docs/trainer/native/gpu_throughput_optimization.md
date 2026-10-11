@@ -98,7 +98,7 @@ arange_ny = torch.arange(ny, device=device).unsqueeze(0)  # (1, ny)
 # Inside step loop:
 indices_2d = indices.unsqueeze(1)  # (batch_size, 1)
 x_batch = x_train_padded[indices_2d + arange_nx].unsqueeze(1)  # (B, 1, nx)
-y_batch = y_train[indices_2d + arange_ny].unsqueeze(1)         # (B, 1, ny)
+y_batch = y_train[indices_2d + arange_ny].unsqueeze(1)  # (B, 1, ny)
 ```
 The entire batch slice is executed as a single, contiguous parallel GPU gather kernel, running directly in high-bandwidth VRAM without Python interpreter loops.
 

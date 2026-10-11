@@ -143,9 +143,9 @@ def test_nam_training_config_validation():
     assert cfg.patience == 6
     assert cfg.min_delta == 1.0e-4
     assert cfg.mse_weight == 1.0
-    assert cfg.pre_emph_weight == 0.0
+    assert cfg.pre_emph_weight == 0.50
     assert cfg.pre_emph_coef == 0.85
-    assert cfg.mrstft_weight == 0.0
+    assert cfg.mrstft_weight == 0.001
     assert cfg.lr_scheduler == "exponential"
     assert cfg.eta_min == 5e-4
     assert cfg.lr_t_max == 45

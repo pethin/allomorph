@@ -39,7 +39,7 @@ def get_git_commit() -> str | None:
             commit = res.stdout.strip()
             if commit:
                 return commit
-    except (subprocess.SubprocessError, OSError):
+    except subprocess.SubprocessError, OSError:
         pass
     return None
 
@@ -151,7 +151,7 @@ def is_wet_stem_valid(
     try:
         with manifest_p.open("r", encoding="utf-8") as f:
             manifest = json.load(f)
-    except (json.JSONDecodeError, OSError):
+    except json.JSONDecodeError, OSError:
         return False
 
     files = manifest.get("files", {})

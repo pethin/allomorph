@@ -60,21 +60,63 @@ VOICES_TO_BENCHMARK = [
 ]
 
 KEY_FREQUENCIES = [
-    60.0, 100.0, 250.0, 500.0, 1000.0, 2000.0, 3000.0, 4000.0, 5200.0, 6000.0,
-    8000.0, 10000.0, 12000.0, 15000.0,
+    60.0,
+    100.0,
+    250.0,
+    500.0,
+    1000.0,
+    2000.0,
+    3000.0,
+    4000.0,
+    5200.0,
+    6000.0,
+    8000.0,
+    10000.0,
+    12000.0,
+    15000.0,
 ]
 
 ISO_31_BANDS = [
-    (1, 20.0), (2, 25.0), (3, 31.5), (4, 40.0), (5, 50.0), (6, 63.0),
-    (7, 80.0), (8, 100.0), (9, 125.0), (10, 160.0), (11, 200.0), (12, 250.0),
-    (13, 315.0), (14, 400.0), (15, 500.0), (16, 630.0), (17, 800.0), (18, 1000.0),
-    (19, 1250.0), (20, 1600.0), (21, 2000.0), (22, 2500.0), (23, 3150.0), (24, 4000.0),
-    (25, 5000.0), (26, 6300.0), (27, 8000.0), (28, 10000.0), (29, 12500.0), (30, 16000.0),
+    (1, 20.0),
+    (2, 25.0),
+    (3, 31.5),
+    (4, 40.0),
+    (5, 50.0),
+    (6, 63.0),
+    (7, 80.0),
+    (8, 100.0),
+    (9, 125.0),
+    (10, 160.0),
+    (11, 200.0),
+    (12, 250.0),
+    (13, 315.0),
+    (14, 400.0),
+    (15, 500.0),
+    (16, 630.0),
+    (17, 800.0),
+    (18, 1000.0),
+    (19, 1250.0),
+    (20, 1600.0),
+    (21, 2000.0),
+    (22, 2500.0),
+    (23, 3150.0),
+    (24, 4000.0),
+    (25, 5000.0),
+    (26, 6300.0),
+    (27, 8000.0),
+    (28, 10000.0),
+    (29, 12500.0),
+    (30, 16000.0),
     (31, 20000.0),
 ]
 
 
-def synth_log_sweep(duration_sec: float = 5.0, f_start: float = 20.0, f_end: float = 20000.0, target_dbfs: float = -20.5) -> np.ndarray:
+def synth_log_sweep(
+    duration_sec: float = 5.0,
+    f_start: float = 20.0,
+    f_end: float = 20000.0,
+    target_dbfs: float = -20.5,
+) -> np.ndarray:
     n_samples = int(duration_sec * FS)
     t = np.linspace(0.0, duration_sec, n_samples, endpoint=False)
     w_start = 2.0 * np.pi * f_start
@@ -123,7 +165,9 @@ def run_nam_inference(nam_path: Path, input_audio: np.ndarray, submodel_idx: int
     return np.asarray(y_pred[: len(input_audio)], dtype=np.float64)
 
 
-def extract_small_signal_ir(nam_path: Path, submodel_idx: int = 1, num_taps: int = 8) -> list[float]:
+def extract_small_signal_ir(
+    nam_path: Path, submodel_idx: int = 1, num_taps: int = 8
+) -> list[float]:
     with open(nam_path, "r", encoding="utf-8") as f:
         container = json.load(f)
     submodels = container.get("config", {}).get("submodels", [])
@@ -193,19 +237,39 @@ def evaluate_sweep_metrics(
     overall_mae = float(np.mean(np.abs(err_cont)))
 
     sub_mask = (f_bins >= 20.0) & (f_bins <= 120.0)
-    sub_rmse = float(np.sqrt(np.mean((mag_model[sub_mask] - mag_dsp[sub_mask]) ** 2))) if np.any(sub_mask) else 0.0
+    sub_rmse = (
+        float(np.sqrt(np.mean((mag_model[sub_mask] - mag_dsp[sub_mask]) ** 2)))
+        if np.any(sub_mask)
+        else 0.0
+    )
 
     low_mid_mask = (f_bins >= 100.0) & (f_bins <= 1000.0)
-    low_mid_rmse = float(np.sqrt(np.mean((mag_model[low_mid_mask] - mag_dsp[low_mid_mask]) ** 2))) if np.any(low_mid_mask) else 0.0
+    low_mid_rmse = (
+        float(np.sqrt(np.mean((mag_model[low_mid_mask] - mag_dsp[low_mid_mask]) ** 2)))
+        if np.any(low_mid_mask)
+        else 0.0
+    )
 
     pres_mask = (f_bins >= 1000.0) & (f_bins <= 4000.0)
-    pres_rmse = float(np.sqrt(np.mean((mag_model[pres_mask] - mag_dsp[pres_mask]) ** 2))) if np.any(pres_mask) else 0.0
+    pres_rmse = (
+        float(np.sqrt(np.mean((mag_model[pres_mask] - mag_dsp[pres_mask]) ** 2)))
+        if np.any(pres_mask)
+        else 0.0
+    )
 
     treble_mask = (f_bins >= 4000.0) & (f_bins <= 10000.0)
-    treble_rmse = float(np.sqrt(np.mean((mag_model[treble_mask] - mag_dsp[treble_mask]) ** 2))) if np.any(treble_mask) else 0.0
+    treble_rmse = (
+        float(np.sqrt(np.mean((mag_model[treble_mask] - mag_dsp[treble_mask]) ** 2)))
+        if np.any(treble_mask)
+        else 0.0
+    )
 
     air_mask = (f_bins >= 10000.0) & (f_bins <= 20000.0)
-    air_rmse = float(np.sqrt(np.mean((mag_model[air_mask] - mag_dsp[air_mask]) ** 2))) if np.any(air_mask) else 0.0
+    air_rmse = (
+        float(np.sqrt(np.mean((mag_model[air_mask] - mag_dsp[air_mask]) ** 2)))
+        if np.any(air_mask)
+        else 0.0
+    )
 
     return {
         "overall_mae": round(overall_mae, 2),
@@ -261,15 +325,29 @@ def evaluate_plucks_dynamics(y_val_pred: np.ndarray, y_val_tgt: np.ndarray) -> d
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Master Native vs Stock NAM Sweep Benchmark")
-    parser.add_argument("--epochs", type=int, default=STOCK_DEFAULT_MAX_EPOCHS, help="Schedule budget epochs (60)")
-    parser.add_argument("--min-epochs", type=int, default=STOCK_DEFAULT_MIN_EPOCHS, help="Warmup floor epochs (35)")
-    parser.add_argument("--patience", type=int, default=STOCK_DEFAULT_PATIENCE, help="Early stopping patience (6)")
-    parser.add_argument("--min-delta", type=float, default=STOCK_DEFAULT_MIN_DELTA, help="Min delta (1e-4)")
+    parser.add_argument(
+        "--epochs", type=int, default=STOCK_DEFAULT_MAX_EPOCHS, help="Schedule budget epochs (60)"
+    )
+    parser.add_argument(
+        "--min-epochs", type=int, default=STOCK_DEFAULT_MIN_EPOCHS, help="Warmup floor epochs (35)"
+    )
+    parser.add_argument(
+        "--patience", type=int, default=STOCK_DEFAULT_PATIENCE, help="Early stopping patience (6)"
+    )
+    parser.add_argument(
+        "--min-delta", type=float, default=STOCK_DEFAULT_MIN_DELTA, help="Min delta (1e-4)"
+    )
     parser.add_argument("--batch-size", type=int, default=16, help="Batch size (16)")
     parser.add_argument("--skip-train", action="store_true", help="Skip training if models exist")
-    parser.add_argument("--only-native", action="store_true", help="Only train/benchmark native engine")
-    parser.add_argument("--only-stock", action="store_true", help="Only train/benchmark stock engine")
-    parser.add_argument("--voices", nargs="*", default=None, help="Subset of voice slugs to benchmark")
+    parser.add_argument(
+        "--only-native", action="store_true", help="Only train/benchmark native engine"
+    )
+    parser.add_argument(
+        "--only-stock", action="store_true", help="Only train/benchmark stock engine"
+    )
+    parser.add_argument(
+        "--voices", nargs="*", default=None, help="Subset of voice slugs to benchmark"
+    )
     args = parser.parse_args()
 
     bundle_dir = REPO_ROOT / "tone3000" / "packs" / "34in_standard_p" / "bundles" / "split"
@@ -282,7 +360,9 @@ def main() -> None:
 
     print("================================================================================")
     print(" ALLOMORPH A2 ENGINE BENCHMARK: NATIVE vs ORIGINAL STOCK")
-    print(f" Settings: epochs={args.epochs}, min_epochs={args.min_epochs}, patience={args.patience}, batch_size={args.batch_size}")
+    print(
+        f" Settings: epochs={args.epochs}, min_epochs={args.min_epochs}, patience={args.patience}, batch_size={args.batch_size}"
+    )
     print(" Loss: MSE=1.00, Mid(3k)=0.50, High(7k)=0.50 | Precision: bf16-mixed")
     print("================================================================================\n")
 
@@ -304,7 +384,7 @@ def main() -> None:
         try:
             with open(results_json, "r", encoding="utf-8") as f:
                 all_results: dict[str, Any] = json.load(f)
-        except (json.JSONDecodeError, OSError):
+        except json.JSONDecodeError, OSError:
             all_results = {}
     else:
         all_results = {}
@@ -354,7 +434,9 @@ def main() -> None:
         for engine_name, out_dir in engines_to_run:
             print(f"\n>>> Running Engine: {engine_name.upper()} on {voice_name} <<<")
 
-            model_files = list(out_dir.glob(f"**/*{voice_slug}*.nam")) + list(out_dir.glob(f"**/*{voice_name}*.nam"))
+            model_files = list(out_dir.glob(f"**/*{voice_slug}*.nam")) + list(
+                out_dir.glob(f"**/*{voice_name}*.nam")
+            )
 
             if args.skip_train and model_files:
                 exported_nam = model_files[0]
@@ -397,7 +479,9 @@ def main() -> None:
                     print(f"Error: Training failed for {engine_name} on {voice_name}")
                     continue
 
-                model_files = list(out_dir.glob(f"**/*{voice_slug}*.nam")) + list(out_dir.glob(f"**/*{voice_name}*.nam"))
+                model_files = list(out_dir.glob(f"**/*{voice_slug}*.nam")) + list(
+                    out_dir.glob(f"**/*{voice_name}*.nam")
+                )
                 if not model_files:
                     print(f"Error: Model not found in {out_dir}")
                     continue
@@ -413,11 +497,15 @@ def main() -> None:
             print(f"Evaluating {engine_name.upper()} log sweep deconvolution...")
             # Full tier (channels_8, submodel 1)
             y_sw_full = run_nam_inference(exported_nam, src_sweep, submodel_idx=1)
-            full_sweep_metrics = evaluate_sweep_metrics(y_sw_full, src_sweep, f_bins, mag_dsp, gate_taps=gate_taps)
+            full_sweep_metrics = evaluate_sweep_metrics(
+                y_sw_full, src_sweep, f_bins, mag_dsp, gate_taps=gate_taps
+            )
 
             # Lite tier (channels_3, submodel 0)
             y_sw_lite = run_nam_inference(exported_nam, src_sweep, submodel_idx=0)
-            lite_sweep_metrics = evaluate_sweep_metrics(y_sw_lite, src_sweep, f_bins, mag_dsp, gate_taps=gate_taps)
+            lite_sweep_metrics = evaluate_sweep_metrics(
+                y_sw_lite, src_sweep, f_bins, mag_dsp, gate_taps=gate_taps
+            )
 
             # Small-signal impulse response
             ir_full = extract_small_signal_ir(exported_nam, submodel_idx=1)
@@ -452,9 +540,13 @@ def main() -> None:
         json.dump(all_results, f, indent=2)
 
     # Print summary comparison table
-    print("\n=========================================================================================================================")
+    print(
+        "\n========================================================================================================================="
+    )
     print(" MASTER ENGINE BENCHMARK SUMMARY (Stock vs Native Calibrated)")
-    print("=========================================================================================================================")
+    print(
+        "========================================================================================================================="
+    )
     header = f"{'Voice':<20} | {'Engine':<7} | {'Epochs':<6} | {'Time (s)':<8} | {'s/ep':<5} | {'Full MAE':<8} | {'Sub-RMSE':<8} | {'Treb-RMSE':<9} | {'Air-RMSE':<8} | {'ΔCrest':<7} | {'Att-ESR':<7}"
     print(header)
     print("-" * len(header))
@@ -476,7 +568,9 @@ def main() -> None:
             air = f"{sw_full.get('air_rmse', 0.0):.2f} dB"
             crest = f"{dyn.get('delta_crest_db', 0.0):+.2f} dB"
             att = f"{dyn.get('att_esr_db', 0.0):.2f} dB"
-            print(f"{v_name:<20} | {eng.upper():<7} | {ep:<6} | {t_s:<8} | {s_ep:<5} | {mae:<8} | {sub:<8} | {treb:<9} | {air:<8} | {crest:<7} | {att:<7}")
+            print(
+                f"{v_name:<20} | {eng.upper():<7} | {ep:<6} | {t_s:<8} | {s_ep:<5} | {mae:<8} | {sub:<8} | {treb:<9} | {air:<8} | {crest:<7} | {att:<7}"
+            )
         print("-" * len(header))
 
     print("\n================================================================================")

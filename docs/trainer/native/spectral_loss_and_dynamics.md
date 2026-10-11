@@ -51,25 +51,67 @@ This guarantees zero phase distortion (linear phase shift $\tau = (M-1)/2 = 15$ 
 
 ---
 
-## 3. Self-Normalizing Multi-Band Loss Formulation
+---
 
-The native engine evaluates `MultiBandSpectralLoss`, combining time-domain waveform anchoring with batch energy-normalized high-pass Error-to-Signal Ratios (ESR):
+## 3. Multi-Resolution STFT (MRSTFT) & Composite Loss Formulation
 
-$$\mathcal{L}_{\text{total}} = w_{\text{mse}} \cdot \mathcal{L}_{\text{mse}} + w_{\text{mid}} \cdot \mathcal{L}_{\text{hp, mid}} + w_{\text{high}} \cdot \mathcal{L}_{\text{hp, high}}$$
+### 3.1 The Small-Signal Singularity of Normalized High-Pass ESR
 
-Where each high-pass component is normalized by the energy of the target band:
+Previously, high-frequency emphasis was attempted via `NormalizedHighPassESRLoss`, which computes high-pass error normalized by target band energy:
+$$\mathcal{L}_{\text{hp}}(y, \hat{y}) = \frac{\sum_n (h * (y - \hat{y}))[n]^2}{\sum_n (h * y)[n]^2 + \epsilon}$$
 
-$$\mathcal{L}_{\text{hp}}(y_{\text{pred}}, y_{\text{tgt}}) = \frac{\sum_{n} \left( (y_{\text{pred}} * h)[n] - (y_{\text{tgt}} * h)[n] \right)^2}{\sum_{n} (y_{\text{tgt}} * h)[n]^2 + 10^{-8}}$$
+While effective on full-amplitude plucks, this formulation exhibits an electroacoustic singularity on decaying harmonics, quiet passages, and chords. As target high-frequency energy decays toward the noise floor ($E_{\text{target}} \to 10^{-7}$), the denominator collapses. The resulting gradient:
+$$\frac{\partial \mathcal{L}_{\text{hp}}}{\partial \hat{y}} \propto \frac{1}{\sum (h * y)^2 + \epsilon}$$
+explodes by several orders of magnitude. 
 
-### 3.1 Loss Weighting Allocation
+Because a WaveNet contains non-linear gated activations ($\tanh(Wx) \odot \sigma(Vx)$), the optimizer discovers an unphysical shortcut: it drives internal convolutional weights into heavy non-linear saturation to generate spurious upper harmonics out of thin air to satisfy the high-pass loss. This produced severe audible distortion on small signals (up to **`16.4%`** THD on native and **`67.5%`** on stock engines at $-40\text{ dBFS}$).
 
-| Component | Default Weight | Cutoff ($f_c$) | Acoustic Purpose |
+### 3.2 Multi-Resolution STFT Loss Formulation
+
+To overcome this singularity while preserving full high-frequency deconvolution accuracy ($+18.6\text{ dB}$ at $10\text{ kHz}$), the native engine deploys `MultiResolutionSTFTLoss`. MRSTFT operates in the log-spectral domain, where a $10\text{ dB}$ error at $10\text{ kHz}$ incurs the exact same numerical penalty as a $10\text{ dB}$ error at $100\text{ Hz}$, providing balanced gradient pressure to develop linear differentiator taps without non-linear distortion.
+
+For $M$ simultaneous Short-Time Fourier Transform (STFT) resolutions:
+$$\mathcal{L}_{\text{MRSTFT}}(y, \hat{y}) = \frac{1}{M} \sum_{m=1}^M \left( \mathcal{L}_{\text{sc}}^{(m)}(y, \hat{y}) + \mathcal{L}_{\text{log\_mag}}^{(m)}(y, \hat{y}) \right)$$
+
+1. **Spectral Convergence Loss ($\mathcal{L}_{\text{sc}}$):**
+   $$\mathcal{L}_{\text{sc}}(y, \hat{y}) = \frac{\| |Y| - |\hat{Y}| \|_F}{\| |Y| \|_F + \epsilon}$$
+2. **Log-Magnitude L1 Loss ($\mathcal{L}_{\text{log\_mag}}$):**
+   $$\mathcal{L}_{\text{log\_mag}}(y, \hat{y}) = \frac{1}{K} \sum_{k=0}^{K-1} \left| \log |Y_k| - \log |\hat{Y}_k| \right|$$
+
+#### Resolution Multi-Scale Grid:
+- **Resolution 1 (Bass / Fundamental):** FFT size $N=2048$, hop size $H=240$, Hann window length $W=1200$ ($25.0\text{ ms}$).
+- **Resolution 2 (Mid-Band / Body):** FFT size $N=1024$, hop size $H=120$, Hann window length $W=600$ ($12.5\text{ ms}$).
+- **Resolution 3 (Transients / Air):** FFT size $N=512$, hop size $H=50$, Hann window length $W=240$ ($5.0\text{ ms}$).
+
+### 3.3 Zero-Silence Gradient Proof ($C^\infty$ Power Clamping)
+
+In naive STFT loss implementations, magnitude is computed via $\sqrt{\text{power} + \epsilon_{\text{small}}}$ with $\epsilon \approx 10^{-14}$. When computing $\log |\hat{Y}|$, the gradient evaluated at silence ($|\hat{Y}| \approx 10^{-7}$) explodes:
+$$\frac{d}{d\hat{Y}} \log |\hat{Y}| = \frac{1}{|\hat{Y}|} \approx 10,000,000$$
+This instability previously necessitated hard gradient norm clipping (`max_norm = 1.0`), which in turn suppressed tiny high-frequency gradient updates.
+
+The Allomorph native engine adopts the bit-exact `auraloss` formulation:
+$$P = \text{STFT}_{\text{real}}^2 + \text{STFT}_{\text{imag}}^2$$
+$$P_{\text{clamped}} = \text{clamp}(P, \min=1.0\times 10^{-8})$$
+$$|\hat{Y}| = \sqrt{P_{\text{clamped}}}$$
+
+**Mathematical Proof of Zero Silence Gradient:**  
+For any sub-audible noise or silence where $P < 1.0 \times 10^{-8}$, the clamp function enters its constant boundary:
+$$\frac{d}{dP} \text{clamp}(P, \min=c) = 0 \quad \text{for } P < c$$
+By the chain rule:
+$$\frac{\partial \mathcal{L}_{\text{log\_mag}}}{\partial \hat{Y}} = \frac{\partial \mathcal{L}}{\partial |\hat{Y}|} \cdot \frac{1}{2\sqrt{P_{\text{clamped}}}} \cdot \frac{d P_{\text{clamped}}}{dP} \cdot \frac{\partial P}{\partial \hat{Y}} = \frac{\partial \mathcal{L}}{\partial |\hat{Y}|} \cdot \frac{1}{2\sqrt{c}} \cdot 0 \cdot \frac{\partial P}{\partial \hat{Y}} \equiv 0.0$$
+
+Silence and sub-audible noise bins evaluate to mathematically exact **`0.0`** gradient. Gradients cannot explode, eliminating the need for gradient clipping and allowing the Adam optimizer to directly integrate high-frequency linear differentiator updates.
+
+### 3.4 Composite Loss Weighting Allocation
+
+$$\mathcal{L}_{\text{total}} = w_{\text{mse}} \cdot \mathcal{L}_{\text{mse}} + w_{\text{mrstft}} \cdot \mathcal{L}_{\text{mrstft}}$$
+
+| Component | Default Weight | Target Domain | Acoustic Purpose |
 | :--- | :---: | :---: | :--- |
-| **Waveform MSE** | `1.00` | Full-band | Locks fundamental phase, sub-bass pitch, and comb nulls |
-| **Mid-Treble ESR** | `0.50` | $3,000\text{ Hz}$ | Equalizes pickup attack bite, fret clank, and growl |
-| **High-Treble ESR** | `0.50` | $7,000\text{ Hz}$ | Equalizes acoustic air, RLC resonant peaks, and harmonic sheen |
-
-Because the divisor scales with target band energy, high-frequency errors receive full $1.0$-scale gradient updates starting from **Epoch 1**, accelerating treble convergence by $>10\times$.
+| **Waveform MSE** | `1.00` | Time Domain | Anchors fundamental phase, sub-bass excursion, and DC stability |
+| **MRSTFT Loss** | `0.0005` | Multi-Scale Log-STFT | Equalizes RLC resonance peaks, pickup comb notches, and $>10\text{ kHz}$ air |
+| **Pre-Emphasis MSE** | `0.00` (Bypassed) | Time Domain | Optional linear differentiator boost (bypassed in favor of MRSTFT) |
+| **High-Pass ESR** | `0.00` (Bypassed) | Band-Passed ESR | Disabled to eliminate small-signal denominator singularity |
 
 ---
 
@@ -95,7 +137,9 @@ When early stopping engages (e.g. at epoch 35), the trainer does not save the de
 
 ```python
 if best_state_dict is not None:
-    print(f"\n[Native Trainer] Restoring optimal Pareto checkpoint from epoch {best_epoch:03d} (val_loss: {best_val_loss:.6f})")
+    print(
+        f"\n[Native Trainer] Restoring optimal Pareto checkpoint from epoch {best_epoch:03d} (val_loss: {best_val_loss:.6f})"
+    )
     model.load_state_dict(best_state_dict)
 ```
 
@@ -103,17 +147,19 @@ if best_state_dict is not None:
 
 ## 5. Native vs. Stock Hyperparameter Specifications
 
-The native engine operates under an isolated hyperparameter regime tuned for rapid convergence:
+The native engine operates under an isolated hyperparameter regime tuned for rapid convergence and distortion-free electroacoustic tracking:
 
 | Hyperparameter | Stock Lightning Engine (`STOCK_DEFAULT_*`) | Native Engine (`NATIVE_DEFAULT_*`) | Rationale |
 | :--- | :---: | :---: | :--- |
-| **Min Warmup Epochs** | `35` | **`35`** | Bounded by the Adam velocity ceiling ($|\Delta\theta| \le 0.004$) for differentiator taps |
-| **Max Epoch Schedule** | `60` | **`60`** | Complete convergence achieved in 35–45 epochs |
-| **Patience Window** | `6` | **`6`** | Evaluates plateau slope over 6 epochs |
-| **Optimizer & LR** | Adam ($1.0\text{e-2}$, Lightning) | **Adam ($4.0\text{e-3}$)** | Lower learning rate prevents oscillatory overshoot |
-| **L2 Weight Decay** | `0.0` | **`1.0e-4`** | Regularizes high-frequency convolutional kernels |
-| **Slice Length ($ny$)** | $8,192\text{ samples}$ | **$8,192\text{ samples}$** | Captures $170\text{ ms}$ continuous audio windows |
-| **Precision** | `auto` (`bf16-mixed`) | **`auto` (`bf16-mixed`)** | Fast bfloat16 tensor operations on modern GPUs |
+| **Spectral Loss** | High-Pass ESR / MRSTFT | **Multi-Resolution STFT (`0.0005`)** | Linear spectral log-magnitude guidance without denominator distortion singularities |
+| **Min Warmup Epochs** | `35` | **`60`** | Ensures full learning rate annealing through differentiator formation |
+| **Max Epoch Schedule** | `60` | **`80`** | Complete convergence achieved in 60–75 epochs with $-30.3\text{ dB}$ ESR |
+| **Patience Window** | `6` | **`10`** | Evaluates validation plateau slope over 10 epochs |
+| **Optimizer & LR** | Adam ($1.0\text{e-2}$, Lightning) | **Adam ($4.0\text{e-3}$)** | Stable step size preventing parameter oscillation around narrow spectral basins |
+| **L2 Weight Decay** | `0.0` | **`3.17e-7`** | Matches upstream weight decay regularization standard |
+| **Slice Length ($ny$)** | $8,192\text{ samples}$ | **$8,192\text{ samples}$** | Captures $170.7\text{ ms}$ continuous audio windows |
+| **Sampling Mechanism** | DataLoader Random Slices | **Epoch Block Permutation** | Full-track coverage ensuring 100% of excitation blocks are sampled every epoch |
+| **Precision** | `auto` (`bf16-mixed`) | **`auto` (`bf16-mixed`)** | High-throughput bfloat16 mixed-precision tensor acceleration |
 
-*For the complete mathematical proof of the 35-epoch warmup floor and Adam velocity ceiling, see [Native Engine GPU Throughput Profiling & Hardware Acceleration](gpu_throughput_optimization.md).*
+*For the complete mathematical proof of the warmup floor, throughput scaling, and Adam velocity ceiling, see [Native Engine GPU Throughput Profiling & Hardware Acceleration](gpu_throughput_optimization.md).*
 

@@ -31,24 +31,25 @@ from allomorph.trainer.constants import (
     DEFAULT_ENGINE,
     DEFAULT_ETA_MIN,
     DEFAULT_LR_T_MAX,
-    DEFAULT_MRSTFT_WEIGHT,
     DEFAULT_NUM_WORKERS,
-    DEFAULT_PRE_EMPH_COEF,
-    DEFAULT_PRE_EMPH_WEIGHT,
     DEFAULT_SEED,
     NATIVE_DEFAULT_BATCH_SIZE,
     NATIVE_DEFAULT_HP_HIGH_CUTOFF,
     NATIVE_DEFAULT_HP_HIGH_WEIGHT,
     NATIVE_DEFAULT_HP_MID_CUTOFF,
     NATIVE_DEFAULT_HP_MID_WEIGHT,
+    NATIVE_DEFAULT_HP_MIN_ENERGY,
     NATIVE_DEFAULT_LITE_WEIGHT,
     NATIVE_DEFAULT_LR,
     NATIVE_DEFAULT_LR_SCHEDULER,
     NATIVE_DEFAULT_MAX_EPOCHS,
     NATIVE_DEFAULT_MIN_DELTA,
     NATIVE_DEFAULT_MIN_EPOCHS,
+    NATIVE_DEFAULT_MRSTFT_WEIGHT,
     NATIVE_DEFAULT_MSE_WEIGHT,
     NATIVE_DEFAULT_PATIENCE,
+    NATIVE_DEFAULT_PRE_EMPH_COEF,
+    NATIVE_DEFAULT_PRE_EMPH_WEIGHT,
     NATIVE_DEFAULT_PRECISION,
     NATIVE_DEFAULT_SLICE_LEN,
     NATIVE_DEFAULT_WEIGHT_DECAY,
@@ -91,13 +92,14 @@ def train_voice_native(
     patience: int = NATIVE_DEFAULT_PATIENCE,
     min_delta: float = NATIVE_DEFAULT_MIN_DELTA,
     mse_weight: float = NATIVE_DEFAULT_MSE_WEIGHT,
-    pre_emph_weight: float = DEFAULT_PRE_EMPH_WEIGHT,
-    pre_emph_coef: float = DEFAULT_PRE_EMPH_COEF,
-    mrstft_weight: float = DEFAULT_MRSTFT_WEIGHT,
+    pre_emph_weight: float = NATIVE_DEFAULT_PRE_EMPH_WEIGHT,
+    pre_emph_coef: float = NATIVE_DEFAULT_PRE_EMPH_COEF,
+    mrstft_weight: float = NATIVE_DEFAULT_MRSTFT_WEIGHT,
     hp_mid_weight: float = NATIVE_DEFAULT_HP_MID_WEIGHT,
     hp_mid_cutoff: float = NATIVE_DEFAULT_HP_MID_CUTOFF,
     hp_high_weight: float = NATIVE_DEFAULT_HP_HIGH_WEIGHT,
     hp_high_cutoff: float = NATIVE_DEFAULT_HP_HIGH_CUTOFF,
+    hp_min_energy: float = NATIVE_DEFAULT_HP_MIN_ENERGY,
     lr_scheduler: str = NATIVE_DEFAULT_LR_SCHEDULER,
     eta_min: float = DEFAULT_ETA_MIN,
     lr_t_max: int = DEFAULT_LR_T_MAX,
@@ -142,7 +144,7 @@ def train_voice_native(
         inst_cfg = (
             instrument if isinstance(instrument, InstrumentConfig) else load_instrument(instrument)
         )
-    except (FileNotFoundError, KeyError, ValueError, OSError):
+    except FileNotFoundError, KeyError, ValueError, OSError:
         inst_cfg = InstrumentConfig(
             id=str(instrument),
             name=str(instrument),
@@ -217,7 +219,9 @@ def train_voice_native(
                 )
             except (FileNotFoundError, ValueError, RuntimeError, KeyError, OSError) as e:
                 if not silent:
-                    print(f"[Native Trainer] Warning: Failed to auto-simulate {target_wet.name}: {e}")
+                    print(
+                        f"[Native Trainer] Warning: Failed to auto-simulate {target_wet.name}: {e}"
+                    )
                 output_path = target_wet
         else:
             output_path = target_wet
@@ -302,7 +306,8 @@ def train_voice_native(
         print(f"  Batch Size:     {resolved_bs} | Precision: {resolved_precision}")
         print(f"  Schedule:       {lr_scheduler} (max_epochs={epochs}, warmup={min_epochs})")
         print(
-            f"  Multi-Band:     MSE={mse_weight:.2f}, Mid(3k)={hp_mid_weight:.2f}, High(7k)={hp_high_weight:.2f}"
+            f"  Multi-Band:     MSE={mse_weight:.2f}, PreEmph={pre_emph_weight:.2f} (a={pre_emph_coef:.2f}), "
+            f"MRSTFT={mrstft_weight:.4f}, Mid(3k)={hp_mid_weight:.2f}, High(7k)={hp_high_weight:.2f}"
         )
         print("-------------------------------------------------------")
 
@@ -338,10 +343,14 @@ def train_voice_native(
 
     loss_fn = MultiBandSpectralLoss(
         mse_weight=mse_weight,
+        pre_emph_weight=pre_emph_weight,
+        pre_emph_coef=pre_emph_coef,
+        mrstft_weight=mrstft_weight,
         hp_mid_weight=hp_mid_weight,
         hp_mid_cutoff=hp_mid_cutoff,
         hp_high_weight=hp_high_weight,
         hp_high_cutoff=hp_high_cutoff,
+        hp_min_energy=hp_min_energy,
         fs=sample_rate,
     ).to(hw_device)
 
@@ -350,16 +359,15 @@ def train_voice_native(
     # 11. Slicing Parameters
     ny = slice_len
     nx = ny + rf_pad  # ny + 6346
-    steps_per_epoch = max(1, (train_samples - ny) // (ny * resolved_bs))
+    num_blocks = max(1, (train_samples - ny) // ny)
+    steps_per_epoch = max(1, num_blocks // resolved_bs)
     if fast_dev_run:
         epochs = 1
         steps_per_epoch = 1
 
     # Mixed precision context
     use_autocast = resolved_precision in ("bf16-mixed", "16-mixed") and hw_device.type == "cuda"
-    autocast_dtype = (
-        torch.bfloat16 if resolved_precision == "bf16-mixed" else torch.float16
-    )
+    autocast_dtype = torch.bfloat16 if resolved_precision == "bf16-mixed" else torch.float16
 
     # Pre-allocate slice index offset grids in accelerator VRAM
     arange_nx = torch.arange(nx, device=hw_device).unsqueeze(0)
@@ -371,6 +379,7 @@ def train_voice_native(
     best_val_loss = float("inf")
     best_val_esr = float("inf")
     best_val_esr_lite = float("inf")
+    best_val_mrstft: float | None = None
     best_state_dict: dict[str, torch.Tensor] | None = None
 
     val_loss_history: list[float] = []
@@ -403,10 +412,16 @@ def train_voice_native(
 
         train_loss_acc = torch.tensor(0.0, device=hw_device)
 
-        for _ in range(steps_per_epoch):
-            indices = torch.randint(0, train_samples - ny, (resolved_bs, 1), device=hw_device)
-            x_batch = x_train_padded[indices + arange_nx].unsqueeze(1)
-            y_batch = y_train[indices + arange_ny]
+        # Epoch block permutation: guarantees all track regions (chirps, plucks, ringouts) are seen every epoch
+        perm = torch.randperm(num_blocks, device=hw_device)
+        block_starts = perm * ny
+        jitter = torch.randint(0, max(1, min(1024, ny // 4)), (num_blocks,), device=hw_device)
+        sample_indices = (block_starts + jitter).clamp(0, train_samples - ny)
+
+        for step in range(steps_per_epoch):
+            batch_slice = sample_indices[step * resolved_bs : (step + 1) * resolved_bs].unsqueeze(1)
+            x_batch = x_train_padded[batch_slice + arange_nx].unsqueeze(1)
+            y_batch = y_train[batch_slice + arange_ny]
 
             optimizer.zero_grad(set_to_none=True)
 
@@ -424,6 +439,7 @@ def train_voice_native(
 
             total_step_loss.backward()
             model.apply_weight_masks()
+            torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=5.0)
             optimizer.step()
             model.apply_weight_masks()
 
@@ -463,21 +479,24 @@ def train_voice_native(
 
         mb_val = float(val_l_full.detach().cpu().item())
         val_loss_history.append(mb_val)
-        hp_high_history.append(metrics_full.get("hp_high_esr", 0.0))
+        hp_metric = metrics_full.get(
+            "mrstft", metrics_full.get("hp_high_esr", metrics_full.get("pre_emph_mse", 0.0))
+        )
+        hp_high_history.append(hp_metric)
 
         if min_mse_full < float("inf"):
             pareto_score = compute_pareto_quality_score(
                 mb_full_loss=mb_val,
                 mse_full=mse_cur,
                 min_mse_full=min_mse_full,
-                drift_tolerance=0.15,
-                drift_penalty_gain=3.0,
+                drift_tolerance=1.0,
+                drift_penalty_gain=1.0,
             )
         else:
             pareto_score = mb_val
 
         # Track global best Pareto checkpoint post-warmup
-        if epoch >= min_epochs:
+        if epoch >= warmup_epochs:
             is_new_best = (best_pareto_score - pareto_score) >= min_delta
             if is_new_best or best_pareto_score == float("inf"):
                 best_pareto_score = pareto_score
@@ -485,6 +504,7 @@ def train_voice_native(
                 best_val_loss = mb_val
                 best_val_esr = cur_esr_full
                 best_val_esr_lite = cur_esr_lite
+                best_val_mrstft = metrics_full.get("mrstft")
                 best_state_dict = {k: v.cpu().clone() for k, v in model.state_dict().items()}
 
         # Compute trajectory slopes
@@ -506,8 +526,8 @@ def train_voice_native(
                 patience=patience,
                 min_delta=min_delta,
                 hp_high_slope=hp_slope,
-                mse_drift_ratio=mse_drift,
-                drift_exit_threshold=0.25,
+                mse_drift_ratio=mse_drift if hp_high_weight > 0.0 else 0.0,
+                drift_exit_threshold=1.50,
             )
         else:
             should_stop, reason = False, None
@@ -518,10 +538,11 @@ def train_voice_native(
 
         if not silent:
             is_best_str = " *" if epoch == best_epoch else ""
+            mr_str = f" | MRSTFT: {metrics_full['mrstft']:.4f}" if "mrstft" in metrics_full else ""
             print(
                 f"Epoch {epoch:03d}/{epochs:03d} [{epoch_sec:.2f}s] "
                 f"Train: {train_loss_epoch:.4f} | "
-                f"Val Loss: {mb_val:.5f} (Q: {pareto_score:.5f}){is_best_str} | "
+                f"Val Loss: {mb_val:.5f} (Q: {pareto_score:.5f}){is_best_str}{mr_str} | "
                 f"ESR Ch8: {cur_esr_full:.6f} ({esr_full_db:+.1f}dB) | "
                 f"ESR Ch3: {cur_esr_lite:.6f} ({esr_lite_db:+.1f}dB)"
             )
@@ -561,6 +582,8 @@ def train_voice_native(
     }
     if stop_reason:
         export_metadata["stop_reason"] = stop_reason
+    if best_val_mrstft is not None:
+        export_metadata["validation_mrstft"] = best_val_mrstft
 
     model.export_nam(
         out_path=target_nam,

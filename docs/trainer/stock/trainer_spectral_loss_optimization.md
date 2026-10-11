@@ -250,7 +250,7 @@ DEFAULT_LR_DECAY: float = 0.994
 # Self-Normalizing Multi-Band Loss Weights
 DEFAULT_MSE_WEIGHT: float = 1.0
 DEFAULT_PRE_EMPH_WEIGHT: float = 0.0
-DEFAULT_HP_MID_ESR_WEIGHT: float = 0.50   # 3 kHz High-Pass ESR
+DEFAULT_HP_MID_ESR_WEIGHT: float = 0.50  # 3 kHz High-Pass ESR
 DEFAULT_HP_HIGH_ESR_WEIGHT: float = 0.50  # 7 kHz High-Pass ESR
 ```
 
@@ -258,25 +258,34 @@ DEFAULT_HP_HIGH_ESR_WEIGHT: float = 0.50  # 7 kHz High-Pass ESR
 ```python
 class NormalizedHighPassESRLoss(nn.Module):
     """Energy-Normalized High-Pass ESR Loss.
-    
+
     Cancels the 22,000x physical energy decay in treble harmonics by
     normalizing high-pass residual error by high-pass target energy.
     """
-    def __init__(self, cutoff_hz: float, sample_rate: float = 48000.0, num_taps: int = 31, eps: float = 1e-8):
+
+    def __init__(
+        self, cutoff_hz: float, sample_rate: float = 48000.0, num_taps: int = 31, eps: float = 1e-8
+    ):
         super().__init__()
-        fir_taps = design_fir_highpass(cutoff_hz=cutoff_hz, sample_rate=sample_rate, num_taps=num_taps)
+        fir_taps = design_fir_highpass(
+            cutoff_hz=cutoff_hz, sample_rate=sample_rate, num_taps=num_taps
+        )
         self.register_buffer("fir", torch.from_numpy(fir_taps.astype(np.float32)).view(1, 1, -1))
         self.pad = (num_taps - 1) // 2
         self.eps = eps
 
     def forward(self, preds: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
         # Zero-phase padding and convolution
-        p_hp = F.conv1d(F.pad(preds.unsqueeze(1), (self.pad, self.pad), mode="replicate"), self.fir).squeeze(1)
-        t_hp = F.conv1d(F.pad(targets.unsqueeze(1), (self.pad, self.pad), mode="replicate"), self.fir).squeeze(1)
-        
+        p_hp = F.conv1d(
+            F.pad(preds.unsqueeze(1), (self.pad, self.pad), mode="replicate"), self.fir
+        ).squeeze(1)
+        t_hp = F.conv1d(
+            F.pad(targets.unsqueeze(1), (self.pad, self.pad), mode="replicate"), self.fir
+        ).squeeze(1)
+
         # Energy-normalized ESR quotient
         num = torch.sum((p_hp - t_hp) ** 2, dim=-1)
-        denom = torch.sum(t_hp ** 2, dim=-1) + self.eps
+        denom = torch.sum(t_hp**2, dim=-1) + self.eps
         return torch.mean(num / denom)
 ```
 

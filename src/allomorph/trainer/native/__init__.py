@@ -11,7 +11,9 @@ Custom PyTorch neural training pipeline featuring:
 from allomorph.trainer.native.engine import train_voice_native
 from allomorph.trainer.native.loss import (
     MultiBandSpectralLoss,
+    MultiResolutionSTFTLoss,
     NormalizedHighPassESRLoss,
+    PreEmphasisMSELoss,
     design_fir_highpass,
 )
 from allomorph.trainer.native.models import (
@@ -29,7 +31,9 @@ __all__ = [
     "AllomorphWaveNetA2",
     "AllomorphWaveNetLayer",
     "MultiBandSpectralLoss",
+    "MultiResolutionSTFTLoss",
     "NormalizedHighPassESRLoss",
+    "PreEmphasisMSELoss",
     "design_fir_highpass",
     "train_voice_native",
 ]

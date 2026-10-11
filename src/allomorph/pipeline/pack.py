@@ -539,10 +539,7 @@ def train_tone_pack(
                 canonical_voice = VOICE_SLUG_ALIASES.get(target_voicing, target_voicing)
 
             if selected_voices is not None:
-                matches_filter = (
-                    raw_slug in selected_voices
-                    or canonical_voice in selected_voices
-                )
+                matches_filter = raw_slug in selected_voices or canonical_voice in selected_voices
                 if not matches_filter:
                     continue
 
@@ -558,7 +555,7 @@ def train_tone_pack(
                     submodels = data.get("config", {}).get("submodels", [])
                     if len(submodels) < 2:
                         is_legacy = True
-                except (json.JSONDecodeError, OSError):
+                except json.JSONDecodeError, OSError:
                     is_legacy = True
 
                 if is_legacy:

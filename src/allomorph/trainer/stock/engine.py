@@ -41,6 +41,7 @@ from allomorph.trainer.constants import (
     DEFAULT_HP_HIGH_ESR_WEIGHT,
     DEFAULT_HP_MID_CUTOFF,
     DEFAULT_HP_MID_ESR_WEIGHT,
+    DEFAULT_HP_MIN_ENERGY,
     DEFAULT_LR_SCHEDULER,
     DEFAULT_LR_T_MAX,
     DEFAULT_MAX_EPOCHS,
@@ -92,12 +93,19 @@ class NormalizedHighPassESRLoss:
     receive full 1.0-scale gradient updates from Epoch 1.
     """
 
-    def __init__(self, cutoff_hz: float, num_taps: int = 31, fs: float = 48000.0) -> None:
+    def __init__(
+        self,
+        cutoff_hz: float,
+        num_taps: int = 31,
+        fs: float = 48000.0,
+        min_energy: float = DEFAULT_HP_MIN_ENERGY,
+    ) -> None:
         import torch
 
         self.taps = design_fir_highpass(num_taps, cutoff_hz, fs=fs)
         self.kernel = torch.from_numpy(self.taps).view(1, 1, -1)
         self.padding = num_taps // 2
+        self.min_energy = float(min_energy)
 
     def __call__(self, preds: Any, targets: Any) -> Any:
         import torch
@@ -110,7 +118,7 @@ class NormalizedHighPassESRLoss:
         p_hp = F.conv1d(p_2d, kernel, padding=self.padding)
         t_hp = F.conv1d(t_2d, kernel, padding=self.padding)
         err = torch.sum((p_hp - t_hp) ** 2)
-        norm = torch.sum(t_hp ** 2) + 1e-8
+        norm = torch.clamp(torch.sum(t_hp**2) + 1e-8, min=self.min_energy)
         return err / norm
 
 
@@ -127,6 +135,7 @@ def configure_a2_architecture(
     hp_mid_cutoff: float = DEFAULT_HP_MID_CUTOFF,
     hp_high_weight: float = DEFAULT_HP_HIGH_ESR_WEIGHT,
     hp_high_cutoff: float = DEFAULT_HP_HIGH_CUTOFF,
+    hp_min_energy: float = DEFAULT_HP_MIN_ENERGY,
     lr_scheduler: str = DEFAULT_LR_SCHEDULER,
     eta_min: float = DEFAULT_ETA_MIN,
     lr_t_max: int = DEFAULT_LR_T_MAX,
@@ -160,10 +169,14 @@ def configure_a2_architecture(
     import nam.train.lightning_module as lm
 
     hp_mid_fn = (
-        NormalizedHighPassESRLoss(cutoff_hz=hp_mid_cutoff) if hp_mid_weight > 0.0 else None
+        NormalizedHighPassESRLoss(cutoff_hz=hp_mid_cutoff, min_energy=hp_min_energy)
+        if hp_mid_weight > 0.0
+        else None
     )
     hp_high_fn = (
-        NormalizedHighPassESRLoss(cutoff_hz=hp_high_cutoff) if hp_high_weight > 0.0 else None
+        NormalizedHighPassESRLoss(cutoff_hz=hp_high_cutoff, min_energy=hp_min_energy)
+        if hp_high_weight > 0.0
+        else None
     )
 
     # 1. Patch LossConfig.parse_config to preserve mse_weight
@@ -200,7 +213,6 @@ def configure_a2_architecture(
             loss_dict["ESR_HP_high"] = lm._LossItem(hp_high_weight, hp_high_fn(preds, targets))
 
         if self._loss_config.pre_emph_weight is not None:
-
             loss_dict["Pre-emphasized MSE"] = lm._LossItem(
                 self._loss_config.pre_emph_weight,
                 self._mse_loss(preds, targets, pre_emph_coef=self._loss_config.pre_emph_coef),
@@ -438,7 +450,6 @@ def configure_a2_architecture(
             if not hasattr(c, "patience") and type(c).__name__ != "PackedBestCheckpoint"
         ]
         effective_min_epochs = (
-
             min_epochs_override if min_epochs_override is not None else min_epochs
         )
 
@@ -492,6 +503,7 @@ def train_voice_torch(
     hp_mid_cutoff: float = DEFAULT_HP_MID_CUTOFF,
     hp_high_weight: float = DEFAULT_HP_HIGH_ESR_WEIGHT,
     hp_high_cutoff: float = DEFAULT_HP_HIGH_CUTOFF,
+    hp_min_energy: float = DEFAULT_HP_MIN_ENERGY,
     lr_scheduler: str = DEFAULT_LR_SCHEDULER,
     eta_min: float = DEFAULT_ETA_MIN,
     lr_t_max: int = DEFAULT_LR_T_MAX,
@@ -744,6 +756,7 @@ def train_voice_torch(
         hp_mid_cutoff=hp_mid_cutoff,
         hp_high_weight=hp_high_weight,
         hp_high_cutoff=hp_high_cutoff,
+        hp_min_energy=hp_min_energy,
         lr_scheduler=lr_scheduler,
         eta_min=eta_min,
         lr_t_max=lr_t_max,

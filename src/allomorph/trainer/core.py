@@ -50,12 +50,16 @@ from allomorph.trainer.constants import (
     NATIVE_DEFAULT_LR_SCHEDULER,
     NATIVE_DEFAULT_MAX_EPOCHS,
     NATIVE_DEFAULT_MIN_EPOCHS,
+    NATIVE_DEFAULT_MRSTFT_WEIGHT,
+    NATIVE_DEFAULT_PRE_EMPH_WEIGHT,
     NATIVE_DEFAULT_SLICE_LEN,
     NATIVE_DEFAULT_WEIGHT_DECAY,
     STOCK_DEFAULT_HP_HIGH_ESR_WEIGHT,
     STOCK_DEFAULT_HP_MID_ESR_WEIGHT,
     STOCK_DEFAULT_MAX_EPOCHS,
     STOCK_DEFAULT_MIN_EPOCHS,
+    STOCK_DEFAULT_MRSTFT_WEIGHT,
+    STOCK_DEFAULT_PRE_EMPH_WEIGHT,
     VALID_ENGINES,
 )
 
@@ -470,14 +474,10 @@ def train_voice(
         from allomorph.trainer.native import train_voice_native
 
         effective_epochs = (
-            NATIVE_DEFAULT_MAX_EPOCHS
-            if epochs == STOCK_DEFAULT_MAX_EPOCHS
-            else epochs
+            NATIVE_DEFAULT_MAX_EPOCHS if epochs == STOCK_DEFAULT_MAX_EPOCHS else epochs
         )
         effective_min_epochs = (
-            NATIVE_DEFAULT_MIN_EPOCHS
-            if min_epochs == STOCK_DEFAULT_MIN_EPOCHS
-            else min_epochs
+            NATIVE_DEFAULT_MIN_EPOCHS if min_epochs == STOCK_DEFAULT_MIN_EPOCHS else min_epochs
         )
         effective_hp_high = (
             NATIVE_DEFAULT_HP_HIGH_WEIGHT
@@ -489,10 +489,18 @@ def train_voice(
             if hp_mid_weight == STOCK_DEFAULT_HP_MID_ESR_WEIGHT
             else hp_mid_weight
         )
+        effective_pre_emph = (
+            NATIVE_DEFAULT_PRE_EMPH_WEIGHT
+            if pre_emph_weight == STOCK_DEFAULT_PRE_EMPH_WEIGHT
+            else pre_emph_weight
+        )
+        effective_mrstft = (
+            NATIVE_DEFAULT_MRSTFT_WEIGHT
+            if mrstft_weight == STOCK_DEFAULT_MRSTFT_WEIGHT
+            else mrstft_weight
+        )
         effective_lr_scheduler = (
-            NATIVE_DEFAULT_LR_SCHEDULER
-            if lr_scheduler == DEFAULT_LR_SCHEDULER
-            else lr_scheduler
+            NATIVE_DEFAULT_LR_SCHEDULER if lr_scheduler == DEFAULT_LR_SCHEDULER else lr_scheduler
         )
 
         return train_voice_native(
@@ -508,9 +516,9 @@ def train_voice(
             patience=patience,
             min_delta=min_delta,
             mse_weight=mse_weight,
-            pre_emph_weight=pre_emph_weight,
+            pre_emph_weight=effective_pre_emph,
             pre_emph_coef=pre_emph_coef,
-            mrstft_weight=mrstft_weight,
+            mrstft_weight=effective_mrstft,
             hp_mid_weight=effective_hp_mid,
             hp_mid_cutoff=hp_mid_cutoff,
             hp_high_weight=effective_hp_high,

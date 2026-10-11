@@ -194,7 +194,7 @@ def audit_wet_audio_catalog(
                         if isinstance(fentry, dict):
                             p = (mf.parent / fname).resolve()
                             manifest_entries[p] = fentry
-            except (json.JSONDecodeError, OSError):
+            except json.JSONDecodeError, OSError:
                 continue
 
     records: list[AudioAuditRecord] = []

@@ -102,16 +102,17 @@ Allomorph provides two dedicated training backends in `src/allomorph/trainer/`:
 | Parameter | Stock Engine Default (`STOCK_DEFAULT_*`) | Native Engine Default (`NATIVE_DEFAULT_*`) | Description |
 | :--- | :---: | :---: | :--- |
 | **Architecture** | `A2` | `A2` | Slimmable Architecture 2 (`channels_3` + `channels_8`) |
-| **Min Warmup Epochs** | `35` | `15` | Warmup floor before early stopping engages |
-| **Max Epoch Schedule** | `60` | `40` | Training epoch budget |
-| **Patience** | `6` | `6` | Early stopping plateau patience window |
-| **Min Delta** | `1.0e-4` | `1.0e-4` | Composite validation loss improvement threshold |
+| **Spectral Loss** | High-Pass ESR / MRSTFT | `MRSTFT` (`0.0005`) | Multi-resolution log-STFT loss (linear high-end guidance) |
+| **Min Warmup Epochs** | `35` | `60` | Warmup floor before early stopping engages |
+| **Max Epoch Schedule** | `60` | `80` | Training epoch budget (reaches $-30.3\text{ dB}$ ESR) |
+| **Patience** | `6` | `10` | Early stopping plateau patience window |
+| **Min Delta** | `1.0e-4` | `1.0e-6` | Composite validation loss improvement threshold |
 | **Waveform MSE Weight**| `1.00` | `1.00` | Full-band time-domain MSE anchor weight |
-| **Mid-Treble ESR Weight** | `0.50` ($3\text{ kHz}$) | `0.50` ($3\text{ kHz}$) | $3\text{ kHz}$ high-pass normalized ESR weight |
-| **High-Treble ESR Weight**| `0.50` ($7\text{ kHz}$) | `0.35` ($7\text{ kHz}$) | $7\text{ kHz}$ high-pass normalized ESR weight |
+| **MRSTFT Weight** | `0.001` | `0.0005` | Multi-scale log-magnitude and spectral convergence weight |
+| **High-Pass ESR Weight**| `0.00` | `0.00` (Bypassed) | High-pass normalized ESR (bypassed to avoid small-signal THD) |
 | **Base Learning Rate** | `1.0e-2` (Stock Adam) | `4.0e-3` (Native Adam) | Optimizer initial learning rate |
-| **Weight Decay** | `0.0` | `1.0e-4` | Optimizer L2 kernel regularization |
-| **Slice Length** | `8192` (DataLoader) | `8192` (In-VRAM) | Audio segment length in samples |
+| **Weight Decay** | `0.0` | `3.17e-7` | Optimizer L2 kernel regularization |
+| **Slice Length** | `8192` (DataLoader) | `8192` (In-VRAM Permuted) | Audio segment length in samples |
 | **Precision** | `auto` | `auto` | `bf16-mixed` on modern GPUs, `32-true` on CPU |
 | **Engine Choice** | `--engine stock` | `--engine native` | Training backend selection (default: `auto`) |
 

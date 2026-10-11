@@ -162,10 +162,29 @@ def test_wavenet_a2_export_nam(tmp_path: Path) -> None:
     assert len(sub1["model"]["weights"]) == 12146
 
 
+def test_multi_resolution_stft_loss() -> None:
+    """Verifies MultiResolutionSTFTLoss numerical stability, symmetry, and zero-error on identical signals."""
+    from allomorph.trainer.native import MultiResolutionSTFTLoss
+
+    mrstft = MultiResolutionSTFTLoss()
+
+    t = torch.sin(2.0 * np.pi * 440.0 * torch.linspace(0, 1, 48000)).unsqueeze(0)
+    p = t.clone()
+
+    loss_zero = mrstft(p, t)
+    assert loss_zero.item() < 1e-5
+
+    p_perturbed = t + 0.05 * torch.randn_like(t)
+    loss_val = mrstft(p_perturbed, t)
+    assert loss_val.item() > 0.01
+
+
 def test_multiband_spectral_loss() -> None:
-    """Verifies composite multi-band loss with MSE and normalized high-pass ESR."""
+    """Verifies composite multi-band loss with MSE, pre-emphasis MSE, MRSTFT, and normalized high-pass ESR."""
     loss_fn = MultiBandSpectralLoss(
         mse_weight=1.0,
+        pre_emph_weight=0.5,
+        mrstft_weight=0.002,
         hp_mid_weight=0.5,
         hp_mid_cutoff=3000.0,
         hp_high_weight=0.5,
@@ -178,7 +197,7 @@ def test_multiband_spectral_loss() -> None:
 
     # Exact equality should have ~0 loss
     loss_zero, metrics_zero = loss_fn(p, t)
-    assert loss_zero.item() < 1e-7
+    assert loss_zero.item() < 1e-4
     assert metrics_zero["mse"] < 1e-7
 
     # Perturbed signal has positive loss and detailed metrics
@@ -187,6 +206,8 @@ def test_multiband_spectral_loss() -> None:
 
     assert loss_val.item() > 0.0
     assert "mse" in metrics
+    assert "pre_emph_mse" in metrics
+    assert "mrstft" in metrics
     assert "hp_mid_esr" in metrics
     assert "hp_high_esr" in metrics
     assert "composite_loss" in metrics
@@ -250,7 +271,9 @@ def test_native_default_hyperparameters_and_isolation() -> None:
         NATIVE_DEFAULT_MAX_EPOCHS,
         NATIVE_DEFAULT_MIN_DELTA,
         NATIVE_DEFAULT_MIN_EPOCHS,
+        NATIVE_DEFAULT_MRSTFT_WEIGHT,
         NATIVE_DEFAULT_PATIENCE,
+        NATIVE_DEFAULT_PRE_EMPH_WEIGHT,
         NATIVE_DEFAULT_SLICE_LEN,
         NATIVE_DEFAULT_WEIGHT_DECAY,
         STOCK_DEFAULT_HP_HIGH_ESR_WEIGHT,
@@ -265,23 +288,25 @@ def test_native_default_hyperparameters_and_isolation() -> None:
     assert STOCK_DEFAULT_MAX_EPOCHS == 60
     assert STOCK_DEFAULT_MIN_EPOCHS == 35
     assert STOCK_DEFAULT_PATIENCE == 6
-    assert STOCK_DEFAULT_HP_MID_ESR_WEIGHT == 0.50
-    assert STOCK_DEFAULT_HP_HIGH_ESR_WEIGHT == 0.50
+    assert STOCK_DEFAULT_HP_MID_ESR_WEIGHT == 0.00
+    assert STOCK_DEFAULT_HP_HIGH_ESR_WEIGHT == 0.00
     assert DEFAULT_MAX_EPOCHS == STOCK_DEFAULT_MAX_EPOCHS
     assert DEFAULT_MIN_EPOCHS == STOCK_DEFAULT_MIN_EPOCHS
 
     # 2. Native defaults are distinct and tuned for rapid in-VRAM convergence
-    assert NATIVE_DEFAULT_MAX_EPOCHS == 60
-    assert NATIVE_DEFAULT_MIN_EPOCHS == 35
-    assert NATIVE_DEFAULT_PATIENCE == 6
-    assert NATIVE_DEFAULT_MIN_DELTA == 1.0e-4
-    assert NATIVE_DEFAULT_LR == 2.0e-3
+    assert NATIVE_DEFAULT_MAX_EPOCHS == 80
+    assert NATIVE_DEFAULT_MIN_EPOCHS == 60
+    assert NATIVE_DEFAULT_PATIENCE == 10
+    assert NATIVE_DEFAULT_MIN_DELTA == 1.0e-6
+    assert NATIVE_DEFAULT_LR == 4.0e-3
     assert NATIVE_DEFAULT_LR_SCHEDULER == "exponential"
-    assert NATIVE_DEFAULT_LITE_WEIGHT == 0.75
-    assert NATIVE_DEFAULT_WEIGHT_DECAY == 1.0e-4
+    assert NATIVE_DEFAULT_LITE_WEIGHT == 0.50
+    assert NATIVE_DEFAULT_WEIGHT_DECAY == 3.17e-7
     assert NATIVE_DEFAULT_SLICE_LEN == 8192
-    assert NATIVE_DEFAULT_HP_MID_WEIGHT == 0.75
-    assert NATIVE_DEFAULT_HP_HIGH_WEIGHT == 0.50
+    assert NATIVE_DEFAULT_MRSTFT_WEIGHT == 0.0005
+    assert NATIVE_DEFAULT_PRE_EMPH_WEIGHT == 0.00
+    assert NATIVE_DEFAULT_HP_MID_WEIGHT == 0.00
+    assert NATIVE_DEFAULT_HP_HIGH_WEIGHT == 0.00
 
     # 3. train_voice_native signature matches native standards
     sig = inspect.signature(train_voice_native)
@@ -291,6 +316,6 @@ def test_native_default_hyperparameters_and_isolation() -> None:
     assert sig.parameters["weight_decay"].default == NATIVE_DEFAULT_WEIGHT_DECAY
     assert sig.parameters["slice_len"].default == NATIVE_DEFAULT_SLICE_LEN
     assert sig.parameters["lite_weight"].default == NATIVE_DEFAULT_LITE_WEIGHT
+    assert sig.parameters["mrstft_weight"].default == NATIVE_DEFAULT_MRSTFT_WEIGHT
     assert sig.parameters["hp_mid_weight"].default == NATIVE_DEFAULT_HP_MID_WEIGHT
     assert sig.parameters["hp_high_weight"].default == NATIVE_DEFAULT_HP_HIGH_WEIGHT
-

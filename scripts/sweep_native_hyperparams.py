@@ -61,7 +61,9 @@ SWEEP_RESULTS_DIR = REPO_ROOT / "scratch" / "native_hyperparam_sweeps"
 SWEEP_RESULTS_DIR.mkdir(parents=True, exist_ok=True)
 
 
-def evaluate_model_on_sweep(nam_path: Path, tgt_inst_id: str, tgt_voice_id: str, submodel_idx: int = 1) -> dict[str, Any]:
+def evaluate_model_on_sweep(
+    nam_path: Path, tgt_inst_id: str, tgt_voice_id: str, submodel_idx: int = 1
+) -> dict[str, Any]:
     inst_cfg = load_instrument(tgt_inst_id)
     from allomorph.config.instruments import resolve_target_voicing
 
@@ -130,7 +132,9 @@ def run_single_experiment(
 
     print(f"\n[Sweep] Starting Experiment: {exp_name} ({voice_id})")
     print(f"        bs={batch_size}, lr={lr}, sched={lr_scheduler}, ny={slice_len}")
-    print(f"        hp_mid_w={hp_mid_weight} ({hp_mid_cutoff}Hz), hp_high_w={hp_high_weight} ({hp_high_cutoff}Hz)")
+    print(
+        f"        hp_mid_w={hp_mid_weight} ({hp_mid_cutoff}Hz), hp_high_w={hp_high_weight} ({hp_high_cutoff}Hz)"
+    )
 
     t0 = time.time()
     if torch.cuda.is_available():
@@ -169,7 +173,11 @@ def run_single_experiment(
             silent=False,
         )
         train_time = round(time.time() - t0, 2)
-        peak_vram_mb = round(torch.cuda.max_memory_allocated() / (1024 * 1024), 1) if torch.cuda.is_available() else 0.0
+        peak_vram_mb = (
+            round(torch.cuda.max_memory_allocated() / (1024 * 1024), 1)
+            if torch.cuda.is_available()
+            else 0.0
+        )
 
         nam_path = exp_dir / source_inst / f"{voice_id}.nam"
         if not nam_path.exists():
@@ -211,7 +219,9 @@ def run_single_experiment(
     }
 
     c_err = eval_full.get("plucks", {}).get("delta_crest_db", 0.0)
-    print(f"[Sweep] Finished {exp_name}: Time={train_time}s, Full MAE={eval_full['overall_mae']} dB, Treble={eval_full['treble_rmse']} dB, Crest Err={c_err} dB")
+    print(
+        f"[Sweep] Finished {exp_name}: Time={train_time}s, Full MAE={eval_full['overall_mae']} dB, Treble={eval_full['treble_rmse']} dB, Crest Err={c_err} dB"
+    )
     return result
 
 
@@ -231,7 +241,7 @@ def main() -> None:
         try:
             with open(json_path, encoding="utf-8") as f:
                 results = json.load(f)
-        except (json.JSONDecodeError, OSError):
+        except json.JSONDecodeError, OSError:
             results = {}
 
     def record_experiment(name: str, **kwargs: Any) -> None:

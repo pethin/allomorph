@@ -18,16 +18,54 @@ from torch import nn
 
 # Architecture 2 Standards
 KERNEL_SIZES: list[int] = [
-    6, 6, 6, 6, 6, 6, 6,
-    6, 6, 6, 6, 6, 6, 6,
-    15, 15,
-    6, 6, 6, 6, 6, 6, 6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    15,
+    15,
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
+    6,
 ]
 DILATIONS: list[int] = [
-    1, 3, 7, 17, 41, 101, 239,
-    1, 3, 7, 17, 41, 101, 239,
-    1, 13,
-    1, 3, 7, 17, 41, 101, 239,
+    1,
+    3,
+    7,
+    17,
+    41,
+    101,
+    239,
+    1,
+    3,
+    7,
+    17,
+    41,
+    101,
+    239,
+    1,
+    13,
+    1,
+    3,
+    7,
+    17,
+    41,
+    101,
+    239,
 ]
 HEAD_KERNEL_SIZE: int = 16
 HEAD_SCALE: float = 0.01
@@ -122,10 +160,9 @@ class AllomorphWaveNetA2(nn.Module):
         self.head_scale = HEAD_SCALE
 
         self.rechannel = nn.Conv1d(1, CHANNELS_TOTAL, 1, bias=False)
-        self.layers = nn.ModuleList([
-            AllomorphWaveNetLayer(k, d)
-            for k, d in zip(KERNEL_SIZES, DILATIONS, strict=True)
-        ])
+        self.layers = nn.ModuleList(
+            [AllomorphWaveNetLayer(k, d) for k, d in zip(KERNEL_SIZES, DILATIONS, strict=True)]
+        )
         self.head_rechannel = nn.Conv1d(CHANNELS_TOTAL, 2, HEAD_KERNEL_SIZE, bias=True)
 
         # Output channel 0 routes to Lite (0:3), channel 1 routes to Full (3:11)
@@ -230,14 +267,10 @@ class AllomorphWaveNetA2(nn.Module):
 
         # 3. Head rechannel
         hr_w = self.head_rechannel.weight
-        weights.extend(
-            hr_w[h_idx : h_idx + 1, c_slice, :].detach().cpu().flatten().tolist()
-        )
+        weights.extend(hr_w[h_idx : h_idx + 1, c_slice, :].detach().cpu().flatten().tolist())
         if self.head_rechannel.bias is not None:
             hr_b = cast(torch.Tensor, self.head_rechannel.bias)
-            weights.extend(
-                hr_b[h_idx : h_idx + 1].detach().cpu().flatten().tolist()
-            )
+            weights.extend(hr_b[h_idx : h_idx + 1].detach().cpu().flatten().tolist())
 
         # 4. Head scale
         weights.append(float(self.head_scale))

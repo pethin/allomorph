@@ -44,12 +44,41 @@ VOICES_TO_BENCHMARK = [
     ("stingray_parallel", "StingRay Parallel"),
 ]
 
-ISO_31_FREQS = np.array([
-    20.0, 25.0, 31.5, 40.0, 50.0, 63.0, 80.0, 100.0, 125.0, 160.0,
-    200.0, 250.0, 315.0, 400.0, 500.0, 630.0, 800.0, 1000.0, 1250.0, 1600.0,
-    2000.0, 2500.0, 3150.0, 4000.0, 5000.0, 6300.0, 8000.0, 10000.0, 12500.0, 16000.0,
-    20000.0,
-])
+ISO_31_FREQS = np.array(
+    [
+        20.0,
+        25.0,
+        31.5,
+        40.0,
+        50.0,
+        63.0,
+        80.0,
+        100.0,
+        125.0,
+        160.0,
+        200.0,
+        250.0,
+        315.0,
+        400.0,
+        500.0,
+        630.0,
+        800.0,
+        1000.0,
+        1250.0,
+        1600.0,
+        2000.0,
+        2500.0,
+        3150.0,
+        4000.0,
+        5000.0,
+        6300.0,
+        8000.0,
+        10000.0,
+        12500.0,
+        16000.0,
+        20000.0,
+    ]
+)
 
 
 def load_audio(path: Path) -> np.ndarray:
@@ -266,11 +295,17 @@ def run_benchmark() -> None:
             }
             results[voice_slug][engine] = run_result
 
-            print(f"[{engine.upper()}] Done in {elapsed:.1f}s ({trained_epochs} ep, {sec_per_epoch:.2f}s/ep)")
+            print(
+                f"[{engine.upper()}] Done in {elapsed:.1f}s ({trained_epochs} ep, {sec_per_epoch:.2f}s/ep)"
+            )
             print(f"  VRAM: {peak_vram_mb:.1f} MB | Stop: {stop_reason}")
             print(f"  Val ESR: {metrics['esr_db']:+.2f} dB (lin: {metrics['esr']:.6f})")
-            print(f"  31-Band Overall MAE: {metrics['overall_mae']:.2f} dB | Treble RMSE: {metrics['treble_rmse']:.2f} dB")
-            print(f"  Crest Match: {metrics['delta_crest_db']:+.2f} dB | Attack ESR: {metrics['att_esr_db']:+.1f} dB")
+            print(
+                f"  31-Band Overall MAE: {metrics['overall_mae']:.2f} dB | Treble RMSE: {metrics['treble_rmse']:.2f} dB"
+            )
+            print(
+                f"  Crest Match: {metrics['delta_crest_db']:+.2f} dB | Attack ESR: {metrics['att_esr_db']:+.1f} dB"
+            )
 
     # Save raw benchmark JSON
     json_path = REPO_ROOT / "scratch" / "benchmark_results.json"

@@ -34,7 +34,7 @@ def test_calibration_blips_heights_and_bounds(scale: float) -> None:
 def test_log_chirps_boundary_fades(scale: float) -> None:
     """Log chirps must have smooth C^inf boundary fades to avoid spectral leakage."""
     chirps = synth_log_chirps(sample_rate=24000, scale=scale)
-    assert len(chirps) == 5
+    assert len(chirps) == 7
 
     for seg, pause in chirps:
         assert len(seg) > 0

@@ -216,7 +216,7 @@ def _synth_pluck(
     gamma = (
         0.95
         if technique == "slap"
-        else (1.10 if technique == "pick" else (1.80 if technique == "palm_mute" else 1.45))
+        else (1.10 if technique == "pick" else (1.80 if technique == "palm_mute" else 1.30))
     )
 
     fns: list[float] = []
@@ -236,8 +236,8 @@ def _synth_pluck(
             h_weight *= max(float(f_tip), 0.15)
         if technique == "palm_mute" and fn > 600.0:
             h_weight *= float(np.exp(-(fn - 600.0) / 300.0))
-        d_rate_v = (0.7 + 0.10 * h + 0.00025 * (h**2)) * decay_mult
-        d_rate_h = (0.35 + 0.05 * h + 0.00012 * (h**2)) * decay_mult
+        d_rate_v = (0.7 + 0.08 * h + 0.00007 * (h**2)) * decay_mult
+        d_rate_h = (0.35 + 0.04 * h + 0.000035 * (h**2)) * decay_mult
         fns.append(fn)
         hws.append(h_weight)
         drvs.append(d_rate_v)
@@ -328,7 +328,7 @@ def _synth_natural_harmonic(
     amp: float,
     dur: float,
     sample_rate: int = FS,
-    num_partials: int = 5,
+    num_partials: int = 8,
 ) -> np.ndarray:
     """Synthesizes a pure crystalline natural harmonic overtone cascade."""
     n = int(dur * sample_rate)
@@ -564,8 +564,8 @@ def _synth_long_ringout(
             break
         geo_pos = max(float(np.sin(h * np.pi * 0.14)), 0.25)
         h_weight = (1.0 / (h**1.40)) * geo_pos
-        decay_v_rate = 0.35 + 0.05 * h + 0.00012 * (h**2)
-        decay_h_rate = 0.20 + 0.03 * h + 0.00006 * (h**2)
+        decay_v_rate = 0.35 + 0.04 * h + 0.00004 * (h**2)
+        decay_h_rate = 0.20 + 0.02 * h + 0.00002 * (h**2)
         fns.append(fn)
         hws.append(h_weight)
         drvs.append(decay_v_rate)

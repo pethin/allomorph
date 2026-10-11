@@ -490,5 +490,3 @@ def test_pareto_checkpoint_selection_avoids_drifted_checkpoint() -> None:
     # Verify on_train_end restores the Pareto-optimal weights (77.0) and rejects the drifted weights (999.0)!
     callback.on_train_end(trainer, pl_mod)
     assert float(net.fc.weight[0, 0].item()) == 77.0
-
-

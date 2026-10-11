@@ -168,8 +168,8 @@ def compute_pareto_quality_score(
     mb_full_loss: float,
     mse_full: float,
     min_mse_full: float,
-    drift_tolerance: float = 0.15,
-    drift_penalty_gain: float = 3.0,
+    drift_tolerance: float = 1.0,
+    drift_penalty_gain: float = 2.5,
 ) -> float:
     """Computes the Anti-Drift Pareto Electroacoustic Quality Score Q(t).
 
@@ -287,9 +287,9 @@ class AllomorphAdaptiveStopping(EarlyStopping):
         warmup_floor: int = DEFAULT_MIN_EPOCHS,
         patience: int = DEFAULT_PATIENCE,
         min_delta: float = DEFAULT_MIN_DELTA,
-        drift_tolerance: float = 0.25,
+        drift_tolerance: float = 1.0,
         drift_penalty_gain: float = 2.5,
-        drift_exit_threshold: float = 0.25,
+        drift_exit_threshold: float = 1.50,
         **cb_kwargs: Any,
     ) -> None:
         super().__init__(*cb_args, monitor=monitor, **cb_kwargs)
@@ -360,7 +360,7 @@ class AllomorphAdaptiveStopping(EarlyStopping):
             else "none"
         )
         drift_str = (
-            f", drift: {self.last_mse_drift_ratio*100:+.1f}%"
+            f", drift: {self.last_mse_drift_ratio * 100:+.1f}%"
             if self.last_mse_drift_ratio > 0
             else ""
         )
@@ -536,7 +536,7 @@ class AllomorphAdaptiveStopping(EarlyStopping):
             print(
                 f"\n[Early Stopping] {reason_str.replace('_', ' ').title()} triggered at epoch {epoch:03d}: "
                 f"Pareto Q slope {self.last_pareto_slope:+.1e}, window delta {loss_improvement:.2e} "
-                f"(drift: {self.last_mse_drift_ratio*100:+.1f}%). Terminating with optimal checkpoint restore "
+                f"(drift: {self.last_mse_drift_ratio * 100:+.1f}%). Terminating with optimal checkpoint restore "
                 f"(best epoch: {self.best_epoch:03d}, Pareto Q: {self.best_pareto_score:.6f}, val_loss: {self.best_val_loss:.6f}).\n",
                 flush=True,
             )
