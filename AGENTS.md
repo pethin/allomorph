@@ -72,8 +72,9 @@ allomorph/
 │   ├── circuit_theory.md     # Differential equations, 500k volume pot, treble bleed
 │   ├── aperture_math.md      # Aperture sinc, wave speeds, multi-scale filters
 │   ├── anagram_workflow.md   # Darkglass Anagram Block 1 routing & banks
-│   ├── trainer_spectral_loss_optimization.md # Self-normalizing multi-band ESR loss & convergence proofs
-│   ├── trainer_early_stopping_architecture.md # Anti-drift Pareto stopping & in-memory checkpoint restoration
+│   ├── trainer/
+│   │   ├── stock/            # Upstream NAM / Lightning trainer docs (early stopping & spectral loss)
+│   │   └── native/           # Custom native A2 trainer docs (architecture, in-VRAM slicing & loss)
 │   ├── frequency_responses.html # Master interactive portal
 │   └── frequency_responses/     # Per-instrument standalone Altair visualizations
 ├── models/                   # Trained Neural Amp Modeler (.nam) models (models/<instrument>/)

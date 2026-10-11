@@ -91,24 +91,29 @@ For web training on Tone3000, bundles are generated via `allomorph --stage pack`
 
 ---
 
-## 5. Training Hyperparameters & Standards
+## 5. Training Engines, Standards & Submodule Layout
 
-The PyTorch trainer employs the **Self-Normalizing Multi-Band ESR Loss** architecture with the **Anti-Drift Pareto Early Stopping Engine**, enabling complete A2 convergence in 35–45 epochs while outperforming 200–400 epoch cloud models. See [`docs/trainer_spectral_loss_optimization.md`](trainer_spectral_loss_optimization.md) for spectral loss derivations and step velocity proofs, and [`docs/trainer_early_stopping_architecture.md`](trainer_early_stopping_architecture.md) for early stopping architecture, benchmark tables, and failure mode taxonomy.
+Allomorph provides two dedicated training backends in `src/allomorph/trainer/`:
+1. **Native Engine (`allomorph.trainer.native`):** Bespoke in-VRAM zero-copy PyTorch engine with unified 11-channel masked convolutions and fast 15–40 epoch convergence. See [`docs/trainer/native/engine_architecture.md`](trainer/native/engine_architecture.md) and [`docs/trainer/native/spectral_loss_and_dynamics.md`](trainer/native/spectral_loss_and_dynamics.md).
+2. **Stock Engine (`allomorph.trainer.stock`):** Upstream Neural Amp Modeler / PyTorch Lightning engine preserving painstakingly optimized 35–60 epoch baseline standards. See [`docs/trainer/stock/trainer_spectral_loss_optimization.md`](trainer/stock/trainer_spectral_loss_optimization.md) and [`docs/trainer/stock/trainer_early_stopping_architecture.md`](trainer/stock/trainer_early_stopping_architecture.md).
 
-| Parameter | Flag | Default | Description |
-| :--- | :--- | :--- | :--- |
-| **Architecture** | `--architecture` | `A2` | Modern slimmable Architecture 2 (`channels_3` + `channels_8`) |
-| **Submodel Mode** | `--a2-lite-only` | `False` | When True, isolates the `channels_8` submodel only |
-| **Batch Size** | `--batch-size` | `auto` (16) | Automatically scales to 8 on Apple Silicon base/pro chips, 16 on max/ultra/CUDA |
-| **Min Epochs** | `--min-epochs` | `35` | Warmup floor protecting differentiator tap emergence |
-| **Max Epochs** | `--epochs` | `60` | Schedule budget for difficult active and high-treble voicings |
-| **Patience** | `--patience` | `6` | Plateau patience evaluation window in epochs |
-| **Min Delta** | `--min-delta` | `1.0e-4` | Multi-band composite loss improvement threshold |
-| **Waveform MSE**| `--mse-weight` | `1.00` | Full-band time-domain MSE anchor weight |
-| **Mid-Treble ESR** | `--hp-mid-esr-weight` | `0.50` | $3\text{ kHz}$ high-pass energy-normalized ESR weight |
-| **High-Treble ESR**| `--hp-high-esr-weight`| `0.50` | $7\text{ kHz}$ high-pass energy-normalized ESR weight |
-| **Engine** | `--engine` | `auto` | Training engine backend (`auto`, `torch`) |
-| **Sample Rate** | `--sample-rate`| `48000` | Standard Darkglass Anagram & professional audio clock rate |
+### Hyperparameter Standards & Defaults
+
+| Parameter | Stock Engine Default (`STOCK_DEFAULT_*`) | Native Engine Default (`NATIVE_DEFAULT_*`) | Description |
+| :--- | :---: | :---: | :--- |
+| **Architecture** | `A2` | `A2` | Slimmable Architecture 2 (`channels_3` + `channels_8`) |
+| **Min Warmup Epochs** | `35` | `15` | Warmup floor before early stopping engages |
+| **Max Epoch Schedule** | `60` | `40` | Training epoch budget |
+| **Patience** | `6` | `6` | Early stopping plateau patience window |
+| **Min Delta** | `1.0e-4` | `1.0e-4` | Composite validation loss improvement threshold |
+| **Waveform MSE Weight**| `1.00` | `1.00` | Full-band time-domain MSE anchor weight |
+| **Mid-Treble ESR Weight** | `0.50` ($3\text{ kHz}$) | `0.50` ($3\text{ kHz}$) | $3\text{ kHz}$ high-pass normalized ESR weight |
+| **High-Treble ESR Weight**| `0.50` ($7\text{ kHz}$) | `0.35` ($7\text{ kHz}$) | $7\text{ kHz}$ high-pass normalized ESR weight |
+| **Base Learning Rate** | `1.0e-2` (Stock Adam) | `4.0e-3` (Native Adam) | Optimizer initial learning rate |
+| **Weight Decay** | `0.0` | `1.0e-4` | Optimizer L2 kernel regularization |
+| **Slice Length** | `8192` (DataLoader) | `8192` (In-VRAM) | Audio segment length in samples |
+| **Precision** | `auto` | `auto` | `bf16-mixed` on modern GPUs, `32-true` on CPU |
+| **Engine Choice** | `--engine stock` | `--engine native` | Training backend selection (default: `auto`) |
 
 ---
 

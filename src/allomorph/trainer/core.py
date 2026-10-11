@@ -43,6 +43,19 @@ from allomorph.trainer.constants import (
     DEFAULT_PRE_EMPH_WEIGHT,
     DEFAULT_PRECISION,
     DEFAULT_SEED,
+    NATIVE_DEFAULT_HP_HIGH_WEIGHT,
+    NATIVE_DEFAULT_HP_MID_WEIGHT,
+    NATIVE_DEFAULT_LITE_WEIGHT,
+    NATIVE_DEFAULT_LR,
+    NATIVE_DEFAULT_LR_SCHEDULER,
+    NATIVE_DEFAULT_MAX_EPOCHS,
+    NATIVE_DEFAULT_MIN_EPOCHS,
+    NATIVE_DEFAULT_SLICE_LEN,
+    NATIVE_DEFAULT_WEIGHT_DECAY,
+    STOCK_DEFAULT_HP_HIGH_ESR_WEIGHT,
+    STOCK_DEFAULT_HP_MID_ESR_WEIGHT,
+    STOCK_DEFAULT_MAX_EPOCHS,
+    STOCK_DEFAULT_MIN_EPOCHS,
     VALID_ENGINES,
 )
 
@@ -145,13 +158,15 @@ setup_headless_environment()
 
 
 def resolve_trainer_engine(engine: str = DEFAULT_ENGINE) -> str:
-    """Resolves trainer engine ('auto', 'torch').
-    - 'auto': chooses 'torch'
-    - 'torch': uses PyTorch
+    """Resolves trainer engine ('auto', 'native', 'stock', 'torch').
+    - 'auto' / 'native': uses Allomorph custom native PyTorch A2 engine
+    - 'stock' / 'torch': uses upstream PyTorch Lightning / NAM engine
     """
     engine_clean = engine.lower().strip()
     if engine_clean not in VALID_ENGINES:
         raise ValueError(f"Invalid engine '{engine}'. Valid options: {VALID_ENGINES}")
+    if engine_clean in ("auto", "native"):
+        return "native"
     return "torch"
 
 
@@ -403,7 +418,7 @@ def compute_baseline_mrstft(
 
 def configure_a2_architecture(*args: Any, **kwargs: Any) -> None:
     """Configures NAM Architecture 2 packed model submodels, loss weighting, and adaptive early stopping via PyTorch."""
-    from allomorph.trainer.engine_torch import configure_a2_architecture as _cfg
+    from allomorph.trainer.stock import configure_a2_architecture as _cfg
 
     _cfg(*args, **kwargs)
 
@@ -443,10 +458,85 @@ def train_voice(
     include_identity: bool = False,
     engine: str = DEFAULT_ENGINE,
     seed: int | None = DEFAULT_SEED,
+    # Native-specific options
+    slice_len: int = NATIVE_DEFAULT_SLICE_LEN,
+    lr: float = NATIVE_DEFAULT_LR,
+    weight_decay: float = NATIVE_DEFAULT_WEIGHT_DECAY,
+    lite_weight: float = NATIVE_DEFAULT_LITE_WEIGHT,
 ) -> bool:
     """Trains a Neural Amp Modeler Architecture 2 model container using the configured engine."""
-    _ = resolve_trainer_engine(engine)
-    from allomorph.trainer.engine_torch import train_voice_torch
+    resolved_engine = resolve_trainer_engine(engine)
+    if resolved_engine == "native":
+        from allomorph.trainer.native import train_voice_native
+
+        effective_epochs = (
+            NATIVE_DEFAULT_MAX_EPOCHS
+            if epochs == STOCK_DEFAULT_MAX_EPOCHS
+            else epochs
+        )
+        effective_min_epochs = (
+            NATIVE_DEFAULT_MIN_EPOCHS
+            if min_epochs == STOCK_DEFAULT_MIN_EPOCHS
+            else min_epochs
+        )
+        effective_hp_high = (
+            NATIVE_DEFAULT_HP_HIGH_WEIGHT
+            if hp_high_weight == STOCK_DEFAULT_HP_HIGH_ESR_WEIGHT
+            else hp_high_weight
+        )
+        effective_hp_mid = (
+            NATIVE_DEFAULT_HP_MID_WEIGHT
+            if hp_mid_weight == STOCK_DEFAULT_HP_MID_ESR_WEIGHT
+            else hp_mid_weight
+        )
+        effective_lr_scheduler = (
+            NATIVE_DEFAULT_LR_SCHEDULER
+            if lr_scheduler == DEFAULT_LR_SCHEDULER
+            else lr_scheduler
+        )
+
+        return train_voice_native(
+            instrument=instrument,
+            voice=voice,
+            source_voicing=source_voicing,
+            input_wav=input_wav,
+            output_wav=output_wav,
+            reference_wav=reference_wav,
+            models_dir=models_dir,
+            epochs=effective_epochs,
+            min_epochs=effective_min_epochs,
+            patience=patience,
+            min_delta=min_delta,
+            mse_weight=mse_weight,
+            pre_emph_weight=pre_emph_weight,
+            pre_emph_coef=pre_emph_coef,
+            mrstft_weight=mrstft_weight,
+            hp_mid_weight=effective_hp_mid,
+            hp_mid_cutoff=hp_mid_cutoff,
+            hp_high_weight=effective_hp_high,
+            hp_high_cutoff=hp_high_cutoff,
+            lr_scheduler=effective_lr_scheduler,
+            eta_min=eta_min,
+            lr_t_max=lr_t_max,
+            batch_size=batch_size,
+            precision=precision,
+            num_workers=num_workers,
+            silent=silent,
+            save_plot=save_plot,
+            fast_dev_run=fast_dev_run,
+            basename=basename,
+            version_tag=version_tag,
+            no_manifest=no_manifest,
+            include_identity=include_identity,
+            engine=engine,
+            seed=seed,
+            lr=lr,
+            weight_decay=weight_decay,
+            slice_len=slice_len,
+            lite_weight=lite_weight,
+        )
+
+    from allomorph.trainer.stock import train_voice_torch
 
     return train_voice_torch(
         instrument=instrument,
@@ -573,6 +663,10 @@ def train_voices_from_config(cli_cfg: NamTrainingConfig) -> bool:
                 include_identity=cli_cfg.include_identity,
                 engine=cli_cfg.engine,
                 seed=cli_cfg.seed,
+                lr=cli_cfg.native_lr,
+                weight_decay=cli_cfg.native_weight_decay,
+                slice_len=cli_cfg.native_slice_len,
+                lite_weight=cli_cfg.native_lite_weight,
             )
             if not ok:
                 all_ok = False

@@ -33,6 +33,10 @@ from allomorph.trainer.constants import (
     DEFAULT_PATIENCE,
     DEFAULT_PRE_EMPH_COEF,
     DEFAULT_PRE_EMPH_WEIGHT,
+    NATIVE_DEFAULT_LITE_WEIGHT,
+    NATIVE_DEFAULT_LR,
+    NATIVE_DEFAULT_SLICE_LEN,
+    NATIVE_DEFAULT_WEIGHT_DECAY,
 )
 
 __all__ = [
@@ -294,6 +298,22 @@ class NamTrainingConfig(AllomorphBaseModel):
     seed: int | None = Field(
         default=None,
         description="Random seed for deterministic initialization and data shuffling",
+    )
+    native_lr: float = Field(
+        default=NATIVE_DEFAULT_LR,
+        description=f"Native PyTorch engine learning rate (default: {NATIVE_DEFAULT_LR})",
+    )
+    native_weight_decay: float = Field(
+        default=NATIVE_DEFAULT_WEIGHT_DECAY,
+        description=f"Native PyTorch engine weight decay (default: {NATIVE_DEFAULT_WEIGHT_DECAY})",
+    )
+    native_slice_len: int = Field(
+        default=NATIVE_DEFAULT_SLICE_LEN,
+        description=f"Native PyTorch engine slice window length (default: {NATIVE_DEFAULT_SLICE_LEN})",
+    )
+    native_lite_weight: float = Field(
+        default=NATIVE_DEFAULT_LITE_WEIGHT,
+        description=f"Native PyTorch engine submodel Lite weight (default: {NATIVE_DEFAULT_LITE_WEIGHT})",
     )
 
 

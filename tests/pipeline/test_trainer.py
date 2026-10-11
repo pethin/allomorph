@@ -633,7 +633,9 @@ def test_resolve_trainer_engine_and_mps_env() -> None:
     assert os.environ.get("PYTORCH_MPS_FAST_MATH") == "1"
     assert os.environ.get("PYTORCH_MPS_PREFER_METAL") == "1"
 
-    assert resolve_trainer_engine("auto") == "torch"
+    assert resolve_trainer_engine("auto") == "native"
+    assert resolve_trainer_engine("native") == "native"
+    assert resolve_trainer_engine("stock") == "torch"
     assert resolve_trainer_engine("torch") == "torch"
 
     with pytest.raises(ValueError, match="Invalid engine 'mlx'"):

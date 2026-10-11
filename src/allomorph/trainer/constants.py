@@ -3,63 +3,78 @@ Allomorph Trainer - Constants and Hyperparameter Defaults
 Schedule-driven natural convergence standards, optimizer annealing periods, and early stopping tolerances.
 """
 
-# Warmup epoch floor covering initial exploration before early stopping can engage
-DEFAULT_MIN_EPOCHS: int = 35
+# ------------------------------------------------------------------------------
+# Stock Engine Defaults (Painstakingly optimized upstream NAM/Lightning standards)
+# ------------------------------------------------------------------------------
+STOCK_DEFAULT_MIN_EPOCHS: int = 35
+STOCK_DEFAULT_MAX_EPOCHS: int = 60
+STOCK_DEFAULT_PATIENCE: int = 6
+STOCK_DEFAULT_MIN_DELTA: float = 1.0e-4
+STOCK_DEFAULT_MSE_WEIGHT: float = 1.00
+STOCK_DEFAULT_PRE_EMPH_WEIGHT: float = 0.0
+STOCK_DEFAULT_PRE_EMPH_COEF: float = 0.85
+STOCK_DEFAULT_MRSTFT_WEIGHT: float = 0.0
+STOCK_DEFAULT_LR_SCHEDULER: str = "exponential"
+STOCK_DEFAULT_ETA_MIN: float = 5.0e-4
+STOCK_DEFAULT_LR_T_MAX: int = 45
+STOCK_DEFAULT_HP_MID_ESR_WEIGHT: float = 0.50
+STOCK_DEFAULT_HP_MID_CUTOFF: float = 3000.0
+STOCK_DEFAULT_HP_HIGH_ESR_WEIGHT: float = 0.50
+STOCK_DEFAULT_HP_HIGH_CUTOFF: float = 7000.0
+STOCK_DEFAULT_BATCH_SIZE: str = "auto"
+STOCK_DEFAULT_PRECISION: str = "auto"
+STOCK_DEFAULT_NUM_WORKERS: str = "auto"
+STOCK_DEFAULT_VAL_LOSS_METRIC: str = "spectral"
 
-# Architecture 2 studio schedule budget (matching Tone3000 rapid convergence)
-DEFAULT_MAX_EPOCHS: int = 60
+# Backwards-compatible aliases preserving original stock standards across tests and callers
+DEFAULT_MIN_EPOCHS: int = STOCK_DEFAULT_MIN_EPOCHS
+DEFAULT_MAX_EPOCHS: int = STOCK_DEFAULT_MAX_EPOCHS
+DEFAULT_PATIENCE: int = STOCK_DEFAULT_PATIENCE
+DEFAULT_MIN_DELTA: float = STOCK_DEFAULT_MIN_DELTA
+DEFAULT_MSE_WEIGHT: float = STOCK_DEFAULT_MSE_WEIGHT
+DEFAULT_PRE_EMPH_WEIGHT: float = STOCK_DEFAULT_PRE_EMPH_WEIGHT
+DEFAULT_PRE_EMPH_COEF: float = STOCK_DEFAULT_PRE_EMPH_COEF
+DEFAULT_MRSTFT_WEIGHT: float = STOCK_DEFAULT_MRSTFT_WEIGHT
+DEFAULT_LR_SCHEDULER: str = STOCK_DEFAULT_LR_SCHEDULER
+DEFAULT_ETA_MIN: float = STOCK_DEFAULT_ETA_MIN
+DEFAULT_LR_T_MAX: int = STOCK_DEFAULT_LR_T_MAX
+DEFAULT_HP_MID_ESR_WEIGHT: float = STOCK_DEFAULT_HP_MID_ESR_WEIGHT
+DEFAULT_HP_MID_CUTOFF: float = STOCK_DEFAULT_HP_MID_CUTOFF
+DEFAULT_HP_HIGH_ESR_WEIGHT: float = STOCK_DEFAULT_HP_HIGH_ESR_WEIGHT
+DEFAULT_HP_HIGH_CUTOFF: float = STOCK_DEFAULT_HP_HIGH_CUTOFF
+DEFAULT_BATCH_SIZE: str = STOCK_DEFAULT_BATCH_SIZE
+DEFAULT_PRECISION: str = STOCK_DEFAULT_PRECISION
+DEFAULT_NUM_WORKERS: str = STOCK_DEFAULT_NUM_WORKERS
+DEFAULT_VAL_LOSS_METRIC: str = STOCK_DEFAULT_VAL_LOSS_METRIC
 
-# Dynamic auto-tuning defaults for hardware execution
-DEFAULT_BATCH_SIZE: str = "auto"
-DEFAULT_PRECISION: str = "auto"
-DEFAULT_NUM_WORKERS: str = "auto"
-VALID_PRECISION_MODES: tuple[str, ...] = ("auto", "bf16-mixed", "16-mixed", "32-true", "32")
+# ------------------------------------------------------------------------------
+# Native Engine Defaults (Custom In-VRAM PyTorch A2 Training Engine)
+# ------------------------------------------------------------------------------
+NATIVE_DEFAULT_MIN_EPOCHS: int = 35
+NATIVE_DEFAULT_MAX_EPOCHS: int = 60
+NATIVE_DEFAULT_PATIENCE: int = 6
+NATIVE_DEFAULT_MIN_DELTA: float = 1.0e-4
+NATIVE_DEFAULT_LR: float = 2.0e-3
+NATIVE_DEFAULT_WEIGHT_DECAY: float = 1.0e-4
+NATIVE_DEFAULT_SLICE_LEN: int = 8192
+NATIVE_DEFAULT_MSE_WEIGHT: float = 1.00
+NATIVE_DEFAULT_HP_MID_WEIGHT: float = 0.75
+NATIVE_DEFAULT_HP_MID_CUTOFF: float = 3000.0
+NATIVE_DEFAULT_HP_HIGH_WEIGHT: float = 0.50
+NATIVE_DEFAULT_HP_HIGH_CUTOFF: float = 7000.0
+NATIVE_DEFAULT_LITE_WEIGHT: float = 0.75
+NATIVE_DEFAULT_LR_SCHEDULER: str = "exponential"
+NATIVE_DEFAULT_BATCH_SIZE: str = "auto"
+NATIVE_DEFAULT_PRECISION: str = "auto"
 
-# Adaptive diminishing-returns plateau patience window in epochs
-DEFAULT_PATIENCE: int = 6
-
-# Minimum loss improvement to reset plateau patience
-DEFAULT_MIN_DELTA: float = 1.0e-4
-
-# Primary time-domain MSE loss weight (1.00 anchors sub-bass and comb notches)
-DEFAULT_MSE_WEIGHT: float = 1.00
-
-# Pre-emphasis loss weight for equalizing high-frequency resonance (0.0 eliminates sub-bass drift)
-DEFAULT_PRE_EMPH_WEIGHT: float = 0.0
-
-# Pre-emphasis filter coefficient (alpha = 0.85)
-DEFAULT_PRE_EMPH_COEF: float = 0.85
-
-# Multi-Resolution STFT loss weight for RLC resonant peak fidelity
-DEFAULT_MRSTFT_WEIGHT: float = 0.0
-
-# Standard schedule: Exponential decay for studio-grade stability
-DEFAULT_LR_SCHEDULER: str = "exponential"
-
-# Minimum learning rate floor for CosineAnnealingLR
-DEFAULT_ETA_MIN: float = 5.0e-4
-
-# Cosine decay period (T_max in epochs)
-DEFAULT_LR_T_MAX: int = 45
-
-# Multi-Band Self-Normalizing High-Pass ESR Loss parameters
-DEFAULT_HP_MID_ESR_WEIGHT: float = 0.50
-DEFAULT_HP_MID_CUTOFF: float = 3000.0
-DEFAULT_HP_HIGH_ESR_WEIGHT: float = 0.50
-DEFAULT_HP_HIGH_CUTOFF: float = 7000.0
-
-# Default validation loss metric type
-DEFAULT_VAL_LOSS_METRIC: str = "spectral"
-
-# Architecture 2 designation
+# ------------------------------------------------------------------------------
+# General Platform & Architecture Invariants
+# ------------------------------------------------------------------------------
 DEFAULT_ARCHITECTURE: str = "A2"
-
-# Training engine defaults
 DEFAULT_ENGINE: str = "auto"
-VALID_ENGINES: tuple[str, ...] = ("auto", "torch")
+VALID_ENGINES: tuple[str, ...] = ("auto", "native", "stock", "torch")
 DEFAULT_SEED: int | None = None
-
-# MRSTFT loss FFT window sizes
+VALID_PRECISION_MODES: tuple[str, ...] = ("auto", "bf16-mixed", "16-mixed", "32-true", "32")
 DEFAULT_MRSTFT_FFT_SIZES: tuple[int, ...] = (512, 1024, 2048)
 
 __all__ = [
@@ -86,6 +101,41 @@ __all__ = [
     "DEFAULT_PRE_EMPH_WEIGHT",
     "DEFAULT_SEED",
     "DEFAULT_VAL_LOSS_METRIC",
+    "NATIVE_DEFAULT_BATCH_SIZE",
+    "NATIVE_DEFAULT_HP_HIGH_CUTOFF",
+    "NATIVE_DEFAULT_HP_HIGH_WEIGHT",
+    "NATIVE_DEFAULT_HP_MID_CUTOFF",
+    "NATIVE_DEFAULT_HP_MID_WEIGHT",
+    "NATIVE_DEFAULT_LITE_WEIGHT",
+    "NATIVE_DEFAULT_LR",
+    "NATIVE_DEFAULT_LR_SCHEDULER",
+    "NATIVE_DEFAULT_MAX_EPOCHS",
+    "NATIVE_DEFAULT_MIN_DELTA",
+    "NATIVE_DEFAULT_MIN_EPOCHS",
+    "NATIVE_DEFAULT_MSE_WEIGHT",
+    "NATIVE_DEFAULT_PATIENCE",
+    "NATIVE_DEFAULT_PRECISION",
+    "NATIVE_DEFAULT_SLICE_LEN",
+    "NATIVE_DEFAULT_WEIGHT_DECAY",
+    "STOCK_DEFAULT_BATCH_SIZE",
+    "STOCK_DEFAULT_ETA_MIN",
+    "STOCK_DEFAULT_HP_HIGH_CUTOFF",
+    "STOCK_DEFAULT_HP_HIGH_ESR_WEIGHT",
+    "STOCK_DEFAULT_HP_MID_CUTOFF",
+    "STOCK_DEFAULT_HP_MID_ESR_WEIGHT",
+    "STOCK_DEFAULT_LR_SCHEDULER",
+    "STOCK_DEFAULT_LR_T_MAX",
+    "STOCK_DEFAULT_MAX_EPOCHS",
+    "STOCK_DEFAULT_MIN_DELTA",
+    "STOCK_DEFAULT_MIN_EPOCHS",
+    "STOCK_DEFAULT_MRSTFT_WEIGHT",
+    "STOCK_DEFAULT_MSE_WEIGHT",
+    "STOCK_DEFAULT_NUM_WORKERS",
+    "STOCK_DEFAULT_PATIENCE",
+    "STOCK_DEFAULT_PRECISION",
+    "STOCK_DEFAULT_PRE_EMPH_COEF",
+    "STOCK_DEFAULT_PRE_EMPH_WEIGHT",
+    "STOCK_DEFAULT_VAL_LOSS_METRIC",
     "VALID_ENGINES",
     "VALID_PRECISION_MODES",
 ]

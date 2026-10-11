@@ -63,7 +63,7 @@ from allomorph.version import (
     write_manifest,
 )
 
-REPO_ROOT = Path(__file__).resolve().parents[3]
+REPO_ROOT = Path(__file__).resolve().parents[4]
 AUDIO_DIR = REPO_ROOT / "audio"
 MODELS_DIR = REPO_ROOT / "models"
 

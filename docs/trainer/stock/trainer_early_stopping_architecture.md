@@ -183,9 +183,10 @@ DEFAULT_HP_HIGH_ESR_WEIGHT: float = 0.50 # 7 kHz High-Pass ESR weight
 - `evaluate_plateau_stopping_condition()`: Triple-gate logic evaluating plateau slope, differentiator descent, and waveform drift.
 - `AllomorphAdaptiveStopping`: Manages state dict caching and ensures automatic restoration on training completion.
 
-### 6.3 Engine Binding (`src/allomorph/trainer/engine_torch.py`)
-- `patched_validation_step`: Evaluates exact multi-band loss for submodels and logs `mb_loss_packed_1`.
-- `train_voice_torch`: Directly verifies and applies `stopping_cb.best_state_dict` before `.nam` export, bypassing upstream disk overwrite routines.
+### 6.3 Engine Binding (`src/allomorph/trainer/stock/engine.py` and `src/allomorph/trainer/native/engine.py`)
+- `patched_validation_step` (Stock): Evaluates exact multi-band loss for submodels and logs `mb_loss_packed_1`.
+- `train_voice_native` (Native): Standalone GPU training loop with in-memory Pareto checkpoint tracking and zero-copy VRAM tensor slicing.
+- `train_voice_torch` (Stock): Directly verifies and applies `stopping_cb.best_state_dict` before `.nam` export, bypassing upstream disk overwrite routines.
 
 ---
 

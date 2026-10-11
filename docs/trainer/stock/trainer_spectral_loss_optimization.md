@@ -224,7 +224,7 @@ During the iterative progression across 13 distinct experimental configurations,
 ### 7.5 The Upstream NAM Checkpoint Reversion Bug
 * **Observation:** Early local training runs unexpectedly rolled off high frequencies despite running for 70 epochs.
 * **Root Cause Identified:** Upstream NAM's `PackedBestCheckpoint` callback monitored raw validation ESR (`esr_item`). Raw ESR drops rapidly during epochs 1–14 as low frequencies are learned, reaching a minimum around $0.003$. When the model subsequently began learning high-frequency differentiator taps, tiny phase residuals caused raw ESR to fluctuate by $\approx 10^{-4}$. Because raw ESR never hit a new global minimum, `PackedBestCheckpoint` locked onto **Epoch 4**. At the end of training, NAM called `_apply_packed_best_checkpoints()`, which loaded `packed_best_submodel_1.ckpt` and **overwrote the final 70-epoch model with the 4-epoch checkpoint**!
-* **Resolution:** Stripped `PackedBestCheckpoint` from training callbacks in `src/allomorph/trainer/engine_torch.py`. The exported model now strictly reflects the fully converged weights of the final epoch.
+* **Resolution:** Stripped `PackedBestCheckpoint` from training callbacks in `src/allomorph/trainer/stock/engine.py`. The exported model now strictly reflects the fully converged weights of the final epoch.
 
 ### 7.6 Sub-$3\text{ kHz}$ High-Pass ESR Leakage
 * **Configuration:** Lowered the first high-pass ESR cutoff to $2400\text{ Hz}$ to cover pickup resonance.
@@ -254,7 +254,7 @@ DEFAULT_HP_MID_ESR_WEIGHT: float = 0.50   # 3 kHz High-Pass ESR
 DEFAULT_HP_HIGH_ESR_WEIGHT: float = 0.50  # 7 kHz High-Pass ESR
 ```
 
-### 8.2 Loss Engine Implementation ([`src/allomorph/trainer/engine_torch.py`](../src/allomorph/trainer/engine_torch.py))
+### 8.2 Loss Engine Implementation ([`src/allomorph/trainer/native/loss.py`](../src/allomorph/trainer/native/loss.py))
 ```python
 class NormalizedHighPassESRLoss(nn.Module):
     """Energy-Normalized High-Pass ESR Loss.
