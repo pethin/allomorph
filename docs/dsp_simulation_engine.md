@@ -2,6 +2,9 @@
 
 This document provides a comprehensive technical reference for the native Virtual Analog (VA) circuit simulation engine implemented in [`allomorph.circuit`](../src/allomorph/circuit) and exposed via the `allomorph-sim` CLI entrypoint. The engine replaces external SPICE dependencies (LTspice, ngspice) with an analytical nodal solver and state-space non-linear magnetic emulator optimized for Apple Silicon (`arm64`), executing at $>1500\times$ real-time speed.
 
+> [!NOTE]
+> For the master string excitation, physical harmonic tilt damping ($f_{\text{corner}} = 1200\text{ Hz}$), 2D modal string vibration, and ITU-R BS.1770-4 loudness matching engine implemented in `allomorph.dsp`, see the companion document: [Acoustic & String Vibration DSP Synthesis Engine](dsp_synthesis_engine.md).
+
 ---
 
 ## 1. Engine Architecture & Signal Flow
