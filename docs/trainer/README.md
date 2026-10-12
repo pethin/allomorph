@@ -43,15 +43,13 @@ src/allomorph/trainer/
 - **[Hyperparameter Optimization & Empirical Sweeps](native/hyperparameter_optimization.md):**  
   Exhaustive 5-dimensional optimization campaign across batch size, learning rate, scheduler, submodel multi-task weighting, spectral loss, and slice length; hardware analysis of AMD RDNA 4 Infinity Cache and MIOpen unrolling thresholds.
 - **[Multi-Band Spectral Loss & Dynamics](native/spectral_loss_and_dynamics.md):**  
-  Physical string harmonic energy decay ($-43.5\text{ dB}$ harmonic drop-off), pure-NumPy Type-I linear-phase FIR highpass filter design (`design_fir_highpass`), self-normalizing energy ESR loss, and the Anti-Drift Pareto early stopping architecture.
+  Physical string harmonic energy decay ($-43.5\text{ dB}$ harmonic drop-off), Multi-Resolution STFT Loss (MRSTFT) with bit-exact power clamping, full-band MSE anchoring, and the Anti-Drift Pareto early stopping architecture.
 - **[GPU Throughput Optimization & Benchmarks](native/gpu_throughput_optimization.md):**  
   Hardware profiling on AMD Radeon RX 9070 XT, resolution of three major GPU bottlenecks (PCIe host syncs, sequence slicing, and dynamic weight masking), Adam velocity ceiling proofs ($\ge 35$ epochs physical warmup floor), and cross-catalog 4-voice sweep benchmark matrix ($3.02\times$ workflow acceleration).
 
-### Stock Engine Technical Guides (`docs/trainer/stock/`)
-- **[Stock Spectral Loss Optimization](stock/trainer_spectral_loss_optimization.md):**  
-  Historical analysis of cloud training limitations vs local training, spectral loss formulation, and bass-weighted loss components.
-- **[Stock Early Stopping Architecture](stock/trainer_early_stopping_architecture.md):**  
-  Anti-Drift Pareto scoring, post-warmup baseline alignment, and state dict caching (now integrated into the native engine).
+### Stock Engine Documentation (`docs/trainer/stock/`)
+- **[Stock Engine Architecture](stock/README.md):**  
+  Upstream NAM / PyTorch Lightning baseline, fixed 200-epoch standard schedule, A2 slimmable container packaging, and terminal progress logging.
 
 ---
 
