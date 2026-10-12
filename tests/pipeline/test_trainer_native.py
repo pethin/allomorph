@@ -247,6 +247,8 @@ def test_native_default_hyperparameters_and_isolation() -> None:
         DEFAULT_MAX_EPOCHS,
         DEFAULT_MIN_EPOCHS,
         DEFAULT_PATIENCE,
+        NATIVE_DEFAULT_FIR_HP_FC,
+        NATIVE_DEFAULT_FIR_HP_WEIGHT,
         NATIVE_DEFAULT_LITE_WEIGHT,
         NATIVE_DEFAULT_LR,
         NATIVE_DEFAULT_LR_SCHEDULER,
@@ -255,7 +257,11 @@ def test_native_default_hyperparameters_and_isolation() -> None:
         NATIVE_DEFAULT_MIN_EPOCHS,
         NATIVE_DEFAULT_MRSTFT_WEIGHT,
         NATIVE_DEFAULT_PATIENCE,
+        NATIVE_DEFAULT_SINE_AMPLITUDES,
+        NATIVE_DEFAULT_SINE_FREQUENCIES,
+        NATIVE_DEFAULT_SINE_REGULARIZER,
         NATIVE_DEFAULT_SLICE_LEN,
+        NATIVE_DEFAULT_VAL_INTERVAL,
         NATIVE_DEFAULT_WEIGHT_DECAY,
         STOCK_DEFAULT_MAX_EPOCHS,
         train_voice_native,
@@ -265,16 +271,21 @@ def test_native_default_hyperparameters_and_isolation() -> None:
     assert STOCK_DEFAULT_MAX_EPOCHS == 200
 
     # 2. Native defaults are distinct and tuned for rapid in-VRAM convergence
-    assert NATIVE_DEFAULT_MAX_EPOCHS == 100
-    assert NATIVE_DEFAULT_MIN_EPOCHS == 60
-    assert NATIVE_DEFAULT_PATIENCE == 10
+    assert NATIVE_DEFAULT_MAX_EPOCHS == 120
+    assert NATIVE_DEFAULT_MIN_EPOCHS == 100
+    assert NATIVE_DEFAULT_PATIENCE == 15
     assert NATIVE_DEFAULT_MIN_DELTA == 1.0e-6
     assert NATIVE_DEFAULT_LR == 4.0e-3
-    assert NATIVE_DEFAULT_LR_SCHEDULER == "exponential"
+    assert NATIVE_DEFAULT_LR_SCHEDULER == "cosine"
     assert NATIVE_DEFAULT_LITE_WEIGHT == 0.50
     assert NATIVE_DEFAULT_WEIGHT_DECAY == 3.17e-7
     assert NATIVE_DEFAULT_SLICE_LEN == 8192
-    assert NATIVE_DEFAULT_MRSTFT_WEIGHT == 0.0005
+    assert NATIVE_DEFAULT_MRSTFT_WEIGHT == 0.0
+    assert NATIVE_DEFAULT_FIR_HP_WEIGHT == 2.5
+    assert NATIVE_DEFAULT_FIR_HP_FC == 1200.0
+    assert NATIVE_DEFAULT_VAL_INTERVAL == 5
+    assert NATIVE_DEFAULT_SINE_REGULARIZER is True
+    assert NATIVE_DEFAULT_SINE_AMPLITUDES == (0.25, 0.10, 0.05, 0.03, 0.008)
 
     # 3. Default platform hyperparameters match Native defaults
     assert DEFAULT_MAX_EPOCHS == NATIVE_DEFAULT_MAX_EPOCHS
@@ -289,4 +300,10 @@ def test_native_default_hyperparameters_and_isolation() -> None:
     assert sig.parameters["weight_decay"].default == NATIVE_DEFAULT_WEIGHT_DECAY
     assert sig.parameters["slice_len"].default == NATIVE_DEFAULT_SLICE_LEN
     assert sig.parameters["lite_weight"].default == NATIVE_DEFAULT_LITE_WEIGHT
+    assert sig.parameters["val_interval"].default == NATIVE_DEFAULT_VAL_INTERVAL
     assert sig.parameters["mrstft_weight"].default == NATIVE_DEFAULT_MRSTFT_WEIGHT
+    assert sig.parameters["fir_hp_weight"].default == NATIVE_DEFAULT_FIR_HP_WEIGHT
+    assert sig.parameters["fir_hp_fc"].default == NATIVE_DEFAULT_FIR_HP_FC
+    assert sig.parameters["sine_regularizer"].default == NATIVE_DEFAULT_SINE_REGULARIZER
+    assert sig.parameters["sine_frequencies"].default == NATIVE_DEFAULT_SINE_FREQUENCIES
+    assert sig.parameters["sine_amplitudes"].default == NATIVE_DEFAULT_SINE_AMPLITUDES

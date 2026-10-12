@@ -61,16 +61,16 @@ def test_default_training_hyperparameters():
         train_voice,
     )
 
-    assert DEFAULT_MAX_EPOCHS == 100
-    assert DEFAULT_MIN_EPOCHS == 60
-    assert DEFAULT_PATIENCE == 10
+    assert DEFAULT_MAX_EPOCHS == 120
+    assert DEFAULT_MIN_EPOCHS == 100
+    assert DEFAULT_PATIENCE == 15
     assert DEFAULT_MIN_DELTA == 1.0e-6
     assert DEFAULT_BATCH_SIZE == "auto"
     assert DEFAULT_PRECISION == "auto"
     assert DEFAULT_NUM_WORKERS == "auto"
-    assert DEFAULT_LR_SCHEDULER == "exponential"
-    assert DEFAULT_ETA_MIN == 1.0e-5
-    assert DEFAULT_LR_T_MAX == 45
+    assert DEFAULT_LR_SCHEDULER == "cosine"
+    assert DEFAULT_ETA_MIN == 1.0e-6
+    assert DEFAULT_LR_T_MAX == 115
 
     from allomorph.trainer import STOCK_DEFAULT_MAX_EPOCHS
 

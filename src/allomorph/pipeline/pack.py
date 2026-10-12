@@ -639,7 +639,7 @@ def train_tone_pack(
                 lr_t_max=lr_t_max,
                 fast_dev_run=fast_dev_run,
                 version_tag=None,
-                no_manifest=True,
+                no_manifest=False,
                 include_identity=False,
                 engine=engine,
                 seed=seed,
@@ -651,6 +651,14 @@ def train_tone_pack(
 
             total_trained += 1
             if target_nam.exists():
+                if manifest_path.exists():
+                    try:
+                        with open(manifest_path, "r", encoding="utf-8") as f:
+                            manifest_data = json.load(f)
+                    except (json.JSONDecodeError, OSError):
+                        pass
+                if "models" not in manifest_data or not isinstance(manifest_data["models"], dict):
+                    manifest_data["models"] = {}
                 _populate_manifest_model_entry(
                     manifest_data["models"], target_nam, s_info, b_name, dry_info=b_info
                 )

@@ -15,10 +15,10 @@ def _synth_log_chirp(
     f_end: float,
     amp: float,
     sample_rate: int = FS,
-    string_tilt: bool = False,
+    string_tilt: bool = True,
     f_corner: float = 1200.0,
 ) -> np.ndarray:
-    """Synthesizes a full-range logarithmic frequency chirp with 5ms micro-fades."""
+    """Synthesizes a full-range logarithmic frequency chirp with 5ms micro-fades and physical string harmonic tilt."""
     n = int(dur * sample_rate)
     if n <= 0:
         return np.empty(0, dtype=np.float64)

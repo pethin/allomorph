@@ -29,6 +29,7 @@ from allomorph.trainer.constants import (
     DEFAULT_PATIENCE,
     NATIVE_DEFAULT_LITE_WEIGHT,
     NATIVE_DEFAULT_LR,
+    NATIVE_DEFAULT_SINE_REGULARIZER,
     NATIVE_DEFAULT_SLICE_LEN,
     NATIVE_DEFAULT_WEIGHT_DECAY,
 )
@@ -277,6 +278,10 @@ class NamTrainingConfig(AllomorphBaseModel):
     native_lite_weight: float = Field(
         default=NATIVE_DEFAULT_LITE_WEIGHT,
         description=f"Native PyTorch engine submodel Lite weight (default: {NATIVE_DEFAULT_LITE_WEIGHT})",
+    )
+    sine_regularizer: bool = Field(
+        default=NATIVE_DEFAULT_SINE_REGULARIZER,
+        description="Enable Parseval pure-sine linearity regularizer to eliminate zero-crossing rectification buzzing",
     )
 
 

@@ -12,6 +12,7 @@ from allomorph.trainer.native.engine import train_voice_native
 from allomorph.trainer.native.loss import (
     MultiBandSpectralLoss,
     MultiResolutionSTFTLoss,
+    design_sharp_fir_highpass,
 )
 from allomorph.trainer.native.models import (
     CHANNELS_FULL,
@@ -29,5 +30,7 @@ __all__ = [
     "AllomorphWaveNetLayer",
     "MultiBandSpectralLoss",
     "MultiResolutionSTFTLoss",
+    "design_sharp_fir_highpass",
     "train_voice_native",
 ]
+

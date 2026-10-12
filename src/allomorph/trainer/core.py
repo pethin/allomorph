@@ -6,10 +6,13 @@ NAM Architecture 2 model configuration, and model export with studio reference m
 
 from __future__ import annotations
 
+import contextlib
+import importlib
 import os
 import platform
 import subprocess
 import sys
+from collections.abc import Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, override
 
@@ -39,7 +42,11 @@ from allomorph.trainer.constants import (
     DEFAULT_SEED,
     NATIVE_DEFAULT_LITE_WEIGHT,
     NATIVE_DEFAULT_LR,
+    NATIVE_DEFAULT_SINE_AMPLITUDES,
+    NATIVE_DEFAULT_SINE_FREQUENCIES,
+    NATIVE_DEFAULT_SINE_REGULARIZER,
     NATIVE_DEFAULT_SLICE_LEN,
+    NATIVE_DEFAULT_VAL_INTERVAL,
     NATIVE_DEFAULT_WEIGHT_DECAY,
     STOCK_DEFAULT_MAX_EPOCHS,
     VALID_ENGINES,
@@ -257,12 +264,9 @@ def resolve_hardware_batch_size(
 
 
 def resolve_hardware_precision(precision: str = DEFAULT_PRECISION) -> str:
-    """Dynamically resolves PyTorch Lightning precision based on device capabilities.
-
-    - Apple Silicon MPS: '32-true' (Fast float32 execution on Apple Silicon)
-    - NVIDIA CUDA: '32-true' (Leverages TensorFloat-32 / TF32 on Ampere and newer architectures)
-    - AMD ROCm (HIP): 'bf16-mixed' (Leverages native RDNA/CDNA BFloat16 matrix cores, 15x faster than FP32 fallback, no underflow)
-    - CPU: '32-true'
+    """Dynamically resolves neural training precision based on device capabilities:
+    Uses bfloat16 ('bf16-mixed') whenever supported across NVIDIA, AMD (ROCm HIP),
+    Apple Silicon MPS (macOS), TPU (XLA), or modern CPUs, falling back to float32 ('32-true').
     """
     if precision != "auto":
         return precision
@@ -270,19 +274,39 @@ def resolve_hardware_precision(precision: str = DEFAULT_PRECISION) -> str:
     try:
         import torch
 
-        if hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
-            return "32-true"
+        # 1. Google Cloud TPU (XLA)
+        with contextlib.suppress(ImportError, RuntimeError, AttributeError, OSError):
+            xm: Any = importlib.import_module("torch_xla.core.xla_model")
+            if xm.xla_device_hw(xm.xla_device()) == "TPU":
+                return "bf16-mixed"
 
+        # 2. CUDA / ROCm (Nvidia & AMD)
         if torch.cuda.is_available():
+            if hasattr(torch.cuda, "is_bf16_supported") and torch.cuda.is_bf16_supported():
+                return "bf16-mixed"
             is_hip = bool(getattr(torch.version, "hip", None))
             if is_hip:
-                # AMD ROCm: BFloat16 leverages native hardware matrix cores with 8-bit FP32 exponent
+                # AMD ROCm: RDNA/CDNA architectures support bfloat16 matrix cores
                 return "bf16-mixed"
-            # NVIDIA CUDA: Ampere and newer natively accelerate TF32 under 32-true
             return "32-true"
 
+        # 3. Apple Silicon MPS (macOS)
+        if hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
+            try:
+                # Verify bfloat16 tensor operations and autocast on macOS 14+ / Apple Silicon
+                with torch.autocast(device_type="mps", dtype=torch.bfloat16):
+                    test_tensor = torch.zeros(2, dtype=torch.bfloat16, device="mps")
+                    _ = test_tensor + test_tensor
+                return "bf16-mixed"
+            except (RuntimeError, TypeError, ValueError, OSError):
+                return "32-true"
+
+        # 4. CPU (Intel Sapphire Rapids+ / AMD Zen 4+ with AVX-512 VNNI/AMX)
+        if hasattr(torch, "cpu") and hasattr(torch.cpu, "is_bf16_supported") and torch.cpu.is_bf16_supported():
+            return "bf16-mixed"
+
         return "32-true"
-    except ImportError, RuntimeError:
+    except (ImportError, RuntimeError):
         return "32-true"
 
 
@@ -447,6 +471,10 @@ def train_voice(
     lr: float = NATIVE_DEFAULT_LR,
     weight_decay: float = NATIVE_DEFAULT_WEIGHT_DECAY,
     lite_weight: float = NATIVE_DEFAULT_LITE_WEIGHT,
+    val_interval: int = NATIVE_DEFAULT_VAL_INTERVAL,
+    sine_regularizer: bool = NATIVE_DEFAULT_SINE_REGULARIZER,
+    sine_frequencies: Sequence[float] = NATIVE_DEFAULT_SINE_FREQUENCIES,
+    sine_amplitudes: Sequence[float] = NATIVE_DEFAULT_SINE_AMPLITUDES,
 ) -> bool:
     """Trains a Neural Amp Modeler Architecture 2 model container using the configured engine."""
     resolved_engine = resolve_trainer_engine(engine)
@@ -486,6 +514,10 @@ def train_voice(
             weight_decay=weight_decay,
             slice_len=slice_len,
             lite_weight=lite_weight,
+            val_interval=val_interval,
+            sine_regularizer=sine_regularizer,
+            sine_frequencies=sine_frequencies,
+            sine_amplitudes=sine_amplitudes,
         )
 
     from allomorph.trainer.stock import train_voice_stock
@@ -598,6 +630,7 @@ def train_voices_from_config(cli_cfg: NamTrainingConfig) -> bool:
                 weight_decay=cli_cfg.native_weight_decay,
                 slice_len=cli_cfg.native_slice_len,
                 lite_weight=cli_cfg.native_lite_weight,
+                sine_regularizer=cli_cfg.sine_regularizer,
             )
             if not ok:
                 all_ok = False

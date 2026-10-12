@@ -213,20 +213,38 @@ class AllomorphWaveNetA2(nn.Module):
         out = self.head_rechannel(head_sum)
         return out * self.head_scale
 
-    def apply_weight_masks(self) -> None:
-        """Enforces zeroing of off-block cross-chassis weights and gradients."""
-        with torch.no_grad():
+    _cached_mask_weights: list[torch.Tensor] | None = None
+    _cached_mask_masks: list[torch.Tensor] | None = None
+
+    def _get_mask_tensors(self) -> tuple[list[torch.Tensor], list[torch.Tensor]]:
+        if (
+            self._cached_mask_weights is None
+            or len(self._cached_mask_weights) == 0
+            or self._cached_mask_weights[0].device != self.head_rechannel.weight.device
+        ):
+            w_list: list[torch.Tensor] = []
+            m_list: list[torch.Tensor] = []
             for layer in self.layers:
                 layer_mod = cast(AllomorphWaveNetLayer, layer)
-                layer_mod.conv.weight.mul_(layer_mod.mask_conv)
-                layer_mod.layer1x1.weight.mul_(layer_mod.mask_1x1)
-                if layer_mod.conv.weight.grad is not None:
-                    layer_mod.conv.weight.grad.mul_(layer_mod.mask_conv)
-                if layer_mod.layer1x1.weight.grad is not None:
-                    layer_mod.layer1x1.weight.grad.mul_(layer_mod.mask_1x1)
-            self.head_rechannel.weight.mul_(self.mask_head)
-            if self.head_rechannel.weight.grad is not None:
-                self.head_rechannel.weight.grad.mul_(self.mask_head)
+                w_list.extend([layer_mod.conv.weight, layer_mod.layer1x1.weight])
+                m_list.extend([layer_mod.mask_conv, layer_mod.mask_1x1])
+            w_list.append(self.head_rechannel.weight)
+            m_list.append(self.mask_head)
+            self._cached_mask_weights = w_list
+            self._cached_mask_masks = m_list
+        assert self._cached_mask_weights is not None
+        assert self._cached_mask_masks is not None
+        return self._cached_mask_weights, self._cached_mask_masks
+
+    def apply_weight_masks(self) -> None:
+        """Enforces zeroing of off-block cross-chassis weights and gradients."""
+        weights, masks = self._get_mask_tensors()
+        with torch.no_grad():
+            torch._foreach_mul_(weights, masks)
+            grads = [w.grad for w in weights if w.grad is not None]
+            if grads:
+                grad_masks = [m for w, m in zip(weights, masks, strict=True) if w.grad is not None]
+                torch._foreach_mul_(grads, grad_masks)
 
     def export_submodel_weights(self, submodel_idx: int) -> list[float]:
         """Flattens sliced submodel weights into the 1D array expected by NAM C++ core.

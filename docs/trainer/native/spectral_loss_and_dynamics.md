@@ -109,7 +109,7 @@ $$\mathcal{L}_{\text{total}} = w_{\text{mse}} \cdot \mathcal{L}_{\text{mse}} + w
 | Component | Default Weight | Target Domain | Acoustic Purpose |
 | :--- | :---: | :---: | :--- |
 | **Waveform MSE** | `1.00` | Time Domain | Anchors fundamental phase, sub-bass excursion, and DC stability |
-| **MRSTFT Loss** | `0.0005` | Multi-Scale Log-STFT | Equalizes RLC resonance peaks, pickup comb notches, and $>10\text{ kHz}$ air |
+| **MRSTFT Loss** | `0.00` (Optional) | Multi-Scale Log-STFT | Optional spectral guidance; bypassed by default to prevent non-linear LeakyReLU rectification |
 | **Pre-Emphasis MSE** | `0.00` (Bypassed) | Time Domain | Optional linear differentiator boost (bypassed in favor of MRSTFT) |
 | **High-Pass ESR** | `0.00` (Bypassed) | Band-Passed ESR | Disabled to eliminate small-signal denominator singularity |
 
@@ -151,7 +151,7 @@ The native engine operates under an isolated hyperparameter regime tuned for rap
 
 | Hyperparameter | Upstream Stock Engine (`STOCK_DEFAULT_MAX_EPOCHS`) | Native Engine (`NATIVE_DEFAULT_*`) | Rationale |
 | :--- | :---: | :---: | :--- |
-| **Spectral Loss** | None (standard upstream NAM) | **Multi-Resolution STFT (`0.0005`)** | Linear spectral log-magnitude guidance without denominator distortion singularities |
+| **Spectral Loss** | None (standard upstream NAM) | **Pure Time-Domain MSE (`0.00` MRSTFT)** | Prevents LeakyReLU rectification and guarantees studio linearity |
 | **Max Epoch Schedule** | `200` | **`100`** | Complete convergence achieved in 60–90 epochs with $-30.3\text{ dB}$ ESR |
 | **Early Stopping** | None (fixed 200-epoch schedule) | **Anti-Drift Pareto** | Integrated post-warmup plateau detection saving GPU compute |
 | **Min Warmup Epochs** | N/A | **`60`** | Ensures full learning rate annealing through differentiator formation |

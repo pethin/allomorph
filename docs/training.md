@@ -109,7 +109,7 @@ Allomorph provides two dedicated training backends in `src/allomorph/trainer/`:
 | **Min Delta** | N/A | `1.0e-6` | Composite validation loss improvement threshold |
 | **Loss Formulation** | Standard Upstream NAM (MSE/ESR) | Multi-Resolution STFT + MSE | Loss function for parameter optimization |
 | **Waveform MSE Weight**| N/A (Standard NAM) | `1.00` | Full-band time-domain MSE anchor weight |
-| **MRSTFT Weight** | N/A | `0.0005` | Multi-scale log-magnitude and spectral convergence weight |
+| **MRSTFT Weight** | N/A | `0.00` | Optional multi-scale STFT weight (bypassed by default for studio linearity) |
 | **Base Learning Rate** | `1.0e-2` (Stock Adam) | `4.0e-3` (Native Adam) | Optimizer initial learning rate |
 | **Weight Decay** | `0.0` | `3.17e-7` | Optimizer L2 kernel regularization |
 | **Slice Length** | `8192` (DataLoader) | `8192` (In-VRAM Permuted) | Audio segment length in samples |

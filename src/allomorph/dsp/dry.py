@@ -53,13 +53,11 @@ def synth_log_chirps(sample_rate: int = FS, scale: float = 1.0) -> list[tuple[np
         (15.0, 22000.0, 0.400, 7.0),
         (15.0, 22000.0, 0.650, 1.8),
         (22000.0, 15.0, 0.500, 5.0),
-        (2000.0, 22000.0, 0.400, 3.5),
-        (5000.0, 22000.0, 0.500, 2.5),
     ]
     results: list[tuple[np.ndarray, float]] = []
     for f_s, f_e, amp, dur_base in chirp_tiers:
         dur_c = max(0.6, dur_base * scale)
-        c = _synth_log_chirp(dur_c, f_s, f_e, amp, sample_rate, string_tilt=False)
+        c = _synth_log_chirp(dur_c, f_s, f_e, amp, sample_rate, string_tilt=True, f_corner=1200.0)
         results.append((c, 0.4))
     return results
 
@@ -155,8 +153,8 @@ def synth_articulation_bursts(
         results.append((p, 0.4))
 
     # Natural harmonics
-    for h_f in [82.41, 123.6, 164.8, 220.0, 329.63, 440.0, 587.33, 880.0]:
-        h = _synth_natural_harmonic(h_f, 0.70, max(0.4, 1.6 * scale), sample_rate, num_partials=8)
+    for h_f in [82.41, 123.6, 164.8]:
+        h = _synth_natural_harmonic(h_f, 0.70, max(0.4, 1.6 * scale), sample_rate)
         results.append((h, 0.4))
 
     return results
@@ -216,10 +214,6 @@ def synth_polyphony_and_probes(
                 3100.0,
                 4200.0,
                 6000.0,
-                8000.0,
-                10500.0,
-                13500.0,
-                16000.0,
             ]
             kc = len(clusters)
             sig_m = np.zeros(nm, dtype=np.float64)
@@ -388,7 +382,9 @@ def generate_optimal_bass_dry(
 
     if total_samples > val_samples and cur < train_fill_limit - int(0.5 * sample_rate):
         dur_fill = (train_fill_limit - cur) / sample_rate
-        c_fill = _synth_log_chirp(dur_fill, 15.0, 22000.0, 0.35, sample_rate, string_tilt=False)
+        c_fill = _synth_log_chirp(
+            dur_fill, 15.0, 22000.0, 0.35, sample_rate, string_tilt=True, f_corner=1200.0
+        )
         append_segment(c_fill, 0.0)
 
     if total_samples > val_samples:

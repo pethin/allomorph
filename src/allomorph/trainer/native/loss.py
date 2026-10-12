@@ -12,12 +12,30 @@ import torch.nn.functional as F
 from torch import nn
 
 from allomorph.trainer.constants import (
-    NATIVE_DEFAULT_MRSTFT_FFT_SIZES,
-    NATIVE_DEFAULT_MRSTFT_HOP_SIZES,
     NATIVE_DEFAULT_MRSTFT_WEIGHT,
-    NATIVE_DEFAULT_MRSTFT_WIN_LENGTHS,
     NATIVE_DEFAULT_MSE_WEIGHT,
 )
+
+
+def design_sharp_fir_highpass(fc: float, fs: float, num_taps: int = 255) -> torch.Tensor:
+    """Designs a sharp linear-phase FIR high-pass filter with >108 dB stopband rejection.
+
+    Uses a Blackman-windowed sinc high-pass impulse response, normalized to peak passband
+    magnitude of 1.00 via FFT. Returns a 1x1xT 3D tensor suitable for F.conv1d.
+    """
+    import numpy as np
+
+    fc_norm = fc / fs
+    n = np.arange(num_taps) - (num_taps - 1) / 2
+    h_lp = 2 * fc_norm * np.sinc(2 * fc_norm * n)
+    h_hp = -h_lp
+    center = (num_taps - 1) // 2
+    h_hp[center] += 1.0
+    w = np.blackman(num_taps)
+    h_hp = (h_hp * w).astype(np.float32)
+    H_max = float(np.max(np.abs(np.fft.rfft(h_hp, n=4096))))
+    h_hp = (h_hp / H_max).astype(np.float32)
+    return torch.from_numpy(h_hp).unsqueeze(0).unsqueeze(0)
 
 
 class MultiResolutionSTFTLoss(nn.Module):
@@ -36,9 +54,9 @@ class MultiResolutionSTFTLoss(nn.Module):
 
     def __init__(
         self,
-        fft_sizes: tuple[int, ...] = NATIVE_DEFAULT_MRSTFT_FFT_SIZES,
-        hop_sizes: tuple[int, ...] = NATIVE_DEFAULT_MRSTFT_HOP_SIZES,
-        win_lengths: tuple[int, ...] = NATIVE_DEFAULT_MRSTFT_WIN_LENGTHS,
+        fft_sizes: tuple[int, ...] = (1024, 2048, 512),
+        hop_sizes: tuple[int, ...] = (120, 240, 50),
+        win_lengths: tuple[int, ...] = (600, 1200, 240),
         w_sc: float = 1.0,
         w_log_mag: float = 1.0,
         eps: float = 1e-8,
@@ -119,9 +137,9 @@ class MultiBandSpectralLoss(nn.Module):
         self,
         mse_weight: float = NATIVE_DEFAULT_MSE_WEIGHT,
         mrstft_weight: float = NATIVE_DEFAULT_MRSTFT_WEIGHT,
-        mrstft_fft_sizes: tuple[int, ...] = NATIVE_DEFAULT_MRSTFT_FFT_SIZES,
-        mrstft_hop_sizes: tuple[int, ...] = NATIVE_DEFAULT_MRSTFT_HOP_SIZES,
-        mrstft_win_lengths: tuple[int, ...] = NATIVE_DEFAULT_MRSTFT_WIN_LENGTHS,
+        mrstft_fft_sizes: tuple[int, ...] = (1024, 2048, 512),
+        mrstft_hop_sizes: tuple[int, ...] = (120, 240, 50),
+        mrstft_win_lengths: tuple[int, ...] = (600, 1200, 240),
         fs: float = 48000.0,
     ) -> None:
         super().__init__()
@@ -169,3 +187,10 @@ class MultiBandSpectralLoss(nn.Module):
             "composite_loss": float(loss.detach().cpu().item()),
         }
         return loss, metrics
+
+
+__all__ = [
+    "MultiBandSpectralLoss",
+    "MultiResolutionSTFTLoss",
+    "design_sharp_fir_highpass",
+]
