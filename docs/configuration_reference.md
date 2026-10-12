@@ -34,7 +34,7 @@ config/
 
 ## 2. Instrument Configuration Schema (`config/instruments/*.toml`)
 
-An instrument configuration represents a **physical source bass** whose active signal is fed into Passivizer. It defines the instrument's vibrating scale length, string wave speeds, onboard pickups, physical coil locations, and the mapping from target voices to physical switch positions.
+An instrument configuration represents a **physical source bass** whose active signal is fed into Allomorph. It defines the instrument's vibrating scale length, string wave speeds, onboard pickups, physical coil locations, and the mapping from target voices to physical switch positions.
 
 ### Root Table Parameters
 
@@ -221,7 +221,7 @@ $$v_s = 2 \cdot L \cdot f_{0,s}$$
 
 ## 4. Target Voice Definitions (Native Instrument Voicings & Global VOICES Registry)
 
-In modern Allomorph v0.4.x, target voices are defined directly within the Unified Instrument Catalog (`config/instruments/*.toml`) under `[voicings.<id>]`. The `allomorph.config.voices` registry dynamically resolves these into validated `VoiceConfig` models. This ensures every target voice is rooted in an authentic, physically verified instrument with declarative SPICE circuits, precise coil apertures, and string setups:
+In modern Allomorph v0.5.x, target voices are defined directly within the Unified Instrument Catalog (`config/instruments/*.toml`) under `[voicings.<id>]`. The `allomorph.config.voices` registry dynamically resolves these into validated `VoiceConfig` models. This ensures every target voice is rooted in an authentic, physically verified instrument with declarative SPICE circuits, precise coil apertures, and string setups:
 
 | Field | Type | Units | Description |
 | :--- | :--- | :--- | :--- |
@@ -333,7 +333,7 @@ Rvol = 500000.0
 
 ## 6. How to Add a Custom Instrument
 
-To model your own bass in Passivizer:
+To model your own bass in Allomorph:
 
 1. Create a new file: `config/instruments/my_bass.toml`.
 2. Measure:

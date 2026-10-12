@@ -72,7 +72,7 @@ def compose_zero_scroll_model_name(
 ) -> str:
     """Composes a zero-scroll pedalboard / Tone3000 model display name.
 
-    Format: `Tone Name [Position] v2.1.1` or `Tone Name v2.1.1`.
+    Format: `Tone Name [Position] v6.1.1` or `Tone Name v6.1.1`.
     Enforces maximum character ceiling (default 34 chars for unversioned, 64 chars for versioned).
     """
     clean_tone = sanitize_tone_name_token(tone_name)
@@ -107,8 +107,8 @@ def get_t3k_basename(
     """Generates a Tone3000 pack model basename.
 
     Format:
-      - Multi-pickup instruments: `Tone Name [Pickup Position]` or `Tone Name [Pickup Position] v2.1.1`
-      - Single-pickup instruments or preserve_aperture tones: `Tone Name` or `Tone Name v2.1.1`
+      - Multi-pickup instruments: `Tone Name [Pickup Position]` or `Tone Name [Pickup Position] v6.1.1`
+      - Single-pickup instruments or preserve_aperture tones: `Tone Name` or `Tone Name v6.1.1`
 
     Enforces that the filename (excluding the `.nam` extension) does not exceed
     `max_length` (strict Tone3000 upload ceiling is 64 chars; unversioned legacy default is 34).

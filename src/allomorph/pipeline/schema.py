@@ -159,11 +159,11 @@ class NamExportMetadata(AllomorphBaseModel):
     license: str
     copyright: str
     author: str
-    version: str = Field(default="v2.1.1")
-    dsp_version: int = Field(default=2)
+    version: str = Field(default="v6.1.1")
+    dsp_version: int = Field(default=6)
     instrument_version: int = Field(default=1)
     voice_version: int = Field(default=1)
-    allomorph_version: str = Field(default="0.2.0")
+    allomorph_version: str = Field(default="0.5.0")
     git_commit: str | None = None
     generated_at: str | None = None
     source_instrument: NamSourceInstrumentMeta

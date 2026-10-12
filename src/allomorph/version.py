@@ -53,7 +53,7 @@ def resolve_tri_part_version(
 
     If voice_version is None, formats as two-part: v[dsp].[inst].
     If both inst_version and voice_version are None, formats as single-part: v[dsp].
-    Example: resolve_tri_part_version(2, 1, 1) -> 'v2.1.1'
+    Example: resolve_tri_part_version(6, 1, 1) -> 'v6.1.1'
     """
     if inst_version is None and voice_version is None:
         return f"v{dsp}"

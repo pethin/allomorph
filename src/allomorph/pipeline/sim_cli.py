@@ -235,7 +235,7 @@ def build_sim_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--version-tag",
         default=None,
-        help="Semantic version tag to embed in exported filenames (e.g. 'auto', 'v2.1.1')",
+        help="Semantic version tag to embed in exported filenames (e.g. 'auto', 'v6.1.1')",
     )
     parser.add_argument(
         "--no-manifest",

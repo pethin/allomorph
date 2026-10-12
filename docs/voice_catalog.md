@@ -212,7 +212,7 @@ This catalog details the physical parameters, equivalent RLC circuit values, aco
 
 ## Geometry & Scale-Normalized Displacement Mapping (30" EMG MM $\to$ Target Datums)
 
-When running Passivizer from a **30" short-scale bass with a single 18V EMG MM pickup**, the software compensates for spatial aperture, standing-wave bridge proximity, and physical scale differences using **scale-normalized fractional coordinates** ($\eta = x / L$) rather than raw millimeter subtractions (adhering strictly to Architectural Guardrail §1.5):
+When running Allomorph from a **30" short-scale bass with a single 18V EMG MM pickup**, the software compensates for spatial aperture, standing-wave bridge proximity, and physical scale differences using **scale-normalized fractional coordinates** ($\eta = x / L$) rather than raw millimeter subtractions (adhering strictly to Architectural Guardrail §1.5):
 
 ### Physical Datums:
 * **Source Instrument (30" Short Scale Bass):**

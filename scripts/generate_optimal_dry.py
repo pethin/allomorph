@@ -31,7 +31,7 @@ def main() -> None:
         "--version-tag",
         type=str,
         default=None,
-        help="Semantic version token (e.g. 'v2.1.1' or 'v2'). Defaults to resolved tri-part version.",
+        help="Semantic version token (e.g. 'v6.1.1' or 'v6'). Defaults to resolved tri-part version.",
     )
     parser.add_argument(
         "--no-manifest",

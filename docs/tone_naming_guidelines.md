@@ -108,7 +108,7 @@ Every Allomorph tone name must satisfy two physical and software thresholds:
 ### 1. Darkglass Anagram Screen Viewport ($\le 34$ Characters)
 - **Viewport:** The Darkglass Anagram pedalboard LCD block displays **34 characters** without scrolling.
 - **Goal:** Achieve **100% Zero-Scroll** on stage across all production voices.
-- Under our systematic grammar, the longest name in the catalog (`Rickenbacker Clank [Bridge] v2.1.1`) is exactly **34 characters**, ensuring zero marquee scrolling across the entire library!
+- Under our systematic grammar, the longest name in the catalog (`Rickenbacker Clank [Bridge] v6.1.1`) is exactly **34 characters**, ensuring zero marquee scrolling across the entire library!
 
 ### 2. Tone3000 Upload Ceiling ($\le 64$ Characters)
 - **Ceiling:** The Tone3000 cloud uploader strictly rejects model basenames exceeding **64 characters** (excluding `.nam`).
@@ -123,26 +123,26 @@ Below is the definitive catalog of all 24 Allomorph target voices under the syst
 
 | Voice Slug | Declarative `tone_name` | Source Pos Tag | Full Model Basename (`.nam`) | Chars | Screen Status | Musical Personality / Bassist Context |
 | :--- | :--- | :---: | :--- | :---: | :--- | :--- |
-| `jazz_pair_active` | `Jazz Pair Active` | `[Parallel]` | `Jazz Pair Active [Parallel] v2.1.1` | 33 | **Zero-Scroll** | Active 2-band EQ slap scoop; scooped mids |
-| `jazz_pair_open` | `Jazz Pair Open` | `[Parallel]` | `Jazz Pair Open [Parallel] v2.1.1` | 31 | **Zero-Scroll** | Classic 60s dual single-coils, tone wide open |
-| `jazz_pair_mids` | `Jazz Pair Mids` | `[Parallel]` | `Jazz Pair Mids [Parallel] v2.1.1` | 31 | **Zero-Scroll** | Vocal mid-honk; smooth top with punchy mids |
-| `jazz_bridge_growl` | `Jazz Bridge Growl` | `[Bridge]` | `Jazz Bridge Growl [Bridge] v2.1.1` | 33 | **Zero-Scroll** | Singing fretless bridge burp & vocal growl |
-| `jazz_bridge_open` | `Jazz Bridge Open` | `[Bridge]` | `Jazz Bridge Open [Bridge] v2.1.1` | 33 | **Zero-Scroll** | Tight, biting 60s bridge single-coil, wide open |
-| `precision_active` | `Precision Active` | `[Split]` | `Precision Active [Split] v2.1.1` | 31 | **Zero-Scroll** | Modern active ceramic split-P with 2-band preamp |
-| `precision_vintage` | `Precision Vintage` | `[Split]` | `Precision Vintage [Split] v2.1.1` | 32 | **Zero-Scroll** | Classic '62 Alnico V split-P, CTS 250k open |
-| `precision_mids` | `Precision Mids` | `[Split]` | `Precision Mids [Split] v2.1.1` | 29 | **Zero-Scroll** | Cutting vocal P-bass with articulate punch |
-| `precision_warm` | `Precision Warm` | `[Split]` | `Precision Warm [Split] v2.1.1` | 29 | **Zero-Scroll** | Classic Motown / flatwound woody thump |
-| `precision_dub` | `Precision Dub` | `[Split]` | `Precision Dub [Split] v2.1.1` | 28 | **Zero-Scroll** | Deep 1950s sub-bass dub thump |
-| `pj_active` | `PJ Active` | `[Parallel]` | `PJ Active [Parallel] v2.1.1` | 28 | **Zero-Scroll** | Split-P + J-bridge with active 2-band preamp |
-| `pj_passive` | `PJ Passive` | `[Parallel]` | `PJ Passive [Parallel] v2.1.1` | 29 | **Zero-Scroll** | Organic P-thump with J-bridge articulation |
-| `stingray_parallel` | `StingRay Parallel` | `[Bridge]` | `StingRay Parallel [Bridge] v2.1.1` | 33 | **Zero-Scroll** | Classic 2-band active Music Man authority |
-| `stingray_series` | `StingRay Series` | `[Bridge]` | `StingRay Series [Bridge] v2.1.1` | 31 | **Zero-Scroll** | Muscular, mid-forward high-output MM punch |
-| `rickenbacker_clank` | `Rickenbacker Clank` | `[Bridge]` | `Rickenbacker Clank [Bridge] v2.1.1` | 34 | **Zero-Scroll** | Classic 4003 bridge coil with high-pass clank |
-| `p_mm_parallel` | `P∕MM Parallel` | `[Parallel]` | `P∕MM Parallel [Parallel] v2.1.1` | 31 | **Zero-Scroll** | Split-P + MM bridge in parallel with active buffer |
-| `p_mm_series` | `P∕MM Series` | `[Series]` | `P∕MM Series [Series] v2.1.1` | 27 | **Zero-Scroll** | Split-P + MM bridge in series with active buffer |
-| `mudbucker_deep` | `Mudbucker Deep` | `[Neck]` | `Mudbucker Deep [Neck] v2.1.1` | 29 | **Zero-Scroll** | Massive 14.4H sidewinder neck sub-bass rumble |
-| `dingwall_bridge` | `Dingwall Bridge` | `[Bridge]` | `Dingwall Bridge [Bridge] v2.1.1` | 32 | **Zero-Scroll** | High-tension fanned-fret progressive clarity |
-| `upright_piezo` | `Upright Piezo` | — | `Upright Piezo v2.1.1` | 20 | **Zero-Scroll** | Woody double-bass piezo bridge transducer |
+| `jazz_pair_active` | `Jazz Pair Active` | `[Parallel]` | `Jazz Pair Active [Parallel] v6.1.1` | 33 | **Zero-Scroll** | Active 2-band EQ slap scoop; scooped mids |
+| `jazz_pair_open` | `Jazz Pair Open` | `[Parallel]` | `Jazz Pair Open [Parallel] v6.1.1` | 31 | **Zero-Scroll** | Classic 60s dual single-coils, tone wide open |
+| `jazz_pair_mids` | `Jazz Pair Mids` | `[Parallel]` | `Jazz Pair Mids [Parallel] v6.1.1` | 31 | **Zero-Scroll** | Vocal mid-honk; smooth top with punchy mids |
+| `jazz_bridge_growl` | `Jazz Bridge Growl` | `[Bridge]` | `Jazz Bridge Growl [Bridge] v6.1.1` | 33 | **Zero-Scroll** | Singing fretless bridge burp & vocal growl |
+| `jazz_bridge_open` | `Jazz Bridge Open` | `[Bridge]` | `Jazz Bridge Open [Bridge] v6.1.1` | 33 | **Zero-Scroll** | Tight, biting 60s bridge single-coil, wide open |
+| `precision_active` | `Precision Active` | `[Split]` | `Precision Active [Split] v6.1.1` | 31 | **Zero-Scroll** | Modern active ceramic split-P with 2-band preamp |
+| `precision_vintage` | `Precision Vintage` | `[Split]` | `Precision Vintage [Split] v6.1.1` | 32 | **Zero-Scroll** | Classic '62 Alnico V split-P, CTS 250k open |
+| `precision_mids` | `Precision Mids` | `[Split]` | `Precision Mids [Split] v6.1.1` | 29 | **Zero-Scroll** | Cutting vocal P-bass with articulate punch |
+| `precision_warm` | `Precision Warm` | `[Split]` | `Precision Warm [Split] v6.1.1` | 29 | **Zero-Scroll** | Classic Motown / flatwound woody thump |
+| `precision_dub` | `Precision Dub` | `[Split]` | `Precision Dub [Split] v6.1.1` | 28 | **Zero-Scroll** | Deep 1950s sub-bass dub thump |
+| `pj_active` | `PJ Active` | `[Parallel]` | `PJ Active [Parallel] v6.1.1` | 28 | **Zero-Scroll** | Split-P + J-bridge with active 2-band preamp |
+| `pj_passive` | `PJ Passive` | `[Parallel]` | `PJ Passive [Parallel] v6.1.1` | 29 | **Zero-Scroll** | Organic P-thump with J-bridge articulation |
+| `stingray_parallel` | `StingRay Parallel` | `[Bridge]` | `StingRay Parallel [Bridge] v6.1.1` | 33 | **Zero-Scroll** | Classic 2-band active Music Man authority |
+| `stingray_series` | `StingRay Series` | `[Bridge]` | `StingRay Series [Bridge] v6.1.1` | 31 | **Zero-Scroll** | Muscular, mid-forward high-output MM punch |
+| `rickenbacker_clank` | `Rickenbacker Clank` | `[Bridge]` | `Rickenbacker Clank [Bridge] v6.1.1` | 34 | **Zero-Scroll** | Classic 4003 bridge coil with high-pass clank |
+| `p_mm_parallel` | `P∕MM Parallel` | `[Parallel]` | `P∕MM Parallel [Parallel] v6.1.1` | 31 | **Zero-Scroll** | Split-P + MM bridge in parallel with active buffer |
+| `p_mm_series` | `P∕MM Series` | `[Series]` | `P∕MM Series [Series] v6.1.1` | 27 | **Zero-Scroll** | Split-P + MM bridge in series with active buffer |
+| `mudbucker_deep` | `Mudbucker Deep` | `[Neck]` | `Mudbucker Deep [Neck] v6.1.1` | 29 | **Zero-Scroll** | Massive 14.4H sidewinder neck sub-bass rumble |
+| `dingwall_bridge` | `Dingwall Bridge` | `[Bridge]` | `Dingwall Bridge [Bridge] v6.1.1` | 32 | **Zero-Scroll** | High-tension fanned-fret progressive clarity |
+| `upright_piezo` | `Upright Piezo` | — | `Upright Piezo v6.1.1` | 20 | **Zero-Scroll** | Woody double-bass piezo bridge transducer |
 
 ---
 
@@ -185,11 +185,11 @@ To ensure model files are compatible with macOS, Linux, and Windows filesystems,
   - ❌ `Jaco Bridge Growl`
   - ✅ `Jazz Bridge Growl`
 - **DO NOT include the source instrument name in `tone_name`:**
-  - ❌ `34in Standard P Precision Vintage v2.1.1.nam` (43 chars, marquee scrolls)
-  - ✅ `Precision Vintage [Split] v2.1.1.nam` (32 chars, zero-scroll)
+  - ❌ `34in Standard P Precision Vintage v6.1.1.nam` (43 chars, marquee scrolls)
+  - ✅ `Precision Vintage [Split] v6.1.1.nam` (32 chars, zero-scroll)
 - **DO NOT invent arbitrary abbreviations:**
-  - ❌ `P-Bss Vntg [Splt] v2.1.1.nam` (cryptic and unprofessional)
-  - ✅ `Precision Vintage [Split] v2.1.1.nam`
+  - ❌ `P-Bss Vntg [Splt] v6.1.1.nam` (cryptic and unprofessional)
+  - ✅ `Precision Vintage [Split] v6.1.1.nam`
 - **DO NOT mix and match word order:**
   - ❌ `Active Modern Jazz Pair`
   - ✅ `Jazz Pair Active`

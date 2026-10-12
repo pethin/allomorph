@@ -14,7 +14,7 @@ The Darkglass Anagram allows up to 24 simultaneous blocks in series or parallel 
           ▼
 ┌────────────────────────────────────────────────────────┐
 │ Block 1: Allomorph Digital Twin (NAM Preamp)           │  ◄── NAM Preamp Block (1 of 9 slots used)
-│   └── "[Tone Name] [Position] v2.1.1.nam"              │      Captures target voicing, RLC resonance,
+│   └── "[Tone Name] [Position] v6.1.1.nam"              │      Captures target voicing, RLC resonance,
 │   • End-to-end differential acoustic/circuit transform │      eddy currents, and non-linear magnetic feel
 │   • Dynamic Lenz sag, back-EMF, & core hysteresis      │
 │   • Calibrated RMS loudness matching                   │
@@ -108,34 +108,34 @@ Allomorph models are calibrated with RMS loudness matching, bounded by a $-0.09\
 Group the pickup profiles into dedicated 3-button banks on the Anagram hardware:
 
 ### Bank 1: Modern & Vintage Jazz Foundations
-* **Footswitch A:** `Jazz Pair Active [Parallel] v2.1.1.nam` (Modern Active Jazz - 2-Band Slap Scoop)
-* **Footswitch B:** `Jazz Pair Open [Parallel] v2.1.1.nam` (Vintage 60s Jazz Bass Pair)
-* **Footswitch C:** `Jazz Bridge Open [Bridge] v2.1.1.nam` (60s Jazz Bridge Single-Coil)
+* **Footswitch A:** `Jazz Pair Active [Parallel] v6.1.1.nam` (Modern Active Jazz - 2-Band Slap Scoop)
+* **Footswitch B:** `Jazz Pair Open [Parallel] v6.1.1.nam` (Vintage 60s Jazz Bass Pair)
+* **Footswitch C:** `Jazz Bridge Open [Bridge] v6.1.1.nam` (60s Jazz Bridge Single-Coil)
 
 ### Bank 2: Precision Bass Foundations
-* **Footswitch A:** `Precision Active [Split] v2.1.1.nam` (Modern Ceramic Split-P - Active 2-Band Preamp)
-* **Footswitch B:** `Precision Vintage [Split] v2.1.1.nam` (Vintage '62 Alnico V Split-P - Tone Open)
-* **Footswitch C:** `Precision Warm [Split] v2.1.1.nam` (P-Bass 47nF Motown Flatwound Warmth)
+* **Footswitch A:** `Precision Active [Split] v6.1.1.nam` (Modern Ceramic Split-P - Active 2-Band Preamp)
+* **Footswitch B:** `Precision Vintage [Split] v6.1.1.nam` (Vintage '62 Alnico V Split-P - Tone Open)
+* **Footswitch C:** `Precision Warm [Split] v6.1.1.nam` (P-Bass 47nF Motown Flatwound Warmth)
 
 ### Bank 3: P/J Hybrid & Music Man Active
-* **Footswitch A:** `PJ Active [Parallel] v2.1.1.nam` (Modern Active P/J)
-* **Footswitch B:** `PJ Passive [Parallel] v2.1.1.nam` (Vintage Passive P/J)
-* **Footswitch C:** `StingRay Parallel [Bridge] v2.1.1.nam` (Music Man Active 2-Band Humbucker Parallel)
+* **Footswitch A:** `PJ Active [Parallel] v6.1.1.nam` (Modern Active P/J)
+* **Footswitch B:** `PJ Passive [Parallel] v6.1.1.nam` (Vintage Passive P/J)
+* **Footswitch C:** `StingRay Parallel [Bridge] v6.1.1.nam` (Music Man Active 2-Band Humbucker Parallel)
 
 ### Bank 4: Series Punch & Maximum Inductance
-* **Footswitch A:** `StingRay Series [Bridge] v2.1.1.nam` (Music Man Series Humbucker Mid-Punch)
-* **Footswitch B:** `P∕MM Series [Series] v2.1.1.nam` (P/MM Series Sum)
-* **Footswitch C:** `Mudbucker Deep [Neck] v2.1.1.nam` (Gibson Mudbucker Series)
+* **Footswitch A:** `StingRay Series [Bridge] v6.1.1.nam` (Music Man Series Humbucker Mid-Punch)
+* **Footswitch B:** `P∕MM Series [Series] v6.1.1.nam` (P/MM Series Sum)
+* **Footswitch C:** `Mudbucker Deep [Neck] v6.1.1.nam` (Gibson Mudbucker Series)
 
 ### Bank 5: Multi-Scale, Acoustic & Vintage Filtered
-* **Footswitch A:** `Rickenbacker Clank [Bridge] v2.1.1.nam` (Rickenbacker 4003 Bridge with HPF Clank)
-* **Footswitch B:** `Dingwall Bridge [Bridge] v2.1.1.nam` (Dingwall Multi-Scale Bridge)
-* **Footswitch C:** `Upright Piezo v2.1.1.nam` (Upright Piezo Bridge Saddle Transducer)
+* **Footswitch A:** `Rickenbacker Clank [Bridge] v6.1.1.nam` (Rickenbacker 4003 Bridge with HPF Clank)
+* **Footswitch B:** `Dingwall Bridge [Bridge] v6.1.1.nam` (Dingwall Multi-Scale Bridge)
+* **Footswitch C:** `Upright Piezo v6.1.1.nam` (Upright Piezo Bridge Saddle Transducer)
 
 ### Bank 6: Studio Voicings & Pure Dynamics
-* **Footswitch A:** `Studio Direct v2.1.1.nam` (Pure Acoustic Aperture / Studio DI)
-* **Footswitch B:** `Studio Active v2.1.1.nam` (Modern Active Buffer / Air Lift)
-* **Footswitch C:** `Studio Passive v2.1.1.nam` (High-Z RLC & Cable Loading)
+* **Footswitch A:** `Studio Direct v6.1.1.nam` (Pure Acoustic Aperture / Studio DI)
+* **Footswitch B:** `Studio Active v6.1.1.nam` (Modern Active Buffer / Air Lift)
+* **Footswitch C:** `Studio Passive v6.1.1.nam` (High-Z RLC & Cable Loading)
 
 > [!TIP]
 > **Studio Voicings Routing:**

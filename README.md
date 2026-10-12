@@ -341,9 +341,16 @@ allomorph/
 │   ├── analyze_voices.py                  # Thin delegating CLI wrapper for allomorph.visualizer
 │   ├── train_nam.py                       # Local NAM A2 PyTorch/MPS GPU trainer
 │   └── generate_tone3000_artwork.py       # Tone3000 storefront artwork generator
-├── tests/                                 # Hierarchical pytest test suite (365 tests)
+├── tests/                                 # Hierarchical pytest test suite (543 tests)
 │   ├── circuit/                           # SPICE netlists, nodal RLC solving, ODE saturation, simulation
-│   └── physics/                           # Aperture sinc filters, string mechanics, dispersion, FIR synthesis
+│   ├── config/                            # Instrument, voicing, and naming schema validation
+│   ├── dsp/                               # Wave synthesis, loudness gating, Hilbert FIR, 24-bit I/O
+│   ├── integration/                       # End-to-end pipeline and CLI execution tests
+│   ├── physics/                           # Aperture sinc filters, string mechanics, dispersion, FIR synthesis
+│   ├── pipeline/                          # Staging, batching, manifest provenance, and trainer verification
+│   ├── tone3000/                          # Tone3000 storefront pack generation and metadata
+│   ├── visualizer/                        # Vega-Lite / Altair frequency response portal tests
+│   └── test_guardrails.py                 # Core physical and architectural invariant assertions
 └── models/                                # Exported .nam neural models
 ```
 
