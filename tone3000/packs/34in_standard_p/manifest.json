@@ -211,5 +211,51 @@
         }
       ]
     }
+  },
+  "models": {
+    "Jazz Pair Active v6.1.1.nam": {
+      "filename": "Jazz Pair Active v6.1.1.nam",
+      "bundle": "split",
+      "target_instrument": "34in_standard_jazz",
+      "target_instrument_version": 1,
+      "target_voicing": "pair_active",
+      "target_voicing_version": 1,
+      "version": "v6.1.1",
+      "tone_name": "Jazz Pair Active",
+      "sha256": "9dee267ef5d22e28cf233336774183cc52dc3fe1220e51af8b04f42117169c1e"
+    },
+    "StingRay Parallel v6.1.1.nam": {
+      "filename": "StingRay Parallel v6.1.1.nam",
+      "bundle": "split",
+      "target_instrument": "34in_active_stingray",
+      "target_instrument_version": 1,
+      "target_voicing": "parallel_classic",
+      "target_voicing_version": 1,
+      "version": "v6.1.1",
+      "tone_name": "StingRay Parallel",
+      "sha256": "71d6947a8153636682dfbff4ac862eb63add9bbc268c2da293fe4a10d737bf6c"
+    },
+    "Rickenbacker Clank v6.1.1.nam": {
+      "filename": "Rickenbacker Clank v6.1.1.nam",
+      "bundle": "split",
+      "target_instrument": "33in_rickenbacker_4003",
+      "target_instrument_version": 1,
+      "target_voicing": "bridge_clank",
+      "target_voicing_version": 1,
+      "version": "v6.1.1",
+      "tone_name": "Rickenbacker Clank",
+      "sha256": "ab5649da22ed2b3f93618ad01b8e8891442c678a3d04a2546e9cadcd20d12f74"
+    },
+    "Precision Dub v6.1.1.nam": {
+      "filename": "Precision Dub v6.1.1.nam",
+      "bundle": "split",
+      "target_instrument": "34in_standard_p",
+      "target_instrument_version": 1,
+      "target_voicing": "slab_dub",
+      "target_voicing_version": 1,
+      "version": "v6.1.1",
+      "tone_name": "Precision Dub",
+      "sha256": "1dfa14d9651cbb1c0e5960f7c35ff9ffc4e3e02e125a7e0943f6a200e4a04812"
+    }
   }
 }

@@ -7,14 +7,19 @@ JSON format without third-party framework dependencies.
 
 from __future__ import annotations
 
+import importlib.util
 import json
+import math
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, cast, override
 
+import numpy as np
 import torch
 import torch.nn.functional as F
 from torch import nn
+
+from allomorph.trainer.constants import NAM_MODEL_VERSION
 
 # Architecture 2 Standards
 KERNEL_SIZES: list[int] = [
@@ -314,13 +319,75 @@ class AllomorphWaveNetA2(nn.Module):
             "head_scale": float(self.head_scale),
         }
 
+    def compute_metadata_loudness_and_gain(
+        self,
+    ) -> tuple[tuple[float, float], tuple[float, float]]:
+        """Calculates standard NAM nominal loudness (dB) and compression gain [0, 1] for Lite and Full tiers.
+
+        Uses upstream NAM standard calibration input if available, returning default
+        nominal values (-18.0 dB, 0.50 gain) on failure.
+        """
+        default_res = ((-18.0, 0.5), (-18.0, 0.5))
+        try:
+            from pedalboard.io import AudioFile
+
+            spec = importlib.util.find_spec("nam")
+            if not spec or not spec.origin:
+                return default_res
+            res_path = Path(spec.origin).parent / "models" / "_resources" / "loudness_input.wav"
+            if not res_path.exists():
+                return default_res
+
+            with AudioFile(str(res_path)) as f:
+                x_np = f.read(f.frames)
+
+            dev = next(self.parameters()).device
+            x = torch.from_numpy(x_np[0:1]).to(dev).float()
+            was_training = self.training
+            self.eval()
+            with torch.no_grad():
+                y = self(x)
+                results: list[tuple[float, float]] = []
+                x_gains = np.linspace(0.0, 1.0, 11)
+
+                for ch in (0, 1):
+                    y_ch = y[:, ch, :]
+                    rms = torch.sqrt(torch.mean(torch.square(y_ch))).item()
+                    loudness = 20.0 * math.log10(max(rms, 1e-12))
+
+                    y_rms_list: list[float] = []
+                    for g in x_gains:
+                        yg = self(float(g) * x)
+                        y_rms_list.append(
+                            torch.sqrt(torch.mean(torch.square(yg[:, ch, :]))).item()
+                        )
+                    y_rms = np.array(y_rms_list)
+                    max_gain = float(y_rms[-1] * len(y_rms))
+                    min_gain = 0.5 * max_gain
+                    gain_range = max_gain - min_gain
+                    gain = (
+                        float(np.clip((float(y_rms.sum()) - min_gain) / gain_range, 0.0, 1.0))
+                        if abs(gain_range) > 1e-12
+                        else 0.5
+                    )
+                    results.append((round(loudness, 4), round(gain, 4)))
+
+            if was_training:
+                self.train()
+            return results[0], results[1]
+        except (ImportError, RuntimeError, OSError, ValueError, KeyError):
+            return default_res
+
     def export_nam(
         self,
         out_path: str | Path,
         sample_rate: float = 48000.0,
         metadata: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
-        """Exports the dual-tier slimmable model directly to a compliant .nam JSON file.
+        """Exports the dual-tier model directly to a Tone3000-compliant SlimmableContainer .nam JSON file.
+
+        Conforms strictly to Neural Amp Modeler Architecture 2 container specifications (v0.7.0)
+        and Tone3000 storefront validation criteria.
 
         Args:
             out_path: Output file path (.nam).
@@ -340,45 +407,69 @@ class AllomorphWaveNetA2(nn.Module):
             "second": t.second,
         }
 
-        m_dict: dict[str, Any] = {"date": date_dict}
-        if metadata:
-            m_dict.update(metadata)
+        (loudness_lite, gain_lite), (loudness_full, gain_full) = (
+            self.compute_metadata_loudness_and_gain()
+        )
 
         sub0 = {
-            "version": "0.5.4",
-            "metadata": m_dict,
+            "version": NAM_MODEL_VERSION,
+            "metadata": {
+                "date": date_dict,
+                "loudness": loudness_lite,
+                "gain": gain_lite,
+            },
             "architecture": "WaveNet",
             "config": self.export_submodel_config(0),
             "weights": self.export_submodel_weights(0),
-            "sample_rate": sample_rate,
+            "sample_rate": int(sample_rate),
         }
 
         sub1 = {
-            "version": "0.5.4",
-            "metadata": m_dict,
+            "version": NAM_MODEL_VERSION,
+            "metadata": {
+                "date": date_dict,
+                "loudness": loudness_full,
+                "gain": gain_full,
+            },
             "architecture": "WaveNet",
             "config": self.export_submodel_config(1),
             "weights": self.export_submodel_weights(1),
-            "sample_rate": sample_rate,
+            "sample_rate": int(sample_rate),
+        }
+
+        out_stem = Path(out_path).stem
+        meta_in = metadata or {}
+        top_meta: dict[str, Any] = {
+            "date": date_dict,
+            "loudness": loudness_full,
+            "gain": gain_full,
+            "name": meta_in.get("name", out_stem),
+            "modeled_by": meta_in.get("modeled_by", "bassedpotato"),
+            "gear_type": meta_in.get("gear_type", "other"),
+            "gear_make": meta_in.get("gear_make", "Fender Precision Bass"),
+            "gear_model": meta_in.get("gear_model", "Fender Precision Bass"),
+            "tone_type": meta_in.get("tone_type", "clean"),
+            "trainer": "TONE3000",
         }
 
         empty_weights: list[float] = []
-        container = {
-            "version": "0.5.4",
-            "metadata": m_dict,
+        container: dict[str, Any] = {
+            "version": NAM_MODEL_VERSION,
+            "metadata": top_meta,
             "architecture": "SlimmableContainer",
             "config": {
                 "submodels": [
                     {"max_value": 0.5, "model": sub0},
-                    {"max_value": 1.0, "model": sub1},
+                    {"max_value": 1, "model": sub1},
                 ]
             },
             "weights": empty_weights,
-            "sample_rate": sample_rate,
+            "sample_rate": int(sample_rate),
         }
 
         out_file = Path(out_path)
         out_file.parent.mkdir(parents=True, exist_ok=True)
         with open(out_file, "w", encoding="utf-8") as f:
-            json.dump(container, f)
+            json.dump(container, f, separators=(",", ":"))
         return container
+

@@ -173,43 +173,53 @@ Benchmarked on AMD Radeon RX 9070 XT (`bf16-mixed`, 64 CUs, 16 GB VRAM):
 
 ## 5. Standalone `.nam` JSON Serialization
 
-The model exports directly to the official Neural Amp Modeler format without third-party wrapper dependencies:
+The model exports directly to the official Neural Amp Modeler Architecture 2 format (`architecture: "SlimmableContainer"`, `version: "0.7.0"`) adhering strictly to Tone3000 validation standards and Darkglass Anagram hardware requirements:
 
 ```json
 {
-  "version": "0.5.4",
+  "version": "0.7.0",
+  "metadata": {
+    "date": { "year": 2026, "month": 10, "day": 11, "hour": 2, "minute": 25, "second": 4 },
+    "loudness": -13.1202,
+    "gain": 0.0725,
+    "name": "Jazz Pair Active v6.1.1",
+    "modeled_by": "bassedpotato",
+    "gear_type": "other",
+    "gear_make": "Fender Precision Bass",
+    "gear_model": "Fender Precision Bass",
+    "tone_type": "clean",
+    "trainer": "TONE3000"
+  },
   "architecture": "SlimmableContainer",
-  "sample_rate": 48000.0,
   "config": {
     "submodels": [
       {
         "max_value": 0.5,
         "model": {
-          "version": "0.5.4",
+          "version": "0.7.0",
+          "metadata": { "date": { ... }, "loudness": -14.6441, "gain": 0.1001 },
           "architecture": "WaveNet",
-          "config": {
-            "layers": [ ... ],
-            "head": { ... }
-          },
-          "weights": [ ... 1871 float values ... ]
+          "config": { "layers": [ ... channels: 3 ... ], "head": null, "head_scale": 0.01 },
+          "weights": [ ... 1871 float values ... ],
+          "sample_rate": 48000
         }
       },
       {
-        "max_value": 1.0,
+        "max_value": 1,
         "model": {
-          "version": "0.5.4",
+          "version": "0.7.0",
+          "metadata": { "date": { ... }, "loudness": -13.1202, "gain": 0.0725 },
           "architecture": "WaveNet",
-          "config": {
-            "layers": [ ... ],
-            "head": { ... }
-          },
-          "weights": [ ... 12146 float values ... ]
+          "config": { "layers": [ ... channels: 8 ... ], "head": null, "head_scale": 0.01 },
+          "weights": [ ... 12146 float values ... ],
+          "sample_rate": 48000
         }
       }
     ]
   },
-  "metadata": { ... }
+  "weights": [],
+  "sample_rate": 48000
 }
 ```
 
-The resulting `.nam` files are directly loadable in the **Darkglass Anagram**, desktop NAM plugins, and Tone3000 portal.
+The resulting `.nam` files are directly recognized as native A2 models on the Tone3000 portal and execute at maximum static SIMD speed on the **Darkglass Anagram** (`NeuralAudio`) without triggering legacy fallbacks or block crashes.

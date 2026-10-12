@@ -20,8 +20,6 @@ import torch
 from pedalboard.io import AudioFile
 
 from allomorph.trainer.native import (
-    CHANNELS_FULL,
-    CHANNELS_LITE,
     CHANNELS_TOTAL,
     AllomorphWaveNetA2,
     AllomorphWaveNetLayer,
@@ -101,12 +99,14 @@ def test_wavenet_a2_weight_masks_and_counts() -> None:
 
 
 def test_wavenet_a2_export_nam(tmp_path: Path) -> None:
-    """Verifies compliant SlimmableContainer .nam JSON output."""
+    """Verifies compliant Tone3000 SlimmableContainer .nam JSON output adhering to NAM A2 specification."""
+    from nam.models import init_from_nam
+
     model = AllomorphWaveNetA2()
     out_file = tmp_path / "test_model.nam"
 
     metadata = {
-        "model_name": "Test Voicing",
+        "name": "Test Voicing",
         "instrument_id": "test_bass",
         "validation_esr": 0.0012,
     }
@@ -118,9 +118,12 @@ def test_wavenet_a2_export_nam(tmp_path: Path) -> None:
         data = json.load(f)
 
     assert data["architecture"] == "SlimmableContainer"
-    assert data["version"] == "0.5.4"
-    assert data["sample_rate"] == 48000.0
+    assert data["version"] == "0.7.0"
+    assert data["sample_rate"] == 48000
     assert data["weights"] == []
+    assert data["metadata"]["trainer"] == "TONE3000"
+    assert "loudness" in data["metadata"]
+    assert "gain" in data["metadata"]
 
     submodels = data["config"]["submodels"]
     assert len(submodels) == 2
@@ -128,14 +131,24 @@ def test_wavenet_a2_export_nam(tmp_path: Path) -> None:
     # Submodel 0: Lite
     sub0 = submodels[0]
     assert sub0["max_value"] == 0.5
-    assert sub0["model"]["config"]["layers"][0]["channels"] == CHANNELS_LITE
+    assert sub0["model"]["version"] == "0.7.0"
+    assert sub0["model"]["architecture"] == "WaveNet"
     assert len(sub0["model"]["weights"]) == 1871
+    assert "loudness" in sub0["model"]["metadata"]
 
     # Submodel 1: Full
     sub1 = submodels[1]
-    assert sub1["max_value"] == 1.0
-    assert sub1["model"]["config"]["layers"][0]["channels"] == CHANNELS_FULL
+    assert sub1["max_value"] == 1
+    assert sub1["model"]["version"] == "0.7.0"
+    assert sub1["model"]["architecture"] == "WaveNet"
     assert len(sub1["model"]["weights"]) == 12146
+    assert "loudness" in sub1["model"]["metadata"]
+
+    # Verify official NAM runtime initialization and execution on Full submodel
+    nam_model = init_from_nam(sub1["model"])
+    test_in = torch.randn(1, 4800)
+    test_out = nam_model(test_in)
+    assert test_out.shape == (1, 4800)
 
 
 def test_multi_resolution_stft_loss() -> None:
@@ -222,6 +235,8 @@ def test_train_voice_native_fast_dev_run(tmp_path: Path) -> None:
     with open(exported_models[0], "r", encoding="utf-8") as f:
         data = json.load(f)
     assert data["architecture"] == "SlimmableContainer"
+    assert data["version"] == "0.7.0"
+    assert len(data["config"]["submodels"]) == 2
 
 
 def test_native_default_hyperparameters_and_isolation() -> None:

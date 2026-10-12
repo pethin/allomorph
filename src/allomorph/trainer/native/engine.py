@@ -160,6 +160,12 @@ def train_voice_native(
     else:
         src_voicing_id = "default"
 
+    src_voicing_name = (
+        inst_cfg.voicings[src_voicing_id].name
+        if src_voicing_id in inst_cfg.voicings
+        else src_voicing_id
+    )
+
     # 4. Resolve Version Tag and Basename
     tri_part = resolve_tri_part_version(DSP_GENERATION, inst_ver, voice_ver)
     actual_version_tag = (
@@ -544,7 +550,14 @@ def train_voice_native(
         model.load_state_dict(best_state_dict)
 
     # 16. Export Compliant A2 .nam Model
+    model_title = f"{voice_name} [{inst_name}]"
     export_metadata: dict[str, Any] = {
+        "name": model_title,
+        "modeled_by": "Allomorph (Peter Nguyen <peter@phn.dev>)",
+        "gear_make": inst_name,
+        "gear_model": f"{src_voicing_name} -> {voice_name}",
+        "gear_type": "preamp",
+        "tone_type": "clean",
         "model_name": model_basename,
         "instrument_id": inst_id,
         "instrument_name": inst_name,

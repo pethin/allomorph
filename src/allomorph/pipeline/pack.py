@@ -535,20 +535,27 @@ def train_tone_pack(
             target_nam = nam_dir / f"{model_basename}.nam"
 
             if target_nam.exists() and not overwrite:
-                # Verify that existing model is a valid dual-tier slimmable container
-                is_legacy = False
+                # Verify that existing model is a valid official NAM model
+                is_invalid = False
                 try:
                     with open(target_nam, "r", encoding="utf-8") as f:
                         data = json.load(f)
-                    submodels = data.get("config", {}).get("submodels", [])
-                    if len(submodels) < 2:
-                        is_legacy = True
-                except json.JSONDecodeError, OSError:
-                    is_legacy = True
+                    arch = data.get("architecture")
+                    if arch == "SlimmableContainer":
+                        submodels = data.get("config", {}).get("submodels", [])
+                        if len(submodels) < 2:
+                            is_invalid = True
+                    elif arch == "WaveNet":
+                        if not data.get("weights"):
+                            is_invalid = True
+                    else:
+                        is_invalid = True
+                except (json.JSONDecodeError, OSError):
+                    is_invalid = True
 
-                if is_legacy:
+                if is_invalid:
                     print(
-                        f"[Tone Pack Trainer] Removing legacy single-tier model to upgrade to official slimmable A2: {target_nam.name}"
+                        f"[Tone Pack Trainer] Removing legacy or invalid model to retrain with official NAM A2: {target_nam.name}"
                     )
                     try:
                         target_nam.unlink(missing_ok=True)

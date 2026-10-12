@@ -240,15 +240,17 @@ def test_train_tone_pack_flat_structure_mocked(
         out_dir = Path(models_dir)
         out_dir.mkdir(parents=True, exist_ok=True)
         nam_file = out_dir / f"{basename}.nam"
+        empty_weights: list[float] = []
         dummy_content = {
-            "version": "0.5.1",
-            "architecture": "A2-Slimmable",
+            "version": "0.7.0",
+            "architecture": "SlimmableContainer",
             "config": {
                 "submodels": [
-                    {"name": "channels_3"},
-                    {"name": "channels_8"},
+                    {"max_value": 0.5, "model": {"weights": [0.01] * 1871}},
+                    {"max_value": 1, "model": {"weights": [0.01] * 12146}},
                 ]
             },
+            "weights": empty_weights,
             "metadata": {
                 "training": {
                     "validation_esr": 0.000185,
@@ -336,7 +338,7 @@ def test_train_tone_pack_flat_structure_mocked(
 def test_train_tone_pack_legacy_removal_and_manifest_population(
     tmp_path: Path, mini_dry_audio: Path, monkeypatch: pytest.MonkeyPatch
 ):
-    """Verify train_tone_pack detects legacy models (< 2 submodels) and unlinks them, and populates manifest."""
+    """Verify train_tone_pack detects legacy/invalid models and unlinks them, and populates manifest."""
     import json
 
     from allomorph.pipeline.pack import export_tone_pack, train_tone_pack
@@ -354,24 +356,32 @@ def test_train_tone_pack_legacy_removal_and_manifest_population(
         overwrite=True,
     )
 
-    # Create a legacy single-tier model in nam/
+    # Create a legacy single-tier or invalid model in nam/
     nam_dir = pack_dir / "nam"
     nam_dir.mkdir(parents=True, exist_ok=True)
     legacy_file = next((pack_dir / "bundles" / "split").glob("*.wav"))
     legacy_nam = nam_dir / f"{legacy_file.stem}.nam"
     with open(legacy_nam, "w", encoding="utf-8") as f:
-        json.dump({"version": "0.5.0", "config": {"submodels": [{"name": "channels_8"}]}}, f)
+        json.dump({"version": "0.5.0", "architecture": "SlimmableContainer", "weights": []}, f)
 
     mock_calls: list[str] = []
 
     def _mock_train_voice(*args: Any, basename: str | None = None, **kwargs: Any) -> bool:
         mock_calls.append(str(basename))
         out_file = nam_dir / f"{basename}.nam"
+        empty_weights: list[float] = []
         with open(out_file, "w", encoding="utf-8") as f:
             json.dump(
                 {
-                    "version": "0.5.1",
-                    "config": {"submodels": [{"name": "ch3"}, {"name": "ch8"}]},
+                    "version": "0.7.0",
+                    "architecture": "SlimmableContainer",
+                    "config": {
+                        "submodels": [
+                            {"max_value": 0.5, "model": {"weights": [0.01] * 1871}},
+                            {"max_value": 1, "model": {"weights": [0.01] * 12146}},
+                        ]
+                    },
+                    "weights": empty_weights,
                     "metadata": {"training": {"validation_esr": 0.001}},
                 },
                 f,
