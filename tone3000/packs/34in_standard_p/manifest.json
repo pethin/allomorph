@@ -222,7 +222,19 @@
       "target_voicing_version": 1,
       "version": "v6.1.1",
       "tone_name": "Jazz Pair Active",
-      "sha256": "9dee267ef5d22e28cf233336774183cc52dc3fe1220e51af8b04f42117169c1e"
+      "sha256": "9dee267ef5d22e28cf233336774183cc52dc3fe1220e51af8b04f42117169c1e",
+      "validation_esr": 0.000933,
+      "validation_esr_a2_full": 0.000933,
+      "validation_esr_a2_lite": 0.00123,
+      "validation_esr_ch8": 0.000933,
+      "validation_esr_ch3": 0.00123,
+      "mrstft_loss": 0.1085,
+      "epochs_trained": 34,
+      "stop_reason": "diminishing_returns_plateau",
+      "batch_size": 16,
+      "precision": "bf16-mixed",
+      "device_name": "AMD Radeon RX 9070 XT",
+      "engine": "native"
     },
     "StingRay Parallel v6.1.1.nam": {
       "filename": "StingRay Parallel v6.1.1.nam",
@@ -233,7 +245,20 @@
       "target_voicing_version": 1,
       "version": "v6.1.1",
       "tone_name": "StingRay Parallel",
-      "sha256": "16ce2f4a22d866f38888e30a6b20b6a36f3087d241402cbd5327a2cef1cad845"
+      "sha256": "16ce2f4a22d866f38888e30a6b20b6a36f3087d241402cbd5327a2cef1cad845",
+      "validation_esr": 0.0016,
+      "validation_esr_a2_full": 0.0016,
+      "validation_esr_a2_lite": 0.009056,
+      "validation_esr_ch8": 0.0016,
+      "validation_esr_ch3": 0.009056,
+      "mrstft_loss": 0.4141,
+      "epochs_trained": 21,
+      "stop_reason": "waveform_mse_drift_detected",
+      "training_time_seconds": 200.35,
+      "batch_size": 16,
+      "precision": "bf16-mixed",
+      "device_name": "AMD Radeon RX 9070 XT",
+      "engine": "native"
     },
     "Rickenbacker Clank v6.1.1.nam": {
       "filename": "Rickenbacker Clank v6.1.1.nam",
@@ -244,7 +269,20 @@
       "target_voicing_version": 1,
       "version": "v6.1.1",
       "tone_name": "Rickenbacker Clank",
-      "sha256": "b9c7e0fa733d3548dba62dba7a8e89d648d7d01f48136a256c4ec00182a2216f"
+      "sha256": "b9c7e0fa733d3548dba62dba7a8e89d648d7d01f48136a256c4ec00182a2216f",
+      "validation_esr": 0.002883,
+      "validation_esr_a2_full": 0.002883,
+      "validation_esr_a2_lite": 0.004389,
+      "validation_esr_ch8": 0.002883,
+      "validation_esr_ch3": 0.004389,
+      "mrstft_loss": 0.3253,
+      "epochs_trained": 29,
+      "stop_reason": "diminishing_returns_plateau",
+      "training_time_seconds": 184.09,
+      "batch_size": 16,
+      "precision": "bf16-mixed",
+      "device_name": "AMD Radeon RX 9070 XT",
+      "engine": "native"
     },
     "Precision Dub v6.1.1.nam": {
       "filename": "Precision Dub v6.1.1.nam",
@@ -255,7 +293,20 @@
       "target_voicing_version": 1,
       "version": "v6.1.1",
       "tone_name": "Precision Dub",
-      "sha256": "cccec49332b2ff561088b1196f2c6b75bfd9ae151c93d1da290fd3e5d0663ce9"
+      "sha256": "cccec49332b2ff561088b1196f2c6b75bfd9ae151c93d1da290fd3e5d0663ce9",
+      "validation_esr": 0.00017,
+      "validation_esr_a2_full": 0.00017,
+      "validation_esr_a2_lite": 0.001267,
+      "validation_esr_ch8": 0.00017,
+      "validation_esr_ch3": 0.001267,
+      "mrstft_loss": 0.1234,
+      "epochs_trained": 24,
+      "stop_reason": "waveform_mse_drift_detected",
+      "training_time_seconds": 198.78,
+      "batch_size": 16,
+      "precision": "bf16-mixed",
+      "device_name": "AMD Radeon RX 9070 XT",
+      "engine": "native"
     }
   }
 }

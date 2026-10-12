@@ -9,6 +9,7 @@ Zero-external-framework training loop featuring:
 
 from __future__ import annotations
 
+import json
 import math
 import time
 from pathlib import Path
@@ -51,6 +52,7 @@ from allomorph.trainer.native.loss import MultiBandSpectralLoss
 from allomorph.trainer.native.models import AllomorphWaveNetA2
 from allomorph.version import (
     DSP_GENERATION,
+    compute_file_sha256,
     is_wet_stem_valid,
     resolve_tri_part_version,
 )
@@ -579,6 +581,46 @@ def train_voice_native(
         sample_rate=sample_rate,
         metadata=export_metadata,
     )
+
+    if not no_manifest:
+        # Check if manifest.json exists in pack root (models_dir.parent) or models_dir
+        manifest_candidates = [
+            target_nam.parent.parent / "manifest.json",
+            target_nam.parent / "manifest.json",
+        ]
+        for m_path in manifest_candidates:
+            if m_path.exists():
+                try:
+                    with open(m_path, "r", encoding="utf-8") as mf:
+                        m_data = json.load(mf)
+                    if isinstance(m_data, dict) and "models" in m_data and isinstance(m_data["models"], dict):
+                        m_entry = m_data["models"].setdefault(target_nam.name, {})
+                        m_entry.setdefault("filename", target_nam.name)
+                        m_entry["sha256"] = compute_file_sha256(target_nam)
+                        m_entry["validation_esr"] = float(best_val_esr)
+                        m_entry["validation_esr_a2_full"] = float(best_val_esr)
+                        m_entry["validation_esr_a2_lite"] = float(best_val_esr_lite)
+                        m_entry["validation_esr_ch8"] = float(best_val_esr)
+                        m_entry["validation_esr_ch3"] = float(best_val_esr_lite)
+                        m_entry["epochs_trained"] = int(best_epoch if best_epoch > 0 else epoch)
+                        m_entry["training_time_seconds"] = round(total_time, 2)
+                        m_entry["batch_size"] = resolved_bs
+                        m_entry["precision"] = resolved_precision
+                        m_entry["engine"] = "native"
+                        m_entry["device_name"] = (
+                            torch.cuda.get_device_name(hw_device)
+                            if hw_device.type == "cuda"
+                            else str(hw_device)
+                        )
+                        if stop_reason:
+                            m_entry["stop_reason"] = stop_reason
+                        if best_val_mrstft is not None:
+                            m_entry["mrstft_loss"] = float(best_val_mrstft)
+                        with open(m_path, "w", encoding="utf-8") as mf:
+                            json.dump(m_data, mf, indent=2)
+                        break
+                except (OSError, json.JSONDecodeError):
+                    pass
 
     if not silent:
         full_db = 10.0 * math.log10(max(best_val_esr, 1e-12))

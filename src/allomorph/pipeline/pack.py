@@ -398,6 +398,8 @@ def _populate_manifest_model_entry(
                 "precision",
                 "num_workers",
                 "device_name",
+                "engine",
+                "training_time_seconds",
             ]:
                 if field in training_meta and training_meta[field] is not None:
                     entry[field] = training_meta[field]
@@ -405,6 +407,35 @@ def _populate_manifest_model_entry(
         print(
             f"[Tone Pack Trainer] Warning: Could not read training metadata from {nam_path.name}: {e}"
         )
+
+    # Preserve any training metadata already recorded in the manifest
+    existing_entry = models_dict.get(nam_path.name, {})
+    if isinstance(existing_entry, dict):
+        for field in [
+            "validation_esr",
+            "validation_esr_a2_full",
+            "validation_esr_a2_lite",
+            "validation_esr_ch8",
+            "validation_esr_ch3",
+            "validation_esr_aggregate",
+            "esr",
+            "differential_esr",
+            "differential_esr_ch3",
+            "mrstft_loss",
+            "mrstft_loss_ch3",
+            "baseline_mrstft",
+            "differential_mrstft",
+            "epochs_trained",
+            "stop_reason",
+            "batch_size",
+            "precision",
+            "num_workers",
+            "device_name",
+            "engine",
+            "training_time_seconds",
+        ]:
+            if field in existing_entry and field not in entry:
+                entry[field] = existing_entry[field]
 
     models_dict[nam_path.name] = entry
 
