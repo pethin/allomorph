@@ -3,7 +3,7 @@
 Custom PyTorch neural training pipeline featuring:
 - Zero-copy in-VRAM tensor slicing.
 - Block-diagonal masked dual-tier slimmable WaveNet architecture (A2 Lite + Full).
-- Self-normalizing multi-band high-pass ESR loss.
+- Multi-resolution STFT and time-domain MSE composite spectral loss.
 - Anti-drift Pareto quality tracking and in-memory checkpoint restoration.
 - Native export to compliant Darkglass Anagram Block 1 .nam JSON.
 """
@@ -12,9 +12,6 @@ from allomorph.trainer.native.engine import train_voice_native
 from allomorph.trainer.native.loss import (
     MultiBandSpectralLoss,
     MultiResolutionSTFTLoss,
-    NormalizedHighPassESRLoss,
-    PreEmphasisMSELoss,
-    design_fir_highpass,
 )
 from allomorph.trainer.native.models import (
     CHANNELS_FULL,
@@ -32,8 +29,5 @@ __all__ = [
     "AllomorphWaveNetLayer",
     "MultiBandSpectralLoss",
     "MultiResolutionSTFTLoss",
-    "NormalizedHighPassESRLoss",
-    "PreEmphasisMSELoss",
-    "design_fir_highpass",
     "train_voice_native",
 ]

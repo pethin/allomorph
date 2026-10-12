@@ -13,8 +13,6 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-import numpy as np
-
 from allomorph.config import (
     VOICES,
     InstrumentConfig,
@@ -30,30 +28,13 @@ from allomorph.pipeline.schema import (
     NamTrainingMetadata,
 )
 from allomorph.trainer.callbacks import (
-    AllomorphAdaptiveStopping,
     EsrProgressCallback,
-    LinearWarmupCallback,
 )
 from allomorph.trainer.constants import (
-    DEFAULT_BATCH_SIZE,
-    DEFAULT_ETA_MIN,
-    DEFAULT_HP_HIGH_CUTOFF,
-    DEFAULT_HP_HIGH_ESR_WEIGHT,
-    DEFAULT_HP_MID_CUTOFF,
-    DEFAULT_HP_MID_ESR_WEIGHT,
-    DEFAULT_HP_MIN_ENERGY,
-    DEFAULT_LR_SCHEDULER,
-    DEFAULT_LR_T_MAX,
-    DEFAULT_MAX_EPOCHS,
-    DEFAULT_MIN_DELTA,
-    DEFAULT_MIN_EPOCHS,
-    DEFAULT_MRSTFT_WEIGHT,
-    DEFAULT_MSE_WEIGHT,
-    DEFAULT_NUM_WORKERS,
-    DEFAULT_PATIENCE,
-    DEFAULT_PRE_EMPH_COEF,
-    DEFAULT_PRE_EMPH_WEIGHT,
-    DEFAULT_PRECISION,
+    STOCK_DEFAULT_BATCH_SIZE,
+    STOCK_DEFAULT_MAX_EPOCHS,
+    STOCK_DEFAULT_NUM_WORKERS,
+    STOCK_DEFAULT_PRECISION,
 )
 from allomorph.version import (
     ALLOMORPH_VERSION,
@@ -69,87 +50,12 @@ AUDIO_DIR = REPO_ROOT / "audio"
 MODELS_DIR = REPO_ROOT / "models"
 
 
-def design_fir_highpass(num_taps: int, cutoff_hz: float, fs: float = 48000.0) -> np.ndarray:
-    """Designs a zero-phase linear-phase FIR high-pass filter matching scipy bit-for-bit using pure NumPy.
-
-    Constructs windowed-sinc impulse response with symmetric Hamming window and unity passband scaling at Nyquist.
-    """
-    nyq = 0.5 * fs
-    left = cutoff_hz / nyq
-    alpha = 0.5 * (num_taps - 1)
-    m = np.arange(num_taps, dtype=np.float64) - alpha
-    h = np.sinc(m) - left * np.sinc(left * m)
-    win = 0.54 - 0.46 * np.cos(2.0 * np.pi * np.arange(num_taps) / (num_taps - 1))
-    h = h * win
-    s = np.sum(h * np.cos(np.pi * m))
-    h = h / s
-    return h.astype(np.float32)
-
-
-class NormalizedHighPassESRLoss:
-    """Zero-phase linear-phase FIR high-pass ESR loss with batch energy normalization.
-
-    Neutralizes physical harmonic energy decay so high-frequency differentiator taps
-    receive full 1.0-scale gradient updates from Epoch 1.
-    """
-
-    def __init__(
-        self,
-        cutoff_hz: float,
-        num_taps: int = 31,
-        fs: float = 48000.0,
-        min_energy: float = DEFAULT_HP_MIN_ENERGY,
-    ) -> None:
-        import torch
-
-        self.taps = design_fir_highpass(num_taps, cutoff_hz, fs=fs)
-        self.kernel = torch.from_numpy(self.taps).view(1, 1, -1)
-        self.padding = num_taps // 2
-        self.min_energy = float(min_energy)
-
-    def __call__(self, preds: Any, targets: Any) -> Any:
-        import torch
-        import torch.nn.functional as F
-
-        orig_shape = preds.shape
-        p_2d = preds.reshape(-1, 1, orig_shape[-1])
-        t_2d = targets.reshape(-1, 1, orig_shape[-1])
-        kernel = self.kernel.to(device=preds.device, dtype=preds.dtype)
-        p_hp = F.conv1d(p_2d, kernel, padding=self.padding)
-        t_hp = F.conv1d(t_2d, kernel, padding=self.padding)
-        err = torch.sum((p_hp - t_hp) ** 2)
-        norm = torch.clamp(torch.sum(t_hp**2) + 1e-8, min=self.min_energy)
-        return err / norm
-
-
 def configure_a2_architecture(
     nam_core: Any,
-    min_epochs: int = DEFAULT_MIN_EPOCHS,
-    patience: int = DEFAULT_PATIENCE,
-    min_delta: float = DEFAULT_MIN_DELTA,
-    mse_weight: float = DEFAULT_MSE_WEIGHT,
-    pre_emph_weight: float = DEFAULT_PRE_EMPH_WEIGHT,
-    pre_emph_coef: float = DEFAULT_PRE_EMPH_COEF,
-    mrstft_weight: float = DEFAULT_MRSTFT_WEIGHT,
-    hp_mid_weight: float = DEFAULT_HP_MID_ESR_WEIGHT,
-    hp_mid_cutoff: float = DEFAULT_HP_MID_CUTOFF,
-    hp_high_weight: float = DEFAULT_HP_HIGH_ESR_WEIGHT,
-    hp_high_cutoff: float = DEFAULT_HP_HIGH_CUTOFF,
-    hp_min_energy: float = DEFAULT_HP_MIN_ENERGY,
-    lr_scheduler: str = DEFAULT_LR_SCHEDULER,
-    eta_min: float = DEFAULT_ETA_MIN,
-    lr_t_max: int = DEFAULT_LR_T_MAX,
-    precision: str = DEFAULT_PRECISION,
-    num_workers: int | str = DEFAULT_NUM_WORKERS,
-    reference_wav: str | Path | None = None,
-    output_wav: str | Path | None = None,
+    precision: str = STOCK_DEFAULT_PRECISION,
+    num_workers: int | str = STOCK_DEFAULT_NUM_WORKERS,
 ) -> None:
-    """Configure NAM Architecture 2 packed model submodels, loss weighting, and adaptive early stopping.
-
-    Configures dual-tier slimmable PackedWaveNet (channels_3 A2 Lite + channels_8 A2 Full) for Tone3000 A2 recognition.
-    Injects Self-Normalizing Multi-Band High-Pass ESR Loss to neutralize treble harmonic decay and accelerate differentiator tap convergence.
-    Hooks LinearWarmupCallback (5 epochs) and AllomorphAdaptiveStopping.
-    """
+    """Configure NAM Architecture 2 packed model submodels, hardware acceleration, and logging for stock training."""
     from allomorph.trainer.core import resolve_hardware_num_workers, resolve_hardware_precision
 
     resolved_precision = resolve_hardware_precision(precision)
@@ -165,168 +71,6 @@ def configure_a2_architecture(
             torch.backends.cudnn.benchmark = torch.cuda.is_available()
     except ImportError:
         pass
-
-    import nam.train.lightning_module as lm
-
-    hp_mid_fn = (
-        NormalizedHighPassESRLoss(cutoff_hz=hp_mid_cutoff, min_energy=hp_min_energy)
-        if hp_mid_weight > 0.0
-        else None
-    )
-    hp_high_fn = (
-        NormalizedHighPassESRLoss(cutoff_hz=hp_high_cutoff, min_energy=hp_min_energy)
-        if hp_high_weight > 0.0
-        else None
-    )
-
-    # 1. Patch LossConfig.parse_config to preserve mse_weight
-    orig_loss_parse = getattr(lm.LossConfig, "_orig_parse_config", lm.LossConfig.parse_config)
-    lm.LossConfig._orig_parse_config = orig_loss_parse
-
-    def patched_loss_parse(config: dict[str, Any]) -> dict[str, Any]:
-        d = orig_loss_parse(config)
-        d["mse_weight"] = config.get("mse_weight", mse_weight)
-        return d
-
-    lm.LossConfig.parse_config = staticmethod(patched_loss_parse)
-
-    # 2. Patch PackedLightningModule._get_loss_dict to respect mse_weight and multi-band ESR
-    orig_get_loss_dict = getattr(
-        lm.PackedLightningModule, "_orig_get_loss_dict", lm.PackedLightningModule._get_loss_dict
-    )
-    lm.PackedLightningModule._orig_get_loss_dict = orig_get_loss_dict
-
-    def patched_get_loss_dict(self: Any, preds: Any, targets: Any) -> dict[str, Any]:
-        loss_dict: dict[str, Any] = {}
-
-        eff_mse_weight = self._loss_config.mse_weight
-        if eff_mse_weight is not None and eff_mse_weight > 0.0:
-            if self._loss_config.fourier:
-                loss_dict["MSE_FFT"] = lm._LossItem(eff_mse_weight, lm._mse_fft(preds, targets))
-            else:
-                loss_dict["MSE"] = lm._LossItem(eff_mse_weight, self._mse_loss(preds, targets))
-
-        if hp_mid_fn is not None and hp_mid_weight > 0.0:
-            loss_dict["ESR_HP_mid"] = lm._LossItem(hp_mid_weight, hp_mid_fn(preds, targets))
-
-        if hp_high_fn is not None and hp_high_weight > 0.0:
-            loss_dict["ESR_HP_high"] = lm._LossItem(hp_high_weight, hp_high_fn(preds, targets))
-
-        if self._loss_config.pre_emph_weight is not None:
-            loss_dict["Pre-emphasized MSE"] = lm._LossItem(
-                self._loss_config.pre_emph_weight,
-                self._mse_loss(preds, targets, pre_emph_coef=self._loss_config.pre_emph_coef),
-            )
-        if self._loss_config.mrstft_weight is not None:
-            loss_dict["MRSTFT"] = lm._LossItem(
-                self._loss_config.mrstft_weight, self._mrstft_loss(preds, targets)
-            )
-        if self._loss_config.pre_emph_mrstft_weight is not None:
-            loss_dict["Pre-emphasized MRSTFT"] = lm._LossItem(
-                self._loss_config.pre_emph_mrstft_weight,
-                self._mrstft_loss(
-                    preds, targets, pre_emph_coef=self._loss_config.pre_emph_mrstft_coef
-                ),
-            )
-        dc_weight = self._loss_config.dc_weight
-        if dc_weight is not None and dc_weight > 0.0:
-            mean_dims = torch.arange(1, preds.ndim).tolist()
-            dc_loss = torch.nn.MSELoss()(preds.mean(dim=mean_dims), targets.mean(dim=mean_dims))
-            loss_dict["DC MSE"] = lm._LossItem(dc_weight, dc_loss)
-
-        if self._loss_config.custom_losses is not None:
-            for name, loss in self._loss_config.custom_losses.items():
-                loss_dict[name] = lm._LossItem(loss.weight, loss.func(preds, targets))
-
-        return loss_dict
-
-    lm.PackedLightningModule._get_loss_dict = patched_get_loss_dict
-
-    # 3. Patch PackedLightningModule.validation_step to evaluate Composite Spectral Loss
-    orig_val_step = getattr(
-        lm.PackedLightningModule, "_orig_validation_step", lm.PackedLightningModule.validation_step
-    )
-    lm.PackedLightningModule._orig_validation_step = orig_val_step
-
-    def patched_validation_step(self: Any, batch: Any, batch_idx: int) -> Any:
-        preds, targets, loss_dicts = self._shared_step(batch)
-        logs: dict[str, Any] = {}
-        val_losses: list[Any] = []
-        submodel_spectral: list[Any] = []
-
-        pre_coef = (
-            self._loss_config.pre_emph_coef if self._loss_config.pre_emph_coef is not None else 0.90
-        )
-        for i, loss_dict in enumerate(loss_dicts):
-            p_i = preds[:, i, :]
-            # Raw ESR
-            esr_item = self._esr_loss(p_i, targets)
-            loss_dict["ESR"] = lm._LossItem(None, esr_item)
-
-            # Pre-emphasized ESR
-            p_pre = lm._apply_pre_emphasis_filter(p_i, pre_coef)
-            t_pre = lm._apply_pre_emphasis_filter(targets, pre_coef)
-            esr_pre_item = self._esr_loss(p_pre, t_pre)
-            loss_dict["ESR_pre"] = lm._LossItem(None, esr_pre_item)
-
-            # MRSTFT
-            if "MRSTFT" in loss_dict and loss_dict["MRSTFT"].value is not None:
-                mrstft_item = loss_dict["MRSTFT"].value
-            else:
-                mrstft_item = self._mrstft_loss(p_i, targets)
-                loss_dict["MRSTFT"] = lm._LossItem(None, mrstft_item)
-
-            # Composite spectral loss for this submodel (for telemetry)
-            spectral_item = 0.50 * esr_pre_item + 0.40 * mrstft_item + 0.10 * esr_item
-            loss_dict["Spectral"] = lm._LossItem(None, spectral_item)
-
-            submodel_spectral.append(spectral_item)
-
-            # Evaluate exact Multi-Band loss for this submodel
-            weighted_items = [
-                item.weight * item.value
-                for item in loss_dict.values()
-                if item.weight is not None and item.weight > 0.0 and item.value is not None
-            ]
-            submodel_mb_loss = sum(weighted_items) if weighted_items else esr_item
-
-            val_losses.append(submodel_mb_loss)
-            logs[f"val_loss_packed_{i}"] = submodel_mb_loss
-            logs[f"mb_loss_packed_{i}"] = submodel_mb_loss
-            logs[f"Spectral_packed_{i}"] = spectral_item
-            logs[f"ESR_pre_packed_{i}"] = esr_pre_item
-
-            for key, item in loss_dict.items():
-                logs[f"{key}_packed_{i}"] = item.value
-
-        loss_keys = sorted({key for loss_dict in loss_dicts for key in loss_dict})
-        for key in loss_keys:
-            values = [loss_dict[key].value for loss_dict in loss_dicts if key in loss_dict]
-            if values:
-                logs[key] = sum(values)
-
-        # 2:1 prioritization of Full (index 1) over Lite (index 0) on Multi-Band Validation Loss
-        if len(val_losses) >= 2:
-            composite_val = val_losses[1] + 0.50 * val_losses[0]
-        elif val_losses:
-            composite_val = val_losses[0]
-        else:
-            composite_val = sum(val_losses)
-
-        if len(submodel_spectral) >= 2:
-            composite_spectral = submodel_spectral[1] + 0.50 * submodel_spectral[0]
-        elif submodel_spectral:
-            composite_spectral = submodel_spectral[0]
-        else:
-            composite_spectral = composite_val
-
-        logs["val_loss"] = composite_val
-        logs["val_mb_loss"] = composite_val
-        logs["val_spectral_loss"] = composite_spectral
-        self.log_dict(logs)
-        return composite_val
-
-    lm.PackedLightningModule.validation_step = patched_validation_step
 
     orig_detect_input_version = getattr(
         nam_core, "_orig_detect_input_version", nam_core._detect_input_version
@@ -393,23 +137,6 @@ def configure_a2_architecture(
             for s in cfg["net"]["config"]["submodels"]
             if s["name"] in ("channels_3", "channels_8")
         ]
-        if "loss" not in cfg:
-            new_loss: dict[str, Any] = {}
-            cfg["loss"] = new_loss
-        cfg["loss"]["mse_weight"] = mse_weight
-        if pre_emph_weight > 0.0:
-            cfg["loss"]["pre_emph_weight"] = pre_emph_weight
-            cfg["loss"]["pre_emph_coef"] = pre_emph_coef
-        if mrstft_weight > 0.0:
-            cfg["loss"]["mrstft_weight"] = mrstft_weight
-        if lr_scheduler == "cosine":
-            cfg["lr_scheduler"] = {
-                "class": "CosineAnnealingLR",
-                "kwargs": {
-                    "T_max": lr_t_max,
-                    "eta_min": eta_min,
-                },
-            }
         return cfg
 
     nam_core._get_packed_model_config = get_configured_packed_model_config
@@ -439,51 +166,19 @@ def configure_a2_architecture(
     def get_callbacks_with_logging(
         threshold_esr: float | None = None,
         *args: Any,
-        min_epochs_override: int | None = None,
         **kwargs: Any,
     ) -> list[Any]:
-        callbacks: list[Any] = orig_get_callbacks(None, *args, **kwargs)
-        # Strip early stopping and PackedBestCheckpoint to ensure final weights are preserved without epoch reversion
-        callbacks = [
-            c
-            for c in callbacks
-            if not hasattr(c, "patience") and type(c).__name__ != "PackedBestCheckpoint"
-        ]
-        effective_min_epochs = (
-            min_epochs_override if min_epochs_override is not None else min_epochs
-        )
-
-        warmup_cb = LinearWarmupCallback(
-            warmup_epochs=5,
-            target_lr=0.004,
-            lr_t_max=lr_t_max,
-            eta_min=eta_min,
-            is_cosine=(lr_scheduler == "cosine"),
-        )
-        callbacks.append(warmup_cb)
-
-        stopping_cb = AllomorphAdaptiveStopping(
-            monitor="val_loss",
-            warmup_floor=effective_min_epochs,
-            patience=patience,
-            min_delta=min_delta,
-        )
-        callbacks.append(stopping_cb)
-        nam_core._last_stopping_callback = stopping_cb
-
-        progress_cb = EsrProgressCallback(
-            min_epochs=effective_min_epochs,
-            stopping_callback=stopping_cb,
-        )
+        callbacks: list[Any] = orig_get_callbacks(threshold_esr, *args, **kwargs)
+        progress_cb = EsrProgressCallback(min_epochs=0)
         callbacks.append(progress_cb)
         nam_core._last_esr_callback = progress_cb
-
+        nam_core._last_stopping_callback = None
         return callbacks
 
     nam_core.get_callbacks = get_callbacks_with_logging
 
 
-def train_voice_torch(
+def train_voice_stock(
     instrument: str | InstrumentConfig = "30in",
     voice: str = "precision_active",
     source_voicing: str | None = None,
@@ -491,25 +186,10 @@ def train_voice_torch(
     output_wav: str | Path | None = None,
     reference_wav: str | Path | None = None,
     models_dir: str | Path = MODELS_DIR,
-    epochs: int = DEFAULT_MAX_EPOCHS,
-    min_epochs: int = DEFAULT_MIN_EPOCHS,
-    patience: int = DEFAULT_PATIENCE,
-    min_delta: float = DEFAULT_MIN_DELTA,
-    mse_weight: float = DEFAULT_MSE_WEIGHT,
-    pre_emph_weight: float = DEFAULT_PRE_EMPH_WEIGHT,
-    pre_emph_coef: float = DEFAULT_PRE_EMPH_COEF,
-    mrstft_weight: float = DEFAULT_MRSTFT_WEIGHT,
-    hp_mid_weight: float = DEFAULT_HP_MID_ESR_WEIGHT,
-    hp_mid_cutoff: float = DEFAULT_HP_MID_CUTOFF,
-    hp_high_weight: float = DEFAULT_HP_HIGH_ESR_WEIGHT,
-    hp_high_cutoff: float = DEFAULT_HP_HIGH_CUTOFF,
-    hp_min_energy: float = DEFAULT_HP_MIN_ENERGY,
-    lr_scheduler: str = DEFAULT_LR_SCHEDULER,
-    eta_min: float = DEFAULT_ETA_MIN,
-    lr_t_max: int = DEFAULT_LR_T_MAX,
-    batch_size: int | str = DEFAULT_BATCH_SIZE,
-    precision: str = DEFAULT_PRECISION,
-    num_workers: int | str = DEFAULT_NUM_WORKERS,
+    epochs: int = STOCK_DEFAULT_MAX_EPOCHS,
+    batch_size: int | str = STOCK_DEFAULT_BATCH_SIZE,
+    precision: str = STOCK_DEFAULT_PRECISION,
+    num_workers: int | str = STOCK_DEFAULT_NUM_WORKERS,
     silent: bool = True,
     save_plot: bool = False,
     fast_dev_run: bool = False,
@@ -741,36 +421,19 @@ def train_voice_torch(
     resolved_batch_size = resolve_hardware_batch_size(batch_size)
     resolved_precision = resolve_hardware_precision(precision)
     resolved_num_workers = resolve_hardware_num_workers(num_workers)
-    device_name = get_hardware_device_name(engine="torch")
+    device_name = get_hardware_device_name(engine="stock")
 
     configure_a2_architecture(
         nam_core,
-        min_epochs=min_epochs,
-        patience=patience,
-        min_delta=min_delta,
-        mse_weight=mse_weight,
-        pre_emph_weight=pre_emph_weight,
-        pre_emph_coef=pre_emph_coef,
-        mrstft_weight=mrstft_weight,
-        hp_mid_weight=hp_mid_weight,
-        hp_mid_cutoff=hp_mid_cutoff,
-        hp_high_weight=hp_high_weight,
-        hp_high_cutoff=hp_high_cutoff,
-        hp_min_energy=hp_min_energy,
-        lr_scheduler=lr_scheduler,
-        eta_min=eta_min,
-        lr_t_max=lr_t_max,
         precision=resolved_precision,
         num_workers=resolved_num_workers,
-        reference_wav=reference_path,
-        output_wav=output_path,
     )
 
     train_work_dir = inst_models_dir / f".train_{model_basename}"
     train_work_dir.mkdir(parents=True, exist_ok=True)
 
     print("\n========================================")
-    print("  ALLOMORPH NAM LOCAL A2 TRAINER (PyTorch)")
+    print("  ALLOMORPH NAM LOCAL A2 TRAINER (Stock Lightning)")
     print(f'  Source Bass: {inst_name} ({inst_id}, {scale_length_in}")')
     print(f"  Source Voicing: {src_voicing_name} (pos={src_eff_pos_mm:.1f}mm)")
     print(f"  Target Voice:{voice} ({voice_name})")
@@ -783,17 +446,7 @@ def train_voice_torch(
     print(f"  Workers:     {resolved_num_workers} (zero-copy in-memory)")
     print(f"  Input Audio: {input_path.name}")
     print(f"  Output Audio:{output_path.name}")
-    print(
-        f"  Schedule:    {lr_scheduler} (epochs={epochs}, T_max={lr_t_max}, eta_min={eta_min:.1e})"
-    )
-    print(
-        f"  Convergence: Adaptive plateau patience={patience} on composite val_spectral_loss (min_delta={min_delta:.1e})"
-    )
-    print(f"  MSE Loss:    weight={mse_weight:.4f}")
-    if pre_emph_weight > 0:
-        print(f"  Pre-Emph:    weight={pre_emph_weight:.2f}, coef={pre_emph_coef:.2f}")
-    if mrstft_weight > 0:
-        print(f"  MRSTFT:      weight={mrstft_weight:.4f}")
+    print(f"  Epochs:      {epochs}")
     print(f"  Destination: {target_nam}")
     print("========================================\n")
 
@@ -936,20 +589,6 @@ def train_voice_torch(
         "target_voicing": meta_dump["target_voicing"],
     }
 
-    stopping_cb = getattr(nam_core, "_last_stopping_callback", None)
-    if (
-        stopping_cb is not None
-        and getattr(stopping_cb, "best_state_dict", None) is not None
-        and getattr(stopping_cb, "best_epoch", None) is not None
-    ):
-        pareto_score = getattr(stopping_cb, "best_pareto_score", float("inf"))
-        q_info = f", Pareto Q: {pareto_score:.6f}" if pareto_score < float("inf") else ""
-        print(
-            f"\n[NAM Trainer] Applying optimal Pareto multi-band checkpoint from epoch {stopping_cb.best_epoch:03d} "
-            f"(val_loss: {stopping_cb.best_val_loss:.6f}{q_info})"
-        )
-        train_output.model.net.load_state_dict(stopping_cb.best_state_dict)
-
     export_net: Any = train_output.model.net
     export_net.export(
         str(inst_models_dir),
@@ -998,5 +637,5 @@ __all__ = [
     "AUDIO_DIR",
     "MODELS_DIR",
     "configure_a2_architecture",
-    "train_voice_torch",
+    "train_voice_stock",
 ]

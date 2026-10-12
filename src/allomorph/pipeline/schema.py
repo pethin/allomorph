@@ -19,10 +19,6 @@ from allomorph.config.schema import (
 )
 from allomorph.trainer.constants import (
     DEFAULT_ETA_MIN,
-    DEFAULT_HP_HIGH_CUTOFF,
-    DEFAULT_HP_HIGH_ESR_WEIGHT,
-    DEFAULT_HP_MID_CUTOFF,
-    DEFAULT_HP_MID_ESR_WEIGHT,
     DEFAULT_LR_SCHEDULER,
     DEFAULT_LR_T_MAX,
     DEFAULT_MAX_EPOCHS,
@@ -31,8 +27,6 @@ from allomorph.trainer.constants import (
     DEFAULT_MRSTFT_WEIGHT,
     DEFAULT_MSE_WEIGHT,
     DEFAULT_PATIENCE,
-    DEFAULT_PRE_EMPH_COEF,
-    DEFAULT_PRE_EMPH_WEIGHT,
     NATIVE_DEFAULT_LITE_WEIGHT,
     NATIVE_DEFAULT_LR,
     NATIVE_DEFAULT_SLICE_LEN,
@@ -217,41 +211,10 @@ class NamTrainingConfig(AllomorphBaseModel):
         ge=0.0,
         description=f"Raw MSE loss weight for low-frequency amplitude anchoring (default: {DEFAULT_MSE_WEIGHT})",
     )
-    pre_emph_weight: float = Field(
-        default=DEFAULT_PRE_EMPH_WEIGHT,
-        ge=0.0,
-        description=f"Pre-emphasis loss weight for equalizing high-frequency resonance (default: {DEFAULT_PRE_EMPH_WEIGHT})",
-    )
-    pre_emph_coef: float = Field(
-        default=DEFAULT_PRE_EMPH_COEF,
-        ge=0.0,
-        le=1.0,
-        description=f"Pre-emphasis filter coefficient (default: {DEFAULT_PRE_EMPH_COEF})",
-    )
     mrstft_weight: float = Field(
         default=DEFAULT_MRSTFT_WEIGHT,
         ge=0.0,
         description=f"Multi-Resolution STFT loss weight (default: {DEFAULT_MRSTFT_WEIGHT})",
-    )
-    hp_mid_esr_weight: float = Field(
-        default=DEFAULT_HP_MID_ESR_WEIGHT,
-        ge=0.0,
-        description=f"3 kHz high-pass energy-normalized ESR loss weight (default: {DEFAULT_HP_MID_ESR_WEIGHT})",
-    )
-    hp_mid_cutoff: float = Field(
-        default=DEFAULT_HP_MID_CUTOFF,
-        ge=0.0,
-        description=f"3 kHz high-pass FIR cutoff in Hz (default: {DEFAULT_HP_MID_CUTOFF})",
-    )
-    hp_high_esr_weight: float = Field(
-        default=DEFAULT_HP_HIGH_ESR_WEIGHT,
-        ge=0.0,
-        description=f"7 kHz high-pass energy-normalized ESR loss weight (default: {DEFAULT_HP_HIGH_ESR_WEIGHT})",
-    )
-    hp_high_cutoff: float = Field(
-        default=DEFAULT_HP_HIGH_CUTOFF,
-        ge=0.0,
-        description=f"7 kHz high-pass FIR cutoff in Hz (default: {DEFAULT_HP_HIGH_CUTOFF})",
     )
     lr_scheduler: str = Field(
         default=DEFAULT_LR_SCHEDULER,
@@ -293,7 +256,7 @@ class NamTrainingConfig(AllomorphBaseModel):
     )
     engine: str = Field(
         default="auto",
-        description="Underlying neural training engine ('auto', 'torch')",
+        description="Underlying neural training engine ('auto', 'native', 'stock')",
     )
     seed: int | None = Field(
         default=None,

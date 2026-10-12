@@ -4,7 +4,7 @@
 **Target Hardware:** AMD Radeon RX 9070 XT (64 CUs, 16 GB VRAM, ROCm 6.3+ / HIP, `bf16-mixed`)  
 **Target Hosts:** Darkglass Anagram Block 1 (Preamp / NAM Host), Desktop DAW Plugins, Tone3000 Portal  
 **Primary Modules:**  
-- Stock Engine: [`src/allomorph/trainer/stock/`](../../src/allomorph/trainer/stock/) | [`callbacks.py`](../../src/allomorph/trainer/callbacks.py)  
+- Stock Engine: [`src/allomorph/trainer/stock/`](../../src/allomorph/trainer/stock/)  
 - Native Engine: [`src/allomorph/trainer/native/`](../../src/allomorph/trainer/native/) | [`engine.py`](../../src/allomorph/trainer/native/engine.py) | [`loss.py`](../../src/allomorph/trainer/native/loss.py) | [`models.py`](../../src/allomorph/trainer/native/models.py)
 
 ---
@@ -103,7 +103,7 @@ Across 13 systematic experimental runs, the Multi-Band ESR architecture (`nmb_35
 - **$10\text{ kHz}$ Treble Parity:** Exact match with Tone3000 400ep in 35 epochs ($11.4\times$ epoch reduction).
 - **$500\text{ Hz}$ Comb Notch Victory:** Beat Tone3000 400ep by **$5.0\text{ dB}$** on Full Tier and **$19.8\text{ dB}$** on Lite Tier.
 - **$60\text{ Hz}$ Sub-Bass Accuracy:** Beat Tone3000 400ep by **$3.3\text{ dB}$**, eliminating sub-bass gain drift.
-- Established the immutable baseline standards (`STOCK_DEFAULT_*`).
+- Established the baseline standards subsequently migrated and unified into the native engine (`NATIVE_DEFAULT_*`).
 
 ---
 
@@ -203,4 +203,4 @@ Across both optimization campaigns, several core engineering principles emerged:
    - **Contiguous In-VRAM Slicing:** Keep audio tensors resident in accelerator memory and gather batch slices via 2D index grids.
    - **Native C++ Conv Execution:** Avoid dynamic weight masking in `forward()`; enforce architectural constraints via in-place parameter masking and gradient zeroing.
    - **Avoid ROCm JIT Profiling on Dilated Convolutions:** Keep `torch.backends.cudnn.benchmark = False` on AMD ROCm to avoid MIOpen compilation hangs on large dilation factors.
-4. **Decoupled Engine Governance:** Keeping stock defaults (`STOCK_DEFAULT_*`) and native defaults (`NATIVE_DEFAULT_*`) strictly isolated ensures backward compatibility and reproducible verification without compromising native performance exploration.
+4. **Decoupled Engine Governance:** Keeping stock defaults (`STOCK_DEFAULT_MAX_EPOCHS = 200`) and native defaults (`NATIVE_DEFAULT_*`) strictly isolated ensures standard upstream baseline verification without compromising native performance exploration.

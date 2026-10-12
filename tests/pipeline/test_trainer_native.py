@@ -16,7 +16,6 @@ import json
 from pathlib import Path
 
 import numpy as np
-import pytest
 import torch
 from pedalboard.io import AudioFile
 
@@ -27,31 +26,8 @@ from allomorph.trainer.native import (
     AllomorphWaveNetA2,
     AllomorphWaveNetLayer,
     MultiBandSpectralLoss,
-    design_fir_highpass,
     train_voice_native,
 )
-
-
-def test_fir_highpass_design() -> None:
-    """Verifies pure-NumPy zero-phase FIR high-pass filter design."""
-    num_taps = 31
-    cutoff_hz = 3000.0
-    fs = 48000.0
-    h = design_fir_highpass(num_taps=num_taps, cutoff_hz=cutoff_hz, fs=fs)
-
-    assert len(h) == num_taps
-    assert h.dtype == np.float32
-
-    # Linear-phase symmetry (Type I FIR)
-    assert np.allclose(h, h[::-1], atol=1e-6)
-
-    # Unit response at Nyquist: sum(h * (-1)^n) == 1.0
-    nyq_gain = np.sum(h * np.cos(np.pi * (np.arange(num_taps) - 0.5 * (num_taps - 1))))
-    assert pytest.approx(float(nyq_gain), abs=1e-5) == 1.0
-
-    # Strong attenuation at DC: sum(h) should be very small
-    dc_gain = np.sum(h)
-    assert abs(float(dc_gain)) < 0.05
 
 
 def test_wavenet_layer_forward() -> None:
@@ -180,15 +156,10 @@ def test_multi_resolution_stft_loss() -> None:
 
 
 def test_multiband_spectral_loss() -> None:
-    """Verifies composite multi-band loss with MSE, pre-emphasis MSE, MRSTFT, and normalized high-pass ESR."""
+    """Verifies composite multi-band loss with MSE and MRSTFT."""
     loss_fn = MultiBandSpectralLoss(
         mse_weight=1.0,
-        pre_emph_weight=0.5,
         mrstft_weight=0.002,
-        hp_mid_weight=0.5,
-        hp_mid_cutoff=3000.0,
-        hp_high_weight=0.5,
-        hp_high_cutoff=7000.0,
         fs=48000.0,
     )
 
@@ -206,10 +177,7 @@ def test_multiband_spectral_loss() -> None:
 
     assert loss_val.item() > 0.0
     assert "mse" in metrics
-    assert "pre_emph_mse" in metrics
     assert "mrstft" in metrics
-    assert "hp_mid_esr" in metrics
-    assert "hp_high_esr" in metrics
     assert "composite_loss" in metrics
 
 
@@ -263,8 +231,7 @@ def test_native_default_hyperparameters_and_isolation() -> None:
     from allomorph.trainer import (
         DEFAULT_MAX_EPOCHS,
         DEFAULT_MIN_EPOCHS,
-        NATIVE_DEFAULT_HP_HIGH_WEIGHT,
-        NATIVE_DEFAULT_HP_MID_WEIGHT,
+        DEFAULT_PATIENCE,
         NATIVE_DEFAULT_LITE_WEIGHT,
         NATIVE_DEFAULT_LR,
         NATIVE_DEFAULT_LR_SCHEDULER,
@@ -273,28 +240,17 @@ def test_native_default_hyperparameters_and_isolation() -> None:
         NATIVE_DEFAULT_MIN_EPOCHS,
         NATIVE_DEFAULT_MRSTFT_WEIGHT,
         NATIVE_DEFAULT_PATIENCE,
-        NATIVE_DEFAULT_PRE_EMPH_WEIGHT,
         NATIVE_DEFAULT_SLICE_LEN,
         NATIVE_DEFAULT_WEIGHT_DECAY,
-        STOCK_DEFAULT_HP_HIGH_ESR_WEIGHT,
-        STOCK_DEFAULT_HP_MID_ESR_WEIGHT,
         STOCK_DEFAULT_MAX_EPOCHS,
-        STOCK_DEFAULT_MIN_EPOCHS,
-        STOCK_DEFAULT_PATIENCE,
         train_voice_native,
     )
 
-    # 1. Stock defaults remain completely intact
-    assert STOCK_DEFAULT_MAX_EPOCHS == 60
-    assert STOCK_DEFAULT_MIN_EPOCHS == 35
-    assert STOCK_DEFAULT_PATIENCE == 6
-    assert STOCK_DEFAULT_HP_MID_ESR_WEIGHT == 0.00
-    assert STOCK_DEFAULT_HP_HIGH_ESR_WEIGHT == 0.00
-    assert DEFAULT_MAX_EPOCHS == STOCK_DEFAULT_MAX_EPOCHS
-    assert DEFAULT_MIN_EPOCHS == STOCK_DEFAULT_MIN_EPOCHS
+    # 1. Stock defaults: standard 200-epoch upstream NAM training
+    assert STOCK_DEFAULT_MAX_EPOCHS == 200
 
     # 2. Native defaults are distinct and tuned for rapid in-VRAM convergence
-    assert NATIVE_DEFAULT_MAX_EPOCHS == 80
+    assert NATIVE_DEFAULT_MAX_EPOCHS == 100
     assert NATIVE_DEFAULT_MIN_EPOCHS == 60
     assert NATIVE_DEFAULT_PATIENCE == 10
     assert NATIVE_DEFAULT_MIN_DELTA == 1.0e-6
@@ -304,11 +260,13 @@ def test_native_default_hyperparameters_and_isolation() -> None:
     assert NATIVE_DEFAULT_WEIGHT_DECAY == 3.17e-7
     assert NATIVE_DEFAULT_SLICE_LEN == 8192
     assert NATIVE_DEFAULT_MRSTFT_WEIGHT == 0.0005
-    assert NATIVE_DEFAULT_PRE_EMPH_WEIGHT == 0.00
-    assert NATIVE_DEFAULT_HP_MID_WEIGHT == 0.00
-    assert NATIVE_DEFAULT_HP_HIGH_WEIGHT == 0.00
 
-    # 3. train_voice_native signature matches native standards
+    # 3. Default platform hyperparameters match Native defaults
+    assert DEFAULT_MAX_EPOCHS == NATIVE_DEFAULT_MAX_EPOCHS
+    assert DEFAULT_MIN_EPOCHS == NATIVE_DEFAULT_MIN_EPOCHS
+    assert DEFAULT_PATIENCE == NATIVE_DEFAULT_PATIENCE
+
+    # 4. train_voice_native signature matches native standards
     sig = inspect.signature(train_voice_native)
     assert sig.parameters["epochs"].default == NATIVE_DEFAULT_MAX_EPOCHS
     assert sig.parameters["min_epochs"].default == NATIVE_DEFAULT_MIN_EPOCHS
@@ -317,5 +275,3 @@ def test_native_default_hyperparameters_and_isolation() -> None:
     assert sig.parameters["slice_len"].default == NATIVE_DEFAULT_SLICE_LEN
     assert sig.parameters["lite_weight"].default == NATIVE_DEFAULT_LITE_WEIGHT
     assert sig.parameters["mrstft_weight"].default == NATIVE_DEFAULT_MRSTFT_WEIGHT
-    assert sig.parameters["hp_mid_weight"].default == NATIVE_DEFAULT_HP_MID_WEIGHT
-    assert sig.parameters["hp_high_weight"].default == NATIVE_DEFAULT_HP_HIGH_WEIGHT

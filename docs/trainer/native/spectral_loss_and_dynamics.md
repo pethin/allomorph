@@ -149,13 +149,14 @@ if best_state_dict is not None:
 
 The native engine operates under an isolated hyperparameter regime tuned for rapid convergence and distortion-free electroacoustic tracking:
 
-| Hyperparameter | Stock Lightning Engine (`STOCK_DEFAULT_*`) | Native Engine (`NATIVE_DEFAULT_*`) | Rationale |
+| Hyperparameter | Upstream Stock Engine (`STOCK_DEFAULT_MAX_EPOCHS`) | Native Engine (`NATIVE_DEFAULT_*`) | Rationale |
 | :--- | :---: | :---: | :--- |
-| **Spectral Loss** | High-Pass ESR / MRSTFT | **Multi-Resolution STFT (`0.0005`)** | Linear spectral log-magnitude guidance without denominator distortion singularities |
-| **Min Warmup Epochs** | `35` | **`60`** | Ensures full learning rate annealing through differentiator formation |
-| **Max Epoch Schedule** | `60` | **`80`** | Complete convergence achieved in 60–75 epochs with $-30.3\text{ dB}$ ESR |
-| **Patience Window** | `6` | **`10`** | Evaluates validation plateau slope over 10 epochs |
-| **Optimizer & LR** | Adam ($1.0\text{e-2}$, Lightning) | **Adam ($4.0\text{e-3}$)** | Stable step size preventing parameter oscillation around narrow spectral basins |
+| **Spectral Loss** | None (standard upstream NAM) | **Multi-Resolution STFT (`0.0005`)** | Linear spectral log-magnitude guidance without denominator distortion singularities |
+| **Max Epoch Schedule** | `200` | **`100`** | Complete convergence achieved in 60–90 epochs with $-30.3\text{ dB}$ ESR |
+| **Early Stopping** | None (fixed 200-epoch schedule) | **Anti-Drift Pareto** | Integrated post-warmup plateau detection saving GPU compute |
+| **Min Warmup Epochs** | N/A | **`60`** | Ensures full learning rate annealing through differentiator formation |
+| **Patience Window** | N/A | **`10`** | Evaluates validation plateau slope over 10 epochs |
+| **Optimizer & LR** | Adam ($1.0\text{e-2}$, Upstream) | **Adam ($4.0\text{e-3}$)** | Stable step size preventing parameter oscillation around narrow spectral basins |
 | **L2 Weight Decay** | `0.0` | **`3.17e-7`** | Matches upstream weight decay regularization standard |
 | **Slice Length ($ny$)** | $8,192\text{ samples}$ | **$8,192\text{ samples}$** | Captures $170.7\text{ ms}$ continuous audio windows |
 | **Sampling Mechanism** | DataLoader Random Slices | **Epoch Block Permutation** | Full-track coverage ensuring 100% of excitation blocks are sampled every epoch |

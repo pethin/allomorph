@@ -73,7 +73,7 @@ allomorph/
 │   ├── aperture_math.md      # Aperture sinc, wave speeds, multi-scale filters
 │   ├── anagram_workflow.md   # Darkglass Anagram Block 1 routing & banks
 │   ├── trainer/
-│   │   ├── stock/            # Upstream NAM / Lightning trainer docs (early stopping & spectral loss)
+│   │   ├── stock/            # Upstream NAM / Lightning trainer docs (standard 200-epoch baseline & history)
 │   │   └── native/           # Custom native A2 trainer docs (architecture, in-VRAM slicing & loss)
 │   ├── frequency_responses.html # Master interactive portal
 │   └── frequency_responses/     # Per-instrument standalone Altair visualizations

@@ -26,10 +26,6 @@ from allomorph.trainer.constants import (
     DEFAULT_BATCH_SIZE,
     DEFAULT_ENGINE,
     DEFAULT_ETA_MIN,
-    DEFAULT_HP_HIGH_CUTOFF,
-    DEFAULT_HP_HIGH_ESR_WEIGHT,
-    DEFAULT_HP_MID_CUTOFF,
-    DEFAULT_HP_MID_ESR_WEIGHT,
     DEFAULT_LR_SCHEDULER,
     DEFAULT_LR_T_MAX,
     DEFAULT_MAX_EPOCHS,
@@ -39,27 +35,13 @@ from allomorph.trainer.constants import (
     DEFAULT_MSE_WEIGHT,
     DEFAULT_NUM_WORKERS,
     DEFAULT_PATIENCE,
-    DEFAULT_PRE_EMPH_COEF,
-    DEFAULT_PRE_EMPH_WEIGHT,
     DEFAULT_PRECISION,
     DEFAULT_SEED,
-    NATIVE_DEFAULT_HP_HIGH_WEIGHT,
-    NATIVE_DEFAULT_HP_MID_WEIGHT,
     NATIVE_DEFAULT_LITE_WEIGHT,
     NATIVE_DEFAULT_LR,
-    NATIVE_DEFAULT_LR_SCHEDULER,
-    NATIVE_DEFAULT_MAX_EPOCHS,
-    NATIVE_DEFAULT_MIN_EPOCHS,
-    NATIVE_DEFAULT_MRSTFT_WEIGHT,
-    NATIVE_DEFAULT_PRE_EMPH_WEIGHT,
     NATIVE_DEFAULT_SLICE_LEN,
     NATIVE_DEFAULT_WEIGHT_DECAY,
-    STOCK_DEFAULT_HP_HIGH_ESR_WEIGHT,
-    STOCK_DEFAULT_HP_MID_ESR_WEIGHT,
     STOCK_DEFAULT_MAX_EPOCHS,
-    STOCK_DEFAULT_MIN_EPOCHS,
-    STOCK_DEFAULT_MRSTFT_WEIGHT,
-    STOCK_DEFAULT_PRE_EMPH_WEIGHT,
     VALID_ENGINES,
 )
 
@@ -162,16 +144,16 @@ setup_headless_environment()
 
 
 def resolve_trainer_engine(engine: str = DEFAULT_ENGINE) -> str:
-    """Resolves trainer engine ('auto', 'native', 'stock', 'torch').
+    """Resolves trainer engine ('auto', 'native', 'stock').
     - 'auto' / 'native': uses Allomorph custom native PyTorch A2 engine
-    - 'stock' / 'torch': uses upstream PyTorch Lightning / NAM engine
+    - 'stock': uses upstream PyTorch Lightning / NAM engine
     """
     engine_clean = engine.lower().strip()
     if engine_clean not in VALID_ENGINES:
         raise ValueError(f"Invalid engine '{engine}'. Valid options: {VALID_ENGINES}")
     if engine_clean in ("auto", "native"):
         return "native"
-    return "torch"
+    return "stock"
 
 
 def get_hardware_device_name(engine: str = DEFAULT_ENGINE) -> str:
@@ -420,11 +402,15 @@ def compute_baseline_mrstft(
         return 0.400
 
 
-def configure_a2_architecture(*args: Any, **kwargs: Any) -> None:
-    """Configures NAM Architecture 2 packed model submodels, loss weighting, and adaptive early stopping via PyTorch."""
+def configure_a2_architecture(
+    nam_core: Any,
+    precision: str = DEFAULT_PRECISION,
+    num_workers: int | str = DEFAULT_NUM_WORKERS,
+) -> None:
+    """Configures NAM Architecture 2 packed model submodels and hardware logging for stock training."""
     from allomorph.trainer.stock import configure_a2_architecture as _cfg
 
-    _cfg(*args, **kwargs)
+    _cfg(nam_core, precision=precision, num_workers=num_workers)
 
 
 def train_voice(
@@ -440,13 +426,7 @@ def train_voice(
     patience: int = DEFAULT_PATIENCE,
     min_delta: float = DEFAULT_MIN_DELTA,
     mse_weight: float = DEFAULT_MSE_WEIGHT,
-    pre_emph_weight: float = DEFAULT_PRE_EMPH_WEIGHT,
-    pre_emph_coef: float = DEFAULT_PRE_EMPH_COEF,
     mrstft_weight: float = DEFAULT_MRSTFT_WEIGHT,
-    hp_mid_weight: float = DEFAULT_HP_MID_ESR_WEIGHT,
-    hp_mid_cutoff: float = DEFAULT_HP_MID_CUTOFF,
-    hp_high_weight: float = DEFAULT_HP_HIGH_ESR_WEIGHT,
-    hp_high_cutoff: float = DEFAULT_HP_HIGH_CUTOFF,
     lr_scheduler: str = DEFAULT_LR_SCHEDULER,
     eta_min: float = DEFAULT_ETA_MIN,
     lr_t_max: int = DEFAULT_LR_T_MAX,
@@ -473,36 +453,6 @@ def train_voice(
     if resolved_engine == "native":
         from allomorph.trainer.native import train_voice_native
 
-        effective_epochs = (
-            NATIVE_DEFAULT_MAX_EPOCHS if epochs == STOCK_DEFAULT_MAX_EPOCHS else epochs
-        )
-        effective_min_epochs = (
-            NATIVE_DEFAULT_MIN_EPOCHS if min_epochs == STOCK_DEFAULT_MIN_EPOCHS else min_epochs
-        )
-        effective_hp_high = (
-            NATIVE_DEFAULT_HP_HIGH_WEIGHT
-            if hp_high_weight == STOCK_DEFAULT_HP_HIGH_ESR_WEIGHT
-            else hp_high_weight
-        )
-        effective_hp_mid = (
-            NATIVE_DEFAULT_HP_MID_WEIGHT
-            if hp_mid_weight == STOCK_DEFAULT_HP_MID_ESR_WEIGHT
-            else hp_mid_weight
-        )
-        effective_pre_emph = (
-            NATIVE_DEFAULT_PRE_EMPH_WEIGHT
-            if pre_emph_weight == STOCK_DEFAULT_PRE_EMPH_WEIGHT
-            else pre_emph_weight
-        )
-        effective_mrstft = (
-            NATIVE_DEFAULT_MRSTFT_WEIGHT
-            if mrstft_weight == STOCK_DEFAULT_MRSTFT_WEIGHT
-            else mrstft_weight
-        )
-        effective_lr_scheduler = (
-            NATIVE_DEFAULT_LR_SCHEDULER if lr_scheduler == DEFAULT_LR_SCHEDULER else lr_scheduler
-        )
-
         return train_voice_native(
             instrument=instrument,
             voice=voice,
@@ -511,19 +461,13 @@ def train_voice(
             output_wav=output_wav,
             reference_wav=reference_wav,
             models_dir=models_dir,
-            epochs=effective_epochs,
-            min_epochs=effective_min_epochs,
+            epochs=epochs,
+            min_epochs=min_epochs,
             patience=patience,
             min_delta=min_delta,
             mse_weight=mse_weight,
-            pre_emph_weight=effective_pre_emph,
-            pre_emph_coef=pre_emph_coef,
-            mrstft_weight=effective_mrstft,
-            hp_mid_weight=effective_hp_mid,
-            hp_mid_cutoff=hp_mid_cutoff,
-            hp_high_weight=effective_hp_high,
-            hp_high_cutoff=hp_high_cutoff,
-            lr_scheduler=effective_lr_scheduler,
+            mrstft_weight=mrstft_weight,
+            lr_scheduler=lr_scheduler,
             eta_min=eta_min,
             lr_t_max=lr_t_max,
             batch_size=batch_size,
@@ -544,9 +488,10 @@ def train_voice(
             lite_weight=lite_weight,
         )
 
-    from allomorph.trainer.stock import train_voice_torch
+    from allomorph.trainer.stock import train_voice_stock
 
-    return train_voice_torch(
+    stock_epochs = STOCK_DEFAULT_MAX_EPOCHS if epochs == DEFAULT_MAX_EPOCHS else epochs
+    return train_voice_stock(
         instrument=instrument,
         voice=voice,
         source_voicing=source_voicing,
@@ -554,21 +499,7 @@ def train_voice(
         output_wav=output_wav,
         reference_wav=reference_wav,
         models_dir=models_dir,
-        epochs=epochs,
-        min_epochs=min_epochs,
-        patience=patience,
-        min_delta=min_delta,
-        mse_weight=mse_weight,
-        pre_emph_weight=pre_emph_weight,
-        pre_emph_coef=pre_emph_coef,
-        mrstft_weight=mrstft_weight,
-        hp_mid_weight=hp_mid_weight,
-        hp_mid_cutoff=hp_mid_cutoff,
-        hp_high_weight=hp_high_weight,
-        hp_high_cutoff=hp_high_cutoff,
-        lr_scheduler=lr_scheduler,
-        eta_min=eta_min,
-        lr_t_max=lr_t_max,
+        epochs=stock_epochs,
         batch_size=batch_size,
         precision=precision,
         num_workers=num_workers,
@@ -600,13 +531,7 @@ def train_voices_from_config(cli_cfg: NamTrainingConfig) -> bool:
                 patience=cli_cfg.patience,
                 min_delta=cli_cfg.min_delta,
                 mse_weight=cli_cfg.mse_weight,
-                pre_emph_weight=cli_cfg.pre_emph_weight,
-                pre_emph_coef=cli_cfg.pre_emph_coef,
                 mrstft_weight=cli_cfg.mrstft_weight,
-                hp_mid_weight=cli_cfg.hp_mid_esr_weight,
-                hp_mid_cutoff=cli_cfg.hp_mid_cutoff,
-                hp_high_weight=cli_cfg.hp_high_esr_weight,
-                hp_high_cutoff=cli_cfg.hp_high_cutoff,
                 batch_size=cli_cfg.batch_size,
                 precision=cli_cfg.precision,
                 num_workers=cli_cfg.num_workers,
@@ -651,13 +576,7 @@ def train_voices_from_config(cli_cfg: NamTrainingConfig) -> bool:
                 patience=cli_cfg.patience,
                 min_delta=cli_cfg.min_delta,
                 mse_weight=cli_cfg.mse_weight,
-                pre_emph_weight=cli_cfg.pre_emph_weight,
-                pre_emph_coef=cli_cfg.pre_emph_coef,
                 mrstft_weight=cli_cfg.mrstft_weight,
-                hp_mid_weight=cli_cfg.hp_mid_esr_weight,
-                hp_mid_cutoff=cli_cfg.hp_mid_cutoff,
-                hp_high_weight=cli_cfg.hp_high_esr_weight,
-                hp_high_cutoff=cli_cfg.hp_high_cutoff,
                 lr_scheduler=cli_cfg.lr_scheduler,
                 eta_min=cli_cfg.eta_min,
                 lr_t_max=cli_cfg.lr_t_max,

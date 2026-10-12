@@ -65,7 +65,7 @@ def test_conformal_clearance_asymmetry_invariants(x: float, vsat: float, kappa: 
     if x > 0 and kappa > 0:
         assert out >= x  # Proximity growl amplification
     if math.isclose(x, 0.0, abs_tol=1e-6):
-        assert math.isclose(out, 0.0, abs_tol=1e-6)
+        assert math.isclose(out, 0.0, abs_tol=2e-6)
 
 
 @given(

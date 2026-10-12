@@ -61,16 +61,20 @@ def test_default_training_hyperparameters():
         train_voice,
     )
 
-    assert DEFAULT_MAX_EPOCHS == 60
-    assert DEFAULT_MIN_EPOCHS == 35
-    assert DEFAULT_PATIENCE == 6
-    assert DEFAULT_MIN_DELTA == 1.0e-4
+    assert DEFAULT_MAX_EPOCHS == 100
+    assert DEFAULT_MIN_EPOCHS == 60
+    assert DEFAULT_PATIENCE == 10
+    assert DEFAULT_MIN_DELTA == 1.0e-6
     assert DEFAULT_BATCH_SIZE == "auto"
     assert DEFAULT_PRECISION == "auto"
     assert DEFAULT_NUM_WORKERS == "auto"
     assert DEFAULT_LR_SCHEDULER == "exponential"
-    assert DEFAULT_ETA_MIN == 5e-4
+    assert DEFAULT_ETA_MIN == 1.0e-5
     assert DEFAULT_LR_T_MAX == 45
+
+    from allomorph.trainer import STOCK_DEFAULT_MAX_EPOCHS
+
+    assert STOCK_DEFAULT_MAX_EPOCHS == 200
 
     sig = inspect.signature(train_voice)
     assert sig.parameters["epochs"].default == DEFAULT_MAX_EPOCHS
@@ -223,15 +227,9 @@ def test_configure_a2_architecture():
 
     from allomorph.trainer import configure_a2_architecture
 
-    # Test slimmable configuration with cosine scheduler
+    # Test slimmable configuration with precision and worker resolution
     configure_a2_architecture(
         nam_core,
-        pre_emph_weight=0.25,
-        pre_emph_coef=0.85,
-        mrstft_weight=0.0010,
-        lr_scheduler="cosine",
-        eta_min=1e-5,
-        lr_t_max=35,
         precision="bf16-mixed",
         num_workers=0,
     )
@@ -241,12 +239,6 @@ def test_configure_a2_architecture():
     names = [s["name"] for s in submodels_full]
     assert "channels_3" in names
     assert "channels_8" in names
-    assert cfg_full["loss"]["pre_emph_weight"] == 0.25
-    assert cfg_full["loss"]["pre_emph_coef"] == 0.85
-    assert cfg_full["loss"]["mrstft_weight"] == 0.0010
-    assert cfg_full["lr_scheduler"]["class"] == "CosineAnnealingLR"
-    assert cfg_full["lr_scheduler"]["kwargs"]["T_max"] == 35
-    assert cfg_full["lr_scheduler"]["kwargs"]["eta_min"] == 1e-5
 
     # Check patched _get_configs
     if hasattr(nam_core, "_get_configs"):
@@ -313,21 +305,15 @@ def test_compute_baseline_mrstft():
 
 
 def test_linear_warmup_monotonic_floor_clamp():
-    import nam.train.core as nam_core
+    from allomorph.trainer import LinearWarmupCallback
 
-    from allomorph.trainer import configure_a2_architecture
-
-    configure_a2_architecture(
-        nam_core,
-        lr_scheduler="cosine",
-        eta_min=1e-5,
+    warmup_cb = LinearWarmupCallback(
+        warmup_epochs=5,
+        target_lr=0.004,
         lr_t_max=35,
+        eta_min=1e-5,
+        is_cosine=True,
     )
-    callbacks = nam_core.get_callbacks(threshold_esr=0.00020)
-    warmup_cb: Any = next(
-        (c for c in callbacks if "LinearWarmupCallback" in type(c).__name__), None
-    )
-    assert warmup_cb is not None
 
     class DummyOptimizer:
         def __init__(self, lr: float = 0.004):
@@ -369,37 +355,16 @@ def test_esr_progress_callback_hook():
 
     from allomorph.trainer import configure_a2_architecture
 
-    # Test slimmable mode early stopping monitors composite val_loss
-    configure_a2_architecture(
-        nam_core,
-        min_epochs=5,
-        patience=5,
-        min_delta=2.0e-6,
-    )
+    configure_a2_architecture(nam_core)
     callbacks = nam_core.get_callbacks(None)
 
     cb: Any = next((c for c in callbacks if "EsrProgressCallback" in type(c).__name__), None)
     assert cb is not None
-    assert cb.min_epochs == 5
+    assert cb.min_epochs == 0
 
-    warmup_cb: Any = next(
-        (c for c in callbacks if "LinearWarmupCallback" in type(c).__name__), None
-    )
-    assert warmup_cb is not None
-
-    stopping_cb: Any = next(
-        (c for c in callbacks if "AllomorphAdaptiveStopping" in type(c).__name__), None
-    )
-    assert stopping_cb is not None
-    assert stopping_cb.monitor == "val_loss"
-    assert stopping_cb.warmup_floor == 5
-    assert stopping_cb.patience == 5
-    assert stopping_cb.min_delta == 2.0e-6
-
-    # Re-test slimmable validation epoch end with dual submodel metrics
-    configure_a2_architecture(nam_core, min_epochs=5)
-    callbacks = nam_core.get_callbacks(None)
-    cb: Any = next(c for c in callbacks if "EsrProgressCallback" in type(c).__name__)
+    # Verify custom stopping and warmup callbacks are not present in stock
+    assert not any("AllomorphAdaptiveStopping" in type(c).__name__ for c in callbacks)
+    assert not any("LinearWarmupCallback" in type(c).__name__ for c in callbacks)
 
     class DummyTrainer:
         def __init__(self) -> None:
@@ -427,19 +392,16 @@ def test_esr_progress_callback_hook():
 
 def test_adaptive_stopping_composite_val_loss_plateau():
     """Verify adaptive diminishing-returns early exit on composite val_loss (Full + Lite)."""
-    import nam.train.core as nam_core
     import torch
 
-    from allomorph.trainer import configure_a2_architecture
+    from allomorph.trainer import AllomorphAdaptiveStopping
 
-    configure_a2_architecture(
-        nam_core,
-        min_epochs=5,
+    vs_cb = AllomorphAdaptiveStopping(
+        monitor="val_loss",
+        warmup_floor=5,
         patience=5,
         min_delta=2.0e-6,
     )
-    callbacks = nam_core.get_callbacks(None)
-    vs_cb: Any = next(c for c in callbacks if "AllomorphAdaptiveStopping" in type(c).__name__)
 
     class EarlyStoppingTestTrainer:
         def __init__(
@@ -535,8 +497,8 @@ def test_inst_models_dir_non_nesting_on_nam_dir(tmp_path: Path):
     assert inst_models_dir2 == general_models_dir / inst_id
 
 
-def test_train_voice_torch_fast_dev_run(tmp_path: Path):
-    """Verify PyTorch A2 trainer executes in fast_dev_run mode."""
+def test_train_voice_stock_fast_dev_run(tmp_path: Path):
+    """Verify Stock Lightning A2 trainer executes in fast_dev_run mode."""
     from allomorph.trainer import train_voice
 
     input_audio = REPO_ROOT / "audio" / "input.wav"
@@ -552,9 +514,9 @@ def test_train_voice_torch_fast_dev_run(tmp_path: Path):
         reference_wav=input_audio,
         models_dir=models_dir,
         epochs=1,
-        min_epochs=1,
+        min_epochs=0,
         fast_dev_run=True,
-        engine="torch",
+        engine="stock",
         batch_size=16,
     )
     assert ok is True
@@ -635,8 +597,10 @@ def test_resolve_trainer_engine_and_mps_env() -> None:
 
     assert resolve_trainer_engine("auto") == "native"
     assert resolve_trainer_engine("native") == "native"
-    assert resolve_trainer_engine("stock") == "torch"
-    assert resolve_trainer_engine("torch") == "torch"
+    assert resolve_trainer_engine("stock") == "stock"
+
+    with pytest.raises(ValueError, match="Invalid engine 'torch'"):
+        resolve_trainer_engine("torch")
 
     with pytest.raises(ValueError, match="Invalid engine 'mlx'"):
         resolve_trainer_engine("mlx")

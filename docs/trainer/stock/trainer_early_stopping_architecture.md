@@ -1,5 +1,8 @@
 # Allomorph Trainer - Adaptive Early Stopping & Optimal Checkpoint Restoration Architecture
 
+> [!NOTE]
+> **Architecture Status Note:** The stock engine (`allomorph.trainer.stock`) has been reverted to standard upstream Neural Amp Modeler 200-epoch fixed-schedule training (`STOCK_DEFAULT_MAX_EPOCHS = 200`) without early stopping callbacks or state dict manipulation. The Anti-Drift Pareto Early Stopping architecture and in-memory checkpoint restoration documented here is fully implemented in the native PyTorch training engine ([`allomorph.trainer.native`](../native/engine_architecture.md)).
+
 This document specifies the electroacoustic convergence theory, mathematical formulations, empirical failure modes, and production architecture of the **Anti-Drift Pareto Early Stopping and Optimal Checkpoint Restoration Engine** for Architecture 2 Neural Amp Modeler (NAM) training on the Darkglass Anagram pedalboard pipeline.
 
 ---
@@ -50,7 +53,7 @@ To resolve these failure modes from first principles, we redesigned the converge
 
 ```
 +-----------------------------------------------------------------------------------+
-|                        TRAINER VALIDATION STEP (engine_torch.py)                  |
+|                        TRAINER VALIDATION STEP (engine.py)                        |
 |                                                                                   |
 |   1. Studio Full Tier Multi-Band Loss:                                            |
 |      L_Full(t) = w_mse * MSE_Full + w_mid * ESR_HP_mid + w_high * ESR_HP_high     |
@@ -80,7 +83,7 @@ To resolve these failure modes from first principles, we redesigned the converge
                                           |
                                           v
 +-----------------------------------------------------------------------------------+
-|                       FINAL MODEL EXPORT (train_voice_torch)                      |
+|                  FINAL MODEL EXPORT (Native / train_voice_native)                 |
 |                                                                                   |
 |   7. Direct In-Memory Restoration:                                                |
 |      model.net.load_state_dict(stopping_cb.best_state_dict)                       |
@@ -184,9 +187,8 @@ DEFAULT_HP_HIGH_ESR_WEIGHT: float = 0.50  # 7 kHz High-Pass ESR weight
 - `AllomorphAdaptiveStopping`: Manages state dict caching and ensures automatic restoration on training completion.
 
 ### 6.3 Engine Binding (`src/allomorph/trainer/stock/engine.py` and `src/allomorph/trainer/native/engine.py`)
-- `patched_validation_step` (Stock): Evaluates exact multi-band loss for submodels and logs `mb_loss_packed_1`.
-- `train_voice_native` (Native): Standalone GPU training loop with in-memory Pareto checkpoint tracking and zero-copy VRAM tensor slicing.
-- `train_voice_torch` (Stock): Directly verifies and applies `stopping_cb.best_state_dict` before `.nam` export, bypassing upstream disk overwrite routines.
+- `train_voice_native` (Native): Standalone GPU training loop with in-memory Pareto checkpoint tracking, zero-copy VRAM tensor slicing, and adaptive early stopping.
+- `train_voice_stock` (Stock): Standard upstream NAM / Lightning 200-epoch training wrapper with A2 submodel export and clean terminal logging (fixed schedule, early stopping disabled).
 
 ---
 
@@ -242,7 +244,7 @@ The development of the Allomorph Early Stopping & Checkpoint Restoration Archite
 | Failure Mode | Root Cause | Symptom | Architectural Mitigation |
 | :--- | :--- | :--- | :--- |
 | **1. Validation Metric Mismatch** | `val_loss` tracked raw full-band ESR, which reflects $99.9\%$ low frequencies and plateaus by Epoch 14. | Early stopping terminated prematurely at Epoch 20–22, completely cutting off high frequencies above $4\text{ kHz}$. | Replaced `val_loss` with the exact composite multi-band loss $\mathcal{L}_{\text{val, mb}} = \text{Full} + 0.5 \cdot \text{Lite}$ in `patched_validation_step`. |
-| **2. Upstream Checkpoint Overwrite** | Upstream NAM's `ModelCheckpoint` reloaded disk checkpoints tracked on raw `val_loss` in its `finally` block. | Any 50–70 epoch run was silently overwritten by the Epoch 14 checkpoint upon completion. | Implemented in-memory state dict caching in `AllomorphAdaptiveStopping` and enforced manual state dict restoration in `train_voice_torch`. |
+| **2. Upstream Checkpoint Overwrite** | Upstream NAM's `ModelCheckpoint` reloaded disk checkpoints tracked on raw `val_loss` in its `finally` block. | Any 50–70 epoch run was silently overwritten by the Epoch 14 checkpoint upon completion. | Implemented in-memory state dict caching in `AllomorphAdaptiveStopping` and enforced manual state dict restoration in the native engine (`train_voice_native`). |
 | **3. Premature Tap Interruption** | WaveNet differentiator taps require $\sim 2500$ Adam updates to grow from zero initialization. | Stopping during gradient plateau before taps emerged led to flat IRs. | Introduced **Warmup Floor** (`min_epochs = 35`) and **Active Differentiator Descent Guard** (`hp_high_slope < -5e-5`). |
 | **4. Pre-Warmup Baseline Bias** | Tracking historical minimum MSE from Epoch 0 compared mature post-warmup MSE to pre-differentiator smooth lowpass states. | Artificially triggered $+150\%$ drift flags at Epochs 36–40, forcing premature stopping and restoring weak early models. | Deferred `min_mse_full` initialization strictly to `epoch >= warmup_floor` (Epoch 35), evaluating post-warmup drift fairly. |
 | **5. Pre-Warmup Checkpoint Leak** | `best_pareto_score` updated during warmup was unpenalized by drift, outscoring superior mature post-warmup epochs. | Early stopping restored pre-warmup Epoch 33 instead of mature Epoch 42. | Gated `best_pareto_score` and `best_state_dict` updates strictly behind `if epoch >= self.warmup_floor:`. |

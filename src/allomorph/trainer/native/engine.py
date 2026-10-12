@@ -34,11 +34,6 @@ from allomorph.trainer.constants import (
     DEFAULT_NUM_WORKERS,
     DEFAULT_SEED,
     NATIVE_DEFAULT_BATCH_SIZE,
-    NATIVE_DEFAULT_HP_HIGH_CUTOFF,
-    NATIVE_DEFAULT_HP_HIGH_WEIGHT,
-    NATIVE_DEFAULT_HP_MID_CUTOFF,
-    NATIVE_DEFAULT_HP_MID_WEIGHT,
-    NATIVE_DEFAULT_HP_MIN_ENERGY,
     NATIVE_DEFAULT_LITE_WEIGHT,
     NATIVE_DEFAULT_LR,
     NATIVE_DEFAULT_LR_SCHEDULER,
@@ -48,8 +43,6 @@ from allomorph.trainer.constants import (
     NATIVE_DEFAULT_MRSTFT_WEIGHT,
     NATIVE_DEFAULT_MSE_WEIGHT,
     NATIVE_DEFAULT_PATIENCE,
-    NATIVE_DEFAULT_PRE_EMPH_COEF,
-    NATIVE_DEFAULT_PRE_EMPH_WEIGHT,
     NATIVE_DEFAULT_PRECISION,
     NATIVE_DEFAULT_SLICE_LEN,
     NATIVE_DEFAULT_WEIGHT_DECAY,
@@ -92,14 +85,7 @@ def train_voice_native(
     patience: int = NATIVE_DEFAULT_PATIENCE,
     min_delta: float = NATIVE_DEFAULT_MIN_DELTA,
     mse_weight: float = NATIVE_DEFAULT_MSE_WEIGHT,
-    pre_emph_weight: float = NATIVE_DEFAULT_PRE_EMPH_WEIGHT,
-    pre_emph_coef: float = NATIVE_DEFAULT_PRE_EMPH_COEF,
     mrstft_weight: float = NATIVE_DEFAULT_MRSTFT_WEIGHT,
-    hp_mid_weight: float = NATIVE_DEFAULT_HP_MID_WEIGHT,
-    hp_mid_cutoff: float = NATIVE_DEFAULT_HP_MID_CUTOFF,
-    hp_high_weight: float = NATIVE_DEFAULT_HP_HIGH_WEIGHT,
-    hp_high_cutoff: float = NATIVE_DEFAULT_HP_HIGH_CUTOFF,
-    hp_min_energy: float = NATIVE_DEFAULT_HP_MIN_ENERGY,
     lr_scheduler: str = NATIVE_DEFAULT_LR_SCHEDULER,
     eta_min: float = DEFAULT_ETA_MIN,
     lr_t_max: int = DEFAULT_LR_T_MAX,
@@ -306,8 +292,7 @@ def train_voice_native(
         print(f"  Batch Size:     {resolved_bs} | Precision: {resolved_precision}")
         print(f"  Schedule:       {lr_scheduler} (max_epochs={epochs}, warmup={min_epochs})")
         print(
-            f"  Multi-Band:     MSE={mse_weight:.2f}, PreEmph={pre_emph_weight:.2f} (a={pre_emph_coef:.2f}), "
-            f"MRSTFT={mrstft_weight:.4f}, Mid(3k)={hp_mid_weight:.2f}, High(7k)={hp_high_weight:.2f}"
+            f"  Loss Config:    MSE={mse_weight:.2f}, MRSTFT={mrstft_weight:.4f}"
         )
         print("-------------------------------------------------------")
 
@@ -343,14 +328,7 @@ def train_voice_native(
 
     loss_fn = MultiBandSpectralLoss(
         mse_weight=mse_weight,
-        pre_emph_weight=pre_emph_weight,
-        pre_emph_coef=pre_emph_coef,
         mrstft_weight=mrstft_weight,
-        hp_mid_weight=hp_mid_weight,
-        hp_mid_cutoff=hp_mid_cutoff,
-        hp_high_weight=hp_high_weight,
-        hp_high_cutoff=hp_high_cutoff,
-        hp_min_energy=hp_min_energy,
         fs=sample_rate,
     ).to(hw_device)
 
@@ -479,9 +457,7 @@ def train_voice_native(
 
         mb_val = float(val_l_full.detach().cpu().item())
         val_loss_history.append(mb_val)
-        hp_metric = metrics_full.get(
-            "mrstft", metrics_full.get("hp_high_esr", metrics_full.get("pre_emph_mse", 0.0))
-        )
+        hp_metric = metrics_full.get("mrstft", 0.0)
         hp_high_history.append(hp_metric)
 
         if min_mse_full < float("inf"):
@@ -526,7 +502,7 @@ def train_voice_native(
                 patience=patience,
                 min_delta=min_delta,
                 hp_high_slope=hp_slope,
-                mse_drift_ratio=mse_drift if hp_high_weight > 0.0 else 0.0,
+                mse_drift_ratio=mse_drift,
                 drift_exit_threshold=1.50,
             )
         else:

@@ -94,22 +94,22 @@ For web training on Tone3000, bundles are generated via `allomorph --stage pack`
 ## 5. Training Engines, Standards & Submodule Layout
 
 Allomorph provides two dedicated training backends in `src/allomorph/trainer/`:
-1. **Native Engine (`allomorph.trainer.native`):** Bespoke in-VRAM zero-copy PyTorch engine with unified 11-channel masked convolutions and fast 15–40 epoch convergence. See [`docs/trainer/native/engine_architecture.md`](trainer/native/engine_architecture.md) and [`docs/trainer/native/spectral_loss_and_dynamics.md`](trainer/native/spectral_loss_and_dynamics.md).
-2. **Stock Engine (`allomorph.trainer.stock`):** Upstream Neural Amp Modeler / PyTorch Lightning engine preserving painstakingly optimized 35–60 epoch baseline standards. See [`docs/trainer/stock/trainer_spectral_loss_optimization.md`](trainer/stock/trainer_spectral_loss_optimization.md) and [`docs/trainer/stock/trainer_early_stopping_architecture.md`](trainer/stock/trainer_early_stopping_architecture.md).
+1. **Native Engine (`allomorph.trainer.native`):** Bespoke in-VRAM zero-copy PyTorch engine with unified 11-channel masked convolutions, multi-resolution STFT spectral loss guidance, and fast convergence with adaptive early stopping. See [`docs/trainer/native/engine_architecture.md`](trainer/native/engine_architecture.md) and [`docs/trainer/native/spectral_loss_and_dynamics.md`](trainer/native/spectral_loss_and_dynamics.md).
+2. **Stock Engine (`allomorph.trainer.stock`):** Upstream Neural Amp Modeler / PyTorch Lightning engine providing a standard 200-epoch baseline with A2 slimmable submodel extraction and terminal progress logging. See [`docs/trainer/stock/`](trainer/stock/).
 
 ### Hyperparameter Standards & Defaults
 
 | Parameter | Stock Engine Default (`STOCK_DEFAULT_*`) | Native Engine Default (`NATIVE_DEFAULT_*`) | Description |
 | :--- | :---: | :---: | :--- |
 | **Architecture** | `A2` | `A2` | Slimmable Architecture 2 (`channels_3` + `channels_8`) |
-| **Spectral Loss** | High-Pass ESR / MRSTFT | `MRSTFT` (`0.0005`) | Multi-resolution log-STFT loss (linear high-end guidance) |
-| **Min Warmup Epochs** | `35` | `60` | Warmup floor before early stopping engages |
-| **Max Epoch Schedule** | `60` | `80` | Training epoch budget (reaches $-30.3\text{ dB}$ ESR) |
-| **Patience** | `6` | `10` | Early stopping plateau patience window |
-| **Min Delta** | `1.0e-4` | `1.0e-6` | Composite validation loss improvement threshold |
-| **Waveform MSE Weight**| `1.00` | `1.00` | Full-band time-domain MSE anchor weight |
-| **MRSTFT Weight** | `0.001` | `0.0005` | Multi-scale log-magnitude and spectral convergence weight |
-| **High-Pass ESR Weight**| `0.00` | `0.00` (Bypassed) | High-pass normalized ESR (bypassed to avoid small-signal THD) |
+| **Max Epoch Schedule** | `200` | `100` | Training epoch budget |
+| **Early Stopping** | None (fixed 200-epoch schedule) | Anti-Drift Pareto | Early termination on plateau convergence |
+| **Min Warmup Epochs** | N/A | `60` | Warmup floor before early stopping engages |
+| **Patience** | N/A | `10` | Early stopping plateau patience window |
+| **Min Delta** | N/A | `1.0e-6` | Composite validation loss improvement threshold |
+| **Loss Formulation** | Standard Upstream NAM (MSE/ESR) | Multi-Resolution STFT + MSE | Loss function for parameter optimization |
+| **Waveform MSE Weight**| N/A (Standard NAM) | `1.00` | Full-band time-domain MSE anchor weight |
+| **MRSTFT Weight** | N/A | `0.0005` | Multi-scale log-magnitude and spectral convergence weight |
 | **Base Learning Rate** | `1.0e-2` (Stock Adam) | `4.0e-3` (Native Adam) | Optimizer initial learning rate |
 | **Weight Decay** | `0.0` | `3.17e-7` | Optimizer L2 kernel regularization |
 | **Slice Length** | `8192` (DataLoader) | `8192` (In-VRAM Permuted) | Audio segment length in samples |

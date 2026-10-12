@@ -1,5 +1,8 @@
 # Neural Amp Modeler (NAM) Trainer Spectral Loss Optimization
 
+> [!NOTE]
+> **Architecture Status Note:** The stock engine (`allomorph.trainer.stock`) has been restored to standard upstream Neural Amp Modeler 200-epoch training (`STOCK_DEFAULT_MAX_EPOCHS = 200`) without early stopping or custom loss monkey-patching. The multi-band spectral loss and FIR design research documented herein has been permanently incorporated into the high-performance native engine ([`allomorph.trainer.native`](../native/engine_architecture.md)).
+
 This document provides a comprehensive technical reference for the **Self-Normalizing Multi-Band ESR Loss** architecture developed for Allomorph's local Neural Amp Modeler (NAM) training pipeline. It details the electroacoustic physical foundation, the mathematical derivations and proofs, complete empirical log-sine sweep benchmarks, the production implementation, and an exhaustive post-mortem of alternative approaches that failed.
 
 ---
@@ -236,25 +239,28 @@ During the iterative progression across 13 distinct experimental configurations,
 
 ## 8. Production Implementation & Architecture Standards
 
-The proven **Self-Normalizing Multi-Band ESR Loss** architecture is permanently promoted to the core Allomorph library in [`src/allomorph/trainer/`](../src/allomorph/trainer/):
+The proven **Self-Normalizing Multi-Band ESR Loss** architecture is permanently promoted to the core Allomorph library in [`src/allomorph/trainer/`](../../src/allomorph/trainer/):
 
-### 8.1 Hyperparameter Standards ([`src/allomorph/trainer/constants.py`](../src/allomorph/trainer/constants.py))
+### 8.1 Hyperparameter Standards ([`src/allomorph/trainer/constants.py`](../../src/allomorph/trainer/constants.py))
 ```python
-# Architecture 2 Rapid Convergence Standards
-DEFAULT_MIN_EPOCHS: int = 35
-DEFAULT_MAX_EPOCHS: int = 45
-DEFAULT_BATCH_SIZE: int = 16
-DEFAULT_LEARNING_RATE: float = 0.004
-DEFAULT_LR_DECAY: float = 0.994
+# Upstream Stock Engine Standard
+STOCK_DEFAULT_MAX_EPOCHS: int = 200
 
-# Self-Normalizing Multi-Band Loss Weights
-DEFAULT_MSE_WEIGHT: float = 1.0
-DEFAULT_PRE_EMPH_WEIGHT: float = 0.0
-DEFAULT_HP_MID_ESR_WEIGHT: float = 0.50  # 3 kHz High-Pass ESR
-DEFAULT_HP_HIGH_ESR_WEIGHT: float = 0.50  # 7 kHz High-Pass ESR
+# Architecture 2 Native Engine Standards
+NATIVE_DEFAULT_MIN_EPOCHS: int = 60
+NATIVE_DEFAULT_MAX_EPOCHS: int = 100
+NATIVE_DEFAULT_PATIENCE: int = 10
+NATIVE_DEFAULT_MIN_DELTA: float = 1e-6
+NATIVE_DEFAULT_LR: float = 4.0e-3
+NATIVE_DEFAULT_WEIGHT_DECAY: float = 3.17e-7
+NATIVE_DEFAULT_SLICE_LEN: int = 8192
+
+# Multi-Band Spectral Loss Weights
+NATIVE_DEFAULT_MSE_WEIGHT: float = 1.00
+NATIVE_DEFAULT_MRSTFT_WEIGHT: float = 0.0005
 ```
 
-### 8.2 Loss Engine Implementation ([`src/allomorph/trainer/native/loss.py`](../src/allomorph/trainer/native/loss.py))
+### 8.2 Loss Engine Implementation ([`src/allomorph/trainer/native/loss.py`](../../src/allomorph/trainer/native/loss.py))
 ```python
 class NormalizedHighPassESRLoss(nn.Module):
     """Energy-Normalized High-Pass ESR Loss.
@@ -292,11 +298,18 @@ class NormalizedHighPassESRLoss(nn.Module):
 ### 8.3 CLI Usage
 To train production-grade models using the accelerated architecture:
 ```bash
-# Train direct NAM model using optimized 35-epoch multi-band loss:
-uv run python scripts/train_nam.py --instrument 34in_standard_p \
-                                  --voice jazz_pair_active \
-                                  --epochs 35 \
-                                  --batch-size 16
+# Train direct NAM model using native engine:
+uv run python scripts/train_nam.py --source-inst 34in_standard_p \
+                                  --voice-id jazz_pair_active \
+                                  --engine native \
+                                  --epochs 80 \
+                                  --min-epochs 60
+
+# Train direct NAM model using standard upstream stock engine:
+uv run python scripts/train_nam.py --source-inst 34in_standard_p \
+                                  --voice-id jazz_pair_active \
+                                  --engine stock \
+                                  --epochs 200
 ```
 
 ---
