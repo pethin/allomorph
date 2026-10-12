@@ -358,6 +358,7 @@ def _populate_manifest_model_entry(
     nam_path: Path,
     stem_info: dict[str, Any],
     bundle_name: str,
+    dry_info: dict[str, Any] | None = None,
 ) -> None:
     """Reads .nam container and populates metadata entry in pack manifest."""
     sha256 = _sha256_file(nam_path)
@@ -372,6 +373,15 @@ def _populate_manifest_model_entry(
         "tone_name": stem_info.get("tone_name"),
         "sha256": sha256,
     }
+    if dry_info:
+        if "dry_file" in dry_info:
+            entry["dry_file"] = dry_info["dry_file"]
+        if "dry_sha256" in dry_info:
+            entry["dry_sha256"] = dry_info["dry_sha256"]
+    if "filename" in stem_info:
+        entry["wet_file"] = stem_info["filename"]
+    if "sha256" in stem_info:
+        entry["wet_sha256"] = stem_info["sha256"]
     try:
         with open(nam_path, "r", encoding="utf-8") as f:
             nam_data = json.load(f)
@@ -597,7 +607,7 @@ def train_tone_pack(
                     total_skipped += 1
                     if target_nam.name not in manifest_data["models"]:
                         _populate_manifest_model_entry(
-                            manifest_data["models"], target_nam, s_info, b_name
+                            manifest_data["models"], target_nam, s_info, b_name, dry_info=b_info
                         )
                         with open(manifest_path, "w", encoding="utf-8") as f:
                             json.dump(manifest_data, f, indent=2)
@@ -641,7 +651,9 @@ def train_tone_pack(
 
             total_trained += 1
             if target_nam.exists():
-                _populate_manifest_model_entry(manifest_data["models"], target_nam, s_info, b_name)
+                _populate_manifest_model_entry(
+                    manifest_data["models"], target_nam, s_info, b_name, dry_info=b_info
+                )
                 with open(manifest_path, "w", encoding="utf-8") as f:
                     json.dump(manifest_data, f, indent=2)
 

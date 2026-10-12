@@ -597,6 +597,10 @@ def train_voice_native(
                         m_entry = m_data["models"].setdefault(target_nam.name, {})
                         m_entry.setdefault("filename", target_nam.name)
                         m_entry["sha256"] = compute_file_sha256(target_nam)
+                        m_entry["dry_file"] = reference_path.name
+                        m_entry["dry_sha256"] = compute_file_sha256(reference_path)
+                        m_entry["wet_file"] = output_path.name
+                        m_entry["wet_sha256"] = compute_file_sha256(output_path)
                         m_entry["validation_esr"] = float(best_val_esr)
                         m_entry["validation_esr_a2_full"] = float(best_val_esr)
                         m_entry["validation_esr_a2_lite"] = float(best_val_esr_lite)
