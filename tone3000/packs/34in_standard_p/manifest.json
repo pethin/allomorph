@@ -233,7 +233,7 @@
       "target_voicing_version": 1,
       "version": "v6.1.1",
       "tone_name": "StingRay Parallel",
-      "sha256": "71d6947a8153636682dfbff4ac862eb63add9bbc268c2da293fe4a10d737bf6c"
+      "sha256": "16ce2f4a22d866f38888e30a6b20b6a36f3087d241402cbd5327a2cef1cad845"
     },
     "Rickenbacker Clank v6.1.1.nam": {
       "filename": "Rickenbacker Clank v6.1.1.nam",
@@ -244,7 +244,7 @@
       "target_voicing_version": 1,
       "version": "v6.1.1",
       "tone_name": "Rickenbacker Clank",
-      "sha256": "ab5649da22ed2b3f93618ad01b8e8891442c678a3d04a2546e9cadcd20d12f74"
+      "sha256": "b9c7e0fa733d3548dba62dba7a8e89d648d7d01f48136a256c4ec00182a2216f"
     },
     "Precision Dub v6.1.1.nam": {
       "filename": "Precision Dub v6.1.1.nam",
@@ -255,7 +255,7 @@
       "target_voicing_version": 1,
       "version": "v6.1.1",
       "tone_name": "Precision Dub",
-      "sha256": "1dfa14d9651cbb1c0e5960f7c35ff9ffc4e3e02e125a7e0943f6a200e4a04812"
+      "sha256": "cccec49332b2ff561088b1196f2c6b75bfd9ae151c93d1da290fd3e5d0663ce9"
     }
   }
 }
