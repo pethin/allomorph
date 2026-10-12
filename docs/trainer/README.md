@@ -46,6 +46,8 @@ src/allomorph/trainer/
   Physical string harmonic energy decay ($-43.5\text{ dB}$ harmonic drop-off), Multi-Resolution STFT Loss (MRSTFT) with bit-exact power clamping, full-band MSE anchoring, and the Anti-Drift Pareto early stopping architecture.
 - **[GPU Throughput Optimization & Benchmarks](native/gpu_throughput_optimization.md):**  
   Hardware profiling on AMD Radeon RX 9070 XT, resolution of three major GPU bottlenecks (PCIe host syncs, sequence slicing, and dynamic weight masking), Adam velocity ceiling proofs ($\ge 35$ epochs physical warmup floor), and cross-catalog 4-voice sweep benchmark matrix ($3.02\times$ workflow acceleration).
+- **[What Didn't Work: Forensic Analysis & Regression Prevention](native/what_did_not_work_and_regression_prevention.md):**  
+  Authoritative, permanent reference documenting 9 major anti-patterns, electroacoustic failures, and hardware bottlenecks (flat $22\text{ kHz}$ chirps, MRSTFT differentiator crushing, independent LUFS flattening, probe gain calibration mismatch, Gibbs boundary transients, and Infinity Cache spilling) with explicit mathematical root-cause proofs and regression prevention invariants.
 
 ### Stock Engine Documentation (`docs/trainer/stock/`)
 - **[Stock Engine Architecture](stock/README.md):**  

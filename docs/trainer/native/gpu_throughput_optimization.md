@@ -177,13 +177,35 @@ $$N_{\text{epochs}} \ge \frac{430}{84} \approx 5.1\text{ epochs of pure monotoni
 
 However, during the first 25–30 epochs, $>99.9\%$ of the gradient magnitude is dominated by low-frequency fundamental excursion ($40\text{--}250\text{ Hz}$). High frequencies only experience strong gradient pressure once the low-end MSE drops below $3 \times 10^{-6}$.
 
-### 3.2 The Warmup Floor Solution
-Setting premature early stopping (`min_epochs = 15`) or un-gated plateau checks caused training on complex voicings (e.g. `rickenbacker_clank`) to exit at epoch 9 before differentiator taps could physically form, resulting in attenuated treble.
+### 3.2 The Warmup Floor & Deep Annealing Solution
+Setting premature early stopping (`min_epochs = 15`) or un-gated plateau checks caused training on complex voicings (e.g. `rickenbacker_clank`) to exit before differentiator taps could physically form, resulting in attenuated treble.
 
-**The Calibrated Fix:**
-- Set `NATIVE_DEFAULT_MIN_EPOCHS = 35` and `NATIVE_DEFAULT_MAX_EPOCHS = 60`.
-- Gated `min_mse_full`, `best_pareto_score`, and plateau stopping conditions strictly behind `epoch >= min_epochs`.
-- Between epochs 35 and 45, the network reaches full electroacoustic convergence and terminates cleanly, saving $36.7\%\text{--}41.7\%$ of unnecessary schedule compute while preserving treble resolution.
+Furthermore, empirical testing on delicate chime harmonics (`Harmonics - Guitar.wav`) revealed that eliminating LeakyReLU zero-crossing rectification buzzing requires deep cosine annealing down to $\eta_{\text{min}} = 1.0\times 10^{-6}$.
+
+**The Calibrated Standard:**
+- `NATIVE_DEFAULT_MIN_EPOCHS = 100` and `NATIVE_DEFAULT_MAX_EPOCHS = 120` (`DEFAULT_LR_T_MAX = 115`, `DEFAULT_ETA_MIN = 1.0e-6`).
+- Gated early stopping strictly behind `epoch >= min_epochs`.
+- Full electroacoustic convergence is achieved in 105–115 epochs (~5 minutes per model at continuous 100% GPU saturation), achieving record ESRs ($-30.4\text{ dB}$ to $-38.4\text{ dB}$) with zero audible distortion.
+
+---
+
+### 3.3 100% Continuous GPU Saturation & Hardware Invariants
+
+During subsequent profiling under Windows WDDM (`typeperf.exe`) and Linux ROCm (`rocm-smi`), two additional compute fragmentation bottlenecks were discovered:
+
+#### 1. The Infinity Cache Spilling Cliff (Batch Size 16 Invariant):
+- The AMD Radeon RX 9070 XT features 64 MB of on-chip Infinity Cache (L2/L3 buffer).
+- At batch size 16 (sequence length 8192 or 2048), intermediate activation tensors fit inside the 64 MB cache boundary, executing at **$40.51\text{ ms/step}$**.
+- Dynamically concatenating sine probes (`batch > 16`) pushed activations over the 64 MB threshold into GDDR6 VRAM thrashing, causing a **$4.5\times$ slowdown** ($256\text{ ms/step}$) and dropping compute duty cycle to $50\%$.
+- **Invariant:** Batch size is locked strictly to 16. Multi-amplitude sine probes are pre-baked directly into the unified contiguous VRAM dataset buffer at initialization.
+
+#### 2. The ROCm hipFFT Kernel Launch Fragmentation Cliff:
+- Evaluating frequency-domain loss via `torch.stft` in the hot loop requires executing forward and backward hipFFT passes across short batches.
+- hipFFT launches hundreds of micro-kernels per step that execute in microseconds, leaving GPU compute units idle in CPU dispatch bubbles. Step latency spiked from $1.13\text{ ms}$ (pure MSE) to $50.46\text{ ms}$ ($50\times$ slower), dropping compute utilization to $50\text{--}55\%$.
+- **Invariant:** Eradicated all FFT calls from the inner loop. Replaced with an ultra-sharp 255-tap Blackman FIR highpass filter ($f_c = 1200\text{ Hz}$) evaluated via GPU matrix GEMM 1D convolution (`F.conv1d`) in native `bfloat16`, locking GPU compute utilization at continuous **$98\%\text{--}101\%$** ($2.26\text{--}2.75\text{s/epoch}$).
+
+> [!CAUTION]
+> **Regression Prevention:** For the full forensic case studies of what didn't work and how to prevent regressions, see [What Didn't Work: Forensic Analysis & Regression Prevention](what_did_not_work_and_regression_prevention.md).
 
 ---
 

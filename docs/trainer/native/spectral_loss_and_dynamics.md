@@ -102,16 +102,20 @@ $$\frac{\partial \mathcal{L}_{\text{log\_mag}}}{\partial \hat{Y}} = \frac{\parti
 
 Silence and sub-audible noise bins evaluate to mathematically exact **`0.0`** gradient. Gradients cannot explode, eliminating the need for gradient clipping and allowing the Adam optimizer to directly integrate high-frequency linear differentiator updates.
 
-### 3.4 Composite Loss Weighting Allocation
+### 3.4 Composite Loss Weighting Allocation & FIR Regularizer
 
-$$\mathcal{L}_{\text{total}} = w_{\text{mse}} \cdot \mathcal{L}_{\text{mse}} + w_{\text{mrstft}} \cdot \mathcal{L}_{\text{mrstft}}$$
+$$\mathcal{L}_{\text{total}} = w_{\text{mse}} \cdot \mathcal{L}_{\text{mse}} + w_{\text{fir}} \cdot \left( \mathcal{L}_{\text{fir\_full}} + w_{\text{lite}} \cdot \mathcal{L}_{\text{fir\_lite}} \right) + w_{\text{mrstft}} \cdot \mathcal{L}_{\text{mrstft}}$$
 
-| Component | Default Weight | Target Domain | Acoustic Purpose |
+| Component | Default Weight | Target Domain | Acoustic & Hardware Purpose |
 | :--- | :---: | :---: | :--- |
 | **Waveform MSE** | `1.00` | Time Domain | Anchors fundamental phase, sub-bass excursion, and DC stability |
-| **MRSTFT Loss** | `0.00` (Optional) | Multi-Scale Log-STFT | Optional spectral guidance; bypassed by default to prevent non-linear LeakyReLU rectification |
-| **Pre-Emphasis MSE** | `0.00` (Bypassed) | Time Domain | Optional linear differentiator boost (bypassed in favor of MRSTFT) |
-| **High-Pass ESR** | `0.00` (Bypassed) | Band-Passed ESR | Disabled to eliminate small-signal denominator singularity |
+| **FIR Highpass GEMM** | `2.50` | Time Domain Conv1D | 255-tap Blackman FIR ($f_c = 1200\text{ Hz}$, `padding="valid"`). Forces WaveNet into linear subspaces across chime harmonics H2–H5 ($1318\text{--}3296\text{ Hz}$) without FFT launch bubbles. |
+| **MRSTFT Loss** | `0.00` (Bypassed) | Multi-Scale Log-STFT | **Bypassed:** When evaluated on pure sines, log-STFT crushes differentiator taps, muffling bright voices (presence $-6.9\text{ dB}$, treble $-4.3\text{ dB}$). Furthermore, `torch.stft` micro-kernels fragment ROCm GPU pipelines, dropping compute usage to $50\%$. |
+| **Pre-Emphasis MSE** | `0.00` (Bypassed) | Time Domain | Bypassed to prevent sub-bass phase distortion. |
+| **High-Pass ESR** | `0.00` (Bypassed) | Band-Passed ESR | Bypassed to prevent small-signal denominator singularities ($E \to 10^{-7}$) that force non-linear diode distortion. |
+
+> [!CAUTION]
+> **Regression Prevention:** For complete forensic proofs of why MRSTFT, untilted sweeps, independent LUFS matching, and `padding="same"` failed, consult [What Didn't Work: Forensic Analysis & Regression Prevention](what_did_not_work_and_regression_prevention.md).
 
 ---
 
@@ -133,7 +137,7 @@ If $\text{MSE}(t)$ drifts $>15\%$ above its historical minimum, the model incurs
 
 ### 4.3 In-Memory Checkpoint Restoration
 
-When early stopping engages (e.g. at epoch 35), the trainer does not save the degraded late-epoch weights. Instead, it restores the in-memory state dict corresponding to the optimal $\mathcal{Q}(t)$:
+When early stopping engages, the trainer does not save degraded late-epoch weights. Instead, it restores the in-memory state dict corresponding to the optimal $\mathcal{Q}(t)$:
 
 ```python
 if best_state_dict is not None:
@@ -147,20 +151,21 @@ if best_state_dict is not None:
 
 ## 5. Native vs. Stock Hyperparameter Specifications
 
-The native engine operates under an isolated hyperparameter regime tuned for rapid convergence and distortion-free electroacoustic tracking:
+The native engine operates under an isolated hyperparameter regime tuned for rapid convergence, locked 100% GPU compute saturation, and distortion-free electroacoustic tracking:
 
 | Hyperparameter | Upstream Stock Engine (`STOCK_DEFAULT_MAX_EPOCHS`) | Native Engine (`NATIVE_DEFAULT_*`) | Rationale |
 | :--- | :---: | :---: | :--- |
-| **Spectral Loss** | None (standard upstream NAM) | **Pure Time-Domain MSE (`0.00` MRSTFT)** | Prevents LeakyReLU rectification and guarantees studio linearity |
-| **Max Epoch Schedule** | `200` | **`100`** | Complete convergence achieved in 60–90 epochs with $-30.3\text{ dB}$ ESR |
-| **Early Stopping** | None (fixed 200-epoch schedule) | **Anti-Drift Pareto** | Integrated post-warmup plateau detection saving GPU compute |
-| **Min Warmup Epochs** | N/A | **`60`** | Ensures full learning rate annealing through differentiator formation |
-| **Patience Window** | N/A | **`10`** | Evaluates validation plateau slope over 10 epochs |
+| **Linearity Regularizer**| None (standard upstream NAM) | **GPU GEMM FIR ($w=2.5, f_c=1200\text{Hz}$)** | Eliminates LeakyReLU zero-crossing rectification buzzing on harmonics |
+| **Spectral Loss** | None (standard upstream NAM) | **Pure Time-Domain MSE (`0.00` MRSTFT)** | Prevents differentiator crushing; eliminates ROCm hipFFT launch stalls |
+| **Max Epoch Schedule** | `200` | **`120`** | Pareto-optimal convergence achieved in 105–115 epochs with $\le -36.6\text{ dB}$ ESR |
+| **Min Warmup Epochs** | N/A | **`100`** | Guarantees full differentiator tap formation before early stopping |
+| **Scheduler & Annealing**| Exponential ($0.994^t$, Upstream) | **Cosine Annealing ($T_{\max}=115, \eta_{\min}=10^{-6}$)**| Smoothly anneals learning rate to $10^{-6}$ to extinguish small-signal buzz |
+| **Patience Window** | N/A | **`15`** | Plateau patience evaluated on composite val_loss |
 | **Optimizer & LR** | Adam ($1.0\text{e-2}$, Upstream) | **Adam ($4.0\text{e-3}$)** | Stable step size preventing parameter oscillation around narrow spectral basins |
 | **L2 Weight Decay** | `0.0` | **`3.17e-7`** | Matches upstream weight decay regularization standard |
 | **Slice Length ($ny$)** | $8,192\text{ samples}$ | **$8,192\text{ samples}$** | Captures $170.7\text{ ms}$ continuous audio windows |
-| **Sampling Mechanism** | DataLoader Random Slices | **Epoch Block Permutation** | Full-track coverage ensuring 100% of excitation blocks are sampled every epoch |
-| **Precision** | `auto` (`bf16-mixed`) | **`auto` (`bf16-mixed`)** | High-throughput bfloat16 mixed-precision tensor acceleration |
+| **Batch Size** | `auto` (Upstream) | **`16` (Locked)** | Fits inside 64 MB Infinity Cache; prevents cache spilling cliffs |
+| **Precision** | `auto` (`bf16-mixed`) | **`auto` (`bf16-mixed`)** | Universal bfloat16 hardware acceleration with FP32 fallback |
 
-*For the complete mathematical proof of the warmup floor, throughput scaling, and Adam velocity ceiling, see [Native Engine GPU Throughput Profiling & Hardware Acceleration](gpu_throughput_optimization.md).*
+*For the complete mathematical proof of the warmup floor, throughput scaling, and Adam velocity ceiling, see [Native Engine GPU Throughput Profiling & Hardware Acceleration](gpu_throughput_optimization.md) and [What Didn't Work: Forensic Analysis & Regression Prevention](what_did_not_work_and_regression_prevention.md).*
 

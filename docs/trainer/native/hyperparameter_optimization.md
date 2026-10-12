@@ -128,3 +128,25 @@ To achieve production-grade electroacoustic accuracy and maximum training throug
 
 - **Throughput Alignment:** `ny = 8192` achieves **$2.54\text{ s/epoch}$ ($124.1\text{ s}$ total)**, running **$5.58\times$ faster than `ny=4096`** and **$2.62\times$ faster than `ny=16384`**. With $ny=8192$, the receptive input dimension $nx = 14,538$ aligns with MIOpen's direct GEMM vector tiles on RDNA 4.
 - **Deep-Bass Advantage of `ny = 16384`:** At $341.3\text{ ms}$, `ny = 16384` resolves complete bass waveforms down to $20\text{ Hz}$ ($2400\text{ samples/cycle}$), achieving superior **Sub-Bass RMSE of $1.74\text{ dB}$** and tighter $500\text{ Hz}$ notch carving ($-1.92\text{ dB}$).
+
+---
+
+## 7. Production Standards & Regression Prevention Synthesis
+
+Subsequent testing against quiet guitar chime harmonics (`Harmonics - Guitar.wav`) and full-catalog multi-track validation revealed that short exponential schedules ($\le 60$ epochs) left subtle LeakyReLU zero-crossing rectification buzzing on small-signal sustains.
+
+To achieve imperceptible studio linearity without sacrificing training throughput, the production engine evolved to the following **locked architectural standards**:
+
+| Hyperparameter Standard | Production Value | Physical & Empirical Rationale |
+| :--- | :---: | :--- |
+| **Schedule Bounds** | `min_epochs=100`, `max_epochs=120` | Full 100-epoch warmup floor ensures differentiator taps form before early stopping can trigger. |
+| **Scheduler & Annealing** | Cosine ($T_{\max}=115, \eta_{\min}=10^{-6}$) | Deep annealing into tiny learning rates smoothly eliminates LeakyReLU zero-crossing slope kinks. |
+| **Highpass Regularizer** | 255-tap Blackman FIR ($w=2.5, f_c=1200\text{Hz}$) | Covers all chime upper harmonics (H2–H5) while providing $>78.9\text{ dB}$ stopband rejection at comb notches. |
+| **Convolution Padding** | `padding="valid"` | Eliminates the $0.24$ magnitude Gibbs boundary step transients caused by `padding="same"`. |
+| **Probe Normalization** | `normalize="none"` | Preserves exact physical transfer ratios ($H_{\text{tgt}} / H_{\text{src}}$); prevents comb notch and treble boost flattening. |
+| **Probe Gain Alignment** | Dynamic `probe_gain_correction` | Aligns synthetic probe amplitudes with LUFS-matched stems, eliminating the $+8.22\text{ dB}$ gain conflict. |
+| **Batch Size & Precision** | $B=16$, native `bf16-mixed` | Locks within 64 MB Infinity Cache; guarantees continuous $98\%\text{--}101\%$ GPU compute saturation. |
+
+> [!CAUTION]
+> **Regression Prevention:** For complete forensic proofs of why untilted sweeps, MRSTFT, independent LUFS matching, and dynamic batch expansion failed, consult [What Didn't Work: Forensic Analysis & Regression Prevention](what_did_not_work_and_regression_prevention.md).
+

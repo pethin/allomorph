@@ -102,19 +102,25 @@ Allomorph provides two dedicated training backends in `src/allomorph/trainer/`:
 | Parameter | Stock Engine Default (`STOCK_DEFAULT_*`) | Native Engine Default (`NATIVE_DEFAULT_*`) | Description |
 | :--- | :---: | :---: | :--- |
 | **Architecture** | `A2` | `A2` | Slimmable Architecture 2 (`channels_3` + `channels_8`) |
-| **Max Epoch Schedule** | `200` | `100` | Training epoch budget |
+| **Max Epoch Schedule** | `200` | `120` | Training epoch budget |
 | **Early Stopping** | None (fixed 200-epoch schedule) | Anti-Drift Pareto | Early termination on plateau convergence |
-| **Min Warmup Epochs** | N/A | `60` | Warmup floor before early stopping engages |
-| **Patience** | N/A | `10` | Early stopping plateau patience window |
+| **Min Warmup Epochs** | N/A | `100` | Warmup floor before early stopping engages |
+| **Patience** | N/A | `15` | Early stopping plateau patience window |
 | **Min Delta** | N/A | `1.0e-6` | Composite validation loss improvement threshold |
-| **Loss Formulation** | Standard Upstream NAM (MSE/ESR) | Multi-Resolution STFT + MSE | Loss function for parameter optimization |
+| **Loss Formulation** | Standard Upstream NAM (MSE/ESR) | Pure MSE + 255-tap Blackman FIR GEMM | Time-domain MSE with highpass regularizer ($w=2.5, f_c=1200\text{Hz}$) |
 | **Waveform MSE Weight**| N/A (Standard NAM) | `1.00` | Full-band time-domain MSE anchor weight |
+| **FIR Highpass Weight** | N/A | `2.50` | 255-tap Blackman FIR highpass regularizer ($f_c=1200\text{Hz}$, `padding="valid"`) |
 | **MRSTFT Weight** | N/A | `0.00` | Optional multi-scale STFT weight (bypassed by default for studio linearity) |
 | **Base Learning Rate** | `1.0e-2` (Stock Adam) | `4.0e-3` (Native Adam) | Optimizer initial learning rate |
+| **Learning Rate Schedule**| Exponential ($0.994^t$) | Cosine Annealing ($T_{\max}=115, \eta_{\min}=10^{-6}$)| Smooth annealing extinguishing LeakyReLU zero-crossing buzz |
 | **Weight Decay** | `0.0` | `3.17e-7` | Optimizer L2 kernel regularization |
 | **Slice Length** | `8192` (DataLoader) | `8192` (In-VRAM Permuted) | Audio segment length in samples |
+| **Batch Size** | `auto` | `16` (Locked) | Fits 64 MB Infinity Cache boundary; prevents GDDR6 memory thrashing |
 | **Precision** | `auto` | `auto` | `bf16-mixed` on modern GPUs, `32-true` on CPU |
 | **Engine Choice** | `--engine stock` | `--engine native` | Training backend selection (default: `auto`) |
+
+> [!IMPORTANT]
+> **Forensic History & Regression Prevention:** For comprehensive documentation of all failure modes, unphysical shortcuts, compute fragmentation cliffs, and regression prevention rules, consult [What Didn't Work: Forensic Analysis & Regression Prevention](trainer/native/what_did_not_work_and_regression_prevention.md).
 
 ---
 
