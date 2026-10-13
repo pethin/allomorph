@@ -222,17 +222,22 @@ def solve_mna_harness(
                 if term_bridge not in ds.parent:
                     term_bridge = f"controls.{ctrl_id}.in_b"
 
+                g_contact = 1.0 / 10.0
                 if pos <= 0.5:
-                    r_neck = 10.0
+                    g_neck = g_contact
                     atten_b = (0.5 - pos) / 0.5
-                    r_bridge = max(eval_pot_taper(atten_b, "audio15") * r_total, 10.0)
+                    t_b = eval_pot_taper(atten_b, "audio15")
+                    g_bridge = g_contact * max(1.0 - t_b, 0.0)
                 else:
-                    r_bridge = 10.0
+                    g_bridge = g_contact
                     atten_n = (pos - 0.5) / 0.5
-                    r_neck = max(eval_pot_taper(atten_n, "audio15") * r_total, 10.0)
+                    t_n = eval_pot_taper(atten_n, "audio15")
+                    g_neck = g_contact * max(1.0 - t_n, 0.0)
 
-                stamp_adm(term_neck, term_wiper, 1.0 / r_neck)
-                stamp_adm(term_bridge, term_wiper, 1.0 / r_bridge)
+                if g_neck > 0.0:
+                    stamp_adm(term_neck, term_wiper, g_neck)
+                if g_bridge > 0.0:
+                    stamp_adm(term_bridge, term_wiper, g_bridge)
 
             else:
                 # Standard Volume Potentiometer (Voltage Divider)
