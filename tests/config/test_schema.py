@@ -427,8 +427,8 @@ def test_tone_pack_and_bundle_config():
     """Verify PackBundleConfig and TonePackConfig models."""
     bundle = PackBundleConfig(
         name="neck",
-        source_voicing="neck_warm",
-        targets=["precision_vintage", "mudbucker_deep"],
+        source="34in_standard_jazz:neck_warm",
+        targets=["34in_standard_p:vintage_open", "30in_gibson_eb0:neck_deep"],
     )
     pack = TonePackConfig(
         id="34in_standard_jazz",
@@ -437,13 +437,37 @@ def test_tone_pack_and_bundle_config():
         bundles=[bundle],
     )
     assert pack.id == "34in_standard_jazz"
+    assert pack.bundles[0].source == "34in_standard_jazz:neck_warm"
     assert pack.bundles[0].source_voicing == "neck_warm"
+    assert pack.bundles[0].source_instrument == "34in_standard_jazz"
     assert len(pack.bundles[0].targets) == 2
+
+    # Source without colon raises ValidationError
+    with pytest.raises(ValidationError):
+        PackBundleConfig(name="neck", source="invalid_source", targets=["34in_standard_p:vintage_open"])
+
+    # Target without colon raises ValidationError
+    with pytest.raises(ValidationError):
+        PackBundleConfig(name="neck", source="34in_standard_jazz:neck_warm", targets=["invalid_target"])
+
+    # Mismatched pack instrument and bundle source raises ValidationError
+    with pytest.raises(ValidationError):
+        TonePackConfig(
+            id="34in_standard_jazz",
+            instrument="34in_standard_jazz",
+            bundles=[
+                PackBundleConfig(
+                    name="neck",
+                    source="34in_standard_p:vintage_open",
+                    targets=["30in_gibson_eb0:neck_deep"],
+                )
+            ],
+        )
 
     # Extra fields forbidden
     with pytest.raises(ValidationError):
         PackBundleConfig.model_validate(
-            {"name": "neck", "source_voicing": "warm", "illegal_arg": 123}
+            {"name": "neck", "source": "34in_standard_jazz:neck_warm", "illegal_arg": 123}
         )
 
 

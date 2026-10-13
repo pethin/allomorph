@@ -186,12 +186,14 @@ def test_assign_target_to_bundle():
     pack_bundles = {"neck": b_neck, "bridge": b_bridge}
 
     b_configs = [
-        PackBundleConfig(name="neck", source_voicing="v_neck", targets=["target_a"]),
-        PackBundleConfig(name="bridge", source_voicing="v_bridge", targets=["target_b"]),
+        PackBundleConfig(name="neck", source="inst_test:v_neck", targets=["inst_target:target_a"]),
+        PackBundleConfig(name="bridge", source="inst_test:v_bridge", targets=["inst_target:target_b"]),
     ]
 
     # Explicit config target
+    assert assign_target_to_bundle("inst_target:target_a", pack_bundles, b_configs) == "neck"
     assert assign_target_to_bundle("target_a", pack_bundles, b_configs) == "neck"
+    assert assign_target_to_bundle("inst_target:target_b", pack_bundles, b_configs) == "bridge"
     assert assign_target_to_bundle("target_b", pack_bundles, b_configs) == "bridge"
 
     # Position keyword fallback

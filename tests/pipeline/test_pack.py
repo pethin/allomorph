@@ -312,9 +312,27 @@ def test_train_tone_pack_flat_structure_mocked(
     assert "models" in manifest_data
     assert len(manifest_data["models"]) == 2
 
+    for b_name, b_meta in manifest_data["bundles"].items():
+        assert "instrument_id" not in b_meta
+        assert "instrument_version" not in b_meta
+        assert "stems" not in b_meta
+        assert b_meta["stem_count"] == 2
+        # Bundle manifest retains the authoritative list of stems
+        b_manifest_path = pack_dir / "bundles" / b_name / "manifest.json"
+        assert b_manifest_path.exists()
+        with open(b_manifest_path, "r", encoding="utf-8") as bf:
+            b_data = json.load(bf)
+        for stem in b_data["stems"]:
+            assert "target" in stem
+            assert "target_instrument" not in stem
+            assert "target_voicing" not in stem
+
     for model_name, model_meta in manifest_data["models"].items():
         assert model_name.endswith(".nam")
         assert model_meta["filename"] == model_name
+        assert "target" in model_meta
+        assert "target_instrument" not in model_meta
+        assert "target_voicing" not in model_meta
         assert model_meta["validation_esr"] == 0.000185
         assert model_meta["validation_esr_a2_full"] == 0.000185
         assert model_meta["validation_esr_a2_lite"] == 0.001850

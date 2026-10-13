@@ -204,21 +204,22 @@ def get_dry_excitation_token(
     token = compute_robust_audio_digest(p, recipe_tag=tag)
     _DRY_TOKEN_CACHE[resolved_str] = (size, token)
 
-    try:
-        sidecar_data: dict[str, Any] = {}
-        if sidecar_p.exists():
-            with sidecar_p.open("r", encoding="utf-8") as sf:
-                sidecar_data = json.load(sf)
-        files_dict = sidecar_data.setdefault("files", {})
-        files_dict[p.name] = {
-            "dry_token": token,
-            "recipe_tag": tag,
-            "size_bytes": size,
-        }
-        with sidecar_p.open("w", encoding="utf-8") as sf:
-            json.dump(sidecar_data, sf, indent=2)
-    except OSError:
-        pass
+    with _MANIFEST_LOCK:
+        try:
+            sidecar_data: dict[str, Any] = {}
+            if sidecar_p.exists():
+                with sidecar_p.open("r", encoding="utf-8") as sf:
+                    sidecar_data = json.load(sf)
+            files_dict = sidecar_data.setdefault("files", {})
+            files_dict[p.name] = {
+                "dry_token": token,
+                "recipe_tag": tag,
+                "size_bytes": size,
+            }
+            with sidecar_p.open("w", encoding="utf-8") as sf:
+                json.dump(sidecar_data, sf, indent=2)
+        except (json.JSONDecodeError, OSError):
+            pass
 
     return token
 

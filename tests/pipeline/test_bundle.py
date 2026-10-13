@@ -69,9 +69,8 @@ def test_build_bundle_manifest_entry():
     stems = [
         {
             "filename": "stem1.wav",
-            "target_instrument": "34in_standard_p",
+            "target": "34in_standard_p:vintage_open",
             "target_instrument_version": 1,
-            "target_voicing": "vintage_open",
             "target_voicing_version": 1,
             "version": "v2.1.1",
             "tone_name": "Precision Vintage",
@@ -81,7 +80,7 @@ def test_build_bundle_manifest_entry():
     entry = build_bundle_manifest_entry(
         bundle_name="neck",
         position_name="Neck",
-        source_voicing_id="vintage_open",
+        source="34in_standard_p:vintage_open",
         dry_filename="dry v2.1.1.wav",
         dry_version="v2.1.1",
         dry_recipe_token="alo_dry_deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef",
@@ -96,7 +95,7 @@ def test_build_bundle_manifest_entry():
 
     assert entry["bundle"] == "neck"
     assert entry["position_name"] == "Neck"
-    assert entry["source_voicing"] == "vintage_open"
+    assert entry["source"] == "34in_standard_p:vintage_open"
     assert entry["dry_file"] == "dry v2.1.1.wav"
     assert (
         entry["dry_recipe_token"]
@@ -121,7 +120,7 @@ def test_assemble_root_pack_manifest():
     mock_stems: list[dict[str, str]] = []
     mock_bundles = {
         "split": {
-            "source_voicing": "vintage_open",
+            "source": "34in_standard_p:vintage_open",
             "dry_file": "dry v2.1.1.wav",
             "stem_count": 0,
             "stems": mock_stems,

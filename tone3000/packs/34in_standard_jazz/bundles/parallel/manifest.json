@@ -1,7 +1,7 @@
 {
   "bundle": "parallel",
   "recipe_token": "alo_bun_d3072e48ed0118ab95495171fdc83905a1c7b86949ea637cc01081906257967f",
-  "source_voicing": "pair_open",
+  "source": "34in_standard_jazz:pair_open",
   "position_name": "Parallel",
   "base_dry_file": "input.wav",
   "base_dry_token": "alo_dry_cda0bf51a1543539ac356a852a24bfedd37d61bb77a14e3eb24a4a1b2cec094f",
@@ -15,9 +15,8 @@
   "stems": [
     {
       "filename": "PJ Active [Parallel] v6.1.1.wav",
-      "target_instrument": "34in_standard_pj",
+      "target": "34in_standard_pj:pair_active",
       "target_instrument_version": 1,
-      "target_voicing": "pair_active",
       "target_voicing_version": 1,
       "version": "v6.1.1",
       "tone_name": "PJ Active",
@@ -25,9 +24,8 @@
     },
     {
       "filename": "PJ Passive [Parallel] v6.1.1.wav",
-      "target_instrument": "34in_standard_pj",
+      "target": "34in_standard_pj:pair_parallel",
       "target_instrument_version": 1,
-      "target_voicing": "pair_parallel",
       "target_voicing_version": 1,
       "version": "v6.1.1",
       "tone_name": "PJ Passive",
@@ -35,9 +33,8 @@
     },
     {
       "filename": "P\u2215MM Parallel [Parallel] v6.1.1.wav",
-      "target_instrument": "34in_active_pmm",
+      "target": "34in_active_pmm:pmm_parallel",
       "target_instrument_version": 1,
-      "target_voicing": "pmm_parallel",
       "target_voicing_version": 1,
       "version": "v6.1.1",
       "tone_name": "P\u2215MM Parallel",
@@ -45,9 +42,8 @@
     },
     {
       "filename": "P\u2215MM Series [Parallel] v6.1.1.wav",
-      "target_instrument": "34in_active_pmm",
+      "target": "34in_active_pmm:pmm_series",
       "target_instrument_version": 1,
-      "target_voicing": "pmm_series",
       "target_voicing_version": 1,
       "version": "v6.1.1",
       "tone_name": "P\u2215MM Series",
@@ -55,9 +51,8 @@
     },
     {
       "filename": "Dingwall Parallel [Parallel] v6.1.1.wav",
-      "target_instrument": "37in_multiscale_dingwall",
+      "target": "37in_multiscale_dingwall:pair_parallel",
       "target_instrument_version": 1,
-      "target_voicing": "pair_parallel",
       "target_voicing_version": 1,
       "version": "v6.1.1",
       "tone_name": "Dingwall Parallel",
@@ -65,9 +60,8 @@
     },
     {
       "filename": "Jazz Pair Active [Parallel] v6.1.1.wav",
-      "target_instrument": "34in_standard_jazz",
+      "target": "34in_standard_jazz:pair_active",
       "target_instrument_version": 1,
-      "target_voicing": "pair_active",
       "target_voicing_version": 1,
       "version": "v6.1.1",
       "tone_name": "Jazz Pair Active",
@@ -75,9 +69,8 @@
     },
     {
       "filename": "Jazz Pair Mids [Parallel] v6.1.1.wav",
-      "target_instrument": "34in_standard_jazz",
+      "target": "34in_standard_jazz:pair_mids",
       "target_instrument_version": 1,
-      "target_voicing": "pair_mids",
       "target_voicing_version": 1,
       "version": "v6.1.1",
       "tone_name": "Jazz Pair Mids",

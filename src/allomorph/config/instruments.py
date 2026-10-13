@@ -210,6 +210,7 @@ class VoicingBundle:
     source_voicing: str
     position_name: str | None = None
     targets: list[TargetVoicingRef] = field(default_factory=list)
+    source: str = ""
 
 
 def is_identity_voicing(
@@ -221,6 +222,10 @@ def is_identity_voicing(
     """Determines if target voicing is an exact identity mapping of source voicing."""
     if source_inst.id != target_inst.id:
         return False
+    if isinstance(source_voicing, str) and ":" in source_voicing:
+        _, source_voicing = source_voicing.split(":", 1)
+    if isinstance(target_voicing, str) and ":" in target_voicing:
+        _, target_voicing = target_voicing.split(":", 1)
     src_v = (
         source_voicing
         if isinstance(source_voicing, VoicingConfig)
@@ -306,10 +311,15 @@ def partition_instrument_bundles(
     pack_cfg = load_tone_pack(pack_path)
     pack_bundles: dict[str, VoicingBundle] = {}
     for b_cfg in pack_cfg.bundles:
-        src_vid = b_cfg.source_voicing
+        src_inst_id, src_vid = b_cfg.source.split(":", 1)
+        if src_inst_id != inst.id:
+            raise ValueError(
+                f"Bundle '{b_cfg.name}' source '{b_cfg.source}' instrument '{src_inst_id}' "
+                f"does not match pack instrument '{inst.id}'."
+            )
         if src_vid not in inst.voicings:
             raise KeyError(
-                f"Bundle '{b_cfg.name}' source_voicing '{src_vid}' not found on instrument '{inst.id}'. "
+                f"Bundle '{b_cfg.name}' source voicing '{src_vid}' not found on instrument '{inst.id}'. "
                 f"Available voicings: {list(inst.voicings.keys())}"
             )
         src_v = inst.voicings[src_vid]
@@ -324,6 +334,7 @@ def partition_instrument_bundles(
             source_voicing=src_vid,
             position_name=pos_label,
             targets=[],
+            source=b_cfg.source,
         )
         pack_bundles[b_cfg.name] = bundle
 

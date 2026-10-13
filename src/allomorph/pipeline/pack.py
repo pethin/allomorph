@@ -308,9 +308,8 @@ def export_tone_pack(
             bundle_stems.append(
                 {
                     "filename": stem_filename,
-                    "target_instrument": target_ref.instrument_id,
+                    "target": f"{target_ref.instrument_id}:{target_ref.voicing_id}",
                     "target_instrument_version": target_ref.instrument.version,
-                    "target_voicing": target_ref.voicing_id,
                     "target_voicing_version": target_ref.voicing.version,
                     "version": target_v_tag,
                     "tone_name": tone_name,
@@ -337,10 +336,11 @@ def export_tone_pack(
             stem_tokens=[(s["filename"], s["recipe_token"]) for s in bundle_stems],
         )
 
+        source_token = f"{inst.id}:{src_v_id}"
         bundle_manifest = build_bundle_manifest_entry(
             bundle_name=b_name,
             position_name=pos_label,
-            source_voicing_id=src_v_id,
+            source=source_token,
             dry_filename=dry_filename,
             dry_version=dry_v_tag,
             dry_recipe_token=dry_recipe_token,
@@ -357,18 +357,15 @@ def export_tone_pack(
 
         bundle_entry = {
             "recipe_token": bundle_recipe_token,
-            "source_voicing": src_v_id,
+            "source": source_token,
             "position_name": pos_label,
             "base_dry_file": base_dry_p.name,
             "base_dry_token": base_dry_token,
             "dry_file": dry_filename,
             "dry_version": dry_v_tag,
             "dry_recipe_token": dry_recipe_token,
-            "instrument_id": inst.id,
-            "instrument_version": inst.version,
             "source_voicing_version": source_voice_ver,
             "stem_count": len(bundle_stems),
-            "stems": bundle_stems,
         }
         return b_name, bundle_entry
 
@@ -434,16 +431,25 @@ def export_tone_pack(
                 old_m = json.load(mf)
             if (old_models := old_m.get("models")) and isinstance(old_models, dict):
                 stem_lookup: dict[tuple[str, str] | str, tuple[dict[str, Any], dict[str, Any]]] = {}
-                for b_name, b_info in manifest_entries["bundles"].items():
-                    for s_info in b_info.get("stems", []):
-                        stem_lookup[(b_name, s_info["filename"])] = (b_info, s_info)
-                        stem_lookup[s_info["filename"]] = (b_info, s_info)
+                for b_name in manifest_entries["bundles"]:
+                    b_man_p = pack_dir / "bundles" / b_name / "manifest.json"
+                    if b_man_p.exists():
+                        try:
+                            with open(b_man_p, "r", encoding="utf-8") as bf:
+                                b_man = json.load(bf)
+                            for s_info in b_man.get("stems", []):
+                                stem_lookup[(b_name, s_info["filename"])] = (b_man, s_info)
+                                stem_lookup[s_info["filename"]] = (b_man, s_info)
+                        except (json.JSONDecodeError, OSError):
+                            pass
 
                 updated_models: dict[str, Any] = {}
                 for m_name, m_entry in old_models.items():
                     entry = dict(m_entry)
                     entry.pop("dry_sha256", None)
                     entry.pop("wet_sha256", None)
+                    entry.pop("target_instrument", None)
+                    entry.pop("target_voicing", None)
                     b_name = entry.get("bundle", "")
                     wet_file = entry.get("wet_file", "")
                     lookup_hit = stem_lookup.get((b_name, wet_file)) or stem_lookup.get(wet_file)
@@ -464,7 +470,7 @@ def export_tone_pack(
     print(f"\n[Tone Pack Exporter] Successfully exported Tone Pack for '{inst.name}' to:")
     print(f"  -> {pack_dir}")
     print(f"  -> Bundles: {list(bundles.keys())}")
-    print(f"  -> Total Stems: {sum(len(b['stems']) for b in manifest_entries['bundles'].values())}")
+    print(f"  -> Total Stems: {sum(b['stem_count'] for b in manifest_entries['bundles'].values())}")
 
     if train:
         train_tone_pack(
@@ -484,12 +490,16 @@ def _populate_manifest_model_entry(
 ) -> None:
     """Reads .nam container and populates metadata entry in pack manifest."""
     sha256 = _sha256_file(nam_path)
+    target_str = stem_info.get("target") or (
+        f"{stem_info.get('target_instrument')}:{stem_info.get('target_voicing')}"
+        if stem_info.get("target_instrument") and stem_info.get("target_voicing")
+        else None
+    )
     entry: dict[str, Any] = {
         "filename": nam_path.name,
         "bundle": bundle_name,
-        "target_instrument": stem_info.get("target_instrument"),
+        "target": target_str,
         "target_instrument_version": stem_info.get("target_instrument_version"),
-        "target_voicing": stem_info.get("target_voicing"),
         "target_voicing_version": stem_info.get("target_voicing_version"),
         "version": stem_info.get("version"),
         "tone_name": stem_info.get("tone_name"),
@@ -637,7 +647,18 @@ def train_tone_pack(
             if not dry_p.exists():
                 missing_stems = True
                 break
-            for s_info in b_info.get("stems", []):
+            b_manifest_path = b_dir / "manifest.json"
+            if not b_manifest_path.exists():
+                missing_stems = True
+                break
+            try:
+                with open(b_manifest_path, "r", encoding="utf-8") as bmf:
+                    b_manifest = json.load(bmf)
+                b_stems = b_manifest.get("stems", [])
+            except (json.JSONDecodeError, OSError):
+                missing_stems = True
+                break
+            for s_info in b_stems:
                 stem_p = b_dir / s_info.get("filename", "")
                 if not stem_p.exists():
                     missing_stems = True
@@ -676,7 +697,13 @@ def train_tone_pack(
         if not dry_p.exists():
             raise FileNotFoundError(f"Bundle dry file not found: {dry_p}")
 
-        for s_info in b_info.get("stems", []):
+        b_manifest_path = b_dir / "manifest.json"
+        if not b_manifest_path.exists():
+            raise FileNotFoundError(f"Bundle manifest not found: {b_manifest_path}")
+        with open(b_manifest_path, "r", encoding="utf-8") as bmf:
+            b_manifest = json.load(bmf)
+
+        for s_info in b_manifest.get("stems", []):
             stem_filename = s_info["filename"]
             stem_p = b_dir / stem_filename
             if not stem_p.exists():
@@ -684,7 +711,10 @@ def train_tone_pack(
 
             raw_tone = s_info.get("tone_name", "")
             raw_slug = raw_tone.lower().replace(" ", "_").replace("∕", "_").replace("/", "_")
-            target_voicing = s_info.get("target_voicing", "")
+            target_str = s_info.get("target", "")
+            target_voicing = (
+                target_str.split(":", 1)[1] if ":" in target_str else s_info.get("target_voicing", "")
+            )
             canonical_voice = VOICE_SLUG_ALIASES.get(raw_slug, raw_slug)
             if canonical_voice not in VOICES:
                 canonical_voice = VOICE_SLUG_ALIASES.get(target_voicing, target_voicing)
@@ -738,10 +768,15 @@ def train_tone_pack(
             print(
                 f"\n[Tone Pack Trainer] Training model for {model_basename} (Bundle: {b_name})..."
             )
+            src_vid = (
+                b_info["source"].split(":", 1)[1]
+                if "source" in b_info and ":" in b_info["source"]
+                else b_info.get("source_voicing")
+            )
             ok = train_voice(
                 instrument=inst,
                 voice=canonical_voice if canonical_voice in VOICES else target_voicing,
-                source_voicing=b_info.get("source_voicing"),
+                source_voicing=src_vid,
                 input_wav=dry_p,
                 output_wav=stem_p,
                 reference_wav=dry_p,

@@ -160,7 +160,13 @@ def assign_target_to_bundle(
     """Assigns a target voicing ID to an appropriate pack bundle name."""
     # 1. Check explicit bundle targets in config
     for b_cfg in bundle_configs:
-        if target_vid in b_cfg.targets or any(target_vid in t for t in b_cfg.targets):
+        for t in b_cfg.targets:
+            t_vid = t.split(":", 1)[1] if ":" in t else t
+            if target_vid == t or target_vid == t_vid:
+                return b_cfg.name
+
+    for b_cfg in bundle_configs:
+        if any(target_vid in t for t in b_cfg.targets):
             return b_cfg.name
 
     # 2. Check position keyword match if multiple bundles

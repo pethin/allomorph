@@ -10,7 +10,7 @@ import warnings
 from pathlib import Path
 from typing import Literal, Self
 
-from pydantic import Field, model_validator
+from pydantic import Field, field_validator, model_validator
 
 from allomorph.base import AllomorphBaseModel, SpiceFloat, parse_spice_unit
 
@@ -466,12 +466,43 @@ class PackBundleConfig(AllomorphBaseModel):
     """
 
     name: str = Field(..., description="Bundle folder name (e.g. 'neck', 'bridge', 'bridge_clank')")
-    source_voicing: str = Field(
-        ..., description="Voicing ID on the source instrument generating the single dry WAV"
+    source: str = Field(
+        ...,
+        description="Source 'instrument:voicing' string on the source instrument generating the single dry WAV",
     )
     targets: list[str] = Field(
-        default_factory=list, description="Target voice IDs or tone slugs to simulate"
+        default_factory=list,
+        description="List of target 'instrument:voicing' strings to simulate",
     )
+
+    @field_validator("source")
+    @classmethod
+    def validate_source_format(cls, v: str) -> str:
+        if ":" not in v:
+            raise ValueError(
+                f"Bundle source '{v}' must be in canonical 'instrument:voicing' format."
+            )
+        return v
+
+    @field_validator("targets")
+    @classmethod
+    def validate_targets_format(cls, v: list[str]) -> list[str]:
+        for t in v:
+            if ":" not in t:
+                raise ValueError(
+                    f"Bundle target '{t}' must be in canonical 'instrument:voicing' format."
+                )
+        return v
+
+    @property
+    def source_voicing(self) -> str:
+        """Voicing ID part of the source 'instrument:voicing' string."""
+        return self.source.split(":", 1)[1]
+
+    @property
+    def source_instrument(self) -> str:
+        """Instrument ID part of the source 'instrument:voicing' string."""
+        return self.source.split(":", 1)[0]
 
 
 class TonePackConfig(AllomorphBaseModel):
@@ -483,6 +514,17 @@ class TonePackConfig(AllomorphBaseModel):
     description: str = ""
     version: int = Field(1, ge=1)
     bundles: list[PackBundleConfig] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def validate_pack_bundles(self) -> Self:
+        for bundle in self.bundles:
+            inst_part, _ = bundle.source.split(":", 1)
+            if inst_part != self.instrument:
+                raise ValueError(
+                    f"Bundle '{bundle.name}' source '{bundle.source}' instrument '{inst_part}' "
+                    f"does not match pack instrument '{self.instrument}'."
+                )
+        return self
 
 
 # ==============================================================================

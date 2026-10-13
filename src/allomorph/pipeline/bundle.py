@@ -106,7 +106,7 @@ def generate_bundle_upload_instructions(
 def build_bundle_manifest_entry(
     bundle_name: str,
     position_name: str,
-    source_voicing_id: str,
+    source: str,
     dry_filename: str,
     dry_version: str,
     dry_recipe_token: str,
@@ -122,7 +122,7 @@ def build_bundle_manifest_entry(
     return {
         "bundle": bundle_name,
         "recipe_token": recipe_token,
-        "source_voicing": source_voicing_id,
+        "source": source,
         "position_name": position_name,
         "base_dry_file": base_dry_file,
         "base_dry_token": base_dry_token,

@@ -6,42 +6,42 @@ version = 1
 
 [[bundles]]
 name = "neck"
-source_voicing = "neck_solo"
+source = "34in_preamp_soapbar:neck_solo"
 targets = [
-    "precision_vintage",
-    "precision_active",
-    "precision_mids",
-    "precision_warm",
-    "precision_dub",
-    "dingwall_middle",
-    "mudbucker_deep",
-    "upright_piezo",
-    "jazz_neck_warm",
+    "34in_standard_p:vintage_open",
+    "34in_standard_p:modern_active",
+    "34in_standard_p:vintage_mids",
+    "34in_standard_p:vintage_warm",
+    "34in_standard_p:slab_dub",
+    "37in_multiscale_dingwall:middle_growl",
+    "30in_gibson_eb0:neck_deep",
+    "41in_upright_bass:bridge_piezo",
+    "34in_standard_jazz:neck_warm",
 ]
 
 [[bundles]]
 name = "bridge"
-source_voicing = "bridge_solo"
+source = "34in_preamp_soapbar:bridge_solo"
 targets = [
-    "jazz_bridge_growl",
-    "jazz_bridge_open",
-    "stingray_parallel",
-    "stingray_series",
-    "rickenbacker_clank",
-    "rickenbacker_open",
-    "dingwall_bridge",
+    "34in_standard_jazz:bridge_growl",
+    "34in_standard_jazz:bridge_open",
+    "34in_active_stingray:parallel_classic",
+    "34in_active_stingray:series_punch",
+    "33in_rickenbacker_4003:bridge_clank",
+    "33in_rickenbacker_4003:bridge_open",
+    "37in_multiscale_dingwall:bridge_clank",
 ]
 
 [[bundles]]
 name = "parallel"
-source_voicing = "pair_parallel"
+source = "34in_preamp_soapbar:pair_parallel"
 targets = [
-    "jazz_pair_open",
-    "jazz_pair_mids",
-    "jazz_pair_active",
-    "p_mm_parallel",
-    "p_mm_series",
-    "pj_active",
-    "pj_passive",
-    "dingwall_parallel",
+    "34in_standard_jazz:pair_open",
+    "34in_standard_jazz:pair_mids",
+    "34in_standard_jazz:pair_active",
+    "34in_active_pmm:pmm_parallel",
+    "34in_active_pmm:pmm_series",
+    "34in_standard_pj:pair_active",
+    "34in_standard_pj:pair_parallel",
+    "37in_multiscale_dingwall:pair_parallel",
 ]
