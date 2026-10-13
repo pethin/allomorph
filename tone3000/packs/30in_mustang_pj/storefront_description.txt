@@ -1,140 +1,140 @@
-ALLOMORPH: 30" MUSTANG BASS PJ (SHORT SCALE) EDITION
+ALLOMORPH: MUSTANG P/J BASS EDITION
 
-Transform your 30" Mustang Bass PJ (Short Scale) into 24 legendary active, vintage, modern, and acoustic pickup configurations.
+Transform your short-scale Fender Mustang P/J Bass into 24 legendary active, vintage, modern, and acoustic pickup configurations.
 
 
 OVERVIEW
 
-Allomorph turns your 30" Mustang Bass PJ (Short Scale) into a versatile tonal chameleon. Instead of modeling an amplifier or speaker cabinet, Allomorph sits at the very beginning of your signal chain (Block 1 on the Darkglass Anagram) to reshape the actual sound, pickup response, and feel of your instrument.
+Allomorph turns your short-scale Fender Mustang P/J Bass into a versatile tonal chameleon. Instead of modeling an amplifier or speaker cabinet, Allomorph sits at the very beginning of your signal chain (Block 1 on the Darkglass Anagram) to reshape the actual sound, pickup response, and feel of your instrument.
 
-With this pack, your 30" Mustang Bass PJ (Short Scale) can instantly deliver:
-• The iconic scoop of vintage '60s Jazz Basses and aggressive punch of Music Man StingRays
+Short-scale basses are comfortable and fast to play, but often lack the string tension, low-end authority, and harmonic snap of a full-size 34" bass. Allomorph bridges that gap, giving your Mustang:
+• The full, punchy string snap and harmonic bloom of standard 34" P-Basses and Jazz Basses
+• Thunderous Music Man StingRay humbucker punch, hollow slap scoop, and series bark
 • Modern active slap preamps, boutique P/MM hybrids, and cutting progressive rock clank
-• Warm Motown flatwound thump, deep reggae dub sub-bass, and pristine modern ceramic punch
-• Acoustic upright double bass bridge piezo bite for jazz and acoustic sessions
+• Warm Motown flatwound thump, deep reggae dub sub-bass, and punchy ceramic presence
+• Acoustic upright double bass resonance for jazz and acoustic sessions
 • Pure studio buffer clarity or organic vintage tube-friendly passive warmth
 
-Calibrated specifically for the 30" Mustang Bass PJ (Short Scale). Plug in, select a model, and hear your 30" Mustang Bass PJ (Short Scale) transform into a completely different instrument in real time with zero latency.
+Calibrated specifically for a 30" Short-Scale Fender Mustang P/J Bass with stock split-coil P neck and single-coil J bridge pickups. Plug in, select a model, and hear your short-scale bass deliver full-size 34" authority in real time with zero latency.
 
 
 RECOMMENDED SIGNAL CHAIN
 
-[30" Mustang Bass PJ (Short Scale)]
+[Mustang P/J Bass]
   -> [Block 1: Allomorph Pickup Twin] (Input / Pickup Front-End)
   -> [Block 2: Amp / Drive / Preamp]  (Darkglass B7K, SVT, B-15, etc.)
   -> [Block 3: Speaker Cabinet IR]    (8x10, 4x10, 1x15, etc.)
   -> [FOH / Audio Interface / DAW]
 
-Why Block 1? Overdrive pedals and amps react directly to the resonant character of your pickups. Putting Allomorph first ensures downstream pedals and amp models distort the authentic growl of a Jazz bridge pickup, the clank of a StingRay, or the scoop of dual single-coils, rather than a generic DI signal.
+Why Block 1? Overdrive pedals and amps react directly to the resonant character of your pickups. Putting Allomorph first ensures downstream pedals and amp models distort the authentic scoop of a Jazz pair, the clank of a StingRay, or the bite of an active preamp, rather than a generic DI signal.
 
 
 QUICK INSTRUMENT SETUP
 
-For each voicing, set your bass's physical pickup controls to the recommended bracketed setting [Neck], [Bridge], [Parallel]:
+For each voicing, set your Mustang's 3-way toggle switch to the recommended bracketed setting [Parallel], [Neck], or [Bridge]:
 
-• [Neck]: Select Short Scale Split-P Warm
-• [Bridge]: Select Short Scale Bridge J Growl
-• [Parallel]: Select Short Scale P/J Parallel
-• Master Tone Knob: 100% (Wide Open across all models)
-• Physical Volume Knob: 100% (Wide Open)
+• [Parallel]: Toggle Middle (Both Pickups Active)
+• [Neck]: Toggle Up (Solo Split-P Neck Pickup)
+• [Bridge]: Toggle Down (Solo J Bridge Single-Coil)
+• Master Volume: 100% | Master Tone: 100% (Wide Open across all models)
 
-Plug straight in. All pickup positioning, pot loading, tone capacitor shaping, and active preamp EQs are handled automatically by the models.
+Plug straight in. All scale length scaling, aperture repositioning, pot loading, and active preamp EQs are handled automatically by the models.
 
 
 THE 24 DIGITAL TWIN VOICINGS
 
 
-Precision Bass & Tone Shaper Family
-
-01. Precision Vintage [Neck]
-The gold standard: a vintage 1962 Precision Bass with tone wide open. Warm, woody low-mids, open harmonic bloom, and organic touch sensitivity that sits perfectly in any mix.
-
-02. Precision Active [Neck]
-Modern active ceramic split-coil P-bass tone with 2-band preamp. Punchy, articulate, and wideband with authoritative low-end weight and bright transient clarity—built for modern rock, gospel, and mix cutting authority.
-
-03. Precision Mids [Neck]
-Vintage P-bass with a modern vocal low-mid punch. Cuts finger clatter and high-end sizzle while keeping a muscular, forward presence in a busy mix.
-
-04. Precision Warm [Neck]
-The legendary Motown flatwound sound (James Jamerson / Pino Palladino). Fat, pillowy sub-bass thump with rolled-off highs that glues the groove together.
-
-05. Precision Dub [Neck]
-Ultra-deep vintage '50s dub spec. Pure, earth-shaking sub-bass thump with zero top-end click—perfect for reggae, dub, hip-hop, and classic R&B.
-
-
 Jazz Bass Family
 
-06. Jazz Pair Active [Parallel]
+01. Jazz Pair Active [Parallel]
 The quintessential NYC active slap tone: tight, massive sub-bass and crisp, glassy highs with a scooped midrange that pops right out of a dense mix.
 
-07. Jazz Pair Open [Parallel]
-The golden-era '60s Jazz Bass sound. Both pickups wide open deliver that iconic hollow midrange scoop, warm low-mids, and smooth, singing top-end.
+02. Jazz Pair Open [Parallel]
+The golden-era '60s Jazz Bass sound. Reconstructs full 34" wide-aperture dual single-coils with that iconic hollow midrange scoop and smooth, singing top-end.
 
-08. Jazz Pair Mids [Parallel]
+03. Jazz Pair Mids [Parallel]
 Jazz Bass pair with a vocal midrange punch. Thickens up your fingerstyle attack and smooths out harsh fret clank while keeping every note articulate.
 
-09. Jazz Bridge Growl [Bridge]
-The unmistakable Jaco Pastorius tone: rolling the neck volume back just a touch unlocks that singing, vocal, honky bridge growl without losing low-end body.
+04. Jazz Bridge Growl [Bridge]
+The unmistakable Jaco Pastorius tone: solo your bridge pickup for that signature singing, vocal bridge growl and burp.
 
-10. Jazz Bridge Open [Bridge]
-Solo '60s bridge single-coil. Tight, laser-focused midrange bite and percussive attack, perfect for 16th-note funk and fast staccato fingerstyle.
+05. Jazz Bridge Open [Bridge]
+Solo '60s bridge single-coil scaled to full 34" scale geometry. Tight, laser-focused midrange bite and percussive attack, perfect for 16th-note funk and fast staccato fingerstyle.
 
-11. Jazz Neck Warm [Neck]
+06. Jazz Neck Warm [Neck]
 Solo '60s neck single-coil. Deep, warm, and round with a woody low-end bloom that rivals a P-bass while retaining single-coil openness.
 
 
 Music Man StingRay Family
 
-12. StingRay Parallel [Bridge]
+07. StingRay Parallel [Bridge]
 The iconic Music Man StingRay sound: thunderous low end, aggressive metallic slap clank, and that hollow midrange scoop heard on thousands of hit records.
 
-13. StingRay Series [Bridge]
+08. StingRay Series [Bridge]
 StingRay wired in series for a hotter, thicker signal with punchy low-mids and an aggressive, in-your-face rock bark.
-
-
-P/J Bass Family
-
-14. PJ Active [Parallel]
-Modern active P/J punch (Sadowsky/Spector style). Combines thick split-coil body with bridge single-coil cut, boosted by a powerful active 2-band EQ.
-
-15. PJ Passive [Parallel]
-Classic '80s rock P/J tone (Fender Precision Special / Yamaha BB). Thick hard-rock punch with aggressive midrange bite and authoritative low-end grunt.
 
 
 P/MM Modern Hybrids
 
-16. P∕MM Parallel [Parallel]
+09. P∕MM Parallel [Parallel]
 Modern boutique session hybrid (Sandberg California / Lakland style). Blends the warm body of a P-bass neck with the punchy slap bite of a Music Man bridge humbucker.
 
-17. P∕MM Series [Parallel]
+10. P∕MM Series [Parallel]
 P-bass neck and Music Man bridge wired in series for a massive wall of sound with immense low-mid thrust and heavy overdrive sustain.
 
 
 Progressive & Classic Rock Legends
 
-18. Rickenbacker Clank [Bridge]
+11. Rickenbacker Clank [Bridge]
 The quintessential prog-rock clank (Chris Squire / Geddy Lee). Tight, lean low end with biting, aggressive pick attack and cutting upper-mid grit.
 
-19. Rickenbacker Open [Bridge]
+12. Rickenbacker Open [Bridge]
 Modern 4003 bridge tone with the vintage capacitor bypassed. Fuller low-end body and punch while retaining that signature biting Rickenbacker top-end cut.
 
-20. Dingwall Bridge [Bridge]
+13. Dingwall Bridge [Bridge]
 Modern progressive metal tone: razor-sharp pick clank, extreme note clarity, and piano-like low-B definition tailored for drop tunings and heavy distortion.
 
-21. Dingwall Middle [Neck]
+14. Dingwall Middle [Neck]
 FD3 middle pickup solo: focused, aggressive low-mid grunt and punchy growl with exceptional articulation across all registers.
 
-22. Dingwall Parallel [Parallel]
+15. Dingwall Parallel [Parallel]
 FD3 bridge and middle coils in parallel: modern scooped aggression with ultra-fast transient attack, tight sub-bass, and pristine harmonic sparkle.
 
-23. Mudbucker Deep [Neck]
+16. Mudbucker Deep [Neck]
 The legendary Gibson "Mudbucker": a dark, colossal wall of pure vintage bass rumble with zero top-end harshness—pure '60s and '70s British blues-rock.
 
 
 Acoustic Transducers
 
-24. Upright Piezo [Neck]
-Acoustic upright double bass bridge piezo: captures the authentic high-tension attack bite, bridge rocking compliance, and wood-mass roll-off of an acoustic double bass bridge piezo transducer, designed specifically as an ultra-high-Z front-end before acoustic IRs (such as 3 Sigma Audio AST Double Bass IRs) and preamp stages.
+17. Upright Piezo [Neck]
+Acoustic upright double bass: transforms your electric bass into a woody, resonant acoustic upright with natural body thump and organic finger feel. Pair with 3 Sigma Audio "Acoustic Upright Standard" AST IRs in your cabinet loader for authentic soundboard acoustic bloom.
+
+
+Precision Bass & Tone Shaper Family
+
+18. Precision Vintage [Neck]
+The gold standard: a vintage 1962 Precision Bass with full 34" scale tension and bloom. Warm, woody low-mids and organic touch sensitivity that sits perfectly in any mix.
+
+19. Precision Active [Neck]
+Modern active ceramic split-coil P-bass tone with 2-band preamp. Punchy, articulate, and wideband with authoritative low-end weight and bright transient clarity—built for modern rock, gospel, and mix cutting authority.
+
+20. Precision Mids [Neck]
+Vintage P-bass with a modern vocal low-mid punch. Cuts finger clatter and high-end sizzle while keeping a muscular, forward presence in a busy mix.
+
+21. Precision Warm [Neck]
+The legendary Motown flatwound sound (James Jamerson / Pino Palladino). Fat, pillowy sub-bass thump with rolled-off highs that glues the groove together.
+
+22. Precision Dub [Neck]
+Ultra-deep vintage '50s dub spec. Pure, earth-shaking sub-bass thump with zero top-end click—perfect for reggae, dub, hip-hop, and classic R&B.
+
+
+P/J Bass Family
+
+23. PJ Active [Parallel]
+Modern active P/J punch (Sadowsky/Spector style). Combines thick split-coil body with bridge single-coil cut, boosted by a powerful active 2-band EQ.
+
+24. PJ Passive [Parallel]
+Classic '80s rock P/J tone (Duff McKagan / Yamaha BB3000). Thick hard-rock punch with aggressive midrange bite and authoritative low-end grunt.
 
 
 LICENSE & DISCLAIMER

@@ -1,42 +1,41 @@
-ALLOMORPH: 34" STANDARD JAZZ BASS EDITION
+ALLOMORPH: STANDARD JAZZ BASS EDITION
 
-Transform your 34" Standard Jazz Bass into 21 legendary active, vintage, modern, and acoustic pickup configurations.
+Transform your stock Fender Jazz Bass into 21 legendary active, vintage, modern, and acoustic pickup configurations.
 
 
 OVERVIEW
 
-Allomorph turns your 34" Standard Jazz Bass into a versatile tonal chameleon. Instead of modeling an amplifier or speaker cabinet, Allomorph sits at the very beginning of your signal chain (Block 1 on the Darkglass Anagram) to reshape the actual sound, pickup response, and feel of your instrument.
+Allomorph turns your Fender Jazz Bass into a versatile tonal chameleon. Instead of modeling an amplifier or speaker cabinet, Allomorph sits at the very beginning of your signal chain (Block 1 on the Darkglass Anagram) to reshape the actual sound, pickup response, and feel of your instrument.
 
-With this pack, your 34" Standard Jazz Bass can instantly deliver:
-• The iconic scoop of vintage '60s Jazz Basses and aggressive punch of Music Man StingRays
+With this pack, your Jazz Bass can instantly deliver:
+• Classic Precision Bass warmth, woody low-mids, and Motown flatwound thump
+• The aggressive punch, hollow scoop, and metallic bite of Music Man StingRays
 • Modern active slap preamps, boutique P/MM hybrids, and cutting progressive rock clank
-• Warm Motown flatwound thump, deep reggae dub sub-bass, and pristine modern ceramic punch
-• Acoustic upright double bass bridge piezo bite for jazz and acoustic sessions
+• Acoustic upright double bass resonance for jazz and acoustic sessions
 • Pure studio buffer clarity or organic vintage tube-friendly passive warmth
 
-Calibrated specifically for the 34" Standard Jazz Bass. Plug in, select a model, and hear your 34" Standard Jazz Bass transform into a completely different instrument in real time with zero latency.
+Calibrated specifically for a 34" Standard Jazz Bass with stock single-coil pickups. Plug in, select a model, and hear your Jazz Bass transform into a completely different instrument in real time with zero latency.
 
 
 RECOMMENDED SIGNAL CHAIN
 
-[34" Standard Jazz Bass]
+[Fender Jazz Bass]
   -> [Block 1: Allomorph Pickup Twin] (Input / Pickup Front-End)
   -> [Block 2: Amp / Drive / Preamp]  (Darkglass B7K, SVT, B-15, etc.)
   -> [Block 3: Speaker Cabinet IR]    (8x10, 4x10, 1x15, etc.)
   -> [FOH / Audio Interface / DAW]
 
-Why Block 1? Overdrive pedals and amps react directly to the resonant character of your pickups. Putting Allomorph first ensures downstream pedals and amp models distort the authentic growl of a Jazz bridge pickup, the clank of a StingRay, or the scoop of dual single-coils, rather than a generic DI signal.
+Why Block 1? Overdrive pedals and amps react directly to the resonant character of your pickups. Putting Allomorph first ensures downstream pedals and amp models distort the authentic growl of a P-bass split-coil, the clank of a StingRay, or the bite of an active preamp, rather than a generic DI signal.
 
 
 QUICK INSTRUMENT SETUP
 
-For each voicing, set your bass's physical pickup controls to the recommended bracketed setting [Neck], [Bridge], [Parallel]:
+For each voicing, set your bass's physical pickup controls to the recommended bracketed setting [Parallel], [Neck], or [Bridge]:
 
-• [Neck]: Select 60s Jazz Neck Warm
-• [Bridge]: Select 60s Jazz Bridge Open
-• [Parallel]: Select 60s Jazz Pair Wide-Open
+• [Parallel]: Neck Vol 100% | Bridge Vol 100% (Both Pickups Wide Open)
+• [Neck]: Neck Vol 100% | Bridge Vol 0% (Solo Neck Pickup)
+• [Bridge]: Neck Vol 0% | Bridge Vol 100% (Solo Bridge Pickup)
 • Master Tone Knob: 100% (Wide Open across all models)
-• Physical Volume Knob: 100% (Wide Open)
 
 Plug straight in. All pickup positioning, pot loading, tone capacitor shaping, and active preamp EQs are handled automatically by the models.
 
@@ -113,7 +112,7 @@ The legendary Gibson "Mudbucker": a dark, colossal wall of pure vintage bass rum
 Acoustic Transducers
 
 18. Upright Piezo [Neck]
-Acoustic upright double bass bridge piezo: captures the authentic high-tension attack bite, bridge rocking compliance, and wood-mass roll-off of an acoustic double bass bridge piezo transducer, designed specifically as an ultra-high-Z front-end before acoustic IRs (such as 3 Sigma Audio AST Double Bass IRs) and preamp stages.
+Acoustic upright double bass: transforms your electric bass into a woody, resonant acoustic upright with natural body thump and organic finger feel. Pair with 3 Sigma Audio "Acoustic Upright Standard" AST IRs in your cabinet loader for authentic soundboard acoustic bloom.
 
 
 Jazz Bass Family
@@ -125,7 +124,7 @@ The quintessential NYC active slap tone: tight, massive sub-bass and crisp, glas
 Jazz Bass pair with a vocal midrange punch. Thickens up your fingerstyle attack and smooths out harsh fret clank while keeping every note articulate.
 
 21. Jazz Bridge Growl [Bridge]
-The unmistakable Jaco Pastorius tone: rolling the neck volume back just a touch unlocks that singing, vocal, honky bridge growl without losing low-end body.
+The unmistakable Jaco Pastorius tone: solo your bridge pickup for that signature singing, vocal bridge growl and burp.
 
 
 LICENSE & DISCLAIMER

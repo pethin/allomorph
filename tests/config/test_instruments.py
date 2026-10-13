@@ -319,3 +319,39 @@ def test_resolve_target_voicing_errors():
     # Missing voicing raises KeyError
     with pytest.raises(KeyError, match="could not be resolved"):
         resolve_target_voicing("non_existent_voicing_xyz")
+
+
+def test_load_all_tone_packs():
+    """Verify loading all 7 tone packs, checking storefront descriptions and bundle partitioning."""
+    from allomorph.config.instruments import (
+        load_tone_pack,
+        partition_instrument_bundles,
+    )
+    from allomorph.config.schema import TonePackConfig
+
+    pack_ids = [
+        "34in_standard_p",
+        "34in_standard_jazz",
+        "34in_standard_pj",
+        "30in_mustang_pj",
+        "34in_preamp_soapbar",
+        "34in_active_stingray",
+        "34in_active_emg",
+    ]
+
+    for pid in pack_ids:
+        pack = load_tone_pack(pid)
+        assert isinstance(pack, TonePackConfig)
+        assert pack.id == pid
+        assert len(pack.instruments) >= 1
+        assert len(pack.storefront_description) > 0
+        full_desc = pack.full_storefront_description
+        assert "LICENSE & DISCLAIMER" in full_desc
+        assert len(full_desc) <= 10000
+
+        # Verify bundle partitioning
+        bundles = partition_instrument_bundles(pid)
+        assert len(bundles) >= 1
+        for b in bundles.values():
+            assert len(b.targets) >= 1
+

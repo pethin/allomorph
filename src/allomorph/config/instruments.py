@@ -202,6 +202,7 @@ class TargetVoicingRef:
     voicing_id: str
     instrument: InstrumentConfig
     voicing: VoicingConfig
+    custom_name: str | None = None
 
 
 @dataclass
@@ -341,7 +342,10 @@ def partition_instrument_bundles(
     if catalog_targets is None:
         for b_cfg in pack_cfg.bundles:
             bundle = pack_bundles[b_cfg.name]
-            for target_token in b_cfg.targets:
+            for target_entry in b_cfg.targets:
+                target_token = target_entry if isinstance(target_entry, str) else target_entry.target
+                custom_name = None if isinstance(target_entry, str) else target_entry.name
+
                 tgt_inst_id, tgt_vid = parse_target_voicing_token(
                     target_token, default_inst_id=inst.id
                 )
@@ -367,6 +371,7 @@ def partition_instrument_bundles(
                         voicing_id=tgt_v.id or tgt_vid,
                         instrument=tgt_inst,
                         voicing=tgt_v,
+                        custom_name=custom_name,
                     )
                 )
         return pack_bundles

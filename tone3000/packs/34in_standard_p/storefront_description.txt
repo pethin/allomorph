@@ -1,25 +1,25 @@
-ALLOMORPH: 34" STANDARD P-BASS EDITION
+ALLOMORPH: STANDARD PRECISION BASS EDITION
 
-Transform your 34" Standard P-Bass into 23 legendary active, vintage, modern, and acoustic pickup configurations.
+Transform your stock Fender P-Bass into 23 legendary active, vintage, modern, and acoustic pickup configurations.
 
 
 OVERVIEW
 
-Allomorph turns your 34" Standard P-Bass into a versatile tonal chameleon. Instead of modeling an amplifier or speaker cabinet, Allomorph sits at the very beginning of your signal chain (Block 1 on the Darkglass Anagram) to reshape the actual sound, pickup response, and feel of your instrument.
+Allomorph turns your Fender Precision Bass into a versatile tonal chameleon. Instead of modeling an amplifier or speaker cabinet, Allomorph sits at the very beginning of your signal chain (Block 1 on the Darkglass Anagram) to reshape the actual sound, pickup response, and feel of your instrument.
 
-With this pack, your 34" Standard P-Bass can instantly deliver:
+With this pack, your single P-Bass can instantly deliver:
 • The iconic scoop of vintage '60s Jazz Basses and aggressive punch of Music Man StingRays
 • Modern active slap preamps, boutique P/MM hybrids, and cutting progressive rock clank
 • Warm Motown flatwound thump, deep reggae dub sub-bass, and pristine modern ceramic punch
-• Acoustic upright double bass bridge piezo bite for jazz and acoustic sessions
+• Acoustic upright double bass resonance for jazz and acoustic sessions
 • Pure studio buffer clarity or organic vintage tube-friendly passive warmth
 
-Calibrated specifically for the 34" Standard P-Bass with Standard Split-Coil P. Plug in, select a model, and hear your 34" Standard P-Bass transform into a completely different instrument in real time with zero latency.
+Calibrated specifically for a 34" Standard Precision Bass with stock split-coil pickups. Plug in, select a model, and hear your P-Bass transform into a completely different instrument in real time with zero latency.
 
 
 RECOMMENDED SIGNAL CHAIN
 
-[34" Standard P-Bass]
+[Fender P-Bass]
   -> [Block 1: Allomorph Pickup Twin] (Input / Pickup Front-End)
   -> [Block 2: Amp / Drive / Preamp]  (Darkglass B7K, SVT, B-15, etc.)
   -> [Block 3: Speaker Cabinet IR]    (8x10, 4x10, 1x15, etc.)
@@ -111,7 +111,7 @@ The legendary Gibson "Mudbucker": a dark, colossal wall of pure vintage bass rum
 Acoustic Transducers
 
 19. Upright Piezo
-Acoustic upright double bass bridge piezo: captures the authentic high-tension attack bite, bridge rocking compliance, and wood-mass roll-off of an acoustic double bass bridge piezo transducer, designed specifically as an ultra-high-Z front-end before acoustic IRs (such as 3 Sigma Audio AST Double Bass IRs) and preamp stages.
+Acoustic upright double bass: transforms your electric bass into a woody, resonant acoustic upright with natural body thump and organic finger feel. Pair with 3 Sigma Audio "Acoustic Upright Standard" AST IRs in your cabinet loader for authentic soundboard acoustic bloom.
 
 
 Precision Bass & Tone Shaper Family

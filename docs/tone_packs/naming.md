@@ -29,7 +29,9 @@ Bassists browse tone libraries, dial in presets, and switch sounds on stage with
 
 ## 2. The First-Principles Tone Name Grammar
 
-Every tone name across Allomorph follows a strict, predictable 2-to-3 token grammar:
+### 2.1 Standard Single-Instrument Grammar
+
+Every standard tone name across Allomorph follows a strict, predictable 2-to-3 token grammar:
 
 $$\textbf{Tone Name} = \texttt{[Family]} \ + \ \left[\texttt{Configuration/Position}\right] \ + \ \texttt{[Voicing Modifier]}$$
 
@@ -46,6 +48,26 @@ $$\textbf{Full Model Name} = \underbrace{\texttt{Tone Name}}_{\text{9--18 chars}
 │  100% Zero-Scroll achieved on stage  │  Upload rejected by Tone3000 if > 64      │
 └──────────────────────────────────────┴───────────────────────────────────────────┘
 ```
+
+### 2.2 Multi-Source Collection Grammar (`Source [Voicing] → Target`)
+
+For specialized multi-source tone packs (e.g. Fretless-to-Upright collections where multiple source instruments target a common voice), individual bundle targets declare a bespoke custom name in the pack TOML configuration:
+
+```toml
+[[bundles]]
+name = "fretless_jazz_bridge"
+source = "34in_fretless_jazz:bridge_growl"
+targets = [
+    { target = "41in_upright_bass:bridge_piezo", name = "Fretless J [Bridge] → Upright" },
+]
+```
+
+#### Anatomy of a Multi-Source Target Name:
+
+$$\textbf{Custom Model Name} = \texttt{[Source Bass]} \ + \ \texttt{[Source Voicing/Tag]} \ + \ \texttt{" → "} \ + \ \texttt{[Target Voicing]} \ + \ \texttt{ v[dsp].[inst].[voice]}$$
+
+- **Arrow Sanitization:** Authors may specify `->` or `-->` in configuration files; the Allomorph naming pipeline automatically sanitizes ASCII arrows into the standardized Unicode Rightwards Arrow (`→`, `\u2192`).
+- **Character Budget:** Even with source identification, multi-source names must strive for zero-scroll on the Darkglass Anagram screen ($\le 34$ characters) and strictly obey the Tone3000 hard ceiling ($\le 64$ characters).
 
 ---
 
@@ -152,7 +174,7 @@ Below is the definitive catalog of all 24 Allomorph target voices under the syst
 
 ## 6. Filesystem Safety & Character Sanitization
 
-To ensure model files are compatible with macOS, Linux, and Windows filesystems, Allomorph applies specific sanitization rules in `get_t3k_basename()`:
+To ensure model files are compatible with macOS, Linux, and Windows filesystems, Allomorph applies specific sanitization rules in `src/allomorph/naming.py`:
 
 1. **Path Separator Replacement (`/` and `\`):**
    - Slashes in tone names (such as `P/MM`) must never become filesystem subdirectories.
@@ -161,9 +183,15 @@ To ensure model files are compatible with macOS, Linux, and Windows filesystems,
      name = name.replace("/", "\u2215").replace("\\", "\u2215")
      ```
    - Result: `P/MM Parallel` $\to$ `P∕MM Parallel` (renders as a clean visual slash without triggering directory nesting).
-2. **Quotation Marks:**
+2. **Arrow Notation Replacement (`->` and `-->`):**
+   - Directional arrows in multi-source model names are automatically sanitized to the **Unicode Rightwards Arrow (`→`, `\u2192`)**:
+     ```python
+     name = name.replace("-->", "\u2192").replace("->", "\u2192")
+     ```
+   - Result: `Fretless J [Bridge] -> Upright` $\to$ `Fretless J [Bridge] → Upright`.
+3. **Quotation Marks:**
    - Avoid unescaped ASCII double quotes (`"`).
-3. **Prohibited Characters:**
+4. **Prohibited Characters:**
    - Never use `:`, `*`, `?`, `<`, `>`, or `|`, as these are illegal in Windows filenames.
 
 ---
@@ -175,7 +203,7 @@ To ensure model files are compatible with macOS, Linux, and Windows filesystems,
 - **DO use permitted vocabulary:** Draw tokens strictly from Section 3.
 - **DO verify character lengths:** Ensure the complete basename with version tag is $\le 34$ characters for zero scroll on stage (and never exceed 64 chars).
 - **DO use standard physical switch tags for multi-pickup source basses:** `[Neck]`, `[Bridge]`, `[Parallel]`, `[Series]`, `[Split]`.
-- **DO verify with automated tests:** Run `uv run pytest tests/tone3000/test_tone3000.py tests/pipeline/test_staging.py` after any voice modification.
+- **DO verify with automated tests:** Run `uv run pytest tests/tone3000/test_tone3000.py` after any voice modification.
 
 ### DO NOT:
 - **DO NOT include electrical component values in tone names:**
@@ -188,7 +216,7 @@ To ensure model files are compatible with macOS, Linux, and Windows filesystems,
 - **DO NOT use artist nicknames:**
   - ❌ `Jaco Bridge Growl`
   - ✅ `Jazz Bridge Growl`
-- **DO NOT include the source instrument name in `tone_name`:**
+- **DO NOT include the source instrument name in single-instrument `tone_name`:**
   - ❌ `34in Standard P Precision Vintage v6.1.1.nam` (43 chars, marquee scrolls)
   - ✅ `Precision Vintage [Split] v6.1.1.nam` (32 chars, zero-scroll)
 - **DO NOT invent arbitrary abbreviations:**

@@ -22,6 +22,7 @@ warnings.filterwarnings(
 
 __all__ = [
     "AllomorphBaseModel",
+    "BundleTargetConfig",
     "CoilConfig",
     "ControlElementConfig",
     "HarnessConfig",
@@ -458,9 +459,31 @@ class InstrumentConfig(AllomorphBaseModel):
         return load_instrument(identifier_or_path)
 
 
+class BundleTargetConfig(AllomorphBaseModel):
+    """Target voicing configuration within a pack bundle, supporting optional custom naming."""
+
+    target: str = Field(
+        ...,
+        description="Canonical target voicing e.g. '41in_upright_bass:bridge_piezo'",
+    )
+    name: str | None = Field(
+        None,
+        description="Custom model/display name override (e.g. 'Fretless Jazz [Neck] → Upright Piezo')",
+    )
+
+    @field_validator("target")
+    @classmethod
+    def validate_target_format(cls, v: str) -> str:
+        if ":" not in v:
+            raise ValueError(
+                f"Bundle target '{v}' must be in canonical 'instrument:voicing' format."
+            )
+        return v
+
+
 class PackBundleConfig(AllomorphBaseModel):
-    """
-    Tone3000 upload bundle (folder containing 1 dry stem + target wet stems).
+    """Tone3000 upload bundle (folder containing 1 dry stem + target wet stems).
+
     Supports canonical position affinities ('neck', 'bridge', 'parallel', 'direct')
     as well as custom character bundle names (e.g. 'bridge_clank', 'slab_dub').
     """
@@ -470,9 +493,9 @@ class PackBundleConfig(AllomorphBaseModel):
         ...,
         description="Source 'instrument:voicing' string on the source instrument generating the single dry WAV",
     )
-    targets: list[str] = Field(
+    targets: list[str | BundleTargetConfig] = Field(
         default_factory=list,
-        description="List of target 'instrument:voicing' strings to simulate",
+        description="List of target 'instrument:voicing' strings or BundleTargetConfig objects",
     )
 
     @field_validator("source")
@@ -486,11 +509,14 @@ class PackBundleConfig(AllomorphBaseModel):
 
     @field_validator("targets")
     @classmethod
-    def validate_targets_format(cls, v: list[str]) -> list[str]:
+    def validate_targets_format(
+        cls, v: list[str | BundleTargetConfig]
+    ) -> list[str | BundleTargetConfig]:
         for t in v:
-            if ":" not in t:
+            token = t if isinstance(t, str) else t.target
+            if ":" not in token:
                 raise ValueError(
-                    f"Bundle target '{t}' must be in canonical 'instrument:voicing' format."
+                    f"Bundle target '{token}' must be in canonical 'instrument:voicing' format."
                 )
         return v
 
@@ -506,23 +532,52 @@ class PackBundleConfig(AllomorphBaseModel):
 
 
 class TonePackConfig(AllomorphBaseModel):
-    """Declarative storefront pack configuration for an instrument."""
+    """Declarative storefront pack configuration for an instrument or instrument collection."""
 
     id: str
-    instrument: str = Field(..., description="ID of source instrument in config/instruments/")
+    instrument: str | list[str] = Field(
+        ...,
+        description="Source instrument ID or list of source instrument IDs in config/instruments/.",
+    )
     name: str = ""
     description: str = ""
+    storefront_description: str = Field(
+        "",
+        description="Bespoke storefront product copy (Headline, Overview, Signal Chain, Setup, Voicings Catalog).",
+    )
     version: int = Field(1, ge=1)
     bundles: list[PackBundleConfig] = Field(default_factory=list)
 
+    @property
+    def instruments(self) -> list[str]:
+        """Normalized list of allowed source instrument IDs."""
+        return [self.instrument] if isinstance(self.instrument, str) else list(self.instrument)
+
+    @property
+    def full_storefront_description(self) -> str:
+        """Complete storefront text including the deduplicated legal disclaimer."""
+        if not self.storefront_description:
+            return ""
+        from allomorph.config.legal import get_legal_disclaimer_text
+
+        legal = get_legal_disclaimer_text()
+        full = self.storefront_description.strip() + "\n\n\n" + legal.strip() + "\n"
+        if len(full) > 10000:
+            raise ValueError(
+                f"Tone pack '{self.id}' full storefront description length ({len(full)} chars) "
+                f"exceeds Tone3000 maximum limit of 10,000 characters."
+            )
+        return full
+
     @model_validator(mode="after")
     def validate_pack_bundles(self) -> Self:
+        allowed = set(self.instruments)
         for bundle in self.bundles:
             inst_part, _ = bundle.source.split(":", 1)
-            if inst_part != self.instrument:
+            if inst_part not in allowed:
                 raise ValueError(
                     f"Bundle '{bundle.name}' source '{bundle.source}' instrument '{inst_part}' "
-                    f"does not match pack instrument '{self.instrument}'."
+                    f"is not among pack instrument(s): {sorted(allowed)}."
                 )
         return self
 

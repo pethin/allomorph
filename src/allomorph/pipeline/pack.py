@@ -17,21 +17,18 @@ from allomorph.circuit.forward import simulate_instrument_voicing
 from allomorph.config.instruments import (
     VoicingBundle,
     load_instrument,
+    load_tone_pack,
     partition_instrument_bundles,
 )
 from allomorph.config.scales import REPO_ROOT
 from allomorph.config.schema import InstrumentConfig
 from allomorph.dsp import read_wav
-from allomorph.naming import get_default_input_path
+from allomorph.naming import VOICE_SLUG_ALIASES, get_default_input_path
 from allomorph.pipeline.bundle import (
     assemble_root_pack_manifest,
     build_bundle_manifest_entry,
     generate_bundle_upload_instructions,
     resolve_bundle_target_file_descriptors,
-)
-from allomorph.pipeline.storefront import (
-    VOICE_SLUG_ALIASES,
-    generate_storefront_description,
 )
 from allomorph.trainer.constants import (
     DEFAULT_BATCH_SIZE,
@@ -61,7 +58,6 @@ AUDIO_DIR = REPO_ROOT / "audio"
 WET_AUDIO_DIR = AUDIO_DIR / "wet"
 PACKS_DIR = REPO_ROOT / "tone3000" / "packs"
 ASSETS_DIR = REPO_ROOT / "tone3000" / "assets"
-DOCS_DIR = REPO_ROOT / "tone3000" / "docs"
 
 
 def _sha256_file(path: Path) -> str:
@@ -392,7 +388,8 @@ def export_tone_pack(
 
     # 3. Storefront Description
     desc_path = pack_dir / "storefront_description.txt"
-    desc_text = generate_storefront_description(inst, bundles)
+    pack_cfg = load_tone_pack(inst.id)
+    desc_text = pack_cfg.full_storefront_description
     desc_path.write_text(desc_text, encoding="utf-8")
 
     # 4. Artwork

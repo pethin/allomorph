@@ -9,6 +9,7 @@ from pydantic import ValidationError
 
 from allomorph.base import AllomorphBaseModel
 from allomorph.config.schema import (
+    BundleTargetConfig,
     CoilConfig,
     ControlElementConfig,
     HarnessConfig,
@@ -539,3 +540,51 @@ def test_pickup_config_rejects_bundle_name():
             }
         )
     assert "extra_forbidden" in str(exc_info.value)
+
+
+def test_tone_pack_config_schema_validation():
+    """Verify TonePackConfig validation, legal appending, and bundle checks."""
+    # Valid single instrument pack
+    cfg = TonePackConfig(
+        id="test_pack",
+        instrument="34in_standard_p",
+        name="Test Pack",
+        description="A test pack",
+        storefront_description="Headline\n\nOverview content.",
+        bundles=[
+            PackBundleConfig(
+                name="split",
+                source="34in_standard_p:vintage_open",
+                targets=[
+                    "34in_standard_jazz:bridge_growl",
+                    BundleTargetConfig(
+                        target="41in_upright_bass:bridge_piezo",
+                        name="P-Bass [Split] → Upright",
+                    ),
+                ],
+            )
+        ],
+    )
+    assert cfg.instruments == ["34in_standard_p"]
+    full_desc = cfg.full_storefront_description
+    assert "Headline" in full_desc
+    assert "LICENSE & DISCLAIMER" in full_desc
+    assert len(full_desc) <= 10000
+
+    # storefront_description exceeding 10,000 chars raises ValueError
+    cfg_huge = TonePackConfig(
+        id="test_huge",
+        instrument="34in_standard_p",
+        storefront_description="A" * 10500,
+    )
+    with pytest.raises(ValueError, match="exceeds Tone3000 maximum limit"):
+        _ = cfg_huge.full_storefront_description
+
+    # Empty storefront description yields empty full description
+    cfg_empty = TonePackConfig(
+        id="test_empty",
+        instrument="34in_standard_p",
+        storefront_description="",
+    )
+    assert cfg_empty.full_storefront_description == ""
+

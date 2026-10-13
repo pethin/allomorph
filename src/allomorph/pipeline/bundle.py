@@ -32,7 +32,12 @@ def resolve_bundle_target_file_descriptors(
 
     descriptors: list[dict[str, Any]] = []
     for target_ref in bundle.targets:
-        tone_name = target_ref.voicing.tone_name or target_ref.voicing.name
+        tone_name = (
+            target_ref.custom_name
+            if target_ref.custom_name
+            else (target_ref.voicing.tone_name or target_ref.voicing.name)
+        )
+        pos = None if target_ref.custom_name else pos_tag
         target_v_tag = resolve_tri_part_version(
             dsp_generation,
             target_ref.instrument.version,
@@ -40,7 +45,7 @@ def resolve_bundle_target_file_descriptors(
         )
         stem_base = get_t3k_basename(
             tone_name=tone_name,
-            position_name=pos_tag,
+            position_name=pos,
             version_tag=target_v_tag,
         )
         stem_filename = f"{stem_base}.wav"

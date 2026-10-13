@@ -1,39 +1,40 @@
-ALLOMORPH: 34" ACTIVE STINGRAY (MUSIC MAN MM) EDITION
+ALLOMORPH: ACTIVE STINGRAY BASS EDITION
 
-Transform your 34" Active StingRay (Music Man MM) into 23 legendary active, vintage, modern, and acoustic pickup configurations.
+Transform your active Music Man StingRay (4 or 5-string) or Sterling Ray34/Ray35/Ray4/Ray5 bass into 23 legendary vintage passive, modern active, progressive rock, and acoustic pickup configurations.
 
 
 OVERVIEW
 
-Allomorph turns your 34" Active StingRay (Music Man MM) into a versatile tonal chameleon. Instead of modeling an amplifier or speaker cabinet, Allomorph sits at the very beginning of your signal chain (Block 1 on the Darkglass Anagram) to reshape the actual sound, pickup response, and feel of your instrument.
+Allomorph turns your active Music Man StingRay into a versatile tonal chameleon. Instead of modeling an amplifier or speaker cabinet, Allomorph sits at the very beginning of your signal chain (Block 1 on the Darkglass Anagram) to reshape the actual sound, pickup response, and feel of your instrument.
 
-With this pack, your 34" Active StingRay (Music Man MM) can instantly deliver:
-• The iconic scoop of vintage '60s Jazz Basses and aggressive punch of Music Man StingRays
+The StingRay's bridge humbucker is famous for its punch, hollow mid-scoop, and metallic slap clank, but sometimes a gig calls for the warm, woody body of a neck split-coil, the wide-scoop of dual single-coils, or the dark thump of an upright. Allomorph bridges that gap, giving your StingRay:
+• Classic Precision Bass warmth, woody low-mids, and Motown flatwound thump
+• The iconic scoop of vintage '60s Jazz Basses and singing Jaco bridge growl
 • Modern active slap preamps, boutique P/MM hybrids, and cutting progressive rock clank
-• Warm Motown flatwound thump, deep reggae dub sub-bass, and pristine modern ceramic punch
-• Acoustic upright double bass bridge piezo bite for jazz and acoustic sessions
-• Pure studio buffer clarity or organic vintage tube-friendly passive warmth
+• Warm vintage passive dynamics with organic tube-amp feel, replacing sterile active highs
+• Acoustic upright double bass resonance for jazz and acoustic sessions
+• Aggressive in-your-face series humbucker bark
 
-Calibrated specifically for the 34" Active StingRay (Music Man MM) with Music Man MM Humbucker. Plug in, select a model, and hear your 34" Active StingRay (Music Man MM) transform into a completely different instrument in real time with zero latency.
+Calibrated for 4 and 5-string 34" Standard Scale Active Music Man StingRay basses (USA StingRay 4/5, StingRay Special, or Sterling Ray34 / Ray35 / Ray4 / Ray5 / SUB) equipped with the iconic bridge sweet-spot dual-coil humbucker and onboard active preamp. Full wave-speed modeling down to 30.87 Hz ensures seamless calibration across both 4 and 5-string instruments (down to low B). Plug in, select a model, and hear your StingRay transform into a completely different instrument in real time with zero latency.
 
 
 RECOMMENDED SIGNAL CHAIN
 
-[34" Active StingRay (Music Man MM)]
+[Active StingRay Bass]
   -> [Block 1: Allomorph Pickup Twin] (Input / Pickup Front-End)
   -> [Block 2: Amp / Drive / Preamp]  (Darkglass B7K, SVT, B-15, etc.)
   -> [Block 3: Speaker Cabinet IR]    (8x10, 4x10, 1x15, etc.)
   -> [FOH / Audio Interface / DAW]
 
-Why Block 1? Overdrive pedals and amps react directly to the resonant character of your pickups. Putting Allomorph first ensures downstream pedals and amp models distort the authentic growl of a Jazz bridge pickup, the clank of a StingRay, or the scoop of dual single-coils, rather than a generic DI signal.
+Why Block 1? Overdrive pedals and amps react directly to the resonant character of your pickups. Putting Allomorph first ensures downstream pedals and amp models distort the authentic growl of a P-bass split-coil, the scoop of a Jazz pair, or vintage tube-friendly passive dynamics, rather than an unshaped active DI.
 
 
 QUICK INSTRUMENT SETUP
 
-• Physical Volume Knob: 100% (Wide Open)
-• Onboard Active EQ (Bass, Mid, Treble): Set to Center Detents (Flat / 0 dB)
+• 3-Way Mode Switch (if equipped on 5-string / Ray35): Set to Parallel (Position 1 / toward bridge)
+• Onboard Active EQ (Bass, Treble, Mid): Set to Center Detents (Flat / 0 dB)
 
-Plug straight in. All pickup positioning, pot loading, tone capacitor shaping, and active preamp EQs are handled automatically by the models.
+Plug straight in. Because the StingRay features a single bridge sweet-spot humbucker, all target models map directly to your physical humbucker. All pickup positioning, pot loading, tone capacitor shaping, and active preamp EQs are handled automatically by the models.
 
 
 THE 23 DIGITAL TWIN VOICINGS
@@ -78,22 +79,22 @@ Solo '60s bridge single-coil. Tight, laser-focused midrange bite and percussive 
 Solo '60s neck single-coil. Deep, warm, and round with a woody low-end bloom that rivals a P-bass while retaining single-coil openness.
 
 
-P/J Bass Family
-
-12. PJ Active
-Modern active P/J punch (Sadowsky/Spector style). Combines thick split-coil body with bridge single-coil cut, boosted by a powerful active 2-band EQ.
-
-13. PJ Passive
-Classic '80s rock P/J tone (Fender Precision Special / Yamaha BB). Thick hard-rock punch with aggressive midrange bite and authoritative low-end grunt.
-
-
 P/MM Modern Hybrids
 
-14. P∕MM Parallel
+12. P∕MM Parallel
 Modern boutique session hybrid (Sandberg California / Lakland style). Blends the warm body of a P-bass neck with the punchy slap bite of a Music Man bridge humbucker.
 
-15. P∕MM Series
+13. P∕MM Series
 P-bass neck and Music Man bridge wired in series for a massive wall of sound with immense low-mid thrust and heavy overdrive sustain.
+
+
+P/J Bass Family
+
+14. PJ Active
+Modern active P/J punch (Sadowsky/Spector style). Combines thick split-coil body with bridge single-coil cut, boosted by a powerful active 2-band EQ.
+
+15. PJ Passive
+Classic '80s rock P/J tone (Fender Precision Special / Yamaha BB). Thick hard-rock punch with aggressive midrange bite and authoritative low-end grunt.
 
 
 Progressive & Classic Rock Legends
@@ -120,7 +121,7 @@ The legendary Gibson "Mudbucker": a dark, colossal wall of pure vintage bass rum
 Acoustic Transducers
 
 22. Upright Piezo
-Acoustic upright double bass bridge piezo: captures the authentic high-tension attack bite, bridge rocking compliance, and wood-mass roll-off of an acoustic double bass bridge piezo transducer, designed specifically as an ultra-high-Z front-end before acoustic IRs (such as 3 Sigma Audio AST Double Bass IRs) and preamp stages.
+Acoustic upright double bass: transforms your electric bass into a woody, resonant acoustic upright with natural body thump and organic finger feel. Pair with 3 Sigma Audio "Acoustic Upright Standard" AST IRs in your cabinet loader for authentic soundboard acoustic bloom.
 
 
 Music Man StingRay Family

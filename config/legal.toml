@@ -1,0 +1,11 @@
+# ==============================================================================
+# ALLOMORPH STOREFRONT LEGAL & TRADEMARK DISCLAIMER CONFIGURATION
+# ==============================================================================
+# Central authoritative source of truth for license terms and trademark notices.
+# Appended automatically to all Tone3000 storefront pack descriptions upon export.
+
+[license]
+terms = """Licensed for personal and commercial musical performances, recording, and production. Redistribution, sublicensing, or resale of raw model files or derived profiles without permission is strictly prohibited."""
+
+[trademarks]
+disclaimer = """All product names, trademarks, and registered trademarks (such as Fender, Precision Bass, P-Bass, Jazz Bass, J-Bass, Music Man, StingRay, Sterling, Rickenbacker, Gibson, Dingwall, Bartolini, Sadowsky, Spector, ToneStyler, EMG, and Darkglass) are the property of their respective owners. Used solely to identify historical instruments and analog circuits analyzed in this project. Allomorph is an independent project and is not affiliated with or endorsed by any of these manufacturers."""

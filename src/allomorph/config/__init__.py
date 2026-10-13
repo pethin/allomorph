@@ -25,6 +25,7 @@ from allomorph.config.instruments import (
     load_tone_pack,
     resolve_target_voicing,
 )
+from allomorph.config.legal import get_legal_disclaimer_text
 from allomorph.config.preamps import (
     PREAMPS,
     PREAMPS_FILE,
@@ -129,6 +130,7 @@ __all__ = [
     "compute_effective_position",
     "find_voicing_by_slug_or_id",
     "get_instrument_string",
+    "get_legal_disclaimer_text",
     "get_preamp",
     "get_voice_string",
     "infer_pickup_resonance_and_q",

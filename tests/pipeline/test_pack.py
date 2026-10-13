@@ -8,12 +8,14 @@ from typing import Any
 import numpy as np
 import pytest
 
-from allomorph.config.instruments import load_instrument, partition_instrument_bundles
+from allomorph.config.instruments import (
+    load_instrument,
+    load_tone_pack,
+)
 from allomorph.dsp import write_wav_24bit
 from allomorph.pipeline.pack import (
     _sha256_file,
     export_tone_pack,
-    generate_storefront_description,
 )
 
 
@@ -38,17 +40,16 @@ def test_sha256_file(tmp_path: Path):
     assert len(digest) == 64
 
 
-def test_generate_storefront_description():
-    """Verify storefront description generation contains all required sections."""
-    inst = load_instrument("34in_standard_p")
-    bundles = partition_instrument_bundles(inst)
-    desc = generate_storefront_description(inst, bundles)
+def test_storefront_description_sections():
+    """Verify tone pack full storefront description contains all required sections."""
+    pack_cfg = load_tone_pack("34in_standard_p")
+    desc = pack_cfg.full_storefront_description
 
     assert "ALLOMORPH" in desc
     assert "RECOMMENDED SIGNAL CHAIN" in desc
     assert "QUICK INSTRUMENT SETUP" in desc
     assert "LICENSE & DISCLAIMER" in desc
-    assert inst.name in desc
+    assert "Standard Precision Bass" in desc
 
 
 def test_export_tone_pack_minimal(tmp_path: Path, mini_dry_audio: Path):
@@ -133,14 +134,13 @@ def test_export_tone_pack_existing_skip_and_repack(tmp_path: Path, mini_dry_audi
     assert (out_dir / "manifest.json").exists()
 
 
-def test_generate_storefront_description_passive_multi_pickup():
-    """Verify storefront description for a passive multi-pickup bass formats Master Tone/Vol instructions."""
-    inst = load_instrument("34in_standard_jazz")
-    bundles = partition_instrument_bundles(inst)
-    desc = generate_storefront_description(inst, bundles)
+def test_storefront_description_passive_multi_pickup():
+    """Verify storefront description for a passive multi-pickup bass formats Master Tone instructions."""
+    pack_cfg = load_tone_pack("34in_standard_jazz")
+    desc = pack_cfg.full_storefront_description
 
     assert "Master Tone Knob: 100%" in desc
-    assert "Physical Volume Knob: 100%" in desc
+    assert "Neck Vol 100%" in desc
 
 
 def test_export_tone_pack_parallel_bundles_and_cached_stems(

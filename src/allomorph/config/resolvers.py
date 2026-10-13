@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING
 
 from allomorph.config.geometry import resolve_pickup_coils
 from allomorph.config.schema import (
+    BundleTargetConfig,
     InstrumentConfig,
     PackBundleConfig,
     PickupConfig,
@@ -161,13 +162,16 @@ def assign_target_to_bundle(
     # 1. Check explicit bundle targets in config
     for b_cfg in bundle_configs:
         for t in b_cfg.targets:
-            t_vid = t.split(":", 1)[1] if ":" in t else t
-            if target_vid == t or target_vid == t_vid:
+            t_str = t.target if isinstance(t, BundleTargetConfig) else t
+            t_vid = t_str.split(":", 1)[1] if ":" in t_str else t_str
+            if target_vid == t_str or target_vid == t_vid:
                 return b_cfg.name
 
     for b_cfg in bundle_configs:
-        if any(target_vid in t for t in b_cfg.targets):
-            return b_cfg.name
+        for t in b_cfg.targets:
+            t_str = t.target if isinstance(t, BundleTargetConfig) else t
+            if target_vid in t_str:
+                return b_cfg.name
 
     # 2. Check position keyword match if multiple bundles
     if len(pack_bundles) > 1:

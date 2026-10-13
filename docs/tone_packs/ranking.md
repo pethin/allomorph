@@ -2,6 +2,8 @@
 
 This document defines the ranking and ordering system governing the digital twin voicings in **Allomorph Tone Packs** on [Tone3000](https://tone3000.com).
 
+For tone naming rules and character budget constraints, see [`naming.md`](naming.md). For the complete pack catalog, see [`catalog.md`](catalog.md).
+
 ---
 
 ## 1. Core Principles
@@ -159,7 +161,17 @@ The final positions in every pack are reserved for studio impedance and loading 
 
 ---
 
-## 3. Governance & Quality Checklist
+## 3. Multi-Source Collection Architecture
+
+For curated collections combining multiple physical instruments (e.g., Fretless-to-Upright packs where fretless Jazz, fretless active Jazz, and fretless Precision basses all target the Upright double bass sound), the ranking architecture shifts from target family grouping to **source instrument and configuration progression**:
+
+1. **Source Grouping:** Bundles are grouped by source instrument archetype (e.g. Fretless Jazz Bass, Fretless Precision Bass).
+2. **Control Position Progression:** Within each source instrument, voicings progress from bridge-biased fingerstyle (`[Bridge]`), through dual-pickup woody acoustic bloom (`[Parallel]`), to warm neck thump (`[Neck]`).
+3. **Bespoke Product Copy:** Since each target transformation maps a distinct source guitar into the common target acoustic voice, the storefront narrative describes how each source instrument's pickup placement and fretless mwah translate into the target acoustic body resonance.
+
+---
+
+## 4. Governance & Quality Checklist
 
 When modifying or generating new Tone3000 pack listings:
 1. **Verify Native Identity Exclusion:** Confirm that $1:1$ identical base-instrument configurations ($H_{\text{diff}} \equiv 1.0$) are omitted.

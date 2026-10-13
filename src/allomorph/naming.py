@@ -51,6 +51,28 @@ VOICE_CONCISE_SLUGS: dict[str, str] = {
 }
 
 
+VOICE_SLUG_ALIASES: dict[str, str] = {
+    "vintage_open": "precision_vintage",
+    "vintage_mids": "precision_mids",
+    "vintage_warm": "precision_warm",
+    "neck_active": "precision_active",
+    "slab_dub": "precision_dub",
+    "pair_open": "jazz_pair_open",
+    "pair_mids": "jazz_pair_mids",
+    "pair_active": "jazz_pair_active",
+    "bridge_growl": "jazz_bridge_growl",
+    "bridge_open": "jazz_bridge_open",
+    "neck_warm": "jazz_neck_warm",
+    "parallel_classic": "stingray_parallel",
+    "series_punch": "stingray_series",
+    "middle_growl": "dingwall_middle",
+    "pmm_parallel": "p_mm_parallel",
+    "pmm_series": "p_mm_series",
+    "neck_deep": "mudbucker_deep",
+    "bridge_piezo": "upright_piezo",
+}
+
+
 def format_tri_part_tag(dsp_gen: int, inst_ver: int, voice_ver: int) -> str:
     """Formats a three-part version tag string e.g. 'v6.1.1'."""
     return f"v{dsp_gen}.{inst_ver}.{voice_ver}"
@@ -58,10 +80,17 @@ def format_tri_part_tag(dsp_gen: int, inst_ver: int, voice_ver: int) -> str:
 
 def sanitize_tone_name_token(token: str) -> str:
     """Sanitizes filesystem path separators ('/' and '\\') with Unicode Division Slash ('\u2215')
-
-    to maintain a flat directory structure. Idempotent: sanitize(sanitize(x)) == sanitize(x).
+    and arrow symbols ('->', '-->') with Unicode Rightwards Arrow ('\u2192')
+    to maintain a flat, legal filesystem structure across Windows, macOS, and Linux.
+    Idempotent: sanitize(sanitize(x)) == sanitize(x).
     """
-    return token.strip().replace("/", "\u2215").replace("\\", "\u2215")
+    return (
+        token.strip()
+        .replace("-->", "\u2192")
+        .replace("->", "\u2192")
+        .replace("/", "\u2215")
+        .replace("\\", "\u2215")
+    )
 
 
 def compose_zero_scroll_model_name(
