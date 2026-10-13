@@ -161,7 +161,7 @@ def test_write_manifest_and_sha256(tmp_path: Path):
     assert "dummy.nam" in data["files"]
 
     wav_entry = data["files"]["dummy.wav"]
-    assert wav_entry["sha256"] == compute_file_sha256(dummy_wav)
+    assert "sha256" not in wav_entry
     assert wav_entry["size_bytes"] == dummy_wav.stat().st_size
     assert wav_entry["sample_rate"] == 48000
     assert "peak_dbfs" in wav_entry
@@ -254,7 +254,7 @@ def test_manifest_tracks_instrument_and_voicing_versions(tmp_path: Path):
         stage="voicing",
         files=[mock_stem],
         version_tag="v3.1.2",
-        base_dry_sha256="abc123sha",
+        base_dry_token="alo_dry_123",
         base_dry_file="base.wav",
         instrument_version=1,
         voicing_version=2,
@@ -266,11 +266,13 @@ def test_manifest_tracks_instrument_and_voicing_versions(tmp_path: Path):
     assert data["version"] == "v3.1.2"
     assert data["instrument_version"] == 1
     assert data["voicing_version"] == 2
+    assert data["base_dry_token"] == "alo_dry_123"
     assert "mock_stem.wav" in data["files"]
     fentry = data["files"]["mock_stem.wav"]
     assert fentry["instrument_version"] == 1
     assert fentry["voicing_version"] == 2
     assert fentry["version"] == "v3.1.2"
+    assert fentry["base_dry_token"] == "alo_dry_123"
 
 
 def test_all_catalog_instruments_and_voicings_declare_version():
@@ -463,7 +465,7 @@ def test_write_manifest_dict_files(tmp_path: Path):
         instrument_version=2,
         voicing_version=3,
         base_dry_file="dry.wav",
-        base_dry_sha256="abcd1234",
+        base_dry_token="alo_dry_1234",
     )
 
     assert manifest_p.exists()
@@ -474,5 +476,5 @@ def test_write_manifest_dict_files(tmp_path: Path):
     assert files[stem1.name]["version"] == "v6.1.1"
     assert files[stem1.name]["instrument_version"] == 2
     assert files[stem1.name]["voicing_version"] == 3
-    assert files[stem1.name]["base_dry_sha256"] == "abcd1234"
+    assert files[stem1.name]["base_dry_token"] == "alo_dry_1234"
     assert files[stem1.name]["note"] == "test stem 1"

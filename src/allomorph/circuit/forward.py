@@ -62,8 +62,8 @@ from allomorph.physics.strings import (
 )
 from allomorph.version import (
     DSP_GENERATION,
-    compute_file_sha256,
     compute_recipe_token,
+    get_dry_excitation_token,
     is_wet_stem_valid,
     resolve_tri_part_version,
     write_manifest,
@@ -827,7 +827,7 @@ def simulate_instrument_voicing(
 
         if in_path is not None:
             try:
-                base_dry_sha = compute_file_sha256(in_path)
+                base_dry_tok = get_dry_excitation_token(in_path)
                 inst_ver = getattr(inst, "version", 1)
                 voice_ver = getattr(voicing_cfg, "version", 1)
                 v_tag = resolve_tri_part_version(
@@ -840,7 +840,7 @@ def simulate_instrument_voicing(
                     stage="voicing",
                     files=[out_path],
                     version_tag=v_tag,
-                    base_dry_sha256=base_dry_sha,
+                    base_dry_token=base_dry_tok,
                     base_dry_file=in_path.name,
                     instrument_version=inst_ver,
                     voicing_version=voice_ver,

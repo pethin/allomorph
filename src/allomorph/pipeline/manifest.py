@@ -61,7 +61,7 @@ def extract_wav_metrics(wav_path: Path | str) -> dict[str, Any]:
 
 def build_file_manifest_entry(
     file_path: Path | str,
-    base_dry_sha256: str | None = None,
+    base_dry_token: str | None = None,
     base_dry_file: str | None = None,
     version_tag: str | None = None,
     instrument_version: int | None = None,
@@ -73,12 +73,13 @@ def build_file_manifest_entry(
     path = Path(file_path)
     entry: dict[str, Any] = {
         "size_bytes": path.stat().st_size,
-        "sha256": compute_file_sha256(path),
     }
+    if path.suffix.lower() == ".nam":
+        entry["sha256"] = compute_file_sha256(path)
     if recipe_token is not None:
         entry["recipe_token"] = recipe_token
-    if base_dry_sha256 is not None:
-        entry["base_dry_sha256"] = base_dry_sha256
+    if base_dry_token is not None:
+        entry["base_dry_token"] = base_dry_token
     if base_dry_file is not None:
         entry["base_dry_file"] = base_dry_file
     if version_tag is not None:
@@ -98,7 +99,7 @@ def build_file_manifest_entry(
 def build_dict_manifest_entry(
     file_path: Path | str,
     meta: Mapping[str, Any],
-    base_dry_sha256: str | None = None,
+    base_dry_token: str | None = None,
     base_dry_file: str | None = None,
     version_tag: str | None = None,
     instrument_version: int | None = None,
@@ -110,11 +111,12 @@ def build_dict_manifest_entry(
     entry: dict[str, Any] = dict(meta)
     if path.exists():
         entry.setdefault("size_bytes", path.stat().st_size)
-        entry.setdefault("sha256", compute_file_sha256(path))
+        if path.suffix.lower() == ".nam":
+            entry.setdefault("sha256", compute_file_sha256(path))
     if recipe_token is not None:
         entry.setdefault("recipe_token", recipe_token)
-    if base_dry_sha256 is not None:
-        entry.setdefault("base_dry_sha256", base_dry_sha256)
+    if base_dry_token is not None:
+        entry.setdefault("base_dry_token", base_dry_token)
     if base_dry_file is not None:
         entry.setdefault("base_dry_file", base_dry_file)
     if version_tag is not None:
@@ -143,7 +145,7 @@ def assemble_manifest_document(
     file_entries: Mapping[str, Any],
     stage: str,
     version_tag: str | None = None,
-    base_dry_sha256: str | None = None,
+    base_dry_token: str | None = None,
     base_dry_file: str | None = None,
     instrument_version: int | None = None,
     voicing_version: int | None = None,
@@ -165,8 +167,8 @@ def assemble_manifest_document(
     }
     if recipe_token is not None:
         manifest_data["recipe_token"] = recipe_token
-    if base_dry_sha256 is not None:
-        manifest_data["base_dry_sha256"] = base_dry_sha256
+    if base_dry_token is not None:
+        manifest_data["base_dry_token"] = base_dry_token
     if base_dry_file is not None:
         manifest_data["base_dry_file"] = base_dry_file
     if instrument_version is not None:
@@ -183,7 +185,7 @@ def write_manifest(
     stage: str,
     files: dict[str, dict[str, Any]] | Sequence[Path | str],
     version_tag: str | None = None,
-    base_dry_sha256: str | None = None,
+    base_dry_token: str | None = None,
     base_dry_file: str | None = None,
     instrument_version: int | None = None,
     voicing_version: int | None = None,
@@ -191,8 +193,8 @@ def write_manifest(
 ) -> Path:
     """Emits an authoritative manifest.json sidecar file in the output directory.
 
-    Records file SHA256 digests, size in bytes, audio metrics (if applicable),
-    base dry excitation SHA256 provenance, engine metadata, and versioning provenance.
+    Records file size in bytes, audio metrics (if applicable),
+    base dry excitation token provenance, engine metadata, and versioning provenance.
     """
     out_p = Path(output_dir)
     out_p.mkdir(parents=True, exist_ok=True)
@@ -204,7 +206,7 @@ def write_manifest(
         existing_manifest = read_existing_manifest(manifest_path)
         file_entries: dict[str, Any] = dict(existing_manifest.get("files", {}))
 
-        eff_base_dry_sha = base_dry_sha256 or existing_manifest.get("base_dry_sha256")
+        eff_base_dry_token = base_dry_token or existing_manifest.get("base_dry_token")
         eff_base_dry_file = base_dry_file or existing_manifest.get("base_dry_file")
 
         if isinstance(files, dict):
@@ -213,7 +215,7 @@ def write_manifest(
                 entry = build_dict_manifest_entry(
                     file_path=f_path,
                     meta=meta,
-                    base_dry_sha256=eff_base_dry_sha,
+                    base_dry_token=eff_base_dry_token,
                     base_dry_file=eff_base_dry_file,
                     version_tag=tag,
                     instrument_version=instrument_version,
@@ -227,7 +229,7 @@ def write_manifest(
                 if f_path.exists() and f_path.name != "manifest.json":
                     entry = build_file_manifest_entry(
                         file_path=f_path,
-                        base_dry_sha256=eff_base_dry_sha,
+                        base_dry_token=eff_base_dry_token,
                         base_dry_file=eff_base_dry_file,
                         version_tag=tag,
                         instrument_version=instrument_version,
@@ -241,7 +243,7 @@ def write_manifest(
             file_entries=file_entries,
             stage=stage,
             version_tag=tag,
-            base_dry_sha256=eff_base_dry_sha,
+            base_dry_token=eff_base_dry_token,
             base_dry_file=eff_base_dry_file,
             instrument_version=instrument_version,
             voicing_version=voicing_version,

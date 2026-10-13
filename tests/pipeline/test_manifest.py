@@ -55,10 +55,10 @@ def test_extract_wav_metrics_invalid(tmp_path: Path):
 
 
 def test_build_file_manifest_entry_wav(sample_wav: Path):
-    """Verify build_file_manifest_entry includes size, SHA256, and extracted audio metrics."""
+    """Verify build_file_manifest_entry includes size, base_dry_token, and extracted audio metrics (omitting sha256)."""
     entry = build_file_manifest_entry(
         file_path=sample_wav,
-        base_dry_sha256="abc123sha",
+        base_dry_token="abc123token",
         base_dry_file="base.wav",
         version_tag="v6.1.1",
         instrument_version=1,
@@ -67,8 +67,8 @@ def test_build_file_manifest_entry_wav(sample_wav: Path):
     )
 
     assert entry["size_bytes"] == sample_wav.stat().st_size
-    assert len(entry["sha256"]) == 64
-    assert entry["base_dry_sha256"] == "abc123sha"
+    assert "sha256" not in entry
+    assert entry["base_dry_token"] == "abc123token"
     assert entry["base_dry_file"] == "base.wav"
     assert entry["version"] == "v6.1.1"
     assert entry["instrument_version"] == 1
@@ -76,18 +76,18 @@ def test_build_file_manifest_entry_wav(sample_wav: Path):
     assert entry["sample_rate"] == 48000
 
 
-def test_build_file_manifest_entry_non_audio(tmp_path: Path):
-    """Verify build_file_manifest_entry for non-WAV files omits audio metrics."""
-    txt_file = tmp_path / "info.txt"
-    txt_file.write_text("Allomorph documentation text", encoding="utf-8")
+def test_build_file_manifest_entry_nam(tmp_path: Path):
+    """Verify build_file_manifest_entry for .nam files computes sha256 and omits audio metrics."""
+    nam_file = tmp_path / "model.nam"
+    nam_file.write_text('{"name": "test_model"}', encoding="utf-8")
 
     entry = build_file_manifest_entry(
-        file_path=txt_file,
+        file_path=nam_file,
         version_tag="v6.1.1",
         compute_audio_metrics=True,
     )
 
-    assert entry["size_bytes"] == txt_file.stat().st_size
+    assert entry["size_bytes"] == nam_file.stat().st_size
     assert len(entry["sha256"]) == 64
     assert entry["version"] == "v6.1.1"
     assert "sample_rate" not in entry
@@ -105,7 +105,7 @@ def test_build_dict_manifest_entry(tmp_path: Path):
     entry = build_dict_manifest_entry(
         file_path=txt_file,
         meta=existing_meta,
-        base_dry_sha256="dry_sha_123",
+        base_dry_token="dry_tok_123",
         version_tag="v6.1.1",
     )
 
@@ -113,7 +113,7 @@ def test_build_dict_manifest_entry(tmp_path: Path):
     assert entry["tone_name"] == "Precision Warm"
     assert entry["size_bytes"] == txt_file.stat().st_size
     assert len(entry["sha256"]) == 64
-    assert entry["base_dry_sha256"] == "dry_sha_123"
+    assert entry["base_dry_token"] == "dry_tok_123"
     assert entry["version"] == "v6.1.1"
 
 
@@ -134,13 +134,13 @@ def test_read_existing_manifest(tmp_path: Path):
 def test_assemble_manifest_document():
     """Verify assemble_manifest_document builds expected top-level schema."""
     files: dict[str, Any] = {
-        "test.wav": {"size_bytes": 100, "sha256": "abc"},
+        "test.wav": {"size_bytes": 100},
     }
     doc = assemble_manifest_document(
         file_entries=files,
         stage="simulation",
         version_tag="v6.1.1",
-        base_dry_sha256="sha_dry",
+        base_dry_token="tok_dry",
         base_dry_file="dry.wav",
         instrument_version=1,
         voicing_version=2,
@@ -157,7 +157,7 @@ def test_assemble_manifest_document():
     assert doc["git_commit"] == "abcdef0"
     assert doc["updated_at"] == "2026-10-10T00:00:00Z"
     assert doc["file_count"] == 1
-    assert doc["base_dry_sha256"] == "sha_dry"
+    assert doc["base_dry_token"] == "tok_dry"
     assert doc["base_dry_file"] == "dry.wav"
     assert doc["instrument_version"] == 1
     assert doc["voicing_version"] == 2
@@ -178,7 +178,7 @@ def test_write_manifest_end_to_end(tmp_path: Path, sample_wav: Path):
         stage="simulation",
         files=[dest_wav1],
         version_tag="v6.1.1",
-        base_dry_sha256="dry_sha_root",
+        base_dry_token="dry_tok_root",
         base_dry_file="root_dry.wav",
     )
 
@@ -186,7 +186,8 @@ def test_write_manifest_end_to_end(tmp_path: Path, sample_wav: Path):
     data1 = read_existing_manifest(m_path)
     assert data1["file_count"] == 1
     assert "stem1.wav" in data1["files"]
-    assert data1["files"]["stem1.wav"]["base_dry_sha256"] == "dry_sha_root"
+    assert data1["files"]["stem1.wav"]["base_dry_token"] == "dry_tok_root"
+    assert "sha256" not in data1["files"]["stem1.wav"]
 
     # Add second stem and write again
     dest_wav2 = out_dir / "stem2.wav"
