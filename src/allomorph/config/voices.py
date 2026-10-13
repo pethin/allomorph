@@ -200,12 +200,24 @@ def voicing_to_voice_config(
         active_c_ids = resolve_voicing_active_coils(instrument, voicing, primary_key)
         coils = build_voice_coils_for_pickup(pickup, active_c_ids, instrument=instrument)
 
+    primary_key_val = ""
+    target_text = f"{target_slug} {voicing.tone_name or ''} {voicing.name or ''}".lower()
+    for cand in ("bridge", "neck", "middle"):
+        if cand in target_text:
+            matched = next((k for k in active_pickup_keys if cand in k.lower()), None)
+            if matched:
+                primary_key_val = matched
+                break
+    if not primary_key_val:
+        primary_key_val = (
+            active_pickup_keys[0] if active_pickup_keys else next(iter(instrument.pickups.keys()))
+        )
+
     primary_pickup = (
-        instrument.pickups[active_pickup_keys[0]]
-        if active_pickup_keys
+        instrument.pickups[primary_key_val]
+        if primary_key_val in instrument.pickups
         else next(iter(instrument.pickups.values()))
     )
-    primary_key_val = active_pickup_keys[0] if active_pickup_keys else ""
     fr, Q = infer_pickup_resonance_and_q(
         primary_pickup,
         pickup_key=primary_key_val,

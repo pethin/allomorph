@@ -178,7 +178,7 @@ version = 1
 name = "60s Jazz Bridge Growl"
 tone_name = "Jazz Bridge Growl"
 harness = "passive"
-controls = { neck_vol = 0.75, bridge_vol = 1.0, tone = 1.0 }
+controls = { neck_vol = 0.99, bridge_vol = 1.0, tone = 1.0 }
 
 [voicings.bridge_open]
 version = 1
