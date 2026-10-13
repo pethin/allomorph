@@ -10,7 +10,7 @@ from typing import Literal
 from allomorph.config.instruments import INSTRUMENTS
 from allomorph.pipeline.pack import PACKS_DIR
 
-TargetKind = Literal["pack", "instrument"]
+TargetKind = Literal["pack", "instrument", "excitation"]
 
 
 @dataclass(frozen=True)
@@ -57,6 +57,9 @@ def parse_target_token(token: str, allow_shorthand: bool = False) -> list[Resolv
     available_packs = get_available_pack_ids()
     available_insts = get_available_instrument_ids()
 
+    if raw in ("excitation", "dry"):
+        return [ResolvedTarget(kind="excitation", id="default")]
+
     if raw == "packs":
         return [ResolvedTarget(kind="pack", id=p) for p in available_packs]
 
@@ -68,6 +71,10 @@ def parse_target_token(token: str, allow_shorthand: bool = False) -> list[Resolv
 
     parts = raw.split(":")
     prefix = parts[0]
+
+    if prefix in ("excitation", "dry"):
+        sub = parts[1] if len(parts) > 1 else None
+        return [ResolvedTarget(kind="excitation", id="default", sub_target=sub)]
 
     if prefix == "pack":
         if len(parts) == 1:
@@ -102,7 +109,7 @@ def parse_target_token(token: str, allow_shorthand: bool = False) -> list[Resolv
             return [ResolvedTarget(kind="instrument", id=parts[0])]
 
     raise ValueError(
-        f"Unrecognized target expression '{raw}'. Expected 'packs', 'pack:<name>[:<tone>]', "
+        f"Unrecognized target expression '{raw}'. Expected 'excitation', 'packs', 'pack:<name>[:<tone>]', "
         f"'instruments', or 'instrument:<name>[:<voicing>]'."
     )
 

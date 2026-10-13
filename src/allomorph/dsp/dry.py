@@ -11,6 +11,7 @@ Decomposed into 8 pure, property-testable segment generators:
 8. Continuous glissandi slides
 """
 
+import json
 from pathlib import Path
 
 import numpy as np
@@ -443,6 +444,79 @@ def generate_optimal_bass_dry(
 generate_input_audio = generate_optimal_bass_dry
 
 
+def check_dry_excitation_needs_regeneration(
+    dry_path: Path | str | None = None,
+    force: bool = False,
+    dsp_generation: int | None = None,
+) -> tuple[bool, str]:
+    """Evaluates whether the dry string excitation audio needs (re)generation.
+
+    Checks:
+      1. Force flag
+      2. File existence and non-empty size (> 44 bytes WAV header)
+      3. Manifest sidecar existence and valid dry_token entry
+      4. DSP generation tag match (e.g. 'synthetic_optimal_bass_dry_v6')
+      5. File size match between filesystem and manifest
+
+    Returns: (needs_regeneration, reason_description)
+    """
+    if force:
+        return True, "Force regeneration requested (--force)"
+
+    if dry_path is not None:
+        p = Path(dry_path)
+    else:
+        from allomorph.naming import get_default_input_path
+
+        p = get_default_input_path()
+
+    if not p.exists():
+        return True, f"Dry excitation audio file '{p}' does not exist"
+
+    try:
+        size = p.stat().st_size
+    except OSError as e:
+        return True, f"Failed to access dry excitation audio file: {e}"
+
+    if size < 44:
+        return True, f"Dry excitation audio file '{p.name}' is empty or truncated ({size} bytes)"
+
+    from allomorph.version import DSP_GENERATION
+
+    eff_dsp_gen = dsp_generation if dsp_generation is not None else DSP_GENERATION
+    expected_tag = f"synthetic_optimal_bass_dry_v{eff_dsp_gen}"
+
+    sidecar_p = p.parent / "manifest.json"
+    if not sidecar_p.exists():
+        from allomorph.naming import get_default_input_path
+
+        if p.resolve() == get_default_input_path().resolve() or p.name == "input.wav":
+            return True, f"Dry excitation manifest sidecar '{sidecar_p}' is missing"
+        # Non-default file with valid audio data and no manifest sidecar
+        return False, "Custom dry excitation audio exists"
+
+    try:
+        with sidecar_p.open("r", encoding="utf-8") as sf:
+            sdata = json.load(sf)
+        file_entry = sdata.get("files", {}).get(p.name, {})
+        if not file_entry.get("dry_token"):
+            return True, f"Dry excitation token missing in '{sidecar_p.name}' for '{p.name}'"
+        if file_entry.get("size_bytes") != size:
+            return (
+                True,
+                f"Dry excitation file size mismatch (disk={size}, manifest={file_entry.get('size_bytes')})",
+            )
+        if file_entry.get("recipe_tag") != expected_tag:
+            return (
+                True,
+                f"DSP generation mismatch (expected '{expected_tag}', got '{file_entry.get('recipe_tag')}')",
+            )
+    except (json.JSONDecodeError, OSError) as e:
+        return True, f"Corrupted dry excitation manifest '{sidecar_p}': {e}"
+
+    return False, "Dry excitation audio is fresh and valid"
+
+
 def ensure_input_audio_wav(
     output_path: Path | str | None = None,
     duration_sec: float = 240.0,
@@ -461,7 +535,8 @@ def ensure_input_audio_wav(
 
         p = get_default_input_path()
 
-    if p.exists() and not overwrite:
+    needs_regen, _ = check_dry_excitation_needs_regeneration(p, force=overwrite)
+    if not needs_regen:
         return p
 
     p.parent.mkdir(parents=True, exist_ok=True)
@@ -472,4 +547,13 @@ def ensure_input_audio_wav(
         target_rms_dbfs=target_rms_dbfs,
     )
     write_wav_24bit(p, audio, sample_rate)
+
+    if not no_manifest:
+        try:
+            from allomorph.version import get_dry_excitation_token
+
+            get_dry_excitation_token(p, force=True)
+        except OSError, json.JSONDecodeError, ValueError:
+            pass  # Manifest sidecar emission is best-effort during dry audio synthesis
+
     return p

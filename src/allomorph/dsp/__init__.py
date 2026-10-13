@@ -32,6 +32,7 @@ from allomorph.dsp.convolution import (
     fft_convolve_multi,
 )
 from allomorph.dsp.dry import (
+    check_dry_excitation_needs_regeneration,
     ensure_input_audio_wav,
     generate_input_audio,
     generate_optimal_bass_dry,
@@ -121,6 +122,7 @@ __all__ = [
     "apply_johnson_dither",
     "apply_k_weighting_filter",
     "calibrate_nam_v3_latency",
+    "check_dry_excitation_needs_regeneration",
     "cinf_smoothstep",
     "compute_gated_loudness_blocks",
     "compute_lufs",

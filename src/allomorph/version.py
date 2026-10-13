@@ -144,6 +144,7 @@ def compute_robust_audio_digest(
 def get_dry_excitation_token(
     input_path: Path | str | None = None,
     recipe_tag: str | None = None,
+    force: bool = False,
 ) -> str:
     """Retrieves or computes the dry excitation token with robust, timestamp-independent caching.
 
@@ -153,9 +154,17 @@ def get_dry_excitation_token(
     if input_path is not None:
         p = Path(input_path)
     else:
+        from allomorph.circuit.audio import find_default_input_audio
+
+        p = find_default_input_audio()
+
+    if not p.exists():
         from allomorph.naming import get_default_input_path
 
-        p = get_default_input_path()
+        if p.resolve() == get_default_input_path().resolve() or p.name == "input.wav":
+            from allomorph.circuit.audio import find_default_input_audio
+
+            p = find_default_input_audio()
 
     if not p.exists():
         raise FileNotFoundError(f"Dry excitation audio file not found: {p}")
@@ -163,31 +172,33 @@ def get_dry_excitation_token(
     resolved_str = str(p.resolve())
     size = p.stat().st_size
 
-    # Layer 1: In-process memory cache
-    if resolved_str in _DRY_TOKEN_CACHE:
-        cached_size, cached_tok = _DRY_TOKEN_CACHE[resolved_str]
-        if cached_size == size:
-            return cached_tok
-
     tag = recipe_tag or f"synthetic_optimal_bass_dry_v{DSP_GENERATION}"
 
-    # Layer 2: Persistent on-disk sidecar (audio/manifest.json)
     sidecar_p = p.parent / "manifest.json"
-    if sidecar_p.exists():
-        try:
-            with sidecar_p.open("r", encoding="utf-8") as sf:
-                sdata = json.load(sf)
-            file_entry = sdata.get("files", {}).get(p.name, {})
-            if (
-                file_entry.get("dry_token")
-                and file_entry.get("size_bytes") == size
-                and file_entry.get("recipe_tag") == tag
-            ):
-                token = str(file_entry["dry_token"])
-                _DRY_TOKEN_CACHE[resolved_str] = (size, token)
-                return token
-        except json.JSONDecodeError, OSError:
-            pass
+
+    if not force:
+        # Layer 1: In-process memory cache
+        if resolved_str in _DRY_TOKEN_CACHE:
+            cached_size, cached_tok = _DRY_TOKEN_CACHE[resolved_str]
+            if cached_size == size:
+                return cached_tok
+
+        # Layer 2: Persistent on-disk sidecar (audio/manifest.json)
+        if sidecar_p.exists():
+            try:
+                with sidecar_p.open("r", encoding="utf-8") as sf:
+                    sdata = json.load(sf)
+                file_entry = sdata.get("files", {}).get(p.name, {})
+                if (
+                    file_entry.get("dry_token")
+                    and file_entry.get("size_bytes") == size
+                    and file_entry.get("recipe_tag") == tag
+                ):
+                    token = str(file_entry["dry_token"])
+                    _DRY_TOKEN_CACHE[resolved_str] = (size, token)
+                    return token
+            except json.JSONDecodeError, OSError:
+                pass
 
     # Cold path: Compute robust audio digest and persist to sidecar
     token = compute_robust_audio_digest(p, recipe_tag=tag)

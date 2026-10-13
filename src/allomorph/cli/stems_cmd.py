@@ -21,6 +21,11 @@ from allomorph.config.preamps import PREAMPS
 from allomorph.config.scales import REPO_ROOT
 from allomorph.config.schema import InstrumentConfig, VoicingConfig
 from allomorph.config.strings import STRINGS
+from allomorph.dsp import (
+    check_dry_excitation_needs_regeneration,
+    ensure_input_audio_wav,
+)
+from allomorph.naming import get_default_input_path
 from allomorph.version import (
     DSP_GENERATION,
     compute_recipe_token,
@@ -44,13 +49,63 @@ def generate_stems(
         log_warning("No targets matched for stem generation.")
         return
 
-    log_step("STEMS", f"Synthesizing stems for {len(resolved)} target rule(s) (force={force})...")
+    # 1. Check if input excitation needs regeneration (existence, token freshness, force)
+    excitation_targets = [t for t in resolved if t.kind == "excitation"]
+    instrument_targets = [t for t in resolved if t.kind == "instrument"]
+
+    default_dry_path = get_default_input_path()
+
+    if input_wav is None:
+        candidates = [default_dry_path, REPO_ROOT / "input.wav"]
+        existing_candidate = next((c for c in candidates if c.exists()), None)
+        target_dry = existing_candidate or default_dry_path
+
+        needs_regen, reason = check_dry_excitation_needs_regeneration(target_dry, force=force)
+        if needs_regen:
+            action_desc = "Re-synthesizing" if target_dry.exists() else "Synthesizing"
+            log_step("DRY", f"{action_desc} dry excitation audio ({target_dry.name}): {reason}...")
+            input_wav = ensure_input_audio_wav(target_dry, overwrite=True)
+            log_success(f"Dry excitation audio ready: {input_wav.name}")
+        else:
+            log_step("DRY", f"Cached & fresh dry excitation audio: {target_dry.name}")
+            input_wav = target_dry
+    else:
+        if not input_wav.exists():
+            if input_wav.resolve() == default_dry_path.resolve() or input_wav.name == "input.wav":
+                log_step("DRY", f"Synthesizing dry excitation audio ({input_wav.name})...")
+                input_wav = ensure_input_audio_wav(input_wav, overwrite=True)
+                log_success(f"Dry excitation audio ready: {input_wav.name}")
+            else:
+                log_error(f"Specified input audio '{input_wav}' does not exist.")
+                sys.exit(1)
+        else:
+            if force and (
+                input_wav.resolve() == default_dry_path.resolve() or input_wav.name == "input.wav"
+            ):
+                log_step(
+                    "DRY",
+                    f"Re-synthesizing dry excitation audio ({input_wav.name}) (--force)...",
+                )
+                input_wav = ensure_input_audio_wav(input_wav, overwrite=True)
+                log_success(f"Dry excitation audio ready: {input_wav.name}")
+            else:
+                log_step("DRY", f"Using input excitation audio: {input_wav.name}")
+
+    if not instrument_targets:
+        if excitation_targets:
+            log_success("Dry excitation audio generation completed.")
+        return
+
+    log_step(
+        "STEMS",
+        f"Synthesizing stems for {len(instrument_targets)} instrument target rule(s) (force={force})...",
+    )
 
     # In-process token cache
     recipe_token_cache: dict[tuple[str, str], str] = {}
 
     tasks: list[tuple[InstrumentConfig, VoicingConfig]] = []
-    for tgt in resolved:
+    for tgt in instrument_targets:
         try:
             inst = load_instrument(tgt.id)
         except Exception as e:  # noqa: BLE001

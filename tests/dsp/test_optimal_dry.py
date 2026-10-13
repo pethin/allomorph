@@ -11,6 +11,7 @@ from allomorph.dsp import (
     DEFAULT_INPUT_PATH,
     FS,
     calibrate_nam_v3_latency,
+    check_dry_excitation_needs_regeneration,
     ensure_input_audio_wav,
     fft_convolve,
     generate_optimal_bass_dry,
@@ -332,3 +333,99 @@ def test_generate_optimal_bass_dry_full_track():
     # Check pure silence in rests
     zero_fraction = float(np.mean(audio == 0.0))
     assert zero_fraction > 0.05
+
+
+def test_check_dry_excitation_needs_regeneration_matrix(tmp_path: Path):
+    """Verify check_dry_excitation_needs_regeneration correctly evaluates freshness across all 8 states."""
+    import json
+
+    test_wav = tmp_path / "test_input.wav"
+    manifest_p = tmp_path / "manifest.json"
+
+    # 1. Non-existent file
+    needs, reason = check_dry_excitation_needs_regeneration(test_wav)
+    assert needs is True
+    assert "does not exist" in reason
+
+    # 2. Force flag overrides any state
+    test_wav.write_bytes(b"RIFF" + b"\x00" * 40)
+    needs, reason = check_dry_excitation_needs_regeneration(test_wav, force=True)
+    assert needs is True
+    assert "Force regeneration" in reason
+
+    # 3. Empty or truncated file (< 44 bytes)
+    trunc_wav = tmp_path / "trunc.wav"
+    trunc_wav.write_bytes(b"short")
+    needs, reason = check_dry_excitation_needs_regeneration(trunc_wav)
+    assert needs is True
+    assert "empty or truncated" in reason
+
+    # 4. Standard input.wav without manifest sidecar
+    std_wav = tmp_path / "input.wav"
+    std_wav.write_bytes(b"RIFF" + b"\x00" * 100)
+    needs, reason = check_dry_excitation_needs_regeneration(std_wav)
+    assert needs is True
+    assert "manifest sidecar" in reason
+
+    # 5. Manifest missing file entry or dry_token
+    manifest_p.write_text(json.dumps({"files": {}}), encoding="utf-8")
+    needs, reason = check_dry_excitation_needs_regeneration(std_wav)
+    assert needs is True
+    assert "token missing" in reason
+
+    # 6. File size mismatch
+    manifest_p.write_text(
+        json.dumps(
+            {
+                "files": {
+                    "input.wav": {
+                        "dry_token": "alo_dry_123",
+                        "size_bytes": 99999,
+                        "recipe_tag": "synthetic_optimal_bass_dry_v6",
+                    }
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+    needs, reason = check_dry_excitation_needs_regeneration(std_wav)
+    assert needs is True
+    assert "size mismatch" in reason
+
+    # 7. DSP generation tag mismatch
+    manifest_p.write_text(
+        json.dumps(
+            {
+                "files": {
+                    "input.wav": {
+                        "dry_token": "alo_dry_123",
+                        "size_bytes": std_wav.stat().st_size,
+                        "recipe_tag": "synthetic_optimal_bass_dry_v5",
+                    }
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+    needs, reason = check_dry_excitation_needs_regeneration(std_wav)
+    assert needs is True
+    assert "DSP generation mismatch" in reason
+
+    # 8. Fresh, fully matching valid state
+    manifest_p.write_text(
+        json.dumps(
+            {
+                "files": {
+                    "input.wav": {
+                        "dry_token": "alo_dry_123",
+                        "size_bytes": std_wav.stat().st_size,
+                        "recipe_tag": "synthetic_optimal_bass_dry_v6",
+                    }
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+    needs, reason = check_dry_excitation_needs_regeneration(std_wav)
+    assert needs is False
+    assert "fresh and valid" in reason

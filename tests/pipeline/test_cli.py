@@ -5,9 +5,11 @@ Tests for modern Cyclopts CLI in allomorph.cli.
 from pathlib import Path
 from typing import Any
 
+import numpy as np
 import pytest
 
 from allomorph.cli import main
+from allomorph.dsp.io import write_wav_24bit
 
 
 def test_cli_main_help() -> None:
@@ -66,6 +68,208 @@ def test_cli_stems_generate(monkeypatch: pytest.MonkeyPatch) -> None:
     assert len(calls) == 1
     assert calls[0]["voicing"].tone_name == "Precision Vintage"
     assert calls[0]["force"] is True
+
+
+def test_cli_stems_generate_auto_creates_dry_audio_when_missing(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Verify stems generate automatically invokes ensure_input_audio_wav when dry audio is absent."""
+    missing_dry = tmp_path / "audio" / "input.wav"
+    ensure_calls: list[dict[str, Any]] = []
+    sim_calls: list[dict[str, Any]] = []
+
+    def _mock_ensure(output_path: Any = None, **kwargs: Any) -> Path:
+        ensure_calls.append({"path": output_path, **kwargs})
+        p = Path(output_path) if output_path else missing_dry
+        p.parent.mkdir(parents=True, exist_ok=True)
+        write_wav_24bit(p, np.zeros(100, dtype=np.float32), 48000)
+        return p
+
+    def _mock_sim(**kwargs: Any) -> Path:
+        sim_calls.append(kwargs)
+        return Path("audio/wet/dummy.wav")
+
+    monkeypatch.setattr("allomorph.naming.get_default_input_path", lambda: missing_dry)
+    monkeypatch.setattr("allomorph.cli.stems_cmd.get_default_input_path", lambda: missing_dry)
+    monkeypatch.setattr("allomorph.cli.stems_cmd.REPO_ROOT", tmp_path / "repo")
+    monkeypatch.setattr("allomorph.cli.stems_cmd.WET_AUDIO_DIR", tmp_path / "wet")
+    monkeypatch.setattr("allomorph.cli.stems_cmd.ensure_input_audio_wav", _mock_ensure)
+    monkeypatch.setattr("allomorph.cli.stems_cmd.simulate_instrument_voicing", _mock_sim)
+
+    code = main(["stems", "generate", "instrument:34in_standard_p:precision_vintage"])
+    assert code == 0
+    assert len(ensure_calls) == 1
+    assert ensure_calls[0]["overwrite"] is True
+    assert len(sim_calls) == 1
+    assert sim_calls[0]["input_wav"] == missing_dry
+
+
+def test_cli_stems_generate_reuses_fresh_dry_audio(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Verify stems generate reuses cached dry audio when present and valid without force."""
+    import json
+
+    audio_dir = tmp_path / "audio"
+    audio_dir.mkdir(parents=True)
+    existing_dry = audio_dir / "input.wav"
+    existing_dry.write_bytes(b"RIFF" + b"\x00" * 100)
+
+    manifest_p = audio_dir / "manifest.json"
+    manifest_p.write_text(
+        json.dumps(
+            {
+                "files": {
+                    "input.wav": {
+                        "dry_token": "alo_dry_cached_123",
+                        "size_bytes": existing_dry.stat().st_size,
+                        "recipe_tag": "synthetic_optimal_bass_dry_v6",
+                    }
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    ensure_calls: list[Any] = []
+    sim_calls: list[Any] = []
+
+    def _mock_ensure(output_path: Any = None, **kwargs: Any) -> Path:
+        ensure_calls.append(output_path)
+        return Path(output_path) if output_path else existing_dry
+
+    def _mock_sim(**kwargs: Any) -> Path:
+        sim_calls.append(kwargs)
+        return Path("audio/wet/dummy.wav")
+
+    monkeypatch.setattr("allomorph.naming.get_default_input_path", lambda: existing_dry)
+    monkeypatch.setattr("allomorph.cli.stems_cmd.get_default_input_path", lambda: existing_dry)
+    monkeypatch.setattr("allomorph.cli.stems_cmd.REPO_ROOT", tmp_path / "repo")
+    monkeypatch.setattr("allomorph.cli.stems_cmd.WET_AUDIO_DIR", tmp_path / "wet")
+    monkeypatch.setattr("allomorph.cli.stems_cmd.ensure_input_audio_wav", _mock_ensure)
+    monkeypatch.setattr("allomorph.cli.stems_cmd.simulate_instrument_voicing", _mock_sim)
+
+    code = main(["stems", "generate", "instrument:34in_standard_p:precision_vintage"])
+    assert code == 0
+    # ensure_input_audio_wav should NOT have been called
+    assert len(ensure_calls) == 0
+    assert len(sim_calls) == 1
+    assert sim_calls[0]["input_wav"] == existing_dry
+
+
+def test_cli_stems_generate_force_regenerates_dry_audio(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Verify stems generate with --force triggers overwrite re-synthesis of dry excitation."""
+    import json
+
+    audio_dir = tmp_path / "audio"
+    audio_dir.mkdir(parents=True)
+    existing_dry = audio_dir / "input.wav"
+    existing_dry.write_bytes(b"RIFF" + b"\x00" * 100)
+
+    manifest_p = audio_dir / "manifest.json"
+    manifest_p.write_text(
+        json.dumps(
+            {
+                "files": {
+                    "input.wav": {
+                        "dry_token": "alo_dry_cached_123",
+                        "size_bytes": existing_dry.stat().st_size,
+                        "recipe_tag": "synthetic_optimal_bass_dry_v6",
+                    }
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    ensure_calls: list[dict[str, Any]] = []
+
+    def _mock_ensure(output_path: Any = None, **kwargs: Any) -> Path:
+        ensure_calls.append({"path": output_path, **kwargs})
+        return Path(output_path) if output_path else existing_dry
+
+    def _mock_sim(**kwargs: Any) -> Path:
+        return Path("audio/wet/dummy.wav")
+
+    monkeypatch.setattr("allomorph.naming.get_default_input_path", lambda: existing_dry)
+    monkeypatch.setattr("allomorph.cli.stems_cmd.get_default_input_path", lambda: existing_dry)
+    monkeypatch.setattr("allomorph.cli.stems_cmd.REPO_ROOT", tmp_path / "repo")
+    monkeypatch.setattr("allomorph.cli.stems_cmd.WET_AUDIO_DIR", tmp_path / "wet")
+    monkeypatch.setattr("allomorph.cli.stems_cmd.ensure_input_audio_wav", _mock_ensure)
+    monkeypatch.setattr("allomorph.cli.stems_cmd.simulate_instrument_voicing", _mock_sim)
+
+    code = main(["stems", "generate", "instrument:34in_standard_p:precision_vintage", "--force"])
+    assert code == 0
+    # ensure_input_audio_wav SHOULD have been called with overwrite=True
+    assert len(ensure_calls) == 1
+    assert ensure_calls[0]["overwrite"] is True
+
+
+def test_cli_stems_generate_excitation_target_alone(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Verify 'stems generate excitation' synthesizes the excitation audio without requiring instruments."""
+    target_dry = tmp_path / "audio" / "input.wav"
+    ensure_calls: list[dict[str, Any]] = []
+    sim_calls: list[Any] = []
+
+    def _mock_ensure(output_path: Any = None, **kwargs: Any) -> Path:
+        ensure_calls.append({"path": output_path, **kwargs})
+        p = Path(output_path) if output_path else target_dry
+        p.parent.mkdir(parents=True, exist_ok=True)
+        write_wav_24bit(p, np.zeros(100, dtype=np.float32), 48000)
+        return p
+
+    def _mock_sim(**kwargs: Any) -> Path:
+        sim_calls.append(kwargs)
+        return Path("audio/wet/dummy.wav")
+
+    monkeypatch.setattr("allomorph.naming.get_default_input_path", lambda: target_dry)
+    monkeypatch.setattr("allomorph.cli.stems_cmd.get_default_input_path", lambda: target_dry)
+    monkeypatch.setattr("allomorph.cli.stems_cmd.REPO_ROOT", tmp_path / "repo")
+    monkeypatch.setattr("allomorph.cli.stems_cmd.WET_AUDIO_DIR", tmp_path / "wet")
+    monkeypatch.setattr("allomorph.cli.stems_cmd.ensure_input_audio_wav", _mock_ensure)
+    monkeypatch.setattr("allomorph.cli.stems_cmd.simulate_instrument_voicing", _mock_sim)
+
+    code = main(["stems", "generate", "excitation"])
+    assert code == 0
+    assert len(ensure_calls) == 1
+    assert len(sim_calls) == 0  # No instruments simulated
+
+
+def test_cli_stems_generate_excitation_target_with_instrument(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Verify 'stems generate excitation <instrument>' synthesizes excitation and then instrument stems."""
+    target_dry = tmp_path / "audio" / "input.wav"
+    ensure_calls: list[dict[str, Any]] = []
+    sim_calls: list[Any] = []
+
+    def _mock_ensure(output_path: Any = None, **kwargs: Any) -> Path:
+        ensure_calls.append({"path": output_path, **kwargs})
+        p = Path(output_path) if output_path else target_dry
+        p.parent.mkdir(parents=True, exist_ok=True)
+        write_wav_24bit(p, np.zeros(100, dtype=np.float32), 48000)
+        return p
+
+    def _mock_sim(**kwargs: Any) -> Path:
+        sim_calls.append(kwargs)
+        return Path("audio/wet/dummy.wav")
+
+    monkeypatch.setattr("allomorph.naming.get_default_input_path", lambda: target_dry)
+    monkeypatch.setattr("allomorph.cli.stems_cmd.get_default_input_path", lambda: target_dry)
+    monkeypatch.setattr("allomorph.cli.stems_cmd.REPO_ROOT", tmp_path / "repo")
+    monkeypatch.setattr("allomorph.cli.stems_cmd.WET_AUDIO_DIR", tmp_path / "wet")
+    monkeypatch.setattr("allomorph.cli.stems_cmd.ensure_input_audio_wav", _mock_ensure)
+    monkeypatch.setattr("allomorph.cli.stems_cmd.simulate_instrument_voicing", _mock_sim)
+
+    code = main(["stems", "generate", "excitation", "instrument:34in_standard_p:precision_vintage"])
+    assert code == 0
+    assert len(ensure_calls) == 1
+    assert len(sim_calls) == 1
+    assert sim_calls[0]["voicing"].tone_name == "Precision Vintage"
 
 
 def test_cli_stems_prune_dry_run(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
