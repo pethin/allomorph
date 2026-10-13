@@ -13,6 +13,7 @@ targets = [
     "precision_mids",
     "precision_warm",
     "precision_dub",
+    "dingwall_middle",
     "mudbucker_deep",
     "upright_piezo",
 ]
@@ -24,6 +25,7 @@ targets = [
     "stingray_parallel",
     "stingray_series",
     "rickenbacker_clank",
+    "rickenbacker_open",
     "dingwall_bridge",
     "jazz_bridge_growl",
 ]
@@ -36,6 +38,7 @@ targets = [
     "pj_passive",
     "p_mm_parallel",
     "p_mm_series",
+    "dingwall_parallel",
     "jazz_pair_active",
     "jazz_pair_mids",
 ]

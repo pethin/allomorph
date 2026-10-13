@@ -28,13 +28,13 @@ PACK_EDITIONS: list[str] = [
 ]
 
 PACK_VOICING_COUNTS: dict[str, int] = {
-    "standard_precision_bass": 19,
-    "standard_jazz_bass": 18,
-    "standard_pj_bass": 17,
-    "mustang_pj_bass": 20,
-    "preamp_soapbar_bass": 20,
-    "active_stingray_bass": 19,
-    "active_emg_bass": 20,
+    "standard_precision_bass": 23,
+    "standard_jazz_bass": 21,
+    "standard_pj_bass": 21,
+    "mustang_pj_bass": 24,
+    "preamp_soapbar_bass": 24,
+    "active_stingray_bass": 23,
+    "active_emg_bass": 24,
 }
 
 MULTI_PICKUP_PACKS: dict[str, list[str]] = {

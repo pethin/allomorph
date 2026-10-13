@@ -14,6 +14,8 @@ targets = [
     "precision_mids",
     "precision_warm",
     "precision_dub",
+    "dingwall_middle",
+    "jazz_neck_warm",
 ]
 
 [[bundles]]
@@ -24,6 +26,7 @@ targets = [
     "stingray_parallel",
     "stingray_series",
     "rickenbacker_clank",
+    "rickenbacker_open",
     "dingwall_bridge",
 ]
 
@@ -36,5 +39,6 @@ targets = [
     "jazz_pair_mids",
     "p_mm_parallel",
     "p_mm_series",
+    "dingwall_parallel",
     "pj_active",
 ]

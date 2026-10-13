@@ -4,6 +4,7 @@ Automates creation, partitioning, packaging, and local training of Tone3000 uplo
 respecting Tone3000's strict '1 Dry File + Multiple Wet Stems' batch upload constraint.
 """
 
+import contextlib
 import hashlib
 import json
 import shutil
@@ -336,6 +337,14 @@ def export_tone_pack(
 
     # 5. Manifest JSON
     manifest_path = pack_dir / "manifest.json"
+    if manifest_path.exists():
+        with (
+            contextlib.suppress(json.JSONDecodeError, OSError),
+            open(manifest_path, "r", encoding="utf-8") as mf,
+        ):
+            old_m = json.load(mf)
+            if old_models := old_m.get("models"):
+                manifest_entries["models"] = old_models
     with open(manifest_path, "w", encoding="utf-8") as f:
         json.dump(manifest_entries, f, indent=2)
 

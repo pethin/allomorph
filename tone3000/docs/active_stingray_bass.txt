@@ -1,6 +1,6 @@
 ALLOMORPH: ACTIVE STINGRAY BASS EDITION
 
-Transform your active Music Man StingRay (4 or 5-string) or Sterling Ray34/Ray35/Ray4/Ray5 bass into 21 legendary vintage passive, modern active, progressive rock, and acoustic pickup configurations.
+Transform your active Music Man StingRay (4 or 5-string) or Sterling Ray34/Ray35/Ray4/Ray5 bass into 23 legendary vintage passive, modern active, progressive rock, and acoustic pickup configurations.
 
 
 OVERVIEW
@@ -37,7 +37,7 @@ QUICK INSTRUMENT SETUP
 Plug straight in. Because the StingRay features a single bridge sweet-spot humbucker, all target models map directly to your physical humbucker. All pickup positioning, pot loading, tone capacitor shaping, and active preamp EQs are handled automatically by the models.
 
 
-THE 19 DIGITAL TWIN VOICINGS
+THE 23 DIGITAL TWIN VOICINGS
 
 
 Precision Bass & Tone Shaper Family
@@ -75,46 +75,58 @@ The unmistakable Jaco Pastorius tone: rolling the neck volume back just a touch 
 10. Jazz Bridge Open
 Solo '60s bridge single-coil. Tight, laser-focused midrange bite and percussive attack, perfect for 16th-note funk and fast staccato fingerstyle.
 
+11. Jazz Neck Warm
+Solo '60s neck single-coil. Deep, warm, and round with a woody low-end bloom that rivals a P-bass while retaining single-coil openness.
+
 
 P/MM Modern Hybrids
 
-11. P∕MM Parallel
+12. P∕MM Parallel
 Modern boutique session hybrid (Sandberg California / Lakland style). Blends the warm body of a P-bass neck with the punchy slap bite of a Music Man bridge humbucker.
 
-12. P∕MM Series
+13. P∕MM Series
 P-bass neck and Music Man bridge wired in series for a massive wall of sound with immense low-mid thrust and heavy overdrive sustain.
 
 
 P/J Bass Family
 
-13. PJ Active
+14. PJ Active
 Modern active P/J punch (Sadowsky/Spector style). Combines thick split-coil body with bridge single-coil cut, boosted by a powerful active 2-band EQ.
 
-14. PJ Passive
+15. PJ Passive
 Classic '80s rock P/J tone (Fender Precision Special / Yamaha BB). Thick hard-rock punch with aggressive midrange bite and authoritative low-end grunt.
 
 
 Progressive & Classic Rock Legends
 
-15. Rickenbacker Clank
+16. Rickenbacker Clank
 The quintessential prog-rock clank (Chris Squire / Geddy Lee). Tight, lean low end with biting, aggressive pick attack and cutting upper-mid grit.
 
-16. Dingwall Bridge
+17. Rickenbacker Open
+Modern 4003 bridge tone with the vintage capacitor bypassed. Fuller low-end body and punch while retaining that signature biting Rickenbacker top-end cut.
+
+18. Dingwall Bridge
 Modern progressive metal tone: razor-sharp pick clank, extreme note clarity, and piano-like low-B definition tailored for drop tunings and heavy distortion.
 
-17. Mudbucker Deep
+19. Dingwall Middle
+FD3 middle pickup solo: focused, aggressive low-mid grunt and punchy growl with exceptional articulation across all registers.
+
+20. Dingwall Parallel
+FD3 bridge and middle coils in parallel: modern scooped aggression with ultra-fast transient attack, tight sub-bass, and pristine harmonic sparkle.
+
+21. Mudbucker Deep
 The legendary Gibson "Mudbucker": a dark, colossal wall of pure vintage bass rumble with zero top-end harshness—pure '60s and '70s British blues-rock.
 
 
 Acoustic Transducers
 
-18. Upright Piezo
+22. Upright Piezo
 Acoustic upright double bass: transforms your electric bass into a woody, resonant acoustic upright with natural body thump and organic finger feel. Pair with 3 Sigma Audio "Acoustic Upright Standard" AST IRs in your cabinet loader for authentic soundboard acoustic bloom.
 
 
 Music Man StingRay Family
 
-19. StingRay Series
+23. StingRay Series
 StingRay wired in series for a hotter, thicker signal with punchy low-mids and an aggressive, in-your-face rock bark.
 
 

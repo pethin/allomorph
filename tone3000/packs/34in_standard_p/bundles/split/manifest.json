@@ -10,7 +10,7 @@
   "instrument_id": "34in_standard_p",
   "instrument_version": 1,
   "source_voicing_version": 1,
-  "stem_count": 19,
+  "stem_count": 23,
   "stems": [
     {
       "filename": "Jazz Pair Active v6.1.1.wav",
@@ -61,6 +61,16 @@
       "version": "v6.1.1",
       "tone_name": "Jazz Bridge Open",
       "sha256": "8d1d45bbb6023a140f9dc52066d930917d3e59337cd9171a53f780b0962f09b8"
+    },
+    {
+      "filename": "Jazz Neck Warm v6.1.1.wav",
+      "target_instrument": "34in_standard_jazz",
+      "target_instrument_version": 1,
+      "target_voicing": "neck_warm",
+      "target_voicing_version": 1,
+      "version": "v6.1.1",
+      "tone_name": "Jazz Neck Warm",
+      "sha256": "c6b24d97a4681860c8edc3aa8b6d2cda6ecdba285d62e8a6838fc91eb3176bae"
     },
     {
       "filename": "StingRay Parallel v6.1.1.wav",
@@ -133,6 +143,16 @@
       "sha256": "ded94f25ec55aae302dd988052547e228d39c59fcfd660b9b35022e9dd98d15f"
     },
     {
+      "filename": "Rickenbacker Open v6.1.1.wav",
+      "target_instrument": "33in_rickenbacker_4003",
+      "target_instrument_version": 1,
+      "target_voicing": "bridge_open",
+      "target_voicing_version": 1,
+      "version": "v6.1.1",
+      "tone_name": "Rickenbacker Open",
+      "sha256": "30a1635571cae1699ef077daea77578a56a339f584052515f4b1b3629e9595c1"
+    },
+    {
       "filename": "Dingwall Bridge v6.1.1.wav",
       "target_instrument": "37in_multiscale_dingwall",
       "target_instrument_version": 1,
@@ -141,6 +161,26 @@
       "version": "v6.1.1",
       "tone_name": "Dingwall Bridge",
       "sha256": "b20fe89c0740bf17efa4689e6670a8e4c60f1d7004725712bd3bdfa8744d8f95"
+    },
+    {
+      "filename": "Dingwall Middle v6.1.1.wav",
+      "target_instrument": "37in_multiscale_dingwall",
+      "target_instrument_version": 1,
+      "target_voicing": "middle_growl",
+      "target_voicing_version": 1,
+      "version": "v6.1.1",
+      "tone_name": "Dingwall Middle",
+      "sha256": "22aad00a8b7c798245bdbb83434255c03846cfddf77638f7818b6be20848f011"
+    },
+    {
+      "filename": "Dingwall Parallel v6.1.1.wav",
+      "target_instrument": "37in_multiscale_dingwall",
+      "target_instrument_version": 1,
+      "target_voicing": "pair_parallel",
+      "target_voicing_version": 1,
+      "version": "v6.1.1",
+      "tone_name": "Dingwall Parallel",
+      "sha256": "fa11c8ac9dc1a3415b6ce66b423ecd36495d4e5e4db4669e2aaa577961f0b220"
     },
     {
       "filename": "Mudbucker Deep v6.1.1.wav",
@@ -190,7 +230,7 @@
       "target_voicing_version": 1,
       "version": "v6.1.1",
       "tone_name": "Precision Warm",
-      "sha256": "538ef107e7d423169ed95102ba4ea3fb9196a74e3283cee8da364aa63f2c0619"
+      "sha256": "cc448fdf8bb1b7f9da31a3fdd9ff4c79e60f3691431821be84da27dd59a19c11"
     },
     {
       "filename": "Precision Dub v6.1.1.wav",
@@ -200,7 +240,7 @@
       "target_voicing_version": 1,
       "version": "v6.1.1",
       "tone_name": "Precision Dub",
-      "sha256": "08495ebfc5e1ed83a8c09ee48770e4667aeb7ad63a3ac8ee301f27e43c4dcdd1"
+      "sha256": "707345dc9add6eba1b9cb4037f643928ec7634558a25f6c2ae19b99c7496f96d"
     }
   ]
 }

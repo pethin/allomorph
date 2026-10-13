@@ -161,7 +161,7 @@ def test_generate_storefront_description_integration():
     voicing_lines = [
         line.strip() for line in desc.splitlines() if re.match(r"^\d{2}\.", line.strip())
     ]
-    assert len(voicing_lines) == 19
+    assert len(voicing_lines) == 23
     for vline in voicing_lines:
         assert not re.search(r" v\d+\.\d+\.\d+", vline), (
             f"Found version tag in storefront line: '{vline}'"

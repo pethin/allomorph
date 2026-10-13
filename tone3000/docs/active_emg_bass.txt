@@ -1,6 +1,6 @@
 ALLOMORPH: ACTIVE EMG BASS EDITION
 
-Transform your 34" active EMG soapbar bass into 22 legendary vintage passive, modern active, progressive rock, and acoustic pickup configurations.
+Transform your 34" active EMG soapbar bass into 24 legendary vintage passive, modern active, progressive rock, and acoustic pickup configurations.
 
 
 OVERVIEW
@@ -41,7 +41,7 @@ For each voicing, set your bass's physical pickup blend knob to the recommended 
 Plug straight in. All pickup positioning, pot loading, tone capacitor shaping, and active preamp EQs are handled automatically by the models.
 
 
-THE 20 DIGITAL TWIN VOICINGS
+THE 24 DIGITAL TWIN VOICINGS
 
 
 Precision Bass & Tone Shaper Family
@@ -79,49 +79,61 @@ The unmistakable Jaco Pastorius tone: solo bridge pickup with authentic neck-pot
 10. Jazz Bridge Open [Bridge]
 Solo '60s bridge single-coil. Tight, laser-focused midrange bite and percussive attack, perfect for 16th-note funk and fast staccato fingerstyle.
 
+11. Jazz Neck Warm [Neck]
+Solo '60s neck single-coil. Deep, warm, and round with a woody low-end bloom that rivals a P-bass while retaining single-coil openness.
+
 
 Music Man StingRay Family
 
-11. StingRay Parallel [Bridge]
+12. StingRay Parallel [Bridge]
 The iconic Music Man StingRay sound: thunderous low end, aggressive metallic slap clank, and that hollow midrange scoop heard on thousands of hit records.
 
-12. StingRay Series [Bridge]
+13. StingRay Series [Bridge]
 StingRay wired in series for a hotter, thicker signal with punchy low-mids and an aggressive, in-your-face rock bark.
 
 
 P/MM Modern Hybrids
 
-13. P∕MM Parallel [Parallel]
+14. P∕MM Parallel [Parallel]
 Modern boutique session hybrid (Sandberg California / Lakland style). Blends the warm body of a P-bass neck with the punchy slap bite of a Music Man bridge humbucker.
 
-14. P∕MM Series [Parallel]
+15. P∕MM Series [Parallel]
 P-bass neck and Music Man bridge wired in series for a massive wall of sound with immense low-mid thrust and heavy overdrive sustain.
 
 
 Progressive & Classic Rock Legends
 
-15. Rickenbacker Clank [Bridge]
+16. Rickenbacker Clank [Bridge]
 The quintessential prog-rock clank (Chris Squire / Geddy Lee). Tight, lean low end with biting, aggressive pick attack and cutting upper-mid grit.
 
-16. Dingwall Bridge [Bridge]
+17. Rickenbacker Open [Bridge]
+Modern 4003 bridge tone with the vintage capacitor bypassed. Fuller low-end body and punch while retaining that signature biting Rickenbacker top-end cut.
+
+18. Dingwall Bridge [Bridge]
 Modern progressive metal tone: razor-sharp pick clank, extreme note clarity, and piano-like low-B definition tailored for drop tunings and heavy distortion.
 
-17. Mudbucker Deep [Neck]
+19. Dingwall Middle [Neck]
+FD3 middle pickup solo: focused, aggressive low-mid grunt and punchy growl with exceptional articulation across all registers.
+
+20. Dingwall Parallel [Parallel]
+FD3 bridge and middle coils in parallel: modern scooped aggression with ultra-fast transient attack, tight sub-bass, and pristine harmonic sparkle.
+
+21. Mudbucker Deep [Neck]
 The legendary Gibson "Mudbucker": a dark, colossal wall of pure vintage bass rumble with zero top-end harshness—pure '60s and '70s British blues-rock.
 
 
 Acoustic Transducers
 
-18. Upright Piezo [Neck]
+22. Upright Piezo [Neck]
 Acoustic upright double bass: transforms your electric bass into a woody, resonant acoustic upright with natural body thump and organic finger feel. Pair with 3 Sigma Audio "Acoustic Upright Standard" AST IRs in your cabinet loader for authentic soundboard acoustic bloom.
 
 
 P/J Bass Family
 
-19. PJ Active [Parallel]
+23. PJ Active [Parallel]
 Modern active P/J punch (Sadowsky/Spector style). Combines thick split-coil body with bridge single-coil cut, boosted by a powerful active 2-band EQ.
 
-20. PJ Passive [Parallel]
+24. PJ Passive [Parallel]
 Classic '80s rock P/J tone (Fender Precision Special / Yamaha BB). Thick hard-rock punch with aggressive midrange bite and authoritative low-end grunt.
 
 
