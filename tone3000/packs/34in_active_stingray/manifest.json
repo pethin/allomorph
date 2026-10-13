@@ -107,7 +107,7 @@
           "target_voicing_version": 1,
           "version": "v6.1.1",
           "tone_name": "Jazz Bridge Growl",
-          "sha256": "a87846d01ef629b67c1ab672eb1510a520c1ee20dda26a1ddd154966f12e8b49"
+          "sha256": "726387ef2bb59ee02a03de424d8b212e7d7df7ecc1649577e3202a5e89bfa155"
         },
         {
           "filename": "Jazz Bridge Open v6.1.1.wav",
@@ -463,34 +463,6 @@
       "device_name": "AMD Radeon RX 9070 XT",
       "engine": "native",
       "training_time_seconds": 319.12
-    },
-    "Jazz Bridge Growl v6.1.1.nam": {
-      "filename": "Jazz Bridge Growl v6.1.1.nam",
-      "bundle": "bridge",
-      "target_instrument": "34in_standard_jazz",
-      "target_instrument_version": 1,
-      "target_voicing": "bridge_growl",
-      "target_voicing_version": 1,
-      "version": "v6.1.1",
-      "tone_name": "Jazz Bridge Growl",
-      "sha256": "4f3fad5a1a4ab495c952c626bdaf6c4ab9547f8c3e548ff9eca62d2c9e974c61",
-      "dry_file": "dry v6.1.1.wav",
-      "dry_sha256": "999933b8c4f400728f8d9b1eb2dc6470f69fd61b1e9c5ee239076fc89b731d07",
-      "wet_file": "Jazz Bridge Growl v6.1.1.wav",
-      "wet_sha256": "a87846d01ef629b67c1ab672eb1510a520c1ee20dda26a1ddd154966f12e8b49",
-      "validation_esr": 0.0001364576892228797,
-      "validation_esr_a2_full": 0.0001364576892228797,
-      "validation_esr_a2_lite": 0.00028184239636175334,
-      "validation_esr_ch8": 0.0001364576892228797,
-      "validation_esr_ch3": 0.00028184239636175334,
-      "mrstft_loss": 0.0,
-      "epochs_trained": 104,
-      "stop_reason": "diminishing_returns_plateau",
-      "batch_size": 16,
-      "precision": "bf16-mixed",
-      "device_name": "AMD Radeon RX 9070 XT",
-      "engine": "native",
-      "training_time_seconds": 317.99
     },
     "Jazz Bridge Open v6.1.1.nam": {
       "filename": "Jazz Bridge Open v6.1.1.nam",
@@ -883,6 +855,34 @@
       "device_name": "AMD Radeon RX 9070 XT",
       "engine": "native",
       "training_time_seconds": 318.26
+    },
+    "Jazz Bridge Growl v6.1.1.nam": {
+      "filename": "Jazz Bridge Growl v6.1.1.nam",
+      "bundle": "bridge",
+      "target_instrument": "34in_standard_jazz",
+      "target_instrument_version": 1,
+      "target_voicing": "bridge_growl",
+      "target_voicing_version": 1,
+      "version": "v6.1.1",
+      "tone_name": "Jazz Bridge Growl",
+      "sha256": "d95e17a8b74161e68f89c3d68cb29b5f0c971a364d357b279fceed205b645665",
+      "dry_file": "dry v6.1.1.wav",
+      "dry_sha256": "999933b8c4f400728f8d9b1eb2dc6470f69fd61b1e9c5ee239076fc89b731d07",
+      "wet_file": "Jazz Bridge Growl v6.1.1.wav",
+      "wet_sha256": "726387ef2bb59ee02a03de424d8b212e7d7df7ecc1649577e3202a5e89bfa155",
+      "validation_esr": 6.751390901627019e-05,
+      "validation_esr_a2_full": 6.751390901627019e-05,
+      "validation_esr_a2_lite": 0.00016307314217556268,
+      "validation_esr_ch8": 6.751390901627019e-05,
+      "validation_esr_ch3": 0.00016307314217556268,
+      "mrstft_loss": 0.0,
+      "epochs_trained": 111,
+      "stop_reason": "diminishing_returns_plateau",
+      "batch_size": 16,
+      "precision": "bf16-mixed",
+      "device_name": "AMD Radeon RX 9070 XT",
+      "engine": "native",
+      "training_time_seconds": 324.41
     }
   }
 }
