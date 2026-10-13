@@ -3,8 +3,12 @@ Allomorph CLI - Stems Subcommand
 Manages forward digital twin wet stem synthesis and orphan stem pruning.
 """
 
+import os
 import sys
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
+
+import numpy as np
 
 from allomorph.circuit.forward import simulate_instrument_voicing
 from allomorph.cli.console import (
@@ -23,7 +27,9 @@ from allomorph.config.schema import InstrumentConfig, VoicingConfig
 from allomorph.config.strings import STRINGS
 from allomorph.dsp import (
     check_dry_excitation_needs_regeneration,
+    compute_lufs,
     ensure_input_audio_wav,
+    read_wav,
 )
 from allomorph.naming import get_default_input_path
 from allomorph.version import (
@@ -42,6 +48,7 @@ def generate_stems(
     input_wav: Path | None = None,
     max_samples: int | None = None,
     force: bool = False,
+    jobs: int | None = None,
 ) -> None:
     """Synthesizes target-filtered wet audio stems directly from dry string excitation."""
     resolved = resolve_targets(targets, default="all", allow_shorthand=True)
@@ -141,6 +148,10 @@ def generate_stems(
     simulated_count = 0
     failures: list[tuple[str, str]] = []
 
+    tasks_to_simulate: list[
+        tuple[int, InstrumentConfig, VoicingConfig, str, Path, str]
+    ] = []
+
     for idx, (inst, v_cfg) in enumerate(unique_tasks, 1):
         v_label = v_cfg.tone_name or v_cfg.id or "default"
         stem_slug = v_label.lower().replace(" ", "_").replace("∕", "_").replace("/", "_")
@@ -181,22 +192,66 @@ def generate_stems(
             cached_count += 1
             continue
 
-        log_step("SIM", f"[{idx}/{total}] Simulating {inst.id}:{stem_slug} ({v_tag})...")
-        try:
-            simulate_instrument_voicing(
-                instrument=inst,
-                voicing=v_cfg,
-                input_wav=input_wav,
-                output_wav=target_path,
-                max_samples=max_samples,
-                force=force,
-                preamps=PREAMPS,
-                strings=STRINGS,
+        tasks_to_simulate.append((idx, inst, v_cfg, stem_slug, target_path, v_tag))
+
+    if tasks_to_simulate:
+        input_audio: np.ndarray | None = None
+        ref_lufs: float | None = None
+        if input_wav is not None and input_wav.exists():
+            try:
+                input_audio, input_sr = read_wav(
+                    input_wav, max_samples=max_samples, dtype=np.float64
+                )
+                input_mono = input_audio[0] if input_audio.ndim > 1 else input_audio
+                ref_lufs = compute_lufs(input_mono, sample_rate=input_sr)
+            except Exception:  # noqa: BLE001
+                input_audio = None
+                ref_lufs = None
+
+        eff_jobs = jobs if jobs is not None and jobs > 0 else min(os.cpu_count() or 4, 8)
+
+        def _execute_task(
+            t_item: tuple[int, InstrumentConfig, VoicingConfig, str, Path, str],
+        ) -> tuple[str, str | None]:
+            t_idx, t_inst, t_v_cfg, t_slug, t_path, t_v_tag = t_item
+            log_step("SIM", f"[{t_idx}/{total}] Simulating {t_inst.id}:{t_slug} ({t_v_tag})...")
+            try:
+                simulate_instrument_voicing(
+                    instrument=t_inst,
+                    voicing=t_v_cfg,
+                    input_wav=input_wav,
+                    input_audio=input_audio,
+                    output_wav=t_path,
+                    max_samples=max_samples,
+                    force=force,
+                    preamps=PREAMPS,
+                    strings=STRINGS,
+                    ref_lufs=ref_lufs,
+                )
+                return (f"{t_inst.id}:{t_slug}", None)
+            except Exception as e:  # noqa: BLE001
+                log_error(f"Failed to simulate {t_inst.id}:{t_slug}: {e}")
+                return (f"{t_inst.id}:{t_slug}", str(e))
+
+        if eff_jobs > 1 and len(tasks_to_simulate) > 1:
+            log_info(
+                f"Synthesizing {len(tasks_to_simulate)} stems in parallel across {min(eff_jobs, len(tasks_to_simulate))} worker threads..."
             )
-            simulated_count += 1
-        except Exception as e:  # noqa: BLE001
-            log_error(f"Failed to simulate {inst.id}:{stem_slug}: {e}")
-            failures.append((f"{inst.id}:{stem_slug}", str(e)))
+            with ThreadPoolExecutor(max_workers=eff_jobs) as executor:
+                futures = [executor.submit(_execute_task, item) for item in tasks_to_simulate]
+                for fut in as_completed(futures):
+                    target_label, err = fut.result()
+                    if err is None:
+                        simulated_count += 1
+                    else:
+                        failures.append((target_label, err))
+        else:
+            for item in tasks_to_simulate:
+                target_label, err = _execute_task(item)
+                if err is None:
+                    simulated_count += 1
+                else:
+                    failures.append((target_label, err))
 
     # Summary
     log_info("")

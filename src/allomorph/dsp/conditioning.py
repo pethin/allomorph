@@ -6,6 +6,7 @@ Audio post-processing and output conditioning primitives:
 """
 
 import math
+from typing import Literal, overload
 
 import numpy as np
 import pedalboard
@@ -68,6 +69,32 @@ def apply_johnson_dither(
     return audio + dither
 
 
+@overload
+def apply_calibrated_normalization(
+    audio: np.ndarray,
+    reference_audio: np.ndarray | None = ...,
+    mode: str = ...,
+    target_dbfs: float | None = ...,
+    sample_rate: int = ...,
+    peak_ceiling: float = ...,
+    ref_lufs: float | None = ...,
+    return_metadata: Literal[False] = False,
+) -> np.ndarray: ...
+
+
+@overload
+def apply_calibrated_normalization(
+    audio: np.ndarray,
+    reference_audio: np.ndarray | None = ...,
+    mode: str = ...,
+    target_dbfs: float | None = ...,
+    sample_rate: int = ...,
+    peak_ceiling: float = ...,
+    ref_lufs: float | None = ...,
+    return_metadata: Literal[True] = ...,
+) -> tuple[np.ndarray, dict[str, float]]: ...
+
+
 def apply_calibrated_normalization(
     audio: np.ndarray,
     reference_audio: np.ndarray | None = None,
@@ -75,20 +102,29 @@ def apply_calibrated_normalization(
     target_dbfs: float | None = None,
     sample_rate: int = FS,
     peak_ceiling: float = CALIBRATION_PEAK_CEILING,
-) -> np.ndarray:
+    ref_lufs: float | None = None,
+    return_metadata: bool = False,
+) -> np.ndarray | tuple[np.ndarray, dict[str, float]]:
     """Normalizes output audio levels according to ITU-R BS.1770-4 gated LUFS, RMS, or Peak,
 
     and enforces an absolute true-peak headroom ceiling (default -0.09 dBFS / 0.9900).
     """
     if len(audio) == 0:
+        if return_metadata:
+            return audio.copy(), {"lufs": -100.0, "true_peak": 0.0, "true_peak_dbfs": -200.0}
         return audio.copy()
 
     ref = reference_audio if reference_audio is not None else audio
     ref_mono = ref[0] if ref.ndim > 1 else ref
     filtered = audio.copy()
+    final_lufs: float = -100.0
 
     if mode in ("auto", "lufs"):
-        in_lufs = compute_lufs(ref_mono, sample_rate=sample_rate)
+        in_lufs = (
+            ref_lufs
+            if ref_lufs is not None
+            else compute_lufs(ref_mono, sample_rate=sample_rate)
+        )
         cur_lufs = compute_lufs(filtered, sample_rate=sample_rate)
         if not (
             math.isinf(cur_lufs)
@@ -99,12 +135,19 @@ def apply_calibrated_normalization(
             target_lufs = float(target_dbfs) if target_dbfs is not None else in_lufs
             gain_db = target_lufs - cur_lufs
             filtered = filtered * (10.0 ** (gain_db / 20.0))
+            final_lufs = target_lufs
         else:
             in_rms = float(np.sqrt(np.mean(ref_mono**2)))
             out_rms = float(np.sqrt(np.mean(filtered**2)))
             target_rms = 10.0 ** (float(target_dbfs) / 20.0) if target_dbfs is not None else in_rms
             if out_rms > 1e-9:
-                filtered = filtered * (target_rms / out_rms)
+                scale_rms = target_rms / out_rms
+                filtered = filtered * scale_rms
+                final_lufs = (
+                    cur_lufs + 20.0 * math.log10(scale_rms)
+                    if not math.isinf(cur_lufs)
+                    else -100.0
+                )
     elif mode == "rms":
         target_rms = (
             10.0 ** (float(target_dbfs) / 20.0)
@@ -113,7 +156,8 @@ def apply_calibrated_normalization(
         )
         cur_rms = float(np.sqrt(np.mean(filtered**2)))
         if cur_rms > 1e-9:
-            filtered = filtered * (target_rms / cur_rms)
+            scale_rms = target_rms / cur_rms
+            filtered = filtered * scale_rms
     elif mode == "peak":
         target_peak = (
             10.0 ** (float(target_dbfs) / 20.0)
@@ -124,9 +168,28 @@ def apply_calibrated_normalization(
         if cur_peak > 1e-9:
             filtered = filtered * (target_peak / cur_peak)
 
+    final_tp = 0.0
     if mode not in ("none", "raw"):
         tp = compute_true_peak(filtered, sample_rate=sample_rate)
         if tp > peak_ceiling and tp > 1e-9:
-            filtered = filtered * (peak_ceiling / tp)
+            peak_scale = peak_ceiling / tp
+            filtered = filtered * peak_scale
+            final_tp = peak_ceiling
+            if not (math.isinf(final_lufs) or math.isnan(final_lufs)):
+                final_lufs += 20.0 * math.log10(peak_scale)
+        else:
+            final_tp = tp
+    else:
+        final_tp = float(np.max(np.abs(filtered)))
+
+    if return_metadata:
+        if mode not in ("auto", "lufs") and (math.isinf(final_lufs) or final_lufs == -100.0):
+            final_lufs = compute_lufs(filtered, sample_rate=sample_rate)
+        final_tp_dbfs = 20.0 * math.log10(max(final_tp, 1e-12))
+        return filtered, {
+            "lufs": final_lufs,
+            "true_peak": final_tp,
+            "true_peak_dbfs": final_tp_dbfs,
+        }
 
     return filtered

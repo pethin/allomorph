@@ -100,16 +100,26 @@ def compute_true_peak(
     if n == 0:
         return 0.0
 
+    # Intersample true-peak must never under-read the discrete sample peak (ITU-R BS.1770-4)
+    sample_peak = float(np.max(np.abs(mono)))
+    if sample_peak == 0.0:
+        return 0.0
+
     chunk_size = 65536
     overlap = 1024
     step = chunk_size - overlap
-    max_peak = 0.0
+    max_peak = sample_peak
+    screen_threshold = max_peak / 2.0
 
     for start in range(0, n, step):
         chunk = mono[start : start + chunk_size]
         c_len = len(chunk)
         if c_len < 32:
-            max_peak = max(max_peak, float(np.max(np.abs(chunk))))
+            continue
+
+        c_max = float(np.max(np.abs(chunk)))
+        # Bounded peak screening: sinc overshoot cannot exceed 2.0x (+6 dB) of the local chunk peak
+        if c_max <= screen_threshold:
             continue
 
         n_up = c_len * oversample
@@ -123,11 +133,11 @@ def compute_true_peak(
         valid_start = overlap * oversample // 2 if start > 0 else 0
         valid_end = n_up - (overlap * oversample // 2) if (start + chunk_size < n) else n_up
         chunk_peak = float(np.max(np.abs(interpolated[valid_start:valid_end])))
-        max_peak = max(max_peak, chunk_peak)
+        if chunk_peak > max_peak:
+            max_peak = chunk_peak
+            screen_threshold = max_peak / 2.0
 
-    # Intersample true-peak must never under-read the discrete sample peak (ITU-R BS.1770-4)
-    sample_peak = float(np.max(np.abs(mono)))
-    return float(max(max_peak, sample_peak))
+    return float(max_peak)
 
 
 def compute_true_peak_dbfs(

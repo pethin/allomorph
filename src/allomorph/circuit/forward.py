@@ -37,8 +37,6 @@ from allomorph.dsp import (
     FS,
     NUM_TAPS,
     compute_lufs,
-    compute_true_peak,
-    compute_true_peak_dbfs,
     fft_convolve,
     read_wav,
     synthesize_minimum_phase_fir,
@@ -76,6 +74,7 @@ __all__ = [
     "AUDIO_DIR",
     "CALIBRATION_PEAK_CEILING",
     "WET_AUDIO_DIR",
+    "compute_lufs",
     "simulate_instrument_voicing",
     "simulate_pickup_transducer_branch",
     "simulate_voicing_dsp",
@@ -248,6 +247,52 @@ def synthesize_multi_pickup_spatial_blend(
     return composite_audio, mag_spectrum
 
 
+@overload
+def simulate_voicing_dsp(
+    raw_audio: np.ndarray,
+    instrument: InstrumentConfig,
+    voicing: VoicingConfig,
+    num_taps: int = ...,
+    apply_dither: bool = ...,
+    apply_saturation: bool = ...,
+    vol_pos: float | None = ...,
+    tone_pos: float | None = ...,
+    blend_pos: float | None = ...,
+    cable_pf: float | None = ...,
+    dc_block: bool = ...,
+    normalize: str = ...,
+    target_dbfs: float | None = ...,
+    sample_rate: int = ...,
+    preamps: Mapping[str, PreampConfig] | None = ...,
+    strings: Mapping[str, StringPresetConfig] | None = ...,
+    ref_lufs: float | None = ...,
+    return_metadata: Literal[False] = False,
+) -> np.ndarray: ...
+
+
+@overload
+def simulate_voicing_dsp(
+    raw_audio: np.ndarray,
+    instrument: InstrumentConfig,
+    voicing: VoicingConfig,
+    num_taps: int = ...,
+    apply_dither: bool = ...,
+    apply_saturation: bool = ...,
+    vol_pos: float | None = ...,
+    tone_pos: float | None = ...,
+    blend_pos: float | None = ...,
+    cable_pf: float | None = ...,
+    dc_block: bool = ...,
+    normalize: str = ...,
+    target_dbfs: float | None = ...,
+    sample_rate: int = ...,
+    preamps: Mapping[str, PreampConfig] | None = ...,
+    strings: Mapping[str, StringPresetConfig] | None = ...,
+    ref_lufs: float | None = ...,
+    return_metadata: Literal[True] = ...,
+) -> tuple[np.ndarray, dict[str, float]]: ...
+
+
 def simulate_voicing_dsp(
     raw_audio: np.ndarray,
     instrument: InstrumentConfig,
@@ -265,7 +310,9 @@ def simulate_voicing_dsp(
     sample_rate: int = FS,
     preamps: Mapping[str, PreampConfig] | None = None,
     strings: Mapping[str, StringPresetConfig] | None = None,
-) -> np.ndarray:
+    ref_lufs: float | None = None,
+    return_metadata: bool = False,
+) -> np.ndarray | tuple[np.ndarray, dict[str, float]]:
     """Pure in-memory DSP digital twin simulation: zero disk I/O, zero file creation.
 
     Convolves:
@@ -382,13 +429,18 @@ def simulate_voicing_dsp(
             sensor_type=voicing_cfg.sensor_type,
         )
 
+    H_downstream = np.maximum(h_preamp * h_wrap, 1e-6)
+    fused_downstream = False
     default_magnet = "active" if getattr(inst, "electronics", "") == "active" else "alnico_v"
 
     if voicing_cfg.sensor_type == "direct":
         fir_ac = np.zeros(num_taps, dtype=np.float64)
         fir_ac[0] = 1.0
         h_elec = np.asarray(curves[0], dtype=np.float64) if curves is not None else np.ones_like(f)
-        fir_elec = synthesize_minimum_phase_fir(h_elec, num_taps=num_taps, normalize=False)
+        h_base = h_elec
+        h_elec_total = h_elec * H_downstream
+        fir_elec = synthesize_minimum_phase_fir(h_elec_total, num_taps=num_taps, normalize=False)
+        fused_downstream = True
         composite_audio = simulate_pickup_transducer_branch(
             input_mono=input_mono,
             fir_ac=fir_ac,
@@ -399,7 +451,6 @@ def simulate_voicing_dsp(
             sample_rate=sample_rate,
             default_magnet=default_magnet,
         )
-        h_base = h_elec
 
     elif voicing_cfg.sensor_type == "bridge_force":
         f_rock = 800.0
@@ -416,9 +467,11 @@ def simulate_voicing_dsp(
         h_ac = h_rock * h_mass
         h_elec = np.asarray(curves[0], dtype=np.float64) if curves is not None else np.ones_like(f)
         h_base = h_ac * h_elec
+        h_elec_total = h_elec * H_downstream
 
         fir_ac = synthesize_minimum_phase_fir(h_ac, num_taps=num_taps, normalize=False)
-        fir_elec = synthesize_minimum_phase_fir(h_elec, num_taps=num_taps, normalize=False)
+        fir_elec = synthesize_minimum_phase_fir(h_elec_total, num_taps=num_taps, normalize=False)
+        fused_downstream = True
         composite_audio = simulate_pickup_transducer_branch(
             input_mono=input_mono,
             fir_ac=fir_ac,
@@ -566,9 +619,20 @@ def simulate_voicing_dsp(
             h_base = np.abs(h_ac) * np.abs(h_elec)
 
             fir_ac = synthesize_minimum_phase_fir(np.abs(h_ac), num_taps=num_taps, normalize=False)
-            fir_elec = synthesize_minimum_phase_fir(
-                np.abs(h_elec), num_taps=num_taps, normalize=False
-            )
+
+            active_var = getattr(pickup_cfg, "active_variant", None)
+            if active_var is None:
+                # Fuse linear downstream electronics and wrap mechanics with loaded circuit FIR
+                h_elec_total = np.abs(h_elec) * H_downstream
+                fir_elec = synthesize_minimum_phase_fir(
+                    h_elec_total, num_taps=num_taps, normalize=False
+                )
+                fused_downstream = True
+            else:
+                fir_elec = synthesize_minimum_phase_fir(
+                    np.abs(h_elec), num_taps=num_taps, normalize=False
+                )
+
             composite_audio = simulate_pickup_transducer_branch(
                 input_mono=input_mono,
                 fir_ac=fir_ac,
@@ -581,10 +645,9 @@ def simulate_voicing_dsp(
             )
 
     # Downstream Electronics & Viscoelastic String Mechanics Stage
-    H_downstream = np.maximum(h_preamp * h_wrap, 1e-6)
     h_total = np.maximum(h_base * H_downstream, 1e-6)
 
-    if not np.allclose(H_downstream, 1.0, atol=1e-4):
+    if not fused_downstream and not np.allclose(H_downstream, 1.0, atol=1e-4):
         fir_down = synthesize_minimum_phase_fir(H_downstream, num_taps=num_taps, normalize=False)
         filtered = fft_convolve(
             composite_audio, np.asarray(fir_down, dtype=np.float64), mode="causal"
@@ -599,15 +662,27 @@ def simulate_voicing_dsp(
     if apply_dither:
         filtered = apply_johnson_dither(filtered, h_total=h_total)
 
-    filtered = apply_calibrated_normalization(
+    if return_metadata:
+        filtered, meta = apply_calibrated_normalization(
+            filtered,
+            reference_audio=input_mono,
+            mode=normalize,
+            target_dbfs=target_dbfs,
+            sample_rate=sample_rate,
+            ref_lufs=ref_lufs,
+            return_metadata=True,
+        )
+        return filtered, meta
+
+    return apply_calibrated_normalization(
         filtered,
         reference_audio=input_mono,
         mode=normalize,
         target_dbfs=target_dbfs,
         sample_rate=sample_rate,
+        ref_lufs=ref_lufs,
+        return_metadata=False,
     )
-
-    return filtered
 
 
 @overload
@@ -632,6 +707,7 @@ def simulate_instrument_voicing(
     force: bool = ...,
     preamps: Mapping[str, PreampConfig] | None = ...,
     strings: Mapping[str, StringPresetConfig] | None = ...,
+    ref_lufs: float | None = ...,
 ) -> Path: ...
 
 
@@ -657,6 +733,7 @@ def simulate_instrument_voicing(
     force: bool = ...,
     preamps: Mapping[str, PreampConfig] | None = ...,
     strings: Mapping[str, StringPresetConfig] | None = ...,
+    ref_lufs: float | None = ...,
 ) -> np.ndarray: ...
 
 
@@ -682,6 +759,7 @@ def simulate_instrument_voicing(
     force: bool = ...,
     preamps: Mapping[str, PreampConfig] | None = ...,
     strings: Mapping[str, StringPresetConfig] | None = ...,
+    ref_lufs: float | None = ...,
 ) -> tuple[Path, np.ndarray]: ...
 
 
@@ -706,6 +784,7 @@ def simulate_instrument_voicing(
     force: bool = False,
     preamps: Mapping[str, PreampConfig] | None = None,
     strings: Mapping[str, StringPresetConfig] | None = None,
+    ref_lufs: float | None = None,
 ) -> Path | tuple[Path, np.ndarray] | np.ndarray:
     """Simulates a physical instrument voicing digital twin directly from dry string excitation.
 
@@ -786,7 +865,7 @@ def simulate_instrument_voicing(
             return out_path
 
     # Delegate core audio DSP to pure in-memory simulation
-    filtered = simulate_voicing_dsp(
+    filtered, meta = simulate_voicing_dsp(
         raw_audio=raw_audio,
         instrument=inst,
         voicing=voicing_cfg,
@@ -803,16 +882,18 @@ def simulate_instrument_voicing(
         sample_rate=sr,
         preamps=preamps,
         strings=strings,
+        ref_lufs=ref_lufs,
+        return_metadata=True,
     )
 
     # 24-bit PCM Export, Logging & Manifest
     if out_path is not None:
         write_wav_24bit(out_path, filtered.astype(np.float32), sample_rate=sr)
 
-        final_tp_db = compute_true_peak_dbfs(filtered, sample_rate=sr)
-        final_tp_lin = compute_true_peak(filtered, sample_rate=sr)
+        final_tp_db = meta["true_peak_dbfs"]
+        final_tp_lin = meta["true_peak"]
         final_rms_db = 20.0 * math.log10(max(float(np.sqrt(np.mean(filtered**2))), 1e-9))
-        final_lufs = compute_lufs(filtered, sample_rate=sr)
+        final_lufs = meta["lufs"]
         lufs_str = (
             f"{final_lufs:.2f} LUFS"
             if not (math.isinf(final_lufs) or math.isnan(final_lufs))
@@ -835,10 +916,26 @@ def simulate_instrument_voicing(
                     inst_ver,
                     voice_ver,
                 )
+                mono_out = filtered[0] if filtered.ndim > 1 else filtered
+                peak_val = float(np.max(np.abs(mono_out)))
+                rms_val = float(np.sqrt(np.mean(mono_out**2)))
+                wav_meta = {
+                    "duration_s": round(float(len(mono_out)) / float(sr), 3) if sr > 0 else 0.0,
+                    "sample_rate": sr,
+                    "peak_dbfs": round(20.0 * math.log10(max(peak_val, 1e-9)), 2),
+                    "rms_dbfs": round(20.0 * math.log10(max(rms_val, 1e-9)), 2),
+                    "true_peak_dbfs": round(final_tp_db, 2),
+                    "lufs": (
+                        round(final_lufs, 2)
+                        if not (math.isinf(final_lufs) or math.isnan(final_lufs))
+                        else None
+                    ),
+                    "dc_offset": round(float(np.mean(mono_out)), 6),
+                }
                 write_manifest(
                     output_dir=out_path.parent,
                     stage="voicing",
-                    files=[out_path],
+                    files={out_path.name: wav_meta},
                     version_tag=v_tag,
                     base_dry_token=base_dry_tok,
                     base_dry_file=in_path.name,
