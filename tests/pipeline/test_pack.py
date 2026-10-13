@@ -300,8 +300,9 @@ def test_train_tone_pack_flat_structure_mocked(
     assert len(nam_files) == 2
     for nf in nam_files:
         assert nf.parent == nam_dir
-        # Filename matches stem without .wav
-        assert " v6.1.1.nam" in nf.name
+        from allomorph.version import DSP_GENERATION
+
+        assert f" v{DSP_GENERATION}.1.1.nam" in nf.name
 
     assert len(mock_train_calls) == 2
 

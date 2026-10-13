@@ -46,8 +46,6 @@ aperture_width_in = 0.45
 coil_spacing_in = 0.0
 type = "split_coil"
 magnet_type = "alnico_v"
-resonant_frequency_hz = 3200.0
-q_factor = 1.4
 coils = [
     { id = "forward", strings = [3, 4], position_from_bridge_m = 0.1390, aperture_width_in = 0.45, pole_type = "rod", L = 2.4, Rdc = 4750.0, Reddy = 110000.0, Ccoil = 4e-11, weight = 1.0 },
     { id = "rearward", strings = [1, 2], position_from_bridge_m = 0.1110, aperture_width_in = 0.45, pole_type = "rod", L = 2.4, Rdc = 4750.0, Reddy = 110000.0, Ccoil = 4e-11, weight = 1.0 },
@@ -61,8 +59,6 @@ aperture_width_in = 1.25
 coil_spacing_in = 0.875
 type = "dual_coil_parallel"
 magnet_type = "alnico_v"
-resonant_frequency_hz = 3500.0
-q_factor = 1.5
 coils = [
     { id = "forward", strings = ["all"], position_from_bridge_m = 0.0771, aperture_width_in = 0.45, pole_type = "rod", L = 7.2, Rdc = 14800.0, Reddy = 250000.0, Ccoil = 5.5e-11, weight = 0.5 },
     { id = "rearward", strings = ["all"], position_from_bridge_m = 0.0549, aperture_width_in = 0.45, pole_type = "rod", L = 7.2, Rdc = 14800.0, Reddy = 250000.0, Ccoil = 5.5e-11, weight = 0.5 },

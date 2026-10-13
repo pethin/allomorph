@@ -17,7 +17,7 @@ from pathlib import Path
 from typing import Any
 
 ALLOMORPH_VERSION: str = "0.5.0"
-DSP_GENERATION: int = 6
+DSP_GENERATION: int = 7
 DEFAULT_INST_VERSION: int = 1
 DEFAULT_VOICE_VERSION: int = 1
 

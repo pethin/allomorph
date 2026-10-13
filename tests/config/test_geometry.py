@@ -49,55 +49,58 @@ def test_resolve_voice_pickups():
     # 1. Multi-pickup: jazz_pair_active
     p_act = resolve_voice_pickups(VOICES["jazz_pair_active"])
     assert len(p_act) == 2
-    assert p_act[0].fr == 5200.0
-    assert p_act[0].Q == 1.7
-    assert p_act[1].fr == 4600.0
-    assert p_act[1].Q == 1.8
+    assert p_act[0].fr == 6789.7
+    assert p_act[0].Q == 0.69
+    assert p_act[1].fr == 7078.0
+    assert p_act[1].Q == 0.72
 
     # 2. Multi-pickup: jazz_pair_open
     p_jazz = resolve_voice_pickups(VOICES["jazz_pair_open"])
     assert len(p_jazz) == 2
-    assert p_jazz[0].fr == 3600.0
-    assert p_jazz[0].Q == 1.5
-    assert p_jazz[1].fr == 3200.0
-    assert p_jazz[1].Q == 1.6
+    assert p_jazz[0].fr == 2737.1
+    assert p_jazz[0].Q == 0.92
+    assert p_jazz[1].fr == 2905.0
+    assert p_jazz[1].Q == 0.91
 
     # 3. Multi-pickup: pj_active
     p_pj_act = resolve_voice_pickups(VOICES["pj_active"])
     assert len(p_pj_act) == 2
-    assert p_pj_act[0].fr == 4800.0
-    assert p_pj_act[0].Q == 1.7
+    assert p_pj_act[0].fr == 6870.0
+    assert p_pj_act[0].Q == 0.64
     assert p_pj_act[0].weight == 0.5
     assert len(p_pj_act[0].coils) == 2  # P-split E/A + D/G
-    assert p_pj_act[1].fr == 4600.0
-    assert p_pj_act[1].Q == 1.8
+    assert p_pj_act[1].fr == 7448.2
+    assert p_pj_act[1].Q == 0.68
     assert p_pj_act[1].weight == 0.5
     assert len(p_pj_act[1].coils) == 1  # J-bridge
 
     # 4. Multi-pickup: pj_passive
     p_pj_pas = resolve_voice_pickups(VOICES["pj_passive"])
     assert len(p_pj_pas) == 2
-    assert p_pj_pas[0].fr == 2800.0
-    assert p_pj_pas[0].Q == 1.4
-    assert p_pj_pas[1].fr == 3200.0
-    assert p_pj_pas[1].Q == 1.6
+    assert p_pj_pas[0].fr == 2521.9
+    assert p_pj_pas[0].Q == 0.99
+    assert p_pj_pas[1].fr is None
+    assert p_pj_pas[1].Q is None
 
     # 5. Multi-pickup: p_mm_series & p_mm_parallel
     p_pmm = resolve_voice_pickups(VOICES["p_mm_series"])
     assert len(p_pmm) == 2
-    assert p_pmm[0].fr == 3200.0
-    assert p_pmm[1].fr == 3500.0
+    assert p_pmm[0].fr is None
+    assert p_pmm[1].fr == 5408.7
+    assert p_pmm[1].Q == 0.99
 
     p_pmm_act = resolve_voice_pickups(VOICES["p_mm_parallel"])
     assert len(p_pmm_act) == 2
-    assert p_pmm_act[0].fr == 3200.0
-    assert p_pmm_act[1].fr == 3500.0
+    assert p_pmm_act[0].fr == 6520.0
+    assert p_pmm_act[0].Q == 0.89
+    assert p_pmm_act[1].fr == 7648.3
+    assert p_pmm_act[1].Q == 1.13
 
     # 6. Single-pickup voice auto-wrapping: precision_active
     p_p = resolve_voice_pickups(VOICES["precision_active"])
     assert len(p_p) == 1
-    assert p_p[0].fr == 4800.0
-    assert p_p[0].Q == 1.70
+    assert p_p[0].fr == 6067.7
+    assert p_p[0].Q == 0.80
     assert p_p[0].weight == 1.0
     assert len(p_p[0].coils) == 2
 

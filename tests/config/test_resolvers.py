@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import numpy as np
 import pytest
 
 from allomorph.config.instruments import VoicingBundle
@@ -9,8 +10,8 @@ from allomorph.config.resolvers import (
     assign_target_to_bundle,
     build_voice_coils_for_pickup,
     compound_multi_pickup_coils,
+    determine_pickup_resonance_and_q,
     find_voicing_by_slug_or_id,
-    infer_pickup_resonance_and_q,
     parse_target_voicing_token,
 )
 from allomorph.config.schema import (
@@ -21,71 +22,57 @@ from allomorph.config.schema import (
     VoicePickupConfig,
     VoicingConfig,
 )
+from allomorph.dsp.constants import FREQS
 
 
-def test_infer_pickup_resonance_and_q_explicit():
-    pickup = PickupConfig(
-        id="custom",
-        name="Custom Pickup",
-        type="single_coil",
-        resonant_frequency_hz=3450.0,
-        q_factor=1.95,
-    )
-    fr, q = infer_pickup_resonance_and_q(pickup, pickup_key="bridge", harness_str="passive_500k")
-    assert fr == 3450.0
-    assert q == 1.95
+def test_determine_pickup_resonance_and_q_synthetic_rlc():
+    """Verify sub-bin interpolation and analytical Q extraction on synthetic 2nd-order RLC."""
+    f = np.logspace(np.log10(20), np.log10(20000), 1000)
+    w = 2.0 * np.pi * f
+    w0 = 2.0 * np.pi * 3500.0
+    q_true = 1.8
+    # Theoretical peak for 2nd-order lowpass: f_peak = f0 * sqrt(1 - 1/(2*Q^2)) = 3218.6 Hz
+    h = w0**2 / (-w**2 + 1j * w * w0 / q_true + w0**2)
+    fr, q = determine_pickup_resonance_and_q(np.abs(h), f)
+    assert fr is not None and 3210.0 <= fr <= 3225.0
+    assert q is not None and 1.4 <= q <= 1.6
 
 
-def test_infer_pickup_resonance_and_q_split_coil():
-    pickup = PickupConfig(
-        id="p_split",
-        name="Precision Split",
-        type="split_coil",
-    )
-    # Passive
-    fr_p, q_p = infer_pickup_resonance_and_q(pickup, pickup_key="neck", harness_str="passive_250k")
-    assert fr_p == 2800.0
-    assert q_p == 1.4
-
-    # Active
-    fr_a, q_a = infer_pickup_resonance_and_q(pickup, pickup_key="neck", harness_str="active_preamp")
-    assert fr_a == 4800.0
-    assert q_a == 1.7
+def test_determine_pickup_resonance_and_q_flat_response():
+    """Verify flat response returns (None, None)."""
+    f = np.asarray(FREQS, dtype=np.float64)
+    h_flat = np.ones_like(f)
+    fr, q = determine_pickup_resonance_and_q(h_flat, f)
+    assert fr is None
+    assert q is None
 
 
-def test_infer_pickup_resonance_and_q_bridge_and_neck():
-    p_bridge = PickupConfig(id="j_b", name="Jazz Bridge", type="single_coil")
-    p_neck = PickupConfig(id="j_n", name="Jazz Neck", type="single_coil")
-
-    # Bridge passive vs active
-    fr_bp, q_bp = infer_pickup_resonance_and_q(p_bridge, pickup_key="bridge", harness_str="passive")
-    assert fr_bp == 3200.0
-    assert q_bp == 1.6
-
-    fr_ba, q_ba = infer_pickup_resonance_and_q(p_bridge, pickup_key="bridge", harness_str="active")
-    assert fr_ba == 4600.0
-    assert q_ba == 1.8
-
-    # Neck passive vs active
-    fr_np, q_np = infer_pickup_resonance_and_q(p_neck, pickup_key="neck", harness_str="passive")
-    assert fr_np == 3600.0
-    assert q_np == 1.5
-
-    fr_na, q_na = infer_pickup_resonance_and_q(p_neck, pickup_key="neck", harness_str="active")
-    assert fr_na == 5200.0
-    assert q_na == 1.7
+def test_determine_pickup_resonance_and_q_below_threshold():
+    """Verify bumps below +0.20 dB threshold are rejected as flat."""
+    f = np.asarray(FREQS, dtype=np.float64)
+    h_small_bump = np.ones_like(f)
+    mid_idx = len(f) // 2
+    # Add +0.10 dB bump (approx 1.0116 lin)
+    h_small_bump[mid_idx] = 1.0116
+    fr, q = determine_pickup_resonance_and_q(h_small_bump, f)
+    assert fr is None
+    assert q is None
 
 
-def test_infer_pickup_resonance_and_q_fallback():
-    p_gen = PickupConfig(id="gen", name="Generic Pickup", type="humbucker")
+def test_determine_pickup_resonance_and_q_monotonic_cutoff():
+    """Verify monotonic 1st-order lowpass (boundary peak at DC) returns (None, None)."""
+    f = np.asarray(FREQS, dtype=np.float64)
+    h_lp = 1.0 / (1.0 + (f / 1000.0) ** 2)
+    fr, q = determine_pickup_resonance_and_q(h_lp, f)
+    assert fr is None
+    assert q is None
 
-    fr_p, q_p = infer_pickup_resonance_and_q(p_gen, pickup_key="middle", harness_str="passive")
-    assert fr_p == 3500.0
-    assert q_p == 1.5
 
-    fr_a, q_a = infer_pickup_resonance_and_q(p_gen, pickup_key="middle", harness_str="active")
-    assert fr_a == 5200.0
-    assert q_a == 1.7
+def test_determine_pickup_resonance_and_q_none_and_empty():
+    """Verify None and empty inputs return (None, None) gracefully."""
+    assert determine_pickup_resonance_and_q(None) == (None, None)
+    assert determine_pickup_resonance_and_q([]) == (None, None)
+    assert determine_pickup_resonance_and_q([1.0, 2.0]) == (None, None)
 
 
 def test_build_voice_coils_for_pickup():

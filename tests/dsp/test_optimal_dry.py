@@ -373,6 +373,8 @@ def test_check_dry_excitation_needs_regeneration_matrix(tmp_path: Path):
     assert needs is True
     assert "token missing" in reason
 
+    from allomorph.version import DSP_GENERATION
+
     # 6. File size mismatch
     manifest_p.write_text(
         json.dumps(
@@ -381,7 +383,7 @@ def test_check_dry_excitation_needs_regeneration_matrix(tmp_path: Path):
                     "input.wav": {
                         "dry_token": "alo_dry_123",
                         "size_bytes": 99999,
-                        "recipe_tag": "synthetic_optimal_bass_dry_v6",
+                        "recipe_tag": f"synthetic_optimal_bass_dry_v{DSP_GENERATION}",
                     }
                 }
             }
@@ -400,7 +402,7 @@ def test_check_dry_excitation_needs_regeneration_matrix(tmp_path: Path):
                     "input.wav": {
                         "dry_token": "alo_dry_123",
                         "size_bytes": std_wav.stat().st_size,
-                        "recipe_tag": "synthetic_optimal_bass_dry_v5",
+                        "recipe_tag": f"synthetic_optimal_bass_dry_v{DSP_GENERATION - 1}",
                     }
                 }
             }
@@ -419,7 +421,7 @@ def test_check_dry_excitation_needs_regeneration_matrix(tmp_path: Path):
                     "input.wav": {
                         "dry_token": "alo_dry_123",
                         "size_bytes": std_wav.stat().st_size,
-                        "recipe_tag": "synthetic_optimal_bass_dry_v6",
+                        "recipe_tag": f"synthetic_optimal_bass_dry_v{DSP_GENERATION}",
                     }
                 }
             }

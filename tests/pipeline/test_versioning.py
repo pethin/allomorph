@@ -37,7 +37,7 @@ from allomorph.version import (
 
 def test_resolve_tri_part_version():
     """Verify default and custom tri-part semantic version strings."""
-    assert resolve_tri_part_version() == "v6.1.1"
+    assert resolve_tri_part_version() == "v7.1.1"
     assert resolve_tri_part_version(2, 1, 1) == "v2.1.1"
     assert resolve_tri_part_version(2, 2, 1) == "v2.2.1"
     assert resolve_tri_part_version(2, 1, 2) == "v2.1.2"
@@ -45,15 +45,16 @@ def test_resolve_tri_part_version():
     assert resolve_tri_part_version(4, 1, 1) == "v4.1.1"
     assert resolve_tri_part_version(5, 1, 1) == "v5.1.1"
     assert resolve_tri_part_version(6, 1, 1) == "v6.1.1"
+    assert resolve_tri_part_version(7, 1, 1) == "v7.1.1"
     assert resolve_tri_part_version(1, 3, 5) == "v1.3.5"
 
 
 def test_get_version_info():
     """Verify provenance metadata dictionary structure and git commit detection."""
     info = get_version_info()
-    assert info["version"] == "v6.1.1"
+    assert info["version"] == "v7.1.1"
     assert info["dsp_version"] == DSP_GENERATION
-    assert DSP_GENERATION == 6
+    assert DSP_GENERATION == 7
     assert info["instrument_version"] == DEFAULT_INST_VERSION
     assert info["voice_version"] == DEFAULT_VOICE_VERSION
     assert info["allomorph_version"] == ALLOMORPH_VERSION
@@ -155,7 +156,7 @@ def test_write_manifest_and_sha256(tmp_path: Path):
 
     assert data["version"] == "v2.1.1"
     assert data["stage"] == "test_stage"
-    assert data["dsp_generation"] == 6
+    assert data["dsp_generation"] == 7
     assert data["file_count"] == 2
     assert "dummy.wav" in data["files"]
     assert "dummy.nam" in data["files"]
@@ -194,7 +195,7 @@ def test_simulate_instrument_pickup_with_version_tag(
     assert manifest_p.exists()
     with manifest_p.open("r", encoding="utf-8") as f:
         m = json.load(f)
-    assert m["version"] == "v6.1.1"
+    assert m["version"] == "v7.1.1"
     assert wet_p.name in m["files"]
     assert "recipe_token" in m
     assert m["recipe_token"].startswith("alo_rec_")
@@ -345,8 +346,8 @@ def test_resolve_tri_part_version_flexible_none():
     assert resolve_tri_part_version(2, 1, 1) == "v2.1.1"
     assert resolve_tri_part_version(2, 1, None) == "v2.1"
     assert resolve_tri_part_version(2, None, None) == "v2"
-    assert resolve_tri_part_version(inst_version=None, voice_version=None) == "v6"
-    assert resolve_tri_part_version(inst_version=2, voice_version=None) == "v6.2"
+    assert resolve_tri_part_version(inst_version=None, voice_version=None) == f"v{DSP_GENERATION}"
+    assert resolve_tri_part_version(inst_version=2, voice_version=None) == f"v{DSP_GENERATION}.2"
 
 
 def test_input_audio_naming_helpers():

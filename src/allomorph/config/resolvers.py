@@ -24,48 +24,96 @@ if TYPE_CHECKING:
     from allomorph.config.instruments import VoicingBundle
 
 
-def infer_pickup_resonance_and_q(
-    pickup: PickupConfig,
-    pickup_key: str = "",
-    harness_str: str = "",
-) -> tuple[float, float]:
-    """Infers resonant frequency (Hz) and Q factor for a pickup based on configuration and position.
+import numpy as np
 
-    Explicit pickup values take priority. Otherwise, values are inferred from pickup type,
-    name/key (e.g. bridge vs neck), and active/passive harness characteristics.
+from allomorph.dsp.constants import FREQS
+
+
+def determine_pickup_resonance_and_q(
+    mag_curve: Sequence[float] | np.ndarray | None,
+    freqs: Sequence[float] | np.ndarray = FREQS,
+) -> tuple[float | None, float | None]:
+    """Dynamically determines the electrical resonant frequency (fr in Hz) and Q factor from an MNA circuit curve.
+
+    Uses sub-bin quadratic interpolation in log-frequency space and analytical 2nd-order RLC / half-power bandwidth.
+    Enforces a strict +0.20 dB threshold above passband baseline to distinguish true electrical resonance
+    from flat buffers, tone roll-offs, or wideband sensors.
+
+    Returns:
+        (fr, Q): (float, float) if a genuine resonance peak exists, or (None, None) for flat/wideband responses.
     """
-    is_passive = "passive" in (harness_str or "").lower()
-    is_active = (
-        "active" in (harness_str or "").lower()
-        or getattr(pickup, "has_internal_buffer", False)
-        or getattr(pickup, "type", "") == "active"
-    )
-    p_name_lower = (pickup.name or "").lower()
-    p_key_lower = pickup_key.lower()
+    if mag_curve is None:
+        return None, None
 
-    # Resonant frequency fr
-    if pickup.resonant_frequency_hz is not None:
-        fr = float(pickup.resonant_frequency_hz)
-    elif pickup.type == "split_coil":
-        fr = 2800.0 if is_passive else 4800.0
-    elif "bridge" in p_key_lower or "bridge" in p_name_lower:
-        fr = 3200.0 if is_passive else 4600.0
-    elif "neck" in p_key_lower or "neck" in p_name_lower:
-        fr = 3600.0 if is_passive else 5200.0
+    mag = np.asarray(mag_curve, dtype=np.float64)
+    f_arr = np.asarray(freqs, dtype=np.float64)
+    if len(mag) < 3 or len(f_arr) < 3 or len(mag) != len(f_arr):
+        return None, None
+
+    # Passband baseline (around 100-200 Hz)
+    idx_100 = int(np.argmin(np.abs(f_arr - 100.0)))
+    idx_200 = int(np.argmin(np.abs(f_arr - 200.0)))
+    base_idx_lo = min(idx_100, idx_200)
+    base_idx_hi = max(idx_100, idx_200) + 1
+    base_mag = float(np.mean(mag[base_idx_lo:base_idx_hi]))
+    if base_mag <= 1e-9:
+        base_mag = float(mag[0])
+
+    peak_idx = int(np.argmax(mag))
+    peak_mag = float(mag[peak_idx])
+
+    peak_db_above_base = 20.0 * np.log10(max(peak_mag / max(base_mag, 1e-9), 1e-9))
+
+    # Reject if below +0.20 dB threshold or peak is at boundary (monotonic lowpass/highpass)
+    if peak_db_above_base < 0.20 or peak_idx == 0 or peak_idx >= len(mag) - 1:
+        return None, None
+
+    # Sub-bin quadratic peak interpolation in log-frequency space
+    x = np.log(f_arr[peak_idx - 1 : peak_idx + 2])
+    y = mag[peak_idx - 1 : peak_idx + 2]
+
+    denom = (x[0] - x[1]) * (x[0] - x[2]) * (x[1] - x[2])
+    if abs(denom) < 1e-12:
+        return float(f_arr[peak_idx]), None
+
+    a = (x[2] * (y[1] - y[0]) + x[1] * (y[0] - y[2]) + x[0] * (y[2] - y[1])) / denom
+    if a >= 0:  # Not a local maximum (concave upwards)
+        return float(f_arr[peak_idx]), None
+
+    b = (x[2] ** 2 * (y[0] - y[1]) + x[1] ** 2 * (y[2] - y[0]) + x[0] ** 2 * (y[1] - y[2])) / denom
+    x_peak = -b / (2.0 * a)
+    fr = float(np.exp(x_peak))
+    interp_peak_mag = float(a * x_peak**2 + b * x_peak + (y[0] - a * x[0] ** 2 - b * x[0]))
+
+    # Q factor extraction
+    m_p = max(interp_peak_mag / max(base_mag, 1e-9), 1.0)
+    target_mag = interp_peak_mag / np.sqrt(2.0)
+
+    left_side = mag[:peak_idx]
+    right_side = mag[peak_idx:]
+
+    has_left_3db = bool(np.any(left_side <= target_mag))
+    has_right_3db = bool(np.any(right_side <= target_mag))
+
+    if has_left_3db and has_right_3db:
+        i1 = int(np.where(left_side <= target_mag)[0][-1])
+        f1 = float(np.interp(target_mag, [mag[i1], mag[i1 + 1]], [f_arr[i1], f_arr[i1 + 1]]))
+
+        i2 = int(np.where(right_side <= target_mag)[0][0] + peak_idx)
+        f2 = float(np.interp(target_mag, [mag[i2 - 1], mag[i2]], [f_arr[i2 - 1], f_arr[i2]]))
+
+        bw = f2 - f1
+        q = float(fr / bw) if bw > 0 else None
     else:
-        fr = 5200.0 if is_active else 3500.0
+        # Analytical 2nd-order RLC peak gain formula: M_p = 1 / (2*zeta*sqrt(1-zeta^2))
+        if m_p > 1.001:
+            term = max(1.0 - 1.0 / (m_p**2), 0.0)
+            zeta2 = 0.5 * (1.0 - np.sqrt(term))
+            q = float(1.0 / (2.0 * np.sqrt(zeta2))) if zeta2 > 0 else None
+        else:
+            q = None
 
-    # Q factor
-    if pickup.q_factor is not None:
-        q = float(pickup.q_factor)
-    elif "bridge" in p_key_lower or "bridge" in p_name_lower:
-        q = 1.6 if is_passive else 1.8
-    elif pickup.type == "split_coil":
-        q = 1.4 if is_passive else 1.7
-    else:
-        q = 1.5 if is_passive else 1.7
-
-    return fr, q
+    return round(fr, 1), round(q, 2) if q is not None else None
 
 
 def build_voice_coils_for_pickup(

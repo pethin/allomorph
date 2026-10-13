@@ -10,6 +10,7 @@ import pytest
 
 from allomorph.cli import main
 from allomorph.dsp.io import write_wav_24bit
+from allomorph.version import DSP_GENERATION
 
 
 def test_cli_main_help() -> None:
@@ -115,6 +116,8 @@ def test_cli_stems_generate_reuses_fresh_dry_audio(
     existing_dry = audio_dir / "input.wav"
     existing_dry.write_bytes(b"RIFF" + b"\x00" * 100)
 
+    from allomorph.version import DSP_GENERATION
+
     manifest_p = audio_dir / "manifest.json"
     manifest_p.write_text(
         json.dumps(
@@ -123,7 +126,7 @@ def test_cli_stems_generate_reuses_fresh_dry_audio(
                     "input.wav": {
                         "dry_token": "alo_dry_cached_123",
                         "size_bytes": existing_dry.stat().st_size,
-                        "recipe_tag": "synthetic_optimal_bass_dry_v6",
+                        "recipe_tag": f"synthetic_optimal_bass_dry_v{DSP_GENERATION}",
                     }
                 }
             }
@@ -176,7 +179,7 @@ def test_cli_stems_generate_force_regenerates_dry_audio(
                     "input.wav": {
                         "dry_token": "alo_dry_cached_123",
                         "size_bytes": existing_dry.stat().st_size,
-                        "recipe_tag": "synthetic_optimal_bass_dry_v6",
+                        "recipe_tag": f"synthetic_optimal_bass_dry_v{DSP_GENERATION}",
                     }
                 }
             }

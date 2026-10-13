@@ -12,7 +12,7 @@ import numpy as np
 from allomorph.config.resolvers import (
     build_voice_coils_for_pickup,
     compound_multi_pickup_coils,
-    infer_pickup_resonance_and_q,
+    determine_pickup_resonance_and_q,
 )
 from allomorph.config.schema import (
     InstrumentConfig,
@@ -166,15 +166,30 @@ def voicing_to_voice_config(
                 f"Available pickups: {list(instrument.pickups.keys())}"
             )
 
+    # Solve MNA circuit curves for this voicing
+    h_id = voicing.harness
+    if not h_id and instrument.harnesses:
+        h_id = next(iter(instrument.harnesses.keys()))
+    if h_id and h_id in instrument.harnesses:
+        from allomorph.circuit.solver import solve_mna_harness
+        from allomorph.dsp.constants import FREQS
+
+        curves_dict = solve_mna_harness(
+            instrument, instrument.harnesses[h_id], voicing, freqs=FREQS
+        )
+    else:
+        from allomorph.dsp.constants import FREQS
+
+        curves_dict: dict[str, np.ndarray] = {}
+
     voice_pickups: list[VoicePickupConfig] = []
     if len(active_pickup_keys) >= 2:
         for p_key in active_pickup_keys:
             p = instrument.pickups[p_key]
             active_c_ids = resolve_voicing_active_coils(instrument, voicing, p_key)
             sub_coils = build_voice_coils_for_pickup(p, active_c_ids, instrument=instrument)
-            fr_val, q_val = infer_pickup_resonance_and_q(
-                p, pickup_key=p_key, harness_str=voicing.harness or ""
-            )
+            p_curve = curves_dict.get(p_key)
+            fr_val, q_val = determine_pickup_resonance_and_q(p_curve, FREQS)
 
             voice_pickups.append(
                 VoicePickupConfig(
@@ -218,11 +233,12 @@ def voicing_to_voice_config(
         if primary_key_val in instrument.pickups
         else next(iter(instrument.pickups.values()))
     )
-    fr, Q = infer_pickup_resonance_and_q(
-        primary_pickup,
-        pickup_key=primary_key_val,
-        harness_str=voicing.harness or "",
-    )
+    if voicing.sensor_type == "direct":
+        fr, Q = None, None
+    elif primary_key_val in curves_dict:
+        fr, Q = determine_pickup_resonance_and_q(curves_dict[primary_key_val], FREQS)
+    else:
+        fr, Q = None, None
 
     if voice_pickups:
         active_mags = list(dict.fromkeys(p.magnet_type for p in voice_pickups if p.magnet_type))

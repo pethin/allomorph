@@ -655,11 +655,13 @@ def generate_voicings_page(
 
       document.getElementById('src-spec-title').textContent = src.name;
       document.getElementById('src-spec-topo').textContent = (src.sensor_type || 'magnetic').toUpperCase();
-      document.getElementById('src-spec-desc').textContent = `${{src.description}} (fr: ${{src.fr.toFixed(0)}} Hz, Q: ${{src.q.toFixed(2)}})`;
+      const srcDesc = src.fr != null ? `${{src.description}} (fr: ${{src.fr.toFixed(0)}} Hz, Q: ${{src.q.toFixed(2)}})` : `${{src.description}} (Flat / Wideband)`;
+      document.getElementById('src-spec-desc').textContent = srcDesc;
 
       document.getElementById('tgt-spec-title').textContent = tgt.name;
       document.getElementById('tgt-spec-topo').textContent = (tgt.sensor_type || 'magnetic').toUpperCase();
-      document.getElementById('tgt-spec-desc').textContent = `${{tgt.description}} (fr: ${{tgt.fr.toFixed(0)}} Hz, Q: ${{tgt.q.toFixed(2)}})`;
+      const tgtDesc = tgt.fr != null ? `${{tgt.description}} (fr: ${{tgt.fr.toFixed(0)}} Hz, Q: ${{tgt.q.toFixed(2)}})` : `${{tgt.description}} (Flat / Wideband)`;
+      document.getElementById('tgt-spec-desc').textContent = tgtDesc;
 
       const traceSource = {{
         x: freqs,

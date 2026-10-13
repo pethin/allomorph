@@ -145,8 +145,8 @@ class NamTargetVoicingMeta(AllomorphBaseModel):
     name: str
     tone_name: str | None = None
     sensor_type: str = "magnetic"
-    resonant_frequency_hz: float = 0.0
-    q_factor: float = 0.0
+    resonant_frequency_hz: float | None = None
+    q_factor: float | None = None
     effective_position_m: float = 0.0
     effective_position_mm: float = 0.0
     coils: list[VoiceCoilConfig] = Field(default_factory=list)
@@ -159,8 +159,8 @@ class NamExportMetadata(AllomorphBaseModel):
     license: str
     copyright: str
     author: str
-    version: str = Field(default="v6.1.1")
-    dsp_version: int = Field(default=6)
+    version: str = Field(default="v7.1.1")
+    dsp_version: int = Field(default=7)
     instrument_version: int = Field(default=1)
     voice_version: int = Field(default=1)
     allomorph_version: str = Field(default="0.5.0")

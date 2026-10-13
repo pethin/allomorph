@@ -185,6 +185,7 @@ class PreampConfig(AllomorphBaseModel):
     name: str
     description: str | None = None
     input_impedance_meg: float = Field(1.0, gt=0.0)
+    input_capacitance_pf: float = Field(30.0, ge=0.0)
     output_impedance_ohm: float = Field(100.0, ge=0.0)
     gain_db: float = 0.0
     bands: list[PreampBandConfig] = Field(default_factory=list)
@@ -202,6 +203,7 @@ class PreampOverrideConfig(AllomorphBaseModel):
     preset: str
     gain_db: float | None = None
     input_impedance_meg: float | None = None
+    input_capacitance_pf: float | None = None
     output_impedance_ohm: float | None = None
     bands: list[PreampBandConfig] = Field(default_factory=list)
 
@@ -256,8 +258,6 @@ class PickupConfig(AllomorphBaseModel):
     type: str = "single_coil"
     magnet_type: str | None = None
     pole_type: str | None = None
-    resonant_frequency_hz: float | None = None
-    q_factor: float | None = None
     alpha: float | None = None
     vsat: float | None = None
     has_internal_buffer: bool = False
@@ -605,8 +605,8 @@ class VoicePickupConfig(AllomorphBaseModel):
     type: str = "single_coil"
     magnet_type: str | None = None
     alpha: float | None = None
-    fr: float = Field(..., gt=0.0)
-    Q: float = Field(..., gt=0.0)
+    fr: float | None = Field(default=None, gt=0.0)
+    Q: float | None = Field(default=None, gt=0.0)
     weight: float = Field(1.0, gt=0.0)
     polarity: float = 1.0
     coils: list[VoiceCoilConfig] = Field(default_factory=list)
@@ -625,8 +625,8 @@ class VoiceConfig(AllomorphBaseModel):
     target_string: str | None = None
     alpha: float = 0.0
     vsat: float | None = None
-    fr: float = Field(..., gt=0.0)
-    Q: float = Field(..., gt=0.0)
+    fr: float | None = Field(default=None, gt=0.0)
+    Q: float | None = Field(default=None, gt=0.0)
     gain_db: float = 0.0
     scale: str = "34in"
     preserve_aperture: bool = False

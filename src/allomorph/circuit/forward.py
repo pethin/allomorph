@@ -29,7 +29,6 @@ from allomorph.config.schema import (
 )
 from allomorph.config.strings import get_instrument_string
 from allomorph.config.voices import (
-    resolve_voicing_active_coils,
     resolve_voicing_active_pickups,
 )
 from allomorph.dsp import (
@@ -390,22 +389,7 @@ def simulate_voicing_dsp(
     if len(active_pickups) >= 2:
         curves = [_lookup_curve(p_id) for p_id in active_pickups]
     else:
-        p_coils = resolve_pickup_coils(pickup_cfg, inst)
-        active_c_ids = resolve_voicing_active_coils(inst, voicing_cfg, pickup_key)
-        if active_c_ids:
-            p_coils = [c for c in p_coils if c.id in active_c_ids or not c.id]
-        if len(p_coils) > 1:
-            curves = [
-                _lookup_curve(
-                    f"{pickup_cfg.id}.{c.id}",
-                    c.id or "",
-                    f"{pickup_key}.{c.id}",
-                    pickup_key,
-                )
-                for c in p_coils
-            ]
-        else:
-            curves = [_lookup_curve(pickup_key, pickup_cfg.id or "")]
+        curves = [_lookup_curve(pickup_key, pickup_cfg.id or "")]
 
     h_preamp = np.ones_like(f, dtype=np.float64)
 

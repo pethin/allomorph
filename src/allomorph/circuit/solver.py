@@ -282,7 +282,24 @@ def solve_mna_harness(
     if harness.type == "passive":
         stamp_adm("out", "GND", y_load_out)
     elif harness.type == "active_preamp":
-        y_preamp_in = (1.0 / 1e6) + s * 20e-12
+        eff_preamp_id = (
+            getattr(voicing, "preamp", None)
+            or getattr(harness, "preamp", None)
+            or getattr(instrument, "preamp", None)
+            or "flat_buffer"
+        )
+        if preamps is not None and eff_preamp_id in preamps:
+            preamp_spec = preamps[eff_preamp_id]
+        else:
+            from allomorph.config.preamps import get_preamp
+
+            preamp_spec = get_preamp(eff_preamp_id)
+
+        c_in_pf = getattr(preamp_spec, "input_capacitance_pf", 30.0)
+        r_in_meg = getattr(preamp_spec, "input_impedance_meg", 1.0)
+        c_in_f = float(c_in_pf) * 1e-12
+        r_in_ohm = float(r_in_meg) * 1e6
+        y_preamp_in = (1.0 / r_in_ohm) + s * c_in_f
         stamp_adm("preamp.in", "GND", y_preamp_in)
 
     # 7. Collect Coils and Compute Intrinsic Branch Impedances
@@ -538,7 +555,12 @@ def solve_mna_harness(
         if voicing.preamp_bands:
             H_eq = compute_active_preamp_transfer(voicing.preamp_bands, s, gain_db=voicing.gain_db)
         else:
-            eff_preamp_id = harness.preamp or "flat_buffer"
+            eff_preamp_id = (
+                getattr(voicing, "preamp", None)
+                or getattr(harness, "preamp", None)
+                or getattr(instrument, "preamp", None)
+                or "flat_buffer"
+            )
             if preamps is not None and eff_preamp_id in preamps:
                 preamp_spec = preamps[eff_preamp_id]
             else:

@@ -36,8 +36,8 @@ from allomorph.config.resolvers import (
     assign_target_to_bundle,
     build_voice_coils_for_pickup,
     compound_multi_pickup_coils,
+    determine_pickup_resonance_and_q,
     find_voicing_by_slug_or_id,
-    infer_pickup_resonance_and_q,
     parse_target_voicing_token,
 )
 from allomorph.config.scales import (
@@ -128,12 +128,12 @@ __all__ = [
     "compound_multi_pickup_coils",
     "compute_coil_offset_from_spacing",
     "compute_effective_position",
+    "determine_pickup_resonance_and_q",
     "find_voicing_by_slug_or_id",
     "get_instrument_string",
     "get_legal_disclaimer_text",
     "get_preamp",
     "get_voice_string",
-    "infer_pickup_resonance_and_q",
     "is_identity_voicing",
     "load_all_instruments",
     "load_all_tone_packs",

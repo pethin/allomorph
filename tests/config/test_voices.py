@@ -16,13 +16,22 @@ def test_voice_parameter_validity():
     for vid, cfg in VOICES.items():
         assert isinstance(cfg, VoiceConfig), f"{vid} is not a VoiceConfig instance"
         assert cfg.name and cfg.description
-        assert cfg.fr > 0
-        is_active = (
-            bool(cfg.instrument_id and "active" in cfg.instrument_id) or cfg.sensor_type == "direct"
-        )
-        max_fr = 20000.0 if (cfg.preserve_aperture or is_active) else 6000.0
-        assert 200.0 <= cfg.fr <= max_fr, f"{vid} fr outside audible musical range: {cfg.fr}"
-        assert cfg.Q > 0
+        if cfg.sensor_type == "direct":
+            assert cfg.fr is None
+            assert cfg.Q is None
+        elif cfg.fr is not None:
+            assert cfg.fr > 0
+            is_active = (
+                bool(
+                    cfg.instrument_id
+                    and ("active" in cfg.instrument_id or "dingwall" in cfg.instrument_id)
+                )
+                or cfg.sensor_type == "direct"
+                or "active" in vid
+            )
+            max_fr = 20000.0 if (cfg.preserve_aperture or is_active) else 6000.0
+            assert 200.0 <= cfg.fr <= max_fr, f"{vid} fr outside audible musical range: {cfg.fr}"
+            assert cfg.Q is not None and cfg.Q > 0
         assert len(cfg.coils) >= 1
         for c in cfg.coils:
             assert c.position_from_bridge_m > 0
@@ -34,8 +43,9 @@ def test_voice_parameter_validity():
             assert len(cfg.pickups) >= 2, f"{vid} pickups list has fewer than 2 pickups"
             for p in cfg.pickups:
                 assert p.name
-                assert p.fr > 0
-                assert p.Q > 0
+                if p.fr is not None:
+                    assert p.fr > 0
+                    assert p.Q is not None and p.Q > 0
                 assert p.weight > 0
                 assert len(p.coils) >= 1
 
