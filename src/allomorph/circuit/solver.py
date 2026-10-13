@@ -537,13 +537,14 @@ def solve_mna_harness(
     if harness.type == "active_preamp":
         if voicing.preamp_bands:
             H_eq = compute_active_preamp_transfer(voicing.preamp_bands, s, gain_db=voicing.gain_db)
-        elif harness.preamp:
-            if preamps is None or harness.preamp not in preamps:
-                raise KeyError(
-                    f"Preamp '{harness.preamp}' required by harness '{harness.name}' "
-                    "but not provided in preamps mapping."
-                )
-            preamp_spec = preamps[harness.preamp]
+        else:
+            eff_preamp_id = harness.preamp or "flat_buffer"
+            if preamps is not None and eff_preamp_id in preamps:
+                preamp_spec = preamps[eff_preamp_id]
+            else:
+                from allomorph.config.preamps import get_preamp
+
+                preamp_spec = get_preamp(eff_preamp_id)
             adjusted_bands = []
             for b in preamp_spec.bands:
                 b_gain = b.gain_db
@@ -560,8 +561,6 @@ def solve_mna_harness(
             H_eq = compute_active_preamp_transfer(
                 adjusted_bands, s, gain_db=float(preamp_spec.gain_db) + voicing.gain_db
             )
-        else:
-            H_eq = np.ones(n_freqs, dtype=np.complex128)
 
         r_out_stage = 100.0
         r_pre_out = ds.find("preamp.out")

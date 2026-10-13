@@ -347,7 +347,9 @@ def test_train_tone_pack_flat_structure_mocked(
         assert "dry_recipe_token" in model_meta
         assert model_meta["dry_recipe_token"].startswith("alo_")
         assert "wet_recipe_token" in model_meta
-        assert model_meta["wet_recipe_token"].startswith("alo_stem_")
+        assert model_meta["wet_recipe_token"].startswith("alo_rec_")
+        assert "wet_digest_token" in model_meta
+        assert model_meta["wet_digest_token"].startswith("alo_stem_")
         assert "dry_sha256" not in model_meta
         assert "wet_sha256" not in model_meta
 

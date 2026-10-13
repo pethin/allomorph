@@ -47,8 +47,10 @@ from allomorph.trainer.constants import (
 from allomorph.version import (
     DSP_GENERATION,
     compute_bundle_recipe_token,
+    compute_excitation_recipe_token,
     compute_pack_recipe_token,
     compute_recipe_token,
+    compute_stem_digest_token,
     get_dry_excitation_token,
     is_wet_stem_valid,
     resolve_tri_part_version,
@@ -97,28 +99,49 @@ def check_pack_needs_repacking(
 
         expected_bundle_tokens: dict[str, str] = {}
         for b_name, b_bundle in bundles.items():
-            b_src_v = inst.voicings[b_bundle.source_voicing]
-            b_dry_tok = compute_recipe_token(
-                instrument=inst,
-                voicing=b_src_v,
-                base_dry_path=input_wav,
-                dsp_generation=DSP_GENERATION,
-            )
+            b_dir = bundles_dir / b_name
+            b_man_p = b_dir / "manifest.json"
+            if not b_man_p.exists() or not (b_dir / "upload_instructions.txt").exists():
+                return True
+            with open(b_man_p, "r", encoding="utf-8") as bmf:
+                b_man = json.load(bmf)
+
+            dry_f = b_man.get("dry_file")
+            if not dry_f or not (b_dir / dry_f).exists():
+                return True
+
+            b_dry_digest = b_man.get("dry_digest_token")
+            if not b_dry_digest:
+                b_src_path = WET_AUDIO_DIR / inst.id / f"{b_bundle.source_voicing}.wav"
+                if b_src_path.exists():
+                    b_dry_digest = compute_stem_digest_token(b_src_path)
+                else:
+                    return True
+
             b_descs = resolve_bundle_target_file_descriptors(b_bundle, is_multi_pickup)
-            b_stem_toks = [
-                (
-                    desc["stem_filename"],
-                    compute_recipe_token(
-                        instrument=desc["target_ref"].instrument,
-                        voicing=desc["target_ref"].voicing,
-                        base_dry_path=input_wav,
-                        dsp_generation=DSP_GENERATION,
-                    ),
-                )
-                for desc in b_descs
-            ]
+            b_stem_toks = []
+            stems_by_tgt = {s["target"]: s for s in b_man.get("stems", []) if "target" in s}
+            stems_by_tone = {s["tone_name"]: s for s in b_man.get("stems", []) if "tone_name" in s}
+            for desc in b_descs:
+                t_ref = desc["target_ref"]
+                t_str = f"{t_ref.instrument_id}:{t_ref.voicing_id}"
+                s_info = stems_by_tgt.get(t_str) or stems_by_tone.get(desc["tone_name"])
+                if not s_info:
+                    return True
+                s_fn = s_info.get("filename", desc["stem_filename"])
+                if not (b_dir / s_fn).exists():
+                    return True
+                s_digest = s_info.get("digest_token")
+                if not s_digest:
+                    t_stem_path = WET_AUDIO_DIR / t_ref.instrument_id / f"{desc['target_slug']}.wav"
+                    if t_stem_path.exists():
+                        s_digest = compute_stem_digest_token(t_stem_path)
+                    else:
+                        return True
+                b_stem_toks.append((s_fn, s_digest))
+
             expected_bundle_tokens[b_name] = compute_bundle_recipe_token(
-                dry_recipe_token=b_dry_tok,
+                dry_digest_token=b_dry_digest,
                 stem_tokens=b_stem_toks,
             )
         expected_pack_token = compute_pack_recipe_token(
@@ -131,7 +154,7 @@ def check_pack_needs_repacking(
             for b_name in bundles
         )
         return not (recorded_pack_token == expected_pack_token and all_bundles_exist)
-    except json.JSONDecodeError, KeyError, OSError:
+    except (json.JSONDecodeError, KeyError, OSError):
         return True
 
 
@@ -183,6 +206,7 @@ def export_tone_pack(
     manifest_path = pack_dir / "manifest.json"
 
     # 2. Process each bundle
+    # 2. Process each bundle
     def _process_bundle(item: tuple[str, VoicingBundle]) -> tuple[str, dict[str, Any]]:
         b_name, bundle = item
         b_dir = bundles_dir / b_name
@@ -204,55 +228,79 @@ def export_tone_pack(
             dsp_generation=DSP_GENERATION,
         )
 
-        # A. Synthesize / Copy Source Audio for this bundle (Tone3000 upload contract requires dry v[dsp].[inst].[voicing].wav)
-        dry_v_tag = resolve_tri_part_version(DSP_GENERATION, inst.version, source_voice_ver)
-        dry_filename = f"dry {dry_v_tag}.wav"
-        dry_dest = b_dir / dry_filename
+        # Check for existing bundle manifest
+        existing_b_man: dict[str, Any] | None = None
+        old_stems_by_target: dict[str, dict[str, Any]] = {}
+        old_stems_by_tone: dict[str, dict[str, Any]] = {}
+        b_manifest_p = b_dir / "manifest.json"
+        if b_manifest_p.exists():
+            try:
+                with open(b_manifest_p, "r", encoding="utf-8") as bf:
+                    loaded = json.load(bf)
+                if isinstance(loaded, dict):
+                    existing_b_man = loaded
+                    for s in existing_b_man.get("stems", []):
+                        if "target" in s:
+                            old_stems_by_target[s["target"]] = s
+                        if "tone_name" in s:
+                            old_stems_by_tone[s["tone_name"]] = s
+                else:
+                    existing_b_man = None
+            except (json.JSONDecodeError, OSError):
+                existing_b_man = None
+
+        # A. Synthesize / Copy Source Audio for this bundle
+        current_dry_v_tag = resolve_tri_part_version(DSP_GENERATION, inst.version, source_voice_ver)
         source_wet_path = WET_AUDIO_DIR / inst.id / f"{src_v_id}.wav"
 
-        # Clean up any previous wav files in bundle directory to avoid stale stems
-        for old_wav in b_dir.glob("*.wav"):
-            old_wav.unlink(missing_ok=True)
-
-        if max_samples is None and is_wet_stem_valid(
-            source_wet_path,
-            expected_recipe_token=dry_recipe_token,
-            base_dry_path=input_wav,
-            expected_version=dry_v_tag,
-        ):
-            shutil.copyfile(source_wet_path, dry_dest)
-        elif max_samples is None:
-            source_wet_path.parent.mkdir(parents=True, exist_ok=True)
-            simulate_instrument_voicing(
-                instrument=inst,
-                voicing=src_v,
-                input_wav=input_wav,
-                output_wav=source_wet_path,
-                max_samples=None,
-                force=False,
-            )
-            shutil.copyfile(source_wet_path, dry_dest)
+        if max_samples is None:
+            if not is_wet_stem_valid(
+                source_wet_path,
+                expected_recipe_token=dry_recipe_token,
+                base_dry_path=input_wav,
+                expected_version=current_dry_v_tag,
+            ):
+                source_wet_path.parent.mkdir(parents=True, exist_ok=True)
+                simulate_instrument_voicing(
+                    instrument=inst,
+                    voicing=src_v,
+                    input_wav=input_wav,
+                    output_wav=source_wet_path,
+                    max_samples=None,
+                    force=False,
+                )
+            source_digest_token = compute_stem_digest_token(source_wet_path)
         else:
-            simulate_instrument_voicing(
-                instrument=inst,
-                voicing=src_v,
-                input_wav=input_wav,
-                output_wav=dry_dest,
-                max_samples=max_samples,
-                force=True,
+            source_digest_token = (
+                compute_stem_digest_token(source_wet_path)
+                if source_wet_path.exists()
+                else "alo_stem_bounded"
             )
+
+        if (
+            existing_b_man
+            and existing_b_man.get("dry_digest_token") == source_digest_token
+            and existing_b_man.get("dry_file")
+            and (b_dir / existing_b_man["dry_file"]).exists()
+        ):
+            dry_filename = existing_b_man["dry_file"]
+            dry_v_tag = existing_b_man.get("dry_version", current_dry_v_tag)
+        else:
+            dry_v_tag = current_dry_v_tag
+            dry_filename = f"dry {dry_v_tag}.wav"
+
+        dry_dest = b_dir / dry_filename
 
         # B. Wet Audio Stems (Copy cached wet audio from audio/wet or compile then copy)
         bundle_stems: list[dict[str, Any]] = []
         stem_filenames: list[str] = []
         descriptors = resolve_bundle_target_file_descriptors(bundle, is_multi_pickup)
 
+        temp_stems: list[tuple[dict[str, Any], Path, Path]] = []
         for desc in descriptors:
             target_ref = desc["target_ref"]
             tone_name = desc["tone_name"]
-            target_v_tag = desc["target_v_tag"]
-            stem_filename = desc["stem_filename"]
-            stem_path = b_dir / stem_filename
+            target_v_tag_current = desc["target_v_tag"]
             target_slug = desc["target_slug"]
             target_wet_path = WET_AUDIO_DIR / target_ref.instrument_id / f"{target_slug}.wav"
 
@@ -268,7 +316,7 @@ def export_tone_pack(
                     target_wet_path,
                     expected_recipe_token=target_recipe_token,
                     base_dry_path=input_wav,
-                    expected_version=target_v_tag,
+                    expected_version=target_v_tag_current,
                 ):
                     target_wet_path.parent.mkdir(parents=True, exist_ok=True)
                     simulate_instrument_voicing(
@@ -277,41 +325,99 @@ def export_tone_pack(
                         input_wav=input_wav,
                         output_wav=target_wet_path,
                         max_samples=None,
+                        force=False,
                     )
-                shutil.copyfile(target_wet_path, stem_path)
+                target_digest_token = compute_stem_digest_token(target_wet_path)
             else:
+                target_digest_token = (
+                    compute_stem_digest_token(target_wet_path)
+                    if target_wet_path.exists()
+                    else "alo_stem_bounded"
+                )
+
+            target_str = f"{target_ref.instrument_id}:{target_ref.voicing_id}"
+            old_s = old_stems_by_target.get(target_str) or old_stems_by_tone.get(tone_name)
+
+            if (
+                old_s
+                and old_s.get("digest_token") == target_digest_token
+                and old_s.get("filename")
+                and (b_dir / old_s["filename"]).exists()
+            ):
+                stem_filename = old_s["filename"]
+                target_v_tag = old_s.get("version", target_v_tag_current)
+            else:
+                target_v_tag = target_v_tag_current
+                stem_filename = desc["stem_filename"]
+
+            stem_path = b_dir / stem_filename
+            stem_filenames.append(stem_filename)
+
+            s_entry = {
+                "filename": stem_filename,
+                "target": target_str,
+                "target_instrument_version": target_ref.instrument.version,
+                "target_voicing_version": target_ref.voicing.version,
+                "version": target_v_tag,
+                "tone_name": tone_name,
+                "recipe_token": target_recipe_token,
+                "digest_token": target_digest_token,
+            }
+            bundle_stems.append(s_entry)
+            temp_stems.append((s_entry, stem_path, target_wet_path))
+
+        # Clean up any extraneous or stale wav files in bundle directory
+        needed_wavs = {dry_filename} | set(stem_filenames)
+        for old_wav in b_dir.glob("*.wav"):
+            if old_wav.name not in needed_wavs:
+                old_wav.unlink(missing_ok=True)
+
+        # Copy dry file
+        if max_samples is None:
+            if not dry_dest.exists():
+                shutil.copyfile(source_wet_path, dry_dest)
+        else:
+            simulate_instrument_voicing(
+                instrument=inst,
+                voicing=src_v,
+                input_wav=input_wav,
+                output_wav=dry_dest,
+                max_samples=max_samples,
+                force=True,
+            )
+
+        # Copy wet stems
+        for s_dict, s_path, s_wet_p in temp_stems:
+            if max_samples is None:
+                if not s_path.exists():
+                    shutil.copyfile(s_wet_p, s_path)
+            else:
+                tgt_desc = next(
+                    d
+                    for d in descriptors
+                    if d["stem_filename"] == s_dict["filename"]
+                    or d["tone_name"] == s_dict["tone_name"]
+                )
                 simulate_instrument_voicing(
-                    instrument=target_ref.instrument,
-                    voicing=target_ref.voicing,
+                    instrument=tgt_desc["target_ref"].instrument,
+                    voicing=tgt_desc["target_ref"].voicing,
                     input_wav=input_wav,
-                    output_wav=stem_path,
+                    output_wav=s_path,
                     max_samples=max_samples,
+                    force=True,
                 )
 
             # Tone3000 Zero-Collision Guardrail: verify wet stem is not bit-exact identical to dry file
             dry_audio, _ = read_wav(dry_dest)
-            wet_audio, _ = read_wav(stem_path)
+            wet_audio, _ = read_wav(s_path)
             min_len = min(len(dry_audio), len(wet_audio))
             max_diff = float(np.max(np.abs(wet_audio[:min_len] - dry_audio[:min_len])))
             if np.array_equal(wet_audio[:min_len], dry_audio[:min_len]) or max_diff < 1e-10:
                 raise ValueError(
-                    f"Identity stem collision detected: target '{target_ref.voicing_id}' on '{target_ref.instrument_id}' "
-                    f"is bit-exact identical to dry stem in bundle '{b_name}' on '{inst.id}' (max_diff={max_diff:.8f}). "
+                    f"Identity stem collision detected: target '{s_dict['target']}' on '{inst.id}' "
+                    f"is bit-exact identical to dry stem in bundle '{b_name}' (max_diff={max_diff:.8f}). "
                     "Tone3000 will reject training on identical dry/wet stems."
                 )
-
-            stem_filenames.append(stem_filename)
-            bundle_stems.append(
-                {
-                    "filename": stem_filename,
-                    "target": f"{target_ref.instrument_id}:{target_ref.voicing_id}",
-                    "target_instrument_version": target_ref.instrument.version,
-                    "target_voicing_version": target_ref.voicing.version,
-                    "version": target_v_tag,
-                    "tone_name": tone_name,
-                    "recipe_token": target_recipe_token,
-                }
-            )
 
         # C. Write Bundle Upload Instructions
         instructions_path = b_dir / "upload_instructions.txt"
@@ -326,10 +432,11 @@ def export_tone_pack(
 
         base_dry_p = Path(input_wav) if input_wav else get_default_input_path()
         base_dry_token = get_dry_excitation_token(base_dry_p)
+        base_dry_rec = compute_excitation_recipe_token(dsp_generation=DSP_GENERATION)
 
         bundle_recipe_token = compute_bundle_recipe_token(
-            dry_recipe_token=dry_recipe_token,
-            stem_tokens=[(s["filename"], s["recipe_token"]) for s in bundle_stems],
+            dry_digest_token=source_digest_token,
+            stem_tokens=[(s["filename"], s["digest_token"]) for s in bundle_stems],
         )
 
         source_token = f"{inst.id}:{src_v_id}"
@@ -347,6 +454,8 @@ def export_tone_pack(
             bundle_stems=bundle_stems,
             base_dry_file=base_dry_p.name,
             base_dry_token=base_dry_token,
+            dry_digest_token=source_digest_token,
+            base_dry_recipe_token=base_dry_rec,
         )
         with open(b_dir / "manifest.json", "w", encoding="utf-8") as bf:
             json.dump(bundle_manifest, bf, indent=2)
@@ -360,6 +469,7 @@ def export_tone_pack(
             "dry_file": dry_filename,
             "dry_version": dry_v_tag,
             "dry_recipe_token": dry_recipe_token,
+            "dry_digest_token": source_digest_token,
             "source_voicing_version": source_voice_ver,
             "stem_count": len(bundle_stems),
         }
@@ -437,6 +547,12 @@ def export_tone_pack(
                             for s_info in b_man.get("stems", []):
                                 stem_lookup[(b_name, s_info["filename"])] = (b_man, s_info)
                                 stem_lookup[s_info["filename"]] = (b_man, s_info)
+                                if "target" in s_info:
+                                    stem_lookup[(b_name, s_info["target"])] = (b_man, s_info)
+                                    stem_lookup[s_info["target"]] = (b_man, s_info)
+                                if "tone_name" in s_info:
+                                    stem_lookup[(b_name, s_info["tone_name"])] = (b_man, s_info)
+                                    stem_lookup[s_info["tone_name"]] = (b_man, s_info)
                         except (json.JSONDecodeError, OSError):
                             pass
 
@@ -449,16 +565,33 @@ def export_tone_pack(
                     entry.pop("target_voicing", None)
                     b_name = entry.get("bundle", "")
                     wet_file = entry.get("wet_file", "")
-                    lookup_hit = stem_lookup.get((b_name, wet_file)) or stem_lookup.get(wet_file)
+                    target = entry.get("target", "")
+                    tone_name = entry.get("tone_name", "")
+                    lookup_hit = (
+                        stem_lookup.get((b_name, wet_file))
+                        or stem_lookup.get(wet_file)
+                        or (stem_lookup.get((b_name, target)) if target else None)
+                        or (stem_lookup.get(target) if target else None)
+                        or (stem_lookup.get((b_name, tone_name)) if tone_name else None)
+                        or (stem_lookup.get(tone_name) if tone_name else None)
+                    )
                     if lookup_hit:
                         b_info, s_info = lookup_hit
+                        if "filename" in s_info:
+                            entry["wet_file"] = s_info["filename"]
+                        if "dry_file" in b_info:
+                            entry["dry_file"] = b_info["dry_file"]
                         if "dry_recipe_token" in b_info:
                             entry["dry_recipe_token"] = b_info["dry_recipe_token"]
+                        if "dry_digest_token" in b_info:
+                            entry["dry_digest_token"] = b_info["dry_digest_token"]
                         if "recipe_token" in s_info:
                             entry["wet_recipe_token"] = s_info["recipe_token"]
+                        if "digest_token" in s_info:
+                            entry["wet_digest_token"] = s_info["digest_token"]
                     updated_models[m_name] = entry
                 manifest_entries["models"] = updated_models
-        except json.JSONDecodeError, OSError:
+        except (json.JSONDecodeError, OSError):
             pass
 
     with open(manifest_path, "w", encoding="utf-8") as f:
@@ -507,10 +640,14 @@ def _populate_manifest_model_entry(
             entry["dry_file"] = dry_info["dry_file"]
         if "dry_recipe_token" in dry_info:
             entry["dry_recipe_token"] = dry_info["dry_recipe_token"]
+        if "dry_digest_token" in dry_info:
+            entry["dry_digest_token"] = dry_info["dry_digest_token"]
     if "filename" in stem_info:
         entry["wet_file"] = stem_info["filename"]
     if "recipe_token" in stem_info:
         entry["wet_recipe_token"] = stem_info["recipe_token"]
+    if "digest_token" in stem_info:
+        entry["wet_digest_token"] = stem_info["digest_token"]
     try:
         with open(nam_path, "r", encoding="utf-8") as f:
             nam_data = json.load(f)
@@ -724,43 +861,73 @@ def train_tone_pack(
             model_basename = stem_p.stem
             target_nam = nam_dir / f"{model_basename}.nam"
 
-            if target_nam.exists() and not overwrite:
-                # Verify that existing model is a valid official NAM model
-                is_invalid = False
-                try:
-                    with open(target_nam, "r", encoding="utf-8") as f:
-                        data = json.load(f)
-                    arch = data.get("architecture")
-                    if arch == "SlimmableContainer":
-                        submodels = data.get("config", {}).get("submodels", [])
-                        if len(submodels) < 2:
-                            is_invalid = True
-                    elif arch == "WaveNet":
-                        if not data.get("weights"):
-                            is_invalid = True
-                    else:
-                        is_invalid = True
-                except json.JSONDecodeError, OSError:
-                    is_invalid = True
+            # Check if this stem has an existing model in manifest_data["models"]
+            existing_nam_path = None
+            existing_m_entry = None
+            if target_nam.exists():
+                existing_nam_path = target_nam
+                existing_m_entry = manifest_data["models"].get(target_nam.name)
+            else:
+                for m_k, m_v in manifest_data["models"].items():
+                    m_b = m_v.get("bundle", "")
+                    m_t = m_v.get("target", "")
+                    m_tone = m_v.get("tone_name", "")
+                    if m_b == b_name and (m_t == target_str or m_tone == raw_tone):
+                        cand_path = nam_dir / m_k
+                        if cand_path.exists():
+                            existing_nam_path = cand_path
+                            existing_m_entry = m_v
+                            break
 
-                if is_invalid:
+            if existing_nam_path is not None and not overwrite:
+                # Stage 2: Compare digest tokens
+                recorded_dry_digest = existing_m_entry.get("dry_digest_token") if existing_m_entry else None
+                recorded_wet_digest = existing_m_entry.get("wet_digest_token") if existing_m_entry else None
+                current_dry_digest = b_info.get("dry_digest_token")
+                current_wet_digest = s_info.get("digest_token")
+
+                if (
+                    recorded_dry_digest
+                    and recorded_wet_digest
+                    and recorded_dry_digest == current_dry_digest
+                    and recorded_wet_digest == current_wet_digest
+                ):
                     print(
-                        f"[Tone Pack Trainer] Removing legacy or invalid model to retrain with official NAM A2: {target_nam.name}"
+                        f"[Tone Pack Trainer] Audio digests match, skipping retraining: {existing_nam_path.name}"
                     )
-                    try:
-                        target_nam.unlink(missing_ok=True)
-                    except OSError:
-                        pass
-                else:
-                    print(f"[Tone Pack Trainer] Model already exists, skipping: {target_nam.name}")
                     total_skipped += 1
-                    if target_nam.name not in manifest_data["models"]:
-                        _populate_manifest_model_entry(
-                            manifest_data["models"], target_nam, s_info, b_name, dry_info=b_info
-                        )
-                        with open(manifest_path, "w", encoding="utf-8") as f:
-                            json.dump(manifest_data, f, indent=2)
                     continue
+                elif existing_nam_path == target_nam:
+                    # Fallback check for legacy models before dual-tokens
+                    is_invalid = False
+                    try:
+                        with open(target_nam, "r", encoding="utf-8") as f:
+                            data = json.load(f)
+                        arch = data.get("architecture")
+                        if arch == "SlimmableContainer":
+                            submodels = data.get("config", {}).get("submodels", [])
+                            if len(submodels) < 2:
+                                is_invalid = True
+                        elif arch == "WaveNet":
+                            if not data.get("weights"):
+                                is_invalid = True
+                        else:
+                            is_invalid = True
+                    except (json.JSONDecodeError, OSError):
+                        is_invalid = True
+
+                    if not is_invalid and not recorded_dry_digest and not recorded_wet_digest:
+                        print(
+                            f"[Tone Pack Trainer] Model already exists, skipping: {target_nam.name}"
+                        )
+                        total_skipped += 1
+                        if target_nam.name not in manifest_data["models"]:
+                            _populate_manifest_model_entry(
+                                manifest_data["models"], target_nam, s_info, b_name, dry_info=b_info
+                            )
+                            with open(manifest_path, "w", encoding="utf-8") as f:
+                                json.dump(manifest_data, f, indent=2)
+                        continue
 
             print(
                 f"\n[Tone Pack Trainer] Training model for {model_basename} (Bundle: {b_name})..."

@@ -481,9 +481,10 @@ def check_dry_excitation_needs_regeneration(
     if size < 44:
         return True, f"Dry excitation audio file '{p.name}' is empty or truncated ({size} bytes)"
 
-    from allomorph.version import DSP_GENERATION
+    from allomorph.version import DSP_GENERATION, compute_excitation_recipe_token
 
     eff_dsp_gen = dsp_generation if dsp_generation is not None else DSP_GENERATION
+    expected_recipe_token = compute_excitation_recipe_token(dsp_generation=eff_dsp_gen)
     expected_tag = f"synthetic_optimal_bass_dry_v{eff_dsp_gen}"
 
     sidecar_p = p.parent / "manifest.json"
@@ -499,17 +500,24 @@ def check_dry_excitation_needs_regeneration(
         with sidecar_p.open("r", encoding="utf-8") as sf:
             sdata = json.load(sf)
         file_entry = sdata.get("files", {}).get(p.name, {})
-        if not file_entry.get("dry_token"):
+        if not (file_entry.get("digest_token") or file_entry.get("dry_token")):
             return True, f"Dry excitation token missing in '{sidecar_p.name}' for '{p.name}'"
         if file_entry.get("size_bytes") != size:
             return (
                 True,
                 f"Dry excitation file size mismatch (disk={size}, manifest={file_entry.get('size_bytes')})",
             )
-        if file_entry.get("recipe_tag") != expected_tag:
+        rec_token = file_entry.get("recipe_token")
+        rec_tag = file_entry.get("recipe_tag")
+        if rec_token and rec_token != expected_recipe_token:
             return (
                 True,
-                f"DSP generation mismatch (expected '{expected_tag}', got '{file_entry.get('recipe_tag')}')",
+                f"Dry excitation recipe mismatch (expected '{expected_recipe_token}', got '{rec_token}')",
+            )
+        if not rec_token and rec_tag != expected_tag:
+            return (
+                True,
+                f"DSP generation mismatch (expected '{expected_tag}', got '{rec_tag}')",
             )
     except (json.JSONDecodeError, OSError) as e:
         return True, f"Corrupted dry excitation manifest '{sidecar_p}': {e}"

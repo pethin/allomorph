@@ -76,6 +76,7 @@ coils = [
 [harnesses.active]
 name = "3-Band Active Preamp with Blend"
 type = "active_preamp"
+preamp = "aguilar_3band"
 load_resistance = 1000000.0
 cable_pf = 30.0
 

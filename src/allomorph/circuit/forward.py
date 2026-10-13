@@ -60,6 +60,7 @@ from allomorph.physics.strings import (
 )
 from allomorph.version import (
     DSP_GENERATION,
+    compute_pcm_stem_digest,
     compute_recipe_token,
     get_dry_excitation_token,
     is_wet_stem_valid,
@@ -919,6 +920,7 @@ def simulate_instrument_voicing(
                 mono_out = filtered[0] if filtered.ndim > 1 else filtered
                 peak_val = float(np.max(np.abs(mono_out)))
                 rms_val = float(np.sqrt(np.mean(mono_out**2)))
+                stem_digest = compute_pcm_stem_digest(filtered, sample_rate=sr)
                 wav_meta = {
                     "duration_s": round(float(len(mono_out)) / float(sr), 3) if sr > 0 else 0.0,
                     "sample_rate": sr,
@@ -931,6 +933,8 @@ def simulate_instrument_voicing(
                         else None
                     ),
                     "dc_offset": round(float(np.mean(mono_out)), 6),
+                    "recipe_token": recipe_tok,
+                    "digest_token": stem_digest,
                 }
                 write_manifest(
                     output_dir=out_path.parent,
@@ -942,8 +946,9 @@ def simulate_instrument_voicing(
                     instrument_version=inst_ver,
                     voicing_version=voice_ver,
                     recipe_token=recipe_tok,
+                    digest_token=stem_digest,
                 )
-            except OSError, ValueError, RuntimeError:
+            except (OSError, ValueError, RuntimeError):
                 pass
 
     if return_audio:

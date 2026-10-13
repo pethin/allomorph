@@ -5,41 +5,44 @@
   "version": "v6.1.1",
   "allomorph_version": "0.5.0",
   "dsp_generation": 6,
-  "recipe_token": "alo_pck_b8432473b4507c36a235423a1f561b3643571211dd897afae2411acace0288ab",
+  "recipe_token": "alo_pck_357f6bff9f9f641a8232f85a2b3e1c187eafb2ba4f8ece619e0da4631a6ab2ea",
   "bundles": {
     "neck": {
-      "recipe_token": "alo_bun_7df67e1f766cf13cc42d8e8123bbeea41c91a88a550ca9ed33d0388703784a18",
+      "recipe_token": "alo_bun_6af7e88e17390a9eab02847f4b75b400543a2b1f4044b68f5a93536b6d8e99ee",
       "source": "34in_preamp_soapbar:neck_solo",
       "position_name": "Neck",
       "base_dry_file": "input.wav",
       "base_dry_token": "alo_dry_cda0bf51a1543539ac356a852a24bfedd37d61bb77a14e3eb24a4a1b2cec094f",
       "dry_file": "dry v6.1.1.wav",
       "dry_version": "v6.1.1",
-      "dry_recipe_token": "alo_stem_11e3a26b97c641e858213adf4ba40ab9ab60f619f0317e38e0263c6de1c4ae03",
+      "dry_recipe_token": "alo_rec_eba4c2eff1c7a4b5fae65eda97966dff57acd112c850e939c22c86b3799804d3",
+      "dry_digest_token": "alo_stem_9428cb3caba5b715e234cdc3b909b3120084f769c6252b847dc3b24172c0b462",
       "source_voicing_version": 1,
       "stem_count": 9
     },
     "bridge": {
-      "recipe_token": "alo_bun_6d21fc8a192f03f376f8844dec87e0c8cf40a700b5ceb1c3dbaf347f1b780a19",
+      "recipe_token": "alo_bun_3414a56737881e9264ea53bbe14cb0aa76eea537b4f3ade22628c14cf0bdb7fc",
       "source": "34in_preamp_soapbar:bridge_solo",
       "position_name": "Bridge",
       "base_dry_file": "input.wav",
       "base_dry_token": "alo_dry_cda0bf51a1543539ac356a852a24bfedd37d61bb77a14e3eb24a4a1b2cec094f",
       "dry_file": "dry v6.1.1.wav",
       "dry_version": "v6.1.1",
-      "dry_recipe_token": "alo_stem_9bdc9efc6c467bbf31257137e115f6273796a79cc3752dc34d1a820fbb81db23",
+      "dry_recipe_token": "alo_rec_9811cd939213e65fb2dc184d9590d10eafb40fb434b5b59668f4a4acbbaf20c0",
+      "dry_digest_token": "alo_stem_2b6e7cf8e58874c08157e296570c2bccb28378045739aea37c4cca7912a0ed10",
       "source_voicing_version": 1,
       "stem_count": 7
     },
     "parallel": {
-      "recipe_token": "alo_bun_e041f77f610ae4f6c0685dc83853a5c835fe7c4157edc5031be4bc76ce7814a4",
+      "recipe_token": "alo_bun_8da93c1c0585b094cad350a99bf4ed3fd7e6c45eaefc9d8ae1789c652027a092",
       "source": "34in_preamp_soapbar:pair_parallel",
       "position_name": "Parallel",
       "base_dry_file": "input.wav",
       "base_dry_token": "alo_dry_cda0bf51a1543539ac356a852a24bfedd37d61bb77a14e3eb24a4a1b2cec094f",
       "dry_file": "dry v6.1.1.wav",
       "dry_version": "v6.1.1",
-      "dry_recipe_token": "alo_stem_eaa59d492378f6e0d75feb95a07464e6cbdffe9084b948a018dc7f1eeabfd21b",
+      "dry_recipe_token": "alo_rec_3f10c1f3e3ddd09131e837283f39d930795bc9b6ea12302026097fa69fae7773",
+      "dry_digest_token": "alo_stem_d59ae4b732e5034de656f930237c902b371ddede90cfdc8a4b45ba243b4cee78",
       "source_voicing_version": 1,
       "stem_count": 8
     }
@@ -56,8 +59,10 @@
       "sha256": "67a9ba282016e4779b543a3b19c3e564d0df59bd0ecbce0e51f41794b9bbf115",
       "dry_file": "dry v6.1.1.wav",
       "wet_file": "Precision Vintage [Neck] v6.1.1.wav",
-      "dry_recipe_token": "alo_stem_11e3a26b97c641e858213adf4ba40ab9ab60f619f0317e38e0263c6de1c4ae03",
-      "wet_recipe_token": "alo_stem_66e4f8dc7ace24c23154066150dd4901e2554b73c1e7e0610000596d5d07eacf"
+      "dry_recipe_token": "alo_rec_eba4c2eff1c7a4b5fae65eda97966dff57acd112c850e939c22c86b3799804d3",
+      "wet_recipe_token": "alo_rec_7a3150da594cdcff0a9a6464d40de619031e2b94fa576cd533c9b6c6ed6b0a04",
+      "dry_digest_token": "alo_stem_9428cb3caba5b715e234cdc3b909b3120084f769c6252b847dc3b24172c0b462",
+      "wet_digest_token": "alo_stem_ad431ff20730f9c8ae6ca21ce400c225b1b0acd4c301eb6f6d2744c8083b72ce"
     },
     "Precision Active [Neck] v6.1.1.nam": {
       "filename": "Precision Active [Neck] v6.1.1.nam",
@@ -83,8 +88,10 @@
       "device_name": "AMD Radeon RX 9070 XT",
       "engine": "native",
       "training_time_seconds": 320.45,
-      "dry_recipe_token": "alo_stem_11e3a26b97c641e858213adf4ba40ab9ab60f619f0317e38e0263c6de1c4ae03",
-      "wet_recipe_token": "alo_stem_700843c3e746e942589736d1e8df406d8871056d87812dba646d3b52b7d06ecd"
+      "dry_recipe_token": "alo_rec_eba4c2eff1c7a4b5fae65eda97966dff57acd112c850e939c22c86b3799804d3",
+      "wet_recipe_token": "alo_rec_adf1a5dc43fd1383ef89624e391f8a620a092913282b8e8432f20c9caf8ef10e",
+      "dry_digest_token": "alo_stem_9428cb3caba5b715e234cdc3b909b3120084f769c6252b847dc3b24172c0b462",
+      "wet_digest_token": "alo_stem_73647bc14e7d32ae7e0ef2c61bda2a0e10ce7e8233074de6eed247f8c2db5939"
     },
     "Precision Mids [Neck] v6.1.1.nam": {
       "filename": "Precision Mids [Neck] v6.1.1.nam",
@@ -110,8 +117,10 @@
       "device_name": "AMD Radeon RX 9070 XT",
       "engine": "native",
       "training_time_seconds": 319.7,
-      "dry_recipe_token": "alo_stem_11e3a26b97c641e858213adf4ba40ab9ab60f619f0317e38e0263c6de1c4ae03",
-      "wet_recipe_token": "alo_stem_dcfe7b45be2e4ce563b11193c2483857481b39a2b71bb217c34c3187e94f54b2"
+      "dry_recipe_token": "alo_rec_eba4c2eff1c7a4b5fae65eda97966dff57acd112c850e939c22c86b3799804d3",
+      "wet_recipe_token": "alo_rec_9c2f2080cf8970714a98267bdfc0f132876d23d2f3c2f46cc73fefe9f4386e43",
+      "dry_digest_token": "alo_stem_9428cb3caba5b715e234cdc3b909b3120084f769c6252b847dc3b24172c0b462",
+      "wet_digest_token": "alo_stem_2ad0c833a6509a597c4355d6710b3c7567a3880360a0d9b8dadf38ecb149f083"
     },
     "Precision Warm [Neck] v6.1.1.nam": {
       "filename": "Precision Warm [Neck] v6.1.1.nam",
@@ -137,8 +146,10 @@
       "device_name": "AMD Radeon RX 9070 XT",
       "engine": "native",
       "training_time_seconds": 321.1,
-      "dry_recipe_token": "alo_stem_11e3a26b97c641e858213adf4ba40ab9ab60f619f0317e38e0263c6de1c4ae03",
-      "wet_recipe_token": "alo_stem_1561579a2a796dd5d3b247e23e2b8e61a441ca62849af23081e3e55e36b8c195"
+      "dry_recipe_token": "alo_rec_eba4c2eff1c7a4b5fae65eda97966dff57acd112c850e939c22c86b3799804d3",
+      "wet_recipe_token": "alo_rec_ce5356a9225fe23cf89dd3e9868e0af509c060cd516db58c5a56828ac931031b",
+      "dry_digest_token": "alo_stem_9428cb3caba5b715e234cdc3b909b3120084f769c6252b847dc3b24172c0b462",
+      "wet_digest_token": "alo_stem_37418b42aa9da6cd8a3e6e526396f14b08d05105944f7c9768752ad9baa275ae"
     },
     "Precision Dub [Neck] v6.1.1.nam": {
       "filename": "Precision Dub [Neck] v6.1.1.nam",
@@ -164,8 +175,10 @@
       "device_name": "AMD Radeon RX 9070 XT",
       "engine": "native",
       "training_time_seconds": 327.81,
-      "dry_recipe_token": "alo_stem_11e3a26b97c641e858213adf4ba40ab9ab60f619f0317e38e0263c6de1c4ae03",
-      "wet_recipe_token": "alo_stem_128235e79e4c3edbdc1fe9d862873b80c728ae3dddee1d21d645fdae1e2e01db"
+      "dry_recipe_token": "alo_rec_eba4c2eff1c7a4b5fae65eda97966dff57acd112c850e939c22c86b3799804d3",
+      "wet_recipe_token": "alo_rec_05658a65bb1c3eff57a9fb180a869a3a8c55638dbb612a96c5f81e2b58598f22",
+      "dry_digest_token": "alo_stem_9428cb3caba5b715e234cdc3b909b3120084f769c6252b847dc3b24172c0b462",
+      "wet_digest_token": "alo_stem_a1c24a20dffeb5bf8bb51a1275f6f5dde4c826eb1f4316b34e4ab4b75eb9e6aa"
     },
     "Dingwall Middle [Neck] v6.1.1.nam": {
       "filename": "Dingwall Middle [Neck] v6.1.1.nam",
@@ -191,8 +204,10 @@
       "device_name": "AMD Radeon RX 9070 XT",
       "engine": "native",
       "training_time_seconds": 317.31,
-      "dry_recipe_token": "alo_stem_11e3a26b97c641e858213adf4ba40ab9ab60f619f0317e38e0263c6de1c4ae03",
-      "wet_recipe_token": "alo_stem_3c4c17f22c7a10c414c91b51a5ec0be58f6448c62a80d205056371b7d2044f5b"
+      "dry_recipe_token": "alo_rec_eba4c2eff1c7a4b5fae65eda97966dff57acd112c850e939c22c86b3799804d3",
+      "wet_recipe_token": "alo_rec_81edf7aa6ae2e74e62c1d702f8666fa7bb699764ece98916dcef8131c93b041e",
+      "dry_digest_token": "alo_stem_9428cb3caba5b715e234cdc3b909b3120084f769c6252b847dc3b24172c0b462",
+      "wet_digest_token": "alo_stem_d8f120455e7485818649835c129f875d0ed79c3d786d79750b698bd0fca19e37"
     },
     "Mudbucker Deep [Neck] v6.1.1.nam": {
       "filename": "Mudbucker Deep [Neck] v6.1.1.nam",
@@ -218,8 +233,10 @@
       "device_name": "AMD Radeon RX 9070 XT",
       "engine": "native",
       "training_time_seconds": 319.03,
-      "dry_recipe_token": "alo_stem_11e3a26b97c641e858213adf4ba40ab9ab60f619f0317e38e0263c6de1c4ae03",
-      "wet_recipe_token": "alo_stem_ed978707526fa02e963d9466d232ceac0729207c63207f21c0a125446646677c"
+      "dry_recipe_token": "alo_rec_eba4c2eff1c7a4b5fae65eda97966dff57acd112c850e939c22c86b3799804d3",
+      "wet_recipe_token": "alo_rec_b960236cddd2f159948db2a5e43ba27a11d9a2ddea97626895b3798fb7618dee",
+      "dry_digest_token": "alo_stem_9428cb3caba5b715e234cdc3b909b3120084f769c6252b847dc3b24172c0b462",
+      "wet_digest_token": "alo_stem_3cdad3bf465206b97231f7eb63b7f4f1e2bd042591e89f11d5e178a8df62a2fc"
     },
     "Upright Piezo [Neck] v6.1.1.nam": {
       "filename": "Upright Piezo [Neck] v6.1.1.nam",
@@ -245,8 +262,10 @@
       "device_name": "AMD Radeon RX 9070 XT",
       "engine": "native",
       "training_time_seconds": 322.4,
-      "dry_recipe_token": "alo_stem_11e3a26b97c641e858213adf4ba40ab9ab60f619f0317e38e0263c6de1c4ae03",
-      "wet_recipe_token": "alo_stem_d95bba187ca2ae096e1830a3aff87f765be4408fa78daa9632e992ab74dff42b"
+      "dry_recipe_token": "alo_rec_eba4c2eff1c7a4b5fae65eda97966dff57acd112c850e939c22c86b3799804d3",
+      "wet_recipe_token": "alo_rec_0fecc48f663ff0535fcc160569c51024b3801cff67426ea26b606932e68cebae",
+      "dry_digest_token": "alo_stem_9428cb3caba5b715e234cdc3b909b3120084f769c6252b847dc3b24172c0b462",
+      "wet_digest_token": "alo_stem_6bff9eb9bc7e901b7c3db985a4cada95a3ec884a5abdaee9b398497c7a245df3"
     },
     "Jazz Neck Warm [Neck] v6.1.1.nam": {
       "filename": "Jazz Neck Warm [Neck] v6.1.1.nam",
@@ -272,8 +291,10 @@
       "device_name": "AMD Radeon RX 9070 XT",
       "engine": "native",
       "training_time_seconds": 318.99,
-      "dry_recipe_token": "alo_stem_11e3a26b97c641e858213adf4ba40ab9ab60f619f0317e38e0263c6de1c4ae03",
-      "wet_recipe_token": "alo_stem_46f5870298076b765165441a8da8c1a105b4f564da75e5bf545c7347558df3a9"
+      "dry_recipe_token": "alo_rec_eba4c2eff1c7a4b5fae65eda97966dff57acd112c850e939c22c86b3799804d3",
+      "wet_recipe_token": "alo_rec_6838a8f6967ebfe8658efe96d34dc7b9fbac880cdc4c535dac94a61ed59c7420",
+      "dry_digest_token": "alo_stem_9428cb3caba5b715e234cdc3b909b3120084f769c6252b847dc3b24172c0b462",
+      "wet_digest_token": "alo_stem_f4260f8877c22da3af0fdb5e86ee28fa9830702ed8062c5fd9d48970ba51bbe0"
     },
     "Jazz Bridge Open [Bridge] v6.1.1.nam": {
       "filename": "Jazz Bridge Open [Bridge] v6.1.1.nam",
@@ -299,8 +320,10 @@
       "device_name": "AMD Radeon RX 9070 XT",
       "engine": "native",
       "training_time_seconds": 320.17,
-      "dry_recipe_token": "alo_stem_9bdc9efc6c467bbf31257137e115f6273796a79cc3752dc34d1a820fbb81db23",
-      "wet_recipe_token": "alo_stem_bd94c015749399dcc3fe48a5b9e6bde37e35615cd11fc3b6f645a859b92122fa"
+      "dry_recipe_token": "alo_rec_9811cd939213e65fb2dc184d9590d10eafb40fb434b5b59668f4a4acbbaf20c0",
+      "wet_recipe_token": "alo_rec_eddbd7e6c52306a6bdb3d43ee9b8ecf0950ad5a10f59d8602d2b72014fa573fb",
+      "dry_digest_token": "alo_stem_2b6e7cf8e58874c08157e296570c2bccb28378045739aea37c4cca7912a0ed10",
+      "wet_digest_token": "alo_stem_ad26b58def0f65c5df1bb482fb43d7872f496568ae190911eace17939b9ebe42"
     },
     "StingRay Parallel [Bridge] v6.1.1.nam": {
       "filename": "StingRay Parallel [Bridge] v6.1.1.nam",
@@ -326,8 +349,10 @@
       "device_name": "AMD Radeon RX 9070 XT",
       "engine": "native",
       "training_time_seconds": 326.62,
-      "dry_recipe_token": "alo_stem_9bdc9efc6c467bbf31257137e115f6273796a79cc3752dc34d1a820fbb81db23",
-      "wet_recipe_token": "alo_stem_8213aeb38b72f0a38dbcabab1f19424764f1a9a51a42026eedfb82f4c111c391"
+      "dry_recipe_token": "alo_rec_9811cd939213e65fb2dc184d9590d10eafb40fb434b5b59668f4a4acbbaf20c0",
+      "wet_recipe_token": "alo_rec_0a057bd3463fbf125fb3fd387a9dae46a8fd8fe3ed2fe7b50451ce4774e1f8e8",
+      "dry_digest_token": "alo_stem_2b6e7cf8e58874c08157e296570c2bccb28378045739aea37c4cca7912a0ed10",
+      "wet_digest_token": "alo_stem_0760a697d1d97b692881c38c050fa8c959cfcc7f3f3438b6445a3b68054f0d45"
     },
     "StingRay Series [Bridge] v6.1.1.nam": {
       "filename": "StingRay Series [Bridge] v6.1.1.nam",
@@ -353,8 +378,10 @@
       "device_name": "AMD Radeon RX 9070 XT",
       "engine": "native",
       "training_time_seconds": 322.86,
-      "dry_recipe_token": "alo_stem_9bdc9efc6c467bbf31257137e115f6273796a79cc3752dc34d1a820fbb81db23",
-      "wet_recipe_token": "alo_stem_223bbebff06050a1fa44fe44c616ab60ae5bfc7581ed23945548cf588f399477"
+      "dry_recipe_token": "alo_rec_9811cd939213e65fb2dc184d9590d10eafb40fb434b5b59668f4a4acbbaf20c0",
+      "wet_recipe_token": "alo_rec_87b721e9dfe46a5617b60f2ab6e5f8ecad42919c13e84e14ab2d461747fe8f00",
+      "dry_digest_token": "alo_stem_2b6e7cf8e58874c08157e296570c2bccb28378045739aea37c4cca7912a0ed10",
+      "wet_digest_token": "alo_stem_b924b8732b9f9e659c43e82b84dd5bd9fbf9bb811ca2db136fd55a046347f67c"
     },
     "Rickenbacker Clank [Bridge] v6.1.1.nam": {
       "filename": "Rickenbacker Clank [Bridge] v6.1.1.nam",
@@ -380,8 +407,10 @@
       "device_name": "AMD Radeon RX 9070 XT",
       "engine": "native",
       "training_time_seconds": 321.25,
-      "dry_recipe_token": "alo_stem_9bdc9efc6c467bbf31257137e115f6273796a79cc3752dc34d1a820fbb81db23",
-      "wet_recipe_token": "alo_stem_664e35378b79b4e56aa4ff3ad2acb97e1a72fb4f15ff16a0fbde713232340bc4"
+      "dry_recipe_token": "alo_rec_9811cd939213e65fb2dc184d9590d10eafb40fb434b5b59668f4a4acbbaf20c0",
+      "wet_recipe_token": "alo_rec_e7a5627e8f1f2c489e8f16c5aeb3cccf5247a4722d77140f59e8ddf342613878",
+      "dry_digest_token": "alo_stem_2b6e7cf8e58874c08157e296570c2bccb28378045739aea37c4cca7912a0ed10",
+      "wet_digest_token": "alo_stem_022da4c8a12b95166177939d25cd53edc2565d973544316a108c1e36037daab5"
     },
     "Rickenbacker Open [Bridge] v6.1.1.nam": {
       "filename": "Rickenbacker Open [Bridge] v6.1.1.nam",
@@ -407,8 +436,10 @@
       "device_name": "AMD Radeon RX 9070 XT",
       "engine": "native",
       "training_time_seconds": 318.84,
-      "dry_recipe_token": "alo_stem_9bdc9efc6c467bbf31257137e115f6273796a79cc3752dc34d1a820fbb81db23",
-      "wet_recipe_token": "alo_stem_d9ebcc71d7728cb365e63c79403279d884f08c65b2a0b423385fbb5bc2df0ffa"
+      "dry_recipe_token": "alo_rec_9811cd939213e65fb2dc184d9590d10eafb40fb434b5b59668f4a4acbbaf20c0",
+      "wet_recipe_token": "alo_rec_2c1c6d00a467e8ffbc2ed53f8fa2bd56cedd2aa548015ec87b11997e70f0629c",
+      "dry_digest_token": "alo_stem_2b6e7cf8e58874c08157e296570c2bccb28378045739aea37c4cca7912a0ed10",
+      "wet_digest_token": "alo_stem_f61f15fd9f6fe287f87b2056b4ba94d45c1fb6d8b7e1c32cecb87762b8b1a1ee"
     },
     "Dingwall Bridge [Bridge] v6.1.1.nam": {
       "filename": "Dingwall Bridge [Bridge] v6.1.1.nam",
@@ -434,8 +465,10 @@
       "device_name": "AMD Radeon RX 9070 XT",
       "engine": "native",
       "training_time_seconds": 319.57,
-      "dry_recipe_token": "alo_stem_9bdc9efc6c467bbf31257137e115f6273796a79cc3752dc34d1a820fbb81db23",
-      "wet_recipe_token": "alo_stem_bb4ba02fcefc8298dc3a2b9ecdbb3e6ad52002d42ca333f8b554fb720371aefb"
+      "dry_recipe_token": "alo_rec_9811cd939213e65fb2dc184d9590d10eafb40fb434b5b59668f4a4acbbaf20c0",
+      "wet_recipe_token": "alo_rec_83ce3471b8d331631e4abf190f602b3e0aae4e6d73cd3279b03452f0f81ee0e5",
+      "dry_digest_token": "alo_stem_2b6e7cf8e58874c08157e296570c2bccb28378045739aea37c4cca7912a0ed10",
+      "wet_digest_token": "alo_stem_879ca397013d53ff6ac4a579c192274052f6d0d1e9b4aad94426f2b46c180905"
     },
     "Jazz Pair Open [Parallel] v6.1.1.nam": {
       "filename": "Jazz Pair Open [Parallel] v6.1.1.nam",
@@ -461,8 +494,10 @@
       "device_name": "AMD Radeon RX 9070 XT",
       "engine": "native",
       "training_time_seconds": 320.82,
-      "dry_recipe_token": "alo_stem_eaa59d492378f6e0d75feb95a07464e6cbdffe9084b948a018dc7f1eeabfd21b",
-      "wet_recipe_token": "alo_stem_846d0c149e992ddb92778672fb4fee6cce1c46014d020c7412463074032071d8"
+      "dry_recipe_token": "alo_rec_3f10c1f3e3ddd09131e837283f39d930795bc9b6ea12302026097fa69fae7773",
+      "wet_recipe_token": "alo_rec_53e68aa6de16c5baa5d0111894436e9d833b21454d87f678b470c96bba300314",
+      "dry_digest_token": "alo_stem_d59ae4b732e5034de656f930237c902b371ddede90cfdc8a4b45ba243b4cee78",
+      "wet_digest_token": "alo_stem_ff4fc9bd954f8b235be8d534ebbf6a2cfba9aa43116d1c266c7196bba22dc2a2"
     },
     "Jazz Pair Mids [Parallel] v6.1.1.nam": {
       "filename": "Jazz Pair Mids [Parallel] v6.1.1.nam",
@@ -488,8 +523,10 @@
       "device_name": "AMD Radeon RX 9070 XT",
       "engine": "native",
       "training_time_seconds": 318.31,
-      "dry_recipe_token": "alo_stem_eaa59d492378f6e0d75feb95a07464e6cbdffe9084b948a018dc7f1eeabfd21b",
-      "wet_recipe_token": "alo_stem_6e25db5c4aa6e10c292c152d921a3157c6692b61c48f0145fa84aeb3ebdc56b2"
+      "dry_recipe_token": "alo_rec_3f10c1f3e3ddd09131e837283f39d930795bc9b6ea12302026097fa69fae7773",
+      "wet_recipe_token": "alo_rec_c1175c76817c78cb1378278ad3832856bd2010a3e290e9a2c5e27825077ae696",
+      "dry_digest_token": "alo_stem_d59ae4b732e5034de656f930237c902b371ddede90cfdc8a4b45ba243b4cee78",
+      "wet_digest_token": "alo_stem_9e24fd093cf7f5efe17cf4fbbe165f83ff19ab9439bb7cf87f15eacec1eee046"
     },
     "Jazz Pair Active [Parallel] v6.1.1.nam": {
       "filename": "Jazz Pair Active [Parallel] v6.1.1.nam",
@@ -515,8 +552,10 @@
       "device_name": "AMD Radeon RX 9070 XT",
       "engine": "native",
       "training_time_seconds": 319.78,
-      "dry_recipe_token": "alo_stem_eaa59d492378f6e0d75feb95a07464e6cbdffe9084b948a018dc7f1eeabfd21b",
-      "wet_recipe_token": "alo_stem_0072264343dc328f03c3c2e7798d3b37d581ae7c156140ab26995c24aef51748"
+      "dry_recipe_token": "alo_rec_3f10c1f3e3ddd09131e837283f39d930795bc9b6ea12302026097fa69fae7773",
+      "wet_recipe_token": "alo_rec_520464000a328566ccb1753657b4e2bee23f0c56cf131de704432ee6ad18f636",
+      "dry_digest_token": "alo_stem_d59ae4b732e5034de656f930237c902b371ddede90cfdc8a4b45ba243b4cee78",
+      "wet_digest_token": "alo_stem_386f0e6b03356585f2b45ca88faf447a7f9a09e9f9bd29b734ac15d6ba55a4b6"
     },
     "P\u2215MM Parallel [Parallel] v6.1.1.nam": {
       "filename": "P\u2215MM Parallel [Parallel] v6.1.1.nam",
@@ -542,8 +581,10 @@
       "device_name": "AMD Radeon RX 9070 XT",
       "engine": "native",
       "training_time_seconds": 321.4,
-      "dry_recipe_token": "alo_stem_eaa59d492378f6e0d75feb95a07464e6cbdffe9084b948a018dc7f1eeabfd21b",
-      "wet_recipe_token": "alo_stem_6935116d409750378ca2f46e4e9651b5d94a37be4ee13e989ccc76aa78bde06b"
+      "dry_recipe_token": "alo_rec_3f10c1f3e3ddd09131e837283f39d930795bc9b6ea12302026097fa69fae7773",
+      "wet_recipe_token": "alo_rec_8f42494a4eb9b2be89c7fffbe617d76090e6925c893d4c7201aef812533a9e53",
+      "dry_digest_token": "alo_stem_d59ae4b732e5034de656f930237c902b371ddede90cfdc8a4b45ba243b4cee78",
+      "wet_digest_token": "alo_stem_04d8187399c6151655b03199b8ff56372b4de5a2e0847a71f418686d2678c415"
     },
     "P\u2215MM Series [Parallel] v6.1.1.nam": {
       "filename": "P\u2215MM Series [Parallel] v6.1.1.nam",
@@ -569,8 +610,10 @@
       "device_name": "AMD Radeon RX 9070 XT",
       "engine": "native",
       "training_time_seconds": 319.69,
-      "dry_recipe_token": "alo_stem_eaa59d492378f6e0d75feb95a07464e6cbdffe9084b948a018dc7f1eeabfd21b",
-      "wet_recipe_token": "alo_stem_e6a8bea95ab149998f2e70ed8884de311114b61ca44cc87e86bb78eb98381041"
+      "dry_recipe_token": "alo_rec_3f10c1f3e3ddd09131e837283f39d930795bc9b6ea12302026097fa69fae7773",
+      "wet_recipe_token": "alo_rec_c6b2dfd7c263ccc07d36e93704bd2e3dd595dfe2b6411c894c7a32249def9c9d",
+      "dry_digest_token": "alo_stem_d59ae4b732e5034de656f930237c902b371ddede90cfdc8a4b45ba243b4cee78",
+      "wet_digest_token": "alo_stem_aa34e30c5f7eab13eff9e8be78977a98f440db3b39c13f0ed53c8a07802377db"
     },
     "PJ Active [Parallel] v6.1.1.nam": {
       "filename": "PJ Active [Parallel] v6.1.1.nam",
@@ -596,8 +639,10 @@
       "device_name": "AMD Radeon RX 9070 XT",
       "engine": "native",
       "training_time_seconds": 318.52,
-      "dry_recipe_token": "alo_stem_eaa59d492378f6e0d75feb95a07464e6cbdffe9084b948a018dc7f1eeabfd21b",
-      "wet_recipe_token": "alo_stem_05d011c3897e2b05ebc0535e3f0b0d0e143b356b5f8e6bcfc1fb66988fa7db91"
+      "dry_recipe_token": "alo_rec_3f10c1f3e3ddd09131e837283f39d930795bc9b6ea12302026097fa69fae7773",
+      "wet_recipe_token": "alo_rec_8d54a0d67d363ad89a5a3b52d97ffa98bafed0ff4e1bf65296d1fe92aec413cc",
+      "dry_digest_token": "alo_stem_d59ae4b732e5034de656f930237c902b371ddede90cfdc8a4b45ba243b4cee78",
+      "wet_digest_token": "alo_stem_097774079d35a12175dae0f5cef67ec243b172032e53bc2d377d7f7c2850e829"
     },
     "PJ Passive [Parallel] v6.1.1.nam": {
       "filename": "PJ Passive [Parallel] v6.1.1.nam",
@@ -623,8 +668,10 @@
       "device_name": "AMD Radeon RX 9070 XT",
       "engine": "native",
       "training_time_seconds": 322.07,
-      "dry_recipe_token": "alo_stem_eaa59d492378f6e0d75feb95a07464e6cbdffe9084b948a018dc7f1eeabfd21b",
-      "wet_recipe_token": "alo_stem_cf21b2d6fbf0f70a4f0edd1ec2868d1e13fd672e2b004551fe736906fa1d16ae"
+      "dry_recipe_token": "alo_rec_3f10c1f3e3ddd09131e837283f39d930795bc9b6ea12302026097fa69fae7773",
+      "wet_recipe_token": "alo_rec_99de33a0bc08fb26d5328a15f33cd21947a44a1ff1e6a3f84909410c8e8e8153",
+      "dry_digest_token": "alo_stem_d59ae4b732e5034de656f930237c902b371ddede90cfdc8a4b45ba243b4cee78",
+      "wet_digest_token": "alo_stem_858c215a16cda417dc537e0fe48c7689575d8c7c6e425db502ec1d9f9f0a9972"
     },
     "Dingwall Parallel [Parallel] v6.1.1.nam": {
       "filename": "Dingwall Parallel [Parallel] v6.1.1.nam",
@@ -650,8 +697,10 @@
       "device_name": "AMD Radeon RX 9070 XT",
       "engine": "native",
       "training_time_seconds": 320.03,
-      "dry_recipe_token": "alo_stem_eaa59d492378f6e0d75feb95a07464e6cbdffe9084b948a018dc7f1eeabfd21b",
-      "wet_recipe_token": "alo_stem_716b5aa4c27c7517b940b54a3c772e6121bc86b0673bae0645434dbb1c7f0c8e"
+      "dry_recipe_token": "alo_rec_3f10c1f3e3ddd09131e837283f39d930795bc9b6ea12302026097fa69fae7773",
+      "wet_recipe_token": "alo_rec_57f26e69f04cfb414515e45d3328b409bed8ce93a8c0e304c6e912dccfd28e5c",
+      "dry_digest_token": "alo_stem_d59ae4b732e5034de656f930237c902b371ddede90cfdc8a4b45ba243b4cee78",
+      "wet_digest_token": "alo_stem_71d78b73dd8661ad3f11cff50b051e28be5263f16898783963a0ecfc31a692ec"
     },
     "Jazz Bridge Growl [Bridge] v6.1.1.nam": {
       "filename": "Jazz Bridge Growl [Bridge] v6.1.1.nam",
@@ -677,8 +726,10 @@
       "device_name": "AMD Radeon RX 9070 XT",
       "engine": "native",
       "training_time_seconds": 331.87,
-      "dry_recipe_token": "alo_stem_9bdc9efc6c467bbf31257137e115f6273796a79cc3752dc34d1a820fbb81db23",
-      "wet_recipe_token": "alo_stem_ecd990360046f553494ca7ebd032e811d88ae697a5f22d85d871b005524b9a16"
+      "dry_recipe_token": "alo_rec_9811cd939213e65fb2dc184d9590d10eafb40fb434b5b59668f4a4acbbaf20c0",
+      "wet_recipe_token": "alo_rec_7044944cdbded36d99d2f914a04425a86ba26afeee4c9967d559b91c978751ef",
+      "dry_digest_token": "alo_stem_2b6e7cf8e58874c08157e296570c2bccb28378045739aea37c4cca7912a0ed10",
+      "wet_digest_token": "alo_stem_d0af3e5a9eea9707f808089440f770f67cf882f21e899bd17ea677c1dd7ad5ed"
     }
   }
 }

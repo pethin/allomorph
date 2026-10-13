@@ -122,24 +122,39 @@ def build_bundle_manifest_entry(
     bundle_stems: Sequence[dict[str, Any]],
     base_dry_file: str | None = None,
     base_dry_token: str | None = None,
+    dry_digest_token: str | None = None,
+    base_dry_recipe_token: str | None = None,
 ) -> dict[str, Any]:
     """Constructs the authoritative manifest record for a single bundle."""
-    return {
+    res: dict[str, Any] = {
         "bundle": bundle_name,
         "recipe_token": recipe_token,
         "source": source,
         "position_name": position_name,
         "base_dry_file": base_dry_file,
         "base_dry_token": base_dry_token,
-        "dry_file": dry_filename,
-        "dry_version": dry_version,
-        "dry_recipe_token": dry_recipe_token,
-        "instrument_id": instrument_id,
-        "instrument_version": instrument_version,
-        "source_voicing_version": source_voicing_version,
-        "stem_count": len(bundle_stems),
-        "stems": list(bundle_stems),
     }
+    if base_dry_recipe_token is not None:
+        res["base_dry_recipe_token"] = base_dry_recipe_token
+    res.update(
+        {
+            "dry_file": dry_filename,
+            "dry_version": dry_version,
+            "dry_recipe_token": dry_recipe_token,
+        }
+    )
+    if dry_digest_token is not None:
+        res["dry_digest_token"] = dry_digest_token
+    res.update(
+        {
+            "instrument_id": instrument_id,
+            "instrument_version": instrument_version,
+            "source_voicing_version": source_voicing_version,
+            "stem_count": len(bundle_stems),
+            "stems": list(bundle_stems),
+        }
+    )
+    return res
 
 
 def assemble_root_pack_manifest(

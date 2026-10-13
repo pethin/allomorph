@@ -27,6 +27,7 @@ from allomorph.version import (
     ALLOMORPH_VERSION,
     DSP_GENERATION,
     compute_file_sha256,
+    compute_pcm_stem_digest,
     get_git_commit,
     resolve_tri_part_version,
 )
@@ -35,7 +36,7 @@ _MANIFEST_LOCK = threading.Lock()
 
 
 def extract_wav_metrics(wav_path: Path | str) -> dict[str, Any]:
-    """Extracts duration, sample rate, peak, RMS, True Peak, LUFS, and DC offset for a WAV file.
+    """Extracts duration, sample rate, peak, RMS, True Peak, LUFS, DC offset, and digest token for a WAV file.
 
     Returns an empty dict if the file cannot be read or is not a valid audio file.
     """
@@ -56,6 +57,7 @@ def extract_wav_metrics(wav_path: Path | str) -> dict[str, Any]:
             round(lufs_val, 2) if not (math.isinf(lufs_val) or math.isnan(lufs_val)) else None
         )
         metrics["dc_offset"] = round(float(np.mean(mono)), 6)
+        metrics["digest_token"] = compute_pcm_stem_digest(audio, sample_rate=sr)
     return metrics
 
 
@@ -68,6 +70,7 @@ def build_file_manifest_entry(
     voicing_version: int | None = None,
     compute_audio_metrics: bool = True,
     recipe_token: str | None = None,
+    digest_token: str | None = None,
 ) -> dict[str, Any]:
     """Builds an authoritative metadata entry for a single physical file on disk."""
     path = Path(file_path)
@@ -78,6 +81,8 @@ def build_file_manifest_entry(
         entry["sha256"] = compute_file_sha256(path)
     if recipe_token is not None:
         entry["recipe_token"] = recipe_token
+    if digest_token is not None:
+        entry["digest_token"] = digest_token
     if base_dry_token is not None:
         entry["base_dry_token"] = base_dry_token
     if base_dry_file is not None:
@@ -92,6 +97,8 @@ def build_file_manifest_entry(
     if compute_audio_metrics and path.suffix.lower() == ".wav":
         audio_metrics = extract_wav_metrics(path)
         entry.update(audio_metrics)
+        if digest_token is not None:
+            entry["digest_token"] = digest_token
 
     return entry
 
@@ -105,6 +112,7 @@ def build_dict_manifest_entry(
     instrument_version: int | None = None,
     voicing_version: int | None = None,
     recipe_token: str | None = None,
+    digest_token: str | None = None,
 ) -> dict[str, Any]:
     """Merges provenance and file size defaults into caller-provided metadata dictionary."""
     path = Path(file_path)
@@ -115,6 +123,8 @@ def build_dict_manifest_entry(
             entry.setdefault("sha256", compute_file_sha256(path))
     if recipe_token is not None:
         entry.setdefault("recipe_token", recipe_token)
+    if digest_token is not None:
+        entry.setdefault("digest_token", digest_token)
     if base_dry_token is not None:
         entry.setdefault("base_dry_token", base_dry_token)
     if base_dry_file is not None:
@@ -137,7 +147,7 @@ def read_existing_manifest(manifest_path: Path | str) -> dict[str, Any]:
         with path.open("r", encoding="utf-8") as f:
             data = json.load(f)
             return data if isinstance(data, dict) else {}
-    except json.JSONDecodeError, OSError:
+    except (json.JSONDecodeError, OSError):
         return {}
 
 
@@ -154,6 +164,7 @@ def assemble_manifest_document(
     allomorph_version: str = ALLOMORPH_VERSION,
     updated_at: str | None = None,
     recipe_token: str | None = None,
+    digest_token: str | None = None,
 ) -> dict[str, Any]:
     """Assembles the complete manifest document dictionary."""
     manifest_data: dict[str, Any] = {
@@ -167,6 +178,8 @@ def assemble_manifest_document(
     }
     if recipe_token is not None:
         manifest_data["recipe_token"] = recipe_token
+    if digest_token is not None:
+        manifest_data["digest_token"] = digest_token
     if base_dry_token is not None:
         manifest_data["base_dry_token"] = base_dry_token
     if base_dry_file is not None:
@@ -190,6 +203,7 @@ def write_manifest(
     instrument_version: int | None = None,
     voicing_version: int | None = None,
     recipe_token: str | None = None,
+    digest_token: str | None = None,
 ) -> Path:
     """Emits an authoritative manifest.json sidecar file in the output directory.
 
@@ -221,6 +235,7 @@ def write_manifest(
                     instrument_version=instrument_version,
                     voicing_version=voicing_version,
                     recipe_token=recipe_token,
+                    digest_token=digest_token,
                 )
                 file_entries[f_path.name] = entry
         else:
@@ -236,8 +251,15 @@ def write_manifest(
                         voicing_version=voicing_version,
                         compute_audio_metrics=True,
                         recipe_token=recipe_token,
+                        digest_token=digest_token,
                     )
                     file_entries[f_path.name] = entry
+
+        eff_digest_token = digest_token
+        if eff_digest_token is None and len(file_entries) == 1:
+            first_entry = next(iter(file_entries.values()))
+            if isinstance(first_entry, dict) and "digest_token" in first_entry:
+                eff_digest_token = first_entry["digest_token"]
 
         manifest_data = assemble_manifest_document(
             file_entries=file_entries,
@@ -248,6 +270,7 @@ def write_manifest(
             instrument_version=instrument_version,
             voicing_version=voicing_version,
             recipe_token=recipe_token,
+            digest_token=eff_digest_token,
         )
 
         with manifest_path.open("w", encoding="utf-8") as f:

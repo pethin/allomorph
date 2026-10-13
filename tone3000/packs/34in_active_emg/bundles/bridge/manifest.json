@@ -1,13 +1,15 @@
 {
   "bundle": "bridge",
-  "recipe_token": "alo_bun_37f924622c594a9d4f387966e26904223c55ed0b7bc3e3acdc3c56ff428555cb",
+  "recipe_token": "alo_bun_54ab26df07fa0838bc807925d3925ad95598f15ec32e52c81492bc51684eac58",
   "source": "34in_active_emg:bridge_solo",
   "position_name": "Bridge",
   "base_dry_file": "input.wav",
   "base_dry_token": "alo_dry_cda0bf51a1543539ac356a852a24bfedd37d61bb77a14e3eb24a4a1b2cec094f",
+  "base_dry_recipe_token": "alo_dryrec_917e999b1660e62f2923a79e4c18d131f2907de010dc708beb32659f91ebd602",
   "dry_file": "dry v6.1.1.wav",
   "dry_version": "v6.1.1",
-  "dry_recipe_token": "alo_stem_39efdf9cabce73d967f5a594465f04b272b1e75232eddcc0c242cf5f877e9bbd",
+  "dry_recipe_token": "alo_rec_ce240eb52c563ddfd2fe42468c90462de7c1fc1b68e26ff4ea7d758d1805955c",
+  "dry_digest_token": "alo_stem_1a3dc9afe16b9fc43b9d7aaba55b01409c4b14e55eda20ad3d0e11cdadebe8c6",
   "instrument_id": "34in_active_emg",
   "instrument_version": 1,
   "source_voicing_version": 1,
@@ -20,7 +22,8 @@
       "target_voicing_version": 1,
       "version": "v6.1.1",
       "tone_name": "Jazz Bridge Growl",
-      "recipe_token": "alo_stem_ecd990360046f553494ca7ebd032e811d88ae697a5f22d85d871b005524b9a16"
+      "recipe_token": "alo_rec_7044944cdbded36d99d2f914a04425a86ba26afeee4c9967d559b91c978751ef",
+      "digest_token": "alo_stem_d0af3e5a9eea9707f808089440f770f67cf882f21e899bd17ea677c1dd7ad5ed"
     },
     {
       "filename": "Jazz Bridge Open [Bridge] v6.1.1.wav",
@@ -29,7 +32,8 @@
       "target_voicing_version": 1,
       "version": "v6.1.1",
       "tone_name": "Jazz Bridge Open",
-      "recipe_token": "alo_stem_bd94c015749399dcc3fe48a5b9e6bde37e35615cd11fc3b6f645a859b92122fa"
+      "recipe_token": "alo_rec_eddbd7e6c52306a6bdb3d43ee9b8ecf0950ad5a10f59d8602d2b72014fa573fb",
+      "digest_token": "alo_stem_ad26b58def0f65c5df1bb482fb43d7872f496568ae190911eace17939b9ebe42"
     },
     {
       "filename": "StingRay Parallel [Bridge] v6.1.1.wav",
@@ -38,7 +42,8 @@
       "target_voicing_version": 1,
       "version": "v6.1.1",
       "tone_name": "StingRay Parallel",
-      "recipe_token": "alo_stem_8213aeb38b72f0a38dbcabab1f19424764f1a9a51a42026eedfb82f4c111c391"
+      "recipe_token": "alo_rec_0a057bd3463fbf125fb3fd387a9dae46a8fd8fe3ed2fe7b50451ce4774e1f8e8",
+      "digest_token": "alo_stem_0760a697d1d97b692881c38c050fa8c959cfcc7f3f3438b6445a3b68054f0d45"
     },
     {
       "filename": "StingRay Series [Bridge] v6.1.1.wav",
@@ -47,7 +52,8 @@
       "target_voicing_version": 1,
       "version": "v6.1.1",
       "tone_name": "StingRay Series",
-      "recipe_token": "alo_stem_223bbebff06050a1fa44fe44c616ab60ae5bfc7581ed23945548cf588f399477"
+      "recipe_token": "alo_rec_87b721e9dfe46a5617b60f2ab6e5f8ecad42919c13e84e14ab2d461747fe8f00",
+      "digest_token": "alo_stem_b924b8732b9f9e659c43e82b84dd5bd9fbf9bb811ca2db136fd55a046347f67c"
     },
     {
       "filename": "Rickenbacker Clank [Bridge] v6.1.1.wav",
@@ -56,7 +62,8 @@
       "target_voicing_version": 1,
       "version": "v6.1.1",
       "tone_name": "Rickenbacker Clank",
-      "recipe_token": "alo_stem_664e35378b79b4e56aa4ff3ad2acb97e1a72fb4f15ff16a0fbde713232340bc4"
+      "recipe_token": "alo_rec_e7a5627e8f1f2c489e8f16c5aeb3cccf5247a4722d77140f59e8ddf342613878",
+      "digest_token": "alo_stem_022da4c8a12b95166177939d25cd53edc2565d973544316a108c1e36037daab5"
     },
     {
       "filename": "Rickenbacker Open [Bridge] v6.1.1.wav",
@@ -65,7 +72,8 @@
       "target_voicing_version": 1,
       "version": "v6.1.1",
       "tone_name": "Rickenbacker Open",
-      "recipe_token": "alo_stem_d9ebcc71d7728cb365e63c79403279d884f08c65b2a0b423385fbb5bc2df0ffa"
+      "recipe_token": "alo_rec_2c1c6d00a467e8ffbc2ed53f8fa2bd56cedd2aa548015ec87b11997e70f0629c",
+      "digest_token": "alo_stem_f61f15fd9f6fe287f87b2056b4ba94d45c1fb6d8b7e1c32cecb87762b8b1a1ee"
     },
     {
       "filename": "Dingwall Bridge [Bridge] v6.1.1.wav",
@@ -74,7 +82,8 @@
       "target_voicing_version": 1,
       "version": "v6.1.1",
       "tone_name": "Dingwall Bridge",
-      "recipe_token": "alo_stem_bb4ba02fcefc8298dc3a2b9ecdbb3e6ad52002d42ca333f8b554fb720371aefb"
+      "recipe_token": "alo_rec_83ce3471b8d331631e4abf190f602b3e0aae4e6d73cd3279b03452f0f81ee0e5",
+      "digest_token": "alo_stem_879ca397013d53ff6ac4a579c192274052f6d0d1e9b4aad94426f2b46c180905"
     }
   ]
 }

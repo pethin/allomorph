@@ -101,6 +101,116 @@ def compute_file_sha256(filepath: Path | str) -> str:
 _DRY_TOKEN_CACHE: dict[str, tuple[int, str]] = {}
 
 
+def compute_excitation_recipe_token(
+    dsp_generation: int = DSP_GENERATION,
+    sample_rate: int = 48000,
+    duration_sec: float = 240.0,
+    recipe_tag: str | None = None,
+) -> str:
+    """Computes a deterministic 256-bit recipe token for synthetic dry excitation.
+
+    Returns: 'alo_dryrec_<64 hex chars>'.
+    """
+    tag = recipe_tag or f"synthetic_optimal_bass_dry_v{dsp_generation}"
+    payload = {
+        "dsp_generation": dsp_generation,
+        "sample_rate": sample_rate,
+        "duration_sec": duration_sec,
+        "recipe_tag": tag,
+    }
+    raw = json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    return f"alo_dryrec_{hashlib.sha256(raw).hexdigest()}"
+
+
+def compute_excitation_digest_token(
+    input_path: Path | str | None = None,
+    recipe_tag: str | None = None,
+    force: bool = False,
+) -> str:
+    """Retrieves or computes the dry excitation digest token (alo_dry_<64 hex>).
+
+    16-bit PCM quantized audio sample frames + telemetry digest.
+    """
+    return get_dry_excitation_token(input_path=input_path, recipe_tag=recipe_tag, force=force)
+
+
+def compute_pcm_stem_digest(
+    audio: Any,
+    sample_rate: int = 48000,
+) -> str:
+    """Computes a robust 256-bit audio digest from 16-bit PCM quantized frames and audio telemetry.
+
+    Resistant to sub-LSB float roundoff across architectures.
+    Returns: 'alo_stem_<64 hex chars>'.
+    """
+    import math
+
+    import numpy as np
+
+    from allomorph.dsp.io import compute_true_peak_dbfs
+    from allomorph.dsp.loudness import compute_lufs
+
+    audio_arr = np.asarray(audio, dtype=np.float64)
+    pcm16 = np.clip(np.round(audio_arr * 32767.0), -32768, 32767).astype(np.int16)
+
+    mono = audio_arr[0] if audio_arr.ndim > 1 else audio_arr
+    dur = round(float(len(mono)) / float(sample_rate), 3) if sample_rate > 0 else 0.0
+    lufs_val = compute_lufs(audio_arr, sample_rate=sample_rate)
+    lufs_rounded = (
+        round(lufs_val, 2) if not (math.isinf(lufs_val) or math.isnan(lufs_val)) else -100.0
+    )
+    tp_rounded = round(compute_true_peak_dbfs(audio_arr, sample_rate=sample_rate), 2)
+    rms = float(np.sqrt(np.mean(audio_arr**2)))
+    rms_rounded = round(20.0 * float(np.log10(max(rms, 1e-9))), 2)
+
+    header_str = f"{sample_rate}:{dur}:{lufs_rounded}:{tp_rounded}:{rms_rounded}:"
+
+    hasher = hashlib.sha256()
+    hasher.update(header_str.encode("utf-8"))
+    hasher.update(pcm16.tobytes())
+    return f"alo_stem_{hasher.hexdigest()}"
+
+
+def compute_stem_digest_token(
+    stem_audio: Path | str | Any,
+    sample_rate: int = 48000,
+) -> str:
+    """Computes or retrieves the stem digest token (alo_stem_<64 hex>) for a wet audio stem."""
+    try:
+        import numpy as np
+
+        if isinstance(stem_audio, np.ndarray):
+            return compute_pcm_stem_digest(stem_audio, sample_rate=sample_rate)
+    except ImportError:
+        pass
+
+    if hasattr(stem_audio, "ndim") and hasattr(stem_audio, "shape"):
+        return compute_pcm_stem_digest(stem_audio, sample_rate=sample_rate)
+
+    p = Path(stem_audio)
+    sidecar_p = p.parent / "manifest.json"
+    if sidecar_p.exists():
+        try:
+            with sidecar_p.open("r", encoding="utf-8") as sf:
+                sdata = json.load(sf)
+            file_entry = sdata.get("files", {}).get(p.name, {})
+            tok = file_entry.get("digest_token")
+            if (
+                tok
+                and isinstance(tok, str)
+                and tok.startswith("alo_stem_")
+                and file_entry.get("size_bytes") == p.stat().st_size
+            ):
+                return str(tok)
+        except (json.JSONDecodeError, OSError):
+            pass
+
+    from allomorph.dsp.io import read_wav
+
+    audio, sr = read_wav(p)
+    return compute_pcm_stem_digest(audio, sample_rate=sr)
+
+
 def compute_robust_audio_digest(
     audio_path: Path | str,
     recipe_tag: str | None = None,
@@ -189,20 +299,23 @@ def get_dry_excitation_token(
                 with sidecar_p.open("r", encoding="utf-8") as sf:
                     sdata = json.load(sf)
                 file_entry = sdata.get("files", {}).get(p.name, {})
+                tok = file_entry.get("digest_token") or file_entry.get("dry_token")
                 if (
-                    file_entry.get("dry_token")
+                    tok
                     and file_entry.get("size_bytes") == size
                     and file_entry.get("recipe_tag") == tag
                 ):
-                    token = str(file_entry["dry_token"])
+                    token = str(tok)
                     _DRY_TOKEN_CACHE[resolved_str] = (size, token)
                     return token
-            except json.JSONDecodeError, OSError:
+            except (json.JSONDecodeError, OSError):
                 pass
 
     # Cold path: Compute robust audio digest and persist to sidecar
     token = compute_robust_audio_digest(p, recipe_tag=tag)
     _DRY_TOKEN_CACHE[resolved_str] = (size, token)
+
+    rec_token = compute_excitation_recipe_token(dsp_generation=DSP_GENERATION, recipe_tag=tag)
 
     with _MANIFEST_LOCK:
         try:
@@ -212,6 +325,8 @@ def get_dry_excitation_token(
                     sidecar_data = json.load(sf)
             files_dict = sidecar_data.setdefault("files", {})
             files_dict[p.name] = {
+                "recipe_token": rec_token,
+                "digest_token": token,
                 "dry_token": token,
                 "recipe_tag": tag,
                 "size_bytes": size,
@@ -233,10 +348,12 @@ def compute_recipe_token(
     preamps: Any = None,
     strings: Any = None,
 ) -> str:
-    """Computes a deterministic 256-bit recipe token for an instrument voicing.
+    """Computes a deterministic 256-bit recipe token for an instrument voicing digital twin.
 
-    Returns: 'alo_stem_<64 hex chars>'.
+    Returns: 'alo_rec_<64 hex chars>'.
     """
+    excitation_recipe_token = compute_excitation_recipe_token(dsp_generation=dsp_generation)
+
     eff_dry_token = (
         base_dry_token if base_dry_token is not None else get_dry_excitation_token(base_dry_path)
     )
@@ -259,32 +376,60 @@ def compute_recipe_token(
 
     payload: dict[str, Any] = {
         "dsp_generation": dsp_generation,
+        "excitation_recipe_token": excitation_recipe_token,
         "base_dry_token": eff_dry_token,
         "instrument": inst_dict,
         "voicing": voice_dict,
     }
 
-    preamp_id = voice_dict.get("preamp") or inst_dict.get("preamp")
-    if preamp_id and preamps is not None and hasattr(preamps, "get"):
-        p_cfg = preamps.get(preamp_id)
-        if p_cfg is not None and hasattr(p_cfg, "model_dump"):
-            payload["preamp"] = p_cfg.model_dump(mode="json", exclude_none=True)
+    # Resolve harness and preamp
+    harnesses = inst_dict.get("harnesses", {})
+    h_id = voice_dict.get("harness")
+    if not h_id and harnesses:
+        h_id = next(iter(harnesses.keys()))
+
+    h_cfg = harnesses.get(h_id) if h_id else None
+    h_type = h_cfg.get("type") if isinstance(h_cfg, Mapping) else getattr(h_cfg, "type", None)
+
+    preamp_id = (
+        voice_dict.get("preamp")
+        or (h_cfg.get("preamp") if isinstance(h_cfg, Mapping) else getattr(h_cfg, "preamp", None))
+        or inst_dict.get("preamp")
+    )
+    if h_type == "active_preamp" and not preamp_id:
+        preamp_id = "flat_buffer"
+
+    if preamps is None:
+        from allomorph.config.preamps import PREAMPS
+
+        preamps = PREAMPS
+
+    if preamp_id and preamps is not None:
+        p_cfg = preamps.get(preamp_id) if hasattr(preamps, "get") else None
+        if p_cfg is not None:
+            if hasattr(p_cfg, "model_dump"):
+                payload["preamp"] = p_cfg.model_dump(mode="json", exclude_none=True)
+            elif isinstance(p_cfg, Mapping):
+                payload["preamp"] = dict(p_cfg)
 
     raw_bytes = json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("utf-8")
     digest = hashlib.sha256(raw_bytes).hexdigest()
-    return f"alo_stem_{digest}"
+    return f"alo_rec_{digest}"
 
 
 def compute_bundle_recipe_token(
-    dry_recipe_token: str,
+    dry_digest_token: str,
     stem_tokens: Sequence[str | tuple[str, str]] | Mapping[str, str],
+    *,
+    dry_recipe_token: str | None = None,
 ) -> str:
-    """Computes a deterministic 256-bit recipe token for an upload bundle.
+    """Computes a deterministic 256-bit recipe token for an upload bundle aggregating audio digests.
 
     Returns: 'alo_bun_<64 hex chars>'.
     """
+    eff_dry = dry_recipe_token if dry_recipe_token is not None else dry_digest_token
     hasher = hashlib.sha256()
-    hasher.update(f"dry:{dry_recipe_token}\n".encode())
+    hasher.update(f"dry:{eff_dry}\n".encode())
 
     if isinstance(stem_tokens, Mapping):
         sorted_items = sorted(stem_tokens.items())
@@ -332,6 +477,7 @@ def write_manifest(
     instrument_version: int | None = None,
     voicing_version: int | None = None,
     recipe_token: str | None = None,
+    digest_token: str | None = None,
 ) -> Path:
     """Emits an authoritative manifest.json sidecar file in the output directory.
 
@@ -349,6 +495,7 @@ def write_manifest(
         instrument_version=instrument_version,
         voicing_version=voicing_version,
         recipe_token=recipe_token,
+        digest_token=digest_token,
     )
 
 
@@ -378,7 +525,7 @@ def is_wet_stem_valid(
     try:
         with manifest_p.open("r", encoding="utf-8") as f:
             manifest = json.load(f)
-    except json.JSONDecodeError, OSError:
+    except (json.JSONDecodeError, OSError):
         return False
 
     files = manifest.get("files", {})
@@ -405,10 +552,14 @@ __all__ = [
     "DSP_GENERATION",
     "_MANIFEST_LOCK",
     "compute_bundle_recipe_token",
+    "compute_excitation_digest_token",
+    "compute_excitation_recipe_token",
     "compute_file_sha256",
     "compute_pack_recipe_token",
+    "compute_pcm_stem_digest",
     "compute_recipe_token",
     "compute_robust_audio_digest",
+    "compute_stem_digest_token",
     "get_dry_excitation_token",
     "get_git_commit",
     "get_version_info",

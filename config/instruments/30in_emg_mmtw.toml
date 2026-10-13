@@ -53,6 +53,7 @@ coils = [
 [harnesses.active]
 name = "EMG MMTWX Active Harness with Push-Pull Coil Switch"
 type = "active_preamp"
+preamp = "flat_buffer"
 load_resistance = 1000000.0
 cable_pf = 30.0
 

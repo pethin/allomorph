@@ -75,6 +75,7 @@ coils = [
 [harnesses.active]
 name = "Active P/MM Buffer & Blend Harness"
 type = "active_preamp"
+preamp = "flat_buffer"
 preamp_gain = 1.5
 load_resistance = 1000000.0
 cable_pf = 30.0

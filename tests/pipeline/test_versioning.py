@@ -197,8 +197,11 @@ def test_simulate_instrument_pickup_with_version_tag(
     assert m["version"] == "v6.1.1"
     assert wet_p.name in m["files"]
     assert "recipe_token" in m
-    assert m["recipe_token"].startswith("alo_stem_")
+    assert m["recipe_token"].startswith("alo_rec_")
     assert m["files"][wet_p.name]["recipe_token"] == m["recipe_token"]
+    assert "digest_token" in m
+    assert m["digest_token"].startswith("alo_stem_")
+    assert m["files"][wet_p.name]["digest_token"] == m["digest_token"]
 
 
 def test_wet_stem_manifest_validation_and_invalidation(tmp_path: Path):
@@ -478,3 +481,41 @@ def test_write_manifest_dict_files(tmp_path: Path):
     assert files[stem1.name]["voicing_version"] == 3
     assert files[stem1.name]["base_dry_token"] == "alo_dry_1234"
     assert files[stem1.name]["note"] == "test stem 1"
+
+
+def test_dual_token_excitation_and_stems(tmp_path: Path):
+    """Verify dual token generation separating recipe from audio PCM digest."""
+    import numpy as np
+
+    from allomorph.dsp.io import write_wav_24bit
+    from allomorph.version import (
+        compute_excitation_digest_token,
+        compute_excitation_recipe_token,
+        compute_pcm_stem_digest,
+        compute_stem_digest_token,
+    )
+
+    # 1. Excitation recipe token
+    rec1 = compute_excitation_recipe_token(dsp_generation=6, sample_rate=48000, duration_sec=120.0)
+    rec2 = compute_excitation_recipe_token(dsp_generation=7, sample_rate=48000, duration_sec=120.0)
+    assert rec1.startswith("alo_dryrec_")
+    assert rec2.startswith("alo_dryrec_")
+    assert len(rec1) == 11 + 64
+    assert rec1 != rec2
+
+    # 2. Audio PCM digest token
+    samples = np.array([0.0, 0.5, -0.5], dtype=np.float32)
+    wav_file = tmp_path / "test.wav"
+    write_wav_24bit(str(wav_file), samples, 48000)
+
+    dry_digest = compute_excitation_digest_token(wav_file)
+    assert dry_digest.startswith("alo_dry_")
+    assert len(dry_digest) == 8 + 64
+
+    stem_digest = compute_stem_digest_token(wav_file)
+    assert stem_digest.startswith("alo_stem_")
+    assert len(stem_digest) == 9 + 64
+
+    pcm_digest = compute_pcm_stem_digest(samples)
+    assert pcm_digest == stem_digest
+

@@ -80,6 +80,7 @@ coils = [
 [harnesses.active]
 name = "EMG Active Blend & Volume Harness"
 type = "active_preamp"
+preamp = "flat_buffer"
 load_resistance = 1000000.0
 cable_pf = 30.0
 
