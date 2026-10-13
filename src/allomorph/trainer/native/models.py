@@ -376,9 +376,7 @@ class AllomorphWaveNetA2(nn.Module):
                     y_rms_list: list[float] = []
                     for g in x_gains:
                         yg = self(float(g) * x)
-                        y_rms_list.append(
-                            torch.sqrt(torch.mean(torch.square(yg[:, ch, :]))).item()
-                        )
+                        y_rms_list.append(torch.sqrt(torch.mean(torch.square(yg[:, ch, :]))).item())
                     y_rms = np.array(y_rms_list)
                     max_gain = float(y_rms[-1] * len(y_rms))
                     min_gain = 0.5 * max_gain
@@ -393,7 +391,7 @@ class AllomorphWaveNetA2(nn.Module):
             if was_training:
                 self.train()
             return results[0], results[1]
-        except (ImportError, RuntimeError, OSError, ValueError, KeyError):
+        except ImportError, RuntimeError, OSError, ValueError, KeyError:
             return default_res
 
     def export_nam(
@@ -490,4 +488,3 @@ class AllomorphWaveNetA2(nn.Module):
         with open(out_file, "w", encoding="utf-8") as f:
             json.dump(container, f, separators=(",", ":"))
         return container
-

@@ -39,6 +39,7 @@ from allomorph.trainer.constants import (
 from allomorph.version import (
     ALLOMORPH_VERSION,
     DSP_GENERATION,
+    compute_recipe_token,
     get_git_commit,
     is_wet_stem_valid,
     resolve_tri_part_version,
@@ -352,7 +353,19 @@ def train_voice_stock(
             else (tgt_v.id or voice)
         )
         target_wet = AUDIO_DIR / "wet" / tgt_inst.id / f"{target_slug}.wav"
-        if not (target_wet.exists() and is_wet_stem_valid(target_wet, base_dry_path=input_path)):
+        target_recipe_token = compute_recipe_token(
+            instrument=tgt_inst,
+            voicing=tgt_v,
+            base_dry_path=input_path,
+        )
+        if not (
+            target_wet.exists()
+            and is_wet_stem_valid(
+                target_wet,
+                expected_recipe_token=target_recipe_token,
+                base_dry_path=input_path,
+            )
+        ):
             try:
                 from allomorph.circuit import simulate_instrument_voicing
 
@@ -377,7 +390,7 @@ def train_voice_stock(
     if not output_path.exists():
         print(f"Error: Target output audio '{output_path}' does not exist.")
         print("Please run the simulation stage first:")
-        print(f"  uv run python -m allomorph.pipeline.cli --stage sim --voice {voice}")
+        print(f"  uv run allomorph stems generate --targets {voice}")
         return False
 
     # Resolve reference stem
@@ -385,8 +398,18 @@ def train_voice_stock(
         reference_path = Path(reference_wav)
     else:
         candidate_source = AUDIO_DIR / "wet" / inst_id / f"{src_voicing_id}.wav"
+        src_v = inst_cfg.voicings.get(src_voicing_id)
+        if src_v is None:
+            src_v = next(iter(inst_cfg.voicings.values()))
+        src_recipe_token = compute_recipe_token(
+            instrument=inst_cfg,
+            voicing=src_v,
+            base_dry_path=input_path,
+        )
         if candidate_source.exists() and is_wet_stem_valid(
-            candidate_source, base_dry_path=input_path
+            candidate_source,
+            expected_recipe_token=src_recipe_token,
+            base_dry_path=input_path,
         ):
             reference_path = candidate_source
         else:

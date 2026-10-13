@@ -1,12 +1,13 @@
 {
   "bundle": "bridge",
+  "recipe_token": "alo_bun_6d21fc8a192f03f376f8844dec87e0c8cf40a700b5ceb1c3dbaf347f1b780a19",
   "source_voicing": "bridge_solo",
   "position_name": "Bridge",
   "base_dry_file": "input.wav",
-  "base_dry_sha256": "9ffa7e6d51b6a10451df50979a0c66723e6b324b88bd271b74805d6ba10e3b0a",
+  "base_dry_token": "alo_dry_cda0bf51a1543539ac356a852a24bfedd37d61bb77a14e3eb24a4a1b2cec094f",
   "dry_file": "dry v6.1.1.wav",
   "dry_version": "v6.1.1",
-  "dry_sha256": "13d49c4dd3d28c50f1ff2cecb3762ff6a5ccadf07e5dff386ce3afcf8fa0a69c",
+  "dry_recipe_token": "alo_stem_9bdc9efc6c467bbf31257137e115f6273796a79cc3752dc34d1a820fbb81db23",
   "instrument_id": "34in_preamp_soapbar",
   "instrument_version": 1,
   "source_voicing_version": 1,
@@ -20,7 +21,7 @@
       "target_voicing_version": 1,
       "version": "v6.1.1",
       "tone_name": "Jazz Bridge Growl",
-      "sha256": "726387ef2bb59ee02a03de424d8b212e7d7df7ecc1649577e3202a5e89bfa155"
+      "recipe_token": "alo_stem_ecd990360046f553494ca7ebd032e811d88ae697a5f22d85d871b005524b9a16"
     },
     {
       "filename": "Jazz Bridge Open [Bridge] v6.1.1.wav",
@@ -30,7 +31,7 @@
       "target_voicing_version": 1,
       "version": "v6.1.1",
       "tone_name": "Jazz Bridge Open",
-      "sha256": "8d1d45bbb6023a140f9dc52066d930917d3e59337cd9171a53f780b0962f09b8"
+      "recipe_token": "alo_stem_bd94c015749399dcc3fe48a5b9e6bde37e35615cd11fc3b6f645a859b92122fa"
     },
     {
       "filename": "StingRay Parallel [Bridge] v6.1.1.wav",
@@ -40,7 +41,7 @@
       "target_voicing_version": 1,
       "version": "v6.1.1",
       "tone_name": "StingRay Parallel",
-      "sha256": "999933b8c4f400728f8d9b1eb2dc6470f69fd61b1e9c5ee239076fc89b731d07"
+      "recipe_token": "alo_stem_8213aeb38b72f0a38dbcabab1f19424764f1a9a51a42026eedfb82f4c111c391"
     },
     {
       "filename": "StingRay Series [Bridge] v6.1.1.wav",
@@ -50,7 +51,7 @@
       "target_voicing_version": 1,
       "version": "v6.1.1",
       "tone_name": "StingRay Series",
-      "sha256": "0d0cb5d3cb83c0777d1d77ebf22d6e7d3b149bcc98e274e3e232b90d9796d1eb"
+      "recipe_token": "alo_stem_223bbebff06050a1fa44fe44c616ab60ae5bfc7581ed23945548cf588f399477"
     },
     {
       "filename": "Rickenbacker Clank [Bridge] v6.1.1.wav",
@@ -60,7 +61,7 @@
       "target_voicing_version": 1,
       "version": "v6.1.1",
       "tone_name": "Rickenbacker Clank",
-      "sha256": "ded94f25ec55aae302dd988052547e228d39c59fcfd660b9b35022e9dd98d15f"
+      "recipe_token": "alo_stem_664e35378b79b4e56aa4ff3ad2acb97e1a72fb4f15ff16a0fbde713232340bc4"
     },
     {
       "filename": "Rickenbacker Open [Bridge] v6.1.1.wav",
@@ -70,7 +71,7 @@
       "target_voicing_version": 1,
       "version": "v6.1.1",
       "tone_name": "Rickenbacker Open",
-      "sha256": "30a1635571cae1699ef077daea77578a56a339f584052515f4b1b3629e9595c1"
+      "recipe_token": "alo_stem_d9ebcc71d7728cb365e63c79403279d884f08c65b2a0b423385fbb5bc2df0ffa"
     },
     {
       "filename": "Dingwall Bridge [Bridge] v6.1.1.wav",
@@ -80,7 +81,7 @@
       "target_voicing_version": 1,
       "version": "v6.1.1",
       "tone_name": "Dingwall Bridge",
-      "sha256": "b20fe89c0740bf17efa4689e6670a8e4c60f1d7004725712bd3bdfa8744d8f95"
+      "recipe_token": "alo_stem_bb4ba02fcefc8298dc3a2b9ecdbb3e6ad52002d42ca333f8b554fb720371aefb"
     }
   ]
 }

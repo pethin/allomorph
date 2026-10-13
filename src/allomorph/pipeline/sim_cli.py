@@ -227,12 +227,6 @@ def build_sim_arg_parser() -> argparse.ArgumentParser:
         help="Maximum audio sample frames to simulate (default: None for full file)",
     )
     parser.add_argument(
-        "--stage",
-        choices=["sim", "all"],
-        default=None,
-        help="Execution stage: 'sim' (direct forward simulation of instrument voicings), 'all'.",
-    )
-    parser.add_argument(
         "--version-tag",
         default=None,
         help="Semantic version tag to embed in exported filenames (e.g. 'auto', 'v6.1.1')",

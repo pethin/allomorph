@@ -109,24 +109,26 @@ def build_bundle_manifest_entry(
     source_voicing_id: str,
     dry_filename: str,
     dry_version: str,
-    dry_sha256: str,
+    dry_recipe_token: str,
+    recipe_token: str,
     instrument_id: str,
     instrument_version: int,
     source_voicing_version: int,
     bundle_stems: Sequence[dict[str, Any]],
     base_dry_file: str | None = None,
-    base_dry_sha256: str | None = None,
+    base_dry_token: str | None = None,
 ) -> dict[str, Any]:
     """Constructs the authoritative manifest record for a single bundle."""
     return {
         "bundle": bundle_name,
+        "recipe_token": recipe_token,
         "source_voicing": source_voicing_id,
         "position_name": position_name,
         "base_dry_file": base_dry_file,
-        "base_dry_sha256": base_dry_sha256,
+        "base_dry_token": base_dry_token,
         "dry_file": dry_filename,
         "dry_version": dry_version,
-        "dry_sha256": dry_sha256,
+        "dry_recipe_token": dry_recipe_token,
         "instrument_id": instrument_id,
         "instrument_version": instrument_version,
         "source_voicing_version": source_voicing_version,
@@ -138,15 +140,19 @@ def build_bundle_manifest_entry(
 def assemble_root_pack_manifest(
     inst: InstrumentConfig,
     bundle_entries: Mapping[str, Any],
+    recipe_token: str | None = None,
     dsp_generation: int = DSP_GENERATION,
 ) -> dict[str, Any]:
     """Assembles the root pack manifest dictionary for an instrument."""
-    return {
+    manifest: dict[str, Any] = {
         "instrument_id": inst.id,
         "instrument_name": inst.name,
         "instrument_version": inst.version,
         "version": resolve_tri_part_version(dsp_generation, inst.version, 1),
         "allomorph_version": ALLOMORPH_VERSION,
         "dsp_generation": dsp_generation,
-        "bundles": dict(bundle_entries),
     }
+    if recipe_token is not None:
+        manifest["recipe_token"] = recipe_token
+    manifest["bundles"] = dict(bundle_entries)
+    return manifest

@@ -366,5 +366,5 @@ To model your own bass in Allomorph:
    ```
 4. Run validation and preview:
    ```bash
-   uv run allomorph --stage viz --instrument my_custom_5str
+   uv run allomorph viz my_custom_5str
    ```

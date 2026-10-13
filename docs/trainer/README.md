@@ -57,13 +57,11 @@ src/allomorph/trainer/
 
 ## 3. CLI Quick Reference
 
-The trainer is invoked via `scripts/train_nam.py` or the `allomorph-train` entrypoint.
+The trainer is invoked via the `allomorph train` command.
 
 ### Training with the Native Engine (Default Recommended):
 ```bash
-uv run python scripts/train_nam.py \
-  --source-inst 34in_standard_p \
-  --voice-id precision_dub \
+uv run allomorph train 34in_standard_p:precision_dub \
   --engine native \
   --epochs 100 \
   --min-epochs 60 \
@@ -73,9 +71,7 @@ uv run python scripts/train_nam.py \
 
 ### Training with the Upstream Stock Engine:
 ```bash
-uv run python scripts/train_nam.py \
-  --source-inst 34in_standard_p \
-  --voice-id precision_dub \
+uv run allomorph train 34in_standard_p:precision_dub \
   --engine stock \
   --epochs 200 \
   --precision bf16-mixed
@@ -89,7 +85,7 @@ uv run python scripts/train_nam.py \
 | `--min-epochs` | Warmup floor before early stopping evaluates | Native | `60` |
 | `--patience` | Early stopping patience epochs | Native | `10` |
 | `--min-delta` | Early stopping minimum improvement delta | Native | `1e-6` |
-| `--native-lr` | Native Adam learning rate | Native | `0.004` |
-| `--native-weight-decay` | Native Adam weight decay | Native | `3.17e-7` |
-| `--native-slice-len` | Target audio head window length | Native | `8192` |
+| `--lr` | Native Adam learning rate | Native | `0.004` |
+| `--weight-decay` | Native Adam weight decay | Native | `3.17e-7` |
+| `--slice-len` | Target audio head window length | Native | `8192` |
 | `--precision` | Floating-point precision (`bf16-mixed`, `16-mixed`, `32-true`) | Both | `bf16-mixed` |

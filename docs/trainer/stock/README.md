@@ -124,19 +124,17 @@ Upon completion of the 200-epoch training schedule, the stock engine exports the
 
 ## 7. CLI Usage
 
-### Direct Invocation via `scripts/train_nam.py`
+### Direct Training via `allomorph train`
 ```bash
 # Train a target voice using the stock 200-epoch engine:
-uv run python scripts/train_nam.py \
-  --source-inst 34in_standard_p \
-  --voice-id jazz_pair_active \
+uv run allomorph train 34in_standard_p:jazz_pair_active \
   --engine stock \
   --epochs 200 \
   --batch-size auto
 ```
 
-### Pipeline Invocation via `allomorph`
+### Full Tone Pack Training via Stock Engine
 ```bash
-# Run training stage across all configured voices with the stock engine:
-uv run allomorph --stage train --engine stock
+# Run training across all packs using the stock engine:
+uv run allomorph train packs --engine stock
 ```

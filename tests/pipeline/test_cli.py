@@ -1,5 +1,5 @@
 """
-Tests for pipeline CLI in allomorph.pipeline.cli.
+Tests for modern Cyclopts CLI in allomorph.cli.
 """
 
 from pathlib import Path
@@ -7,313 +7,158 @@ from typing import Any
 
 import pytest
 
-from allomorph.pipeline.cli import main
+from allomorph.cli import main
 
 
-def test_pipeline_cli_pack_input_wav_propagation(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
-    """Bug 3 regression: verify custom --input audio is propagated to export_tone_pack in pack stage."""
+def test_cli_main_help() -> None:
+    code = main(["--help"])
+    assert code == 0
+
+
+def test_cli_visualize(monkeypatch: pytest.MonkeyPatch) -> None:
     calls = []
 
-    def _mock_export_tone_pack(instrument: Any, **kwargs: Any) -> Path:
-        calls.append((instrument, kwargs))
-        return tmp_path
+    def _mock_gen_all(output_dir: Any = None) -> None:
+        calls.append(output_dir)
 
-    monkeypatch.setattr("allomorph.pipeline.pack.export_tone_pack", _mock_export_tone_pack)
-
-    custom_input = tmp_path / "custom_dry.wav"
-    custom_input.write_bytes(b"dummy wav data")
-
-    main(argv=["--stage", "pack", "--instrument", "30in", "--input", str(custom_input), "--force"])
-
+    monkeypatch.setattr("allomorph.cli.visualize_cmd.generate_all_charts", _mock_gen_all)
+    code = main(["visualize"])
+    assert code == 0
     assert len(calls) == 1
-    _inst, kwargs = calls[0]
-    assert kwargs.get("input_wav") == str(custom_input)
-    assert kwargs.get("overwrite") is True
+
+    # Test alias 'viz'
+    code = main(["viz"])
+    assert code == 0
+    assert len(calls) == 2
 
 
-def test_pipeline_cli_stage_pack_all_packs_selected(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-):
-    """Verify that when all packs are selected (--stage pack --force without specific instrument/pack),
-    only existing packs in config/packs/ are exported, and undeclared instruments are never called.
-    """
-    from allomorph.config.instruments import TONE_PACKS
+def test_cli_visualize_specific_instrument(monkeypatch: pytest.MonkeyPatch) -> None:
+    calls = []
 
-    calls: list[str] = []
+    def _mock_gen_interactive(**kwargs: Any) -> None:
+        calls.append(kwargs)
 
-    def _mock_export_tone_pack(instrument: Any, **kwargs: Any) -> Path:
-        calls.append(str(instrument.id if hasattr(instrument, "id") else instrument))
-        return tmp_path
-
-    monkeypatch.setattr("allomorph.pipeline.pack.export_tone_pack", _mock_export_tone_pack)
-
-    main(argv=["--stage", "pack", "--force"])
-
-    assert len(calls) == len(TONE_PACKS)
-    assert calls == sorted(TONE_PACKS.keys())
-    assert "30in_emg_mmtw" not in calls
-
-
-def test_pipeline_cli_stage_pack_pack_all_flag(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
-    """Verify that --pack all exports all existing packs and does not raise FileNotFoundError."""
-    from allomorph.config.instruments import TONE_PACKS
-
-    calls: list[str] = []
-
-    def _mock_export_tone_pack(instrument: Any, **kwargs: Any) -> Path:
-        calls.append(str(instrument.id if hasattr(instrument, "id") else instrument))
-        return tmp_path
-
-    monkeypatch.setattr("allomorph.pipeline.pack.export_tone_pack", _mock_export_tone_pack)
-
-    main(argv=["--stage", "pack", "--pack", "all", "--force"])
-
-    assert calls == sorted(TONE_PACKS.keys())
-
-
-def test_pipeline_cli_stage_pack_explicit_pack_alias(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-):
-    """Verify that --pack with an alias resolves to the target pack."""
-    calls: list[str] = []
-
-    def _mock_export_tone_pack(instrument: Any, **kwargs: Any) -> Path:
-        calls.append(str(instrument.id if hasattr(instrument, "id") else instrument))
-        return tmp_path
-
-    monkeypatch.setattr("allomorph.pipeline.pack.export_tone_pack", _mock_export_tone_pack)
-
-    main(argv=["--stage", "pack", "--pack", "stingray"])
-
-    assert calls == ["34in_active_stingray"]
-
-
-def test_pipeline_cli_stage_pack_undeclared_instrument_fails():
-    """Verify that explicitly selecting an instrument without a pack configuration raises FileNotFoundError."""
-    with pytest.raises(FileNotFoundError, match="Tone pack configuration not found"):
-        main(argv=["--stage", "pack", "--instrument", "30in_emg_mmtw"])
-
-
-def test_pipeline_cli_stage_all_all_packs_selected(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
-    """Verify that --stage all exports only existing packs in step 2 when all instruments are run."""
-    from allomorph.config.instruments import TONE_PACKS
-
-    sim_calls: list[Any] = []
-    pack_calls: list[str] = []
-
-    def _mock_sim(inst: Any, **kwargs: Any) -> None:
-        sim_calls.append(inst)
-
-    def _mock_pack(instrument: Any, **kwargs: Any) -> Path:
-        pack_calls.append(str(instrument.id if hasattr(instrument, "id") else instrument))
-        return tmp_path
-
-    def _mock_viz(*args: Any, **kwargs: Any) -> None:
+    def _mock_gen_portal(**kwargs: Any) -> None:
         pass
 
-    monkeypatch.setattr("allomorph.pipeline.batch.simulate_all_instrument_voicings", _mock_sim)
-    monkeypatch.setattr("allomorph.pipeline.pack.export_tone_pack", _mock_pack)
-    monkeypatch.setattr("allomorph.pipeline.cli.run_visualization", _mock_viz)
-
-    main(argv=["--stage", "all", "--force"])
-
-    assert len(sim_calls) == 16  # all instruments simulated
-    assert pack_calls == sorted(TONE_PACKS.keys())  # only existing packs exported
-    assert "30in_emg_mmtw" not in pack_calls
-
-
-def test_pipeline_cli_all_input_wav_propagation(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
-    """Bug 3 regression: verify custom --input audio is propagated to export_tone_pack in all stage."""
-    sim_calls = []
-    pack_calls = []
-    viz_calls = []
-
-    def _mock_sim(*args: Any, **kwargs: Any) -> list[Any]:
-        sim_calls.append((args, kwargs))
-        empty_list: list[Any] = []
-        return empty_list
-
-    def _mock_pack(*args: Any, **kwargs: Any) -> Path:
-        pack_calls.append((args, kwargs))
-        return tmp_path
-
-    def _mock_viz(*args: Any, **kwargs: Any) -> None:
-        viz_calls.append((args, kwargs))
-
-    monkeypatch.setattr("allomorph.pipeline.batch.simulate_all_instrument_voicings", _mock_sim)
-    monkeypatch.setattr("allomorph.pipeline.pack.export_tone_pack", _mock_pack)
-    monkeypatch.setattr("allomorph.pipeline.cli.run_visualization", _mock_viz)
-
-    custom_input = tmp_path / "custom_dry.wav"
-    custom_input.write_bytes(b"dummy wav data")
-
-    main(argv=["--stage", "all", "--instrument", "30in", "--input", str(custom_input)])
-
-    assert len(sim_calls) == 1
-    assert len(pack_calls) == 1
-    assert len(viz_calls) == 1
-
-    _, p_kwargs = pack_calls[0]
-    assert p_kwargs.get("input_wav") == str(custom_input)
-
-
-def test_pipeline_cli_viz_stage(monkeypatch: pytest.MonkeyPatch):
-    """Verify --stage viz calls run_visualization."""
-    viz_calls = []
-
-    def _mock_viz(*args: Any, **kwargs: Any) -> None:
-        viz_calls.append((args, kwargs))
-
-    monkeypatch.setattr("allomorph.pipeline.cli.run_visualization", _mock_viz)
-    main(argv=["--stage", "viz", "--instrument", "34in_standard_p"])
-    assert len(viz_calls) == 1
-    assert viz_calls[0][1].get("instrument") == "34in_standard_p"
-
-
-def test_pipeline_cli_train_stage(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
-    """Verify --stage train calls train_voices_from_config with proper configuration."""
-    train_calls: list[Any] = []
-
-    def _mock_train(cfg: Any) -> bool:
-        train_calls.append(cfg)
-        return True
-
-    monkeypatch.setattr("allomorph.trainer.train_voices_from_config", _mock_train)
-
-    custom_input = tmp_path / "custom_input.wav"
-    custom_input.write_bytes(b"wav")
-
-    main(
-        argv=[
-            "--stage",
-            "train",
-            "--instrument",
-            "34in_standard_p",
-            "--voice",
-            "vintage_open",
-            "--input",
-            str(custom_input),
-            "--fast-dev-run",
-        ]
+    monkeypatch.setattr(
+        "allomorph.cli.visualize_cmd.generate_interactive_chart", _mock_gen_interactive
     )
+    monkeypatch.setattr("allomorph.cli.visualize_cmd.generate_portal_pages", _mock_gen_portal)
 
-    assert len(train_calls) == 1
-    cfg = train_calls[0]
-    assert cfg.voice == "vintage_open"
-    assert cfg.fast_dev_run is True
-    assert cfg.input_wav == str(custom_input)
-
-
-def test_pipeline_cli_list_flags(capsys: pytest.CaptureFixture[str]):
-    """Verify --list-instruments and --list-voices output."""
-    main(argv=["--list-instruments"])
-    captured_inst = capsys.readouterr().out
-    assert "Available Allomorph Source Instruments:" in captured_inst
-
-    main(argv=["--list-voices"])
-    captured_voice = capsys.readouterr().out
-    assert "Available Allomorph Target Pickup Voices" in captured_voice
-
-    main(argv=["--list-packs"])
-    captured_pack = capsys.readouterr().out
-    assert "Available Allomorph Tone3000 Tone Packs:" in captured_pack
-    assert "30in_mustang_pj" in captured_pack
+    code = main(["viz", "34in_standard_p"])
+    assert code == 0
+    assert len(calls) == 1
+    assert calls[0]["instrument"].id == "34in_standard_p"
 
 
-def test_pipeline_cli_audit_stage(
-    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
-):
-    """Verify --stage audit calls audit_wet_audio_catalog and prints telemetry."""
-    from allomorph.circuit.audit import AudioAuditReport
+def test_cli_stems_generate(monkeypatch: pytest.MonkeyPatch) -> None:
+    calls = []
 
-    mock_report = AudioAuditReport(
-        total_files=2,
-        valid_files=2,
-        clipped_files=0,
-        mean_lufs=-20.5,
-        min_lufs=-21.0,
-        max_lufs=-20.0,
-        mean_true_peak_dbfs=-0.5,
-        max_true_peak_dbfs=-0.1,
-        records=[],
-    )
+    def _mock_sim(**kwargs: Any) -> Path:
+        calls.append(kwargs)
+        return Path("audio/wet/dummy.wav")
 
-    def _mock_audit(**_kwargs: Any) -> AudioAuditReport:
-        return mock_report
+    monkeypatch.setattr("allomorph.cli.stems_cmd.simulate_instrument_voicing", _mock_sim)
 
-    monkeypatch.setattr("allomorph.circuit.audit.audit_wet_audio_catalog", _mock_audit)
-    main(argv=["--stage", "audit"])
-    out = capsys.readouterr().out
-    assert "AUDIO TELEMETRY REPORT" in out
-    assert "Total Files:        2" in out
+    code = main(["stems", "generate", "instrument:34in_standard_p:precision_vintage", "--force"])
+    assert code == 0
+    assert len(calls) == 1
+    assert calls[0]["voicing"].tone_name == "Precision Vintage"
+    assert calls[0]["force"] is True
 
 
-def test_pipeline_cli_sim_stage(monkeypatch: pytest.MonkeyPatch):
-    """Verify --stage sim calls simulate_all_instrument_voicings."""
-    sim_calls = []
+def test_cli_stems_prune_dry_run(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("allomorph.cli.stems_cmd.WET_AUDIO_DIR", tmp_path)
+    inst_dir = tmp_path / "34in_standard_p"
+    inst_dir.mkdir(parents=True)
+    orphan_file = inst_dir / "nonexistent_tone.wav"
+    orphan_file.write_bytes(b"dummy")
 
-    def _mock_sim(inst: Any, **kwargs: Any) -> None:
-        sim_calls.append((inst, kwargs))
-
-    monkeypatch.setattr("allomorph.pipeline.batch.simulate_all_instrument_voicings", _mock_sim)
-    main(argv=["--stage", "sim", "--instrument", "30in", "--max-samples", "2400"])
-    assert len(sim_calls) == 1
-    assert sim_calls[0][0] == "30in_mustang_pj"
-    assert sim_calls[0][1]["max_samples"] == 2400
+    code = main(["stems", "prune", "--dry-run"])
+    assert code == 0
+    assert orphan_file.exists()
 
 
-def test_allomorph_cli_root_entrypoint(monkeypatch: pytest.MonkeyPatch):
-    """Verify allomorph.cli.main invokes pipeline CLI main."""
-    import allomorph.cli
+def test_cli_stems_prune_actual(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("allomorph.cli.stems_cmd.WET_AUDIO_DIR", tmp_path)
+    inst_dir = tmp_path / "34in_standard_p"
+    inst_dir.mkdir(parents=True)
+    orphan_file = inst_dir / "nonexistent_tone.wav"
+    orphan_file.write_bytes(b"dummy")
 
-    cli_calls = []
-
-    def _mock_pipeline_main(argv: list[str] | None = None) -> None:
-        cli_calls.append(argv)
-
-    monkeypatch.setattr("allomorph.cli.pipeline_main", _mock_pipeline_main)
-    allomorph.cli.main(["--stage", "viz"])
-    assert len(cli_calls) == 1
-    assert cli_calls[0] == ["--stage", "viz"]
+    code = main(["stems", "prune"])
+    assert code == 0
+    assert not orphan_file.exists()
 
 
-def test_pipeline_cli_list_commands(capsys: pytest.CaptureFixture[str]):
-    """Verify --list-instruments and --list-voices execute and format output."""
-    main(argv=["--list-instruments"])
-    out = capsys.readouterr().out
-    assert "Available Allomorph Source Instruments:" in out
-    assert "30in_emg_mmtw" in out
+def test_cli_pack_export(monkeypatch: pytest.MonkeyPatch) -> None:
+    calls = []
 
-    main(argv=["--list-voices"])
-    out_voices = capsys.readouterr().out
-    assert "Available Allomorph Target Pickup Voices" in out_voices
-    assert "precision_vintage" in out_voices
+    def _mock_export(instrument: Any, **kwargs: Any) -> Path:
+        calls.append((instrument, kwargs))
+        return Path("tone3000/packs/34in_standard_p")
 
+    monkeypatch.setattr("allomorph.cli.pack_cmd.export_tone_pack", _mock_export)
 
-def test_pipeline_cli_argument_errors():
-    """Verify validation of jobs and max-samples arguments."""
-    with pytest.raises(SystemExit):
-        main(argv=["--jobs", "0"])
-
-    with pytest.raises(SystemExit):
-        main(argv=["--max-samples", "0"])
+    code = main(["pack", "pack:34in_standard_p", "--force"])
+    assert code == 0
+    assert len(calls) == 1
+    assert calls[0][0].id == "34in_standard_p"
+    assert calls[0][1]["overwrite"] is True
 
 
-def test_pipeline_cli_clean_audio(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
-    """Verify --clean-audio clears existing files and directories."""
-    audio_dir = tmp_path / "audio"
-    audio_dir.mkdir(parents=True, exist_ok=True)
-    (audio_dir / "test_file.wav").write_bytes(b"dummy")
-    sub_dir = audio_dir / "subdir"
-    sub_dir.mkdir()
-    (sub_dir / "sub_file.wav").write_bytes(b"dummy2")
+def test_cli_audit(monkeypatch: pytest.MonkeyPatch) -> None:
+    from allomorph.circuit.diagnostics import AudioAuditReport
 
-    def _dummy_viz(*args: object, **kwargs: object) -> None:
-        pass
+    def _mock_audit(**kwargs: Any) -> AudioAuditReport:
+        return AudioAuditReport(
+            total_files=5,
+            valid_files=5,
+            clipped_files=0,
+            mean_lufs=-20.5,
+            min_lufs=-20.6,
+            max_lufs=-20.4,
+            mean_true_peak_dbfs=-0.5,
+            max_true_peak_dbfs=-0.2,
+            records=[],
+        )
 
-    monkeypatch.setattr("allomorph.circuit.forward.AUDIO_DIR", audio_dir)
-    monkeypatch.setattr("allomorph.pipeline.cli.run_visualization", _dummy_viz)
+    monkeypatch.setattr("allomorph.cli.audit_cmd.audit_wet_audio_catalog", _mock_audit)
 
-    main(argv=["--clean-audio", "--stage", "viz"])
-    assert not (audio_dir / "test_file.wav").exists()
-    assert not sub_dir.exists()
+    code = main(["audit"])
+    assert code == 0
+
+
+def test_cli_list() -> None:
+    assert main(["list"]) == 0
+    assert main(["list", "instruments"]) == 0
+    assert main(["list", "voices"]) == 0
+    assert main(["list", "packs"]) == 0
+
+
+def test_cli_train_strict_validation_stock_with_native_option() -> None:
+    code = main(["train", "--engine", "stock", "--slice-len", "4096"])
+    assert code == 1
+
+
+def test_cli_train_strict_validation_native_with_stock_option() -> None:
+    code = main(["train", "--engine", "native", "--val-loss-metric", "val_loss"])
+    assert code == 1
+
+
+def test_cli_train_pack_dispatch(monkeypatch: pytest.MonkeyPatch) -> None:
+    calls = []
+
+    def _mock_train_pack(pack: Any, **kwargs: Any) -> Path:
+        calls.append((pack, kwargs))
+        return Path("tone3000/packs/34in_standard_p/nam")
+
+    monkeypatch.setattr("allomorph.cli.train_cmd.train_tone_pack", _mock_train_pack)
+
+    code = main(["train", "pack:34in_standard_p", "--epochs", "50", "--force", "--no-prune"])
+    assert code == 0
+    assert len(calls) == 1
+    assert calls[0][0] == "34in_standard_p"
+    assert calls[0][1]["epochs"] == 50
+    assert calls[0][1]["overwrite"] is True

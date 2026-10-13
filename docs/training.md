@@ -56,13 +56,13 @@ This generates genuine treble air, metallic attack snap, and pickup bite—faith
 - **Leveling:** Matches master excitation levels ($-20.50\text{ LUFS}$) strictly bounded by the **$0.9900$ ($-0.09\text{ dBFS}$) 4x Oversampled True-Peak safety ceiling** via transparent linear peak scaling to avoid double compression.
 
 ### 3. Target Wet Stems (`audio/wet/<inst_id>/<voice_slug>.wav`)
-- **Origin:** Synthesized via native forward simulation and non-linear magnetic ODE solving (`allomorph --stage sim` or `simulate_instrument_voicing`).
+- **Origin:** Synthesized via native forward simulation and non-linear magnetic ODE solving (`allomorph stems generate` or `simulate_instrument_voicing`).
 - **Contents:** Fully simulated target voice responses featuring dynamic magnetic string pull damping, back-EMF string braking, dynamic reluctance inductance modulation, core curvature wobble, dynamic aperture bloom ($\kappa_{\text{ap}}$), branch-wise pre-summing magnetic saturation for composite pickups with causal arrival delay $\tau_i$, and Stage 8 oversampled non-linear magnetic saturation.
 - **Leveling:** Calibrated ITU-R BS.1770-4 gated integrated loudness matching ($-20.50\text{ LUFS}$) guarantees uniform stage gain across all target voices, strictly bounded by the linear peak-based safety ceiling at **$-0.09\text{ dBFS}$ (0.9900 True Peak)** without double-compressing transient dynamics.
 
 ---
 
-## 4. Training CLI Workflows (`scripts/train_nam.py`)
+## 4. Training CLI Workflows (`allomorph train`)
 
 Allomorph includes an automated trainer targeting Apple Silicon Metal (MPS) and AMD ROCm GPU acceleration:
 
@@ -70,22 +70,17 @@ Allomorph includes an automated trainer targeting Apple Silicon Metal (MPS) and 
 Trains a monolithic A2 model mapping directly from the source instrument pickup to the target voice (wet $\to$ wet paired modeling):
 ```bash
 # Train direct model from 30" EMG MMTWX to Precision Active:
-uv run python scripts/train_nam.py --instrument 30in_emg_mmtw --voice precision_active
+uv run allomorph train 30in_emg_mmtw:precision_active
 
 # Train all target voices for an instrument:
-uv run python scripts/train_nam.py --instrument 34in_standard_p --voice all
+uv run allomorph train 34in_standard_p
 
-# Train with explicit input/output files:
-uv run python scripts/train_nam.py --input audio/wet/30in_emg_mmtw/mmtw_dual.wav \
-                                  --output audio/wet/34in_standard_pj/precision_active.wav \
-                                  --basename precision_active
-
-# Or simulate and train via the allomorph pipeline:
-uv run allomorph --stage train --instrument 30in_emg_mmtw --voice precision_active
+# Train with specific engine and hyperparameters:
+uv run allomorph train 30in_emg_mmtw:precision_active --engine native --epochs 120 --patience 15
 ```
 
 ### B. Tone3000 Upload Bundles (`bundles/<pickup>/`)
-For web training on Tone3000, bundles are generated via `allomorph --stage pack`:
+For web training on Tone3000, bundles are generated via `allomorph pack`:
 - Each bundle contains a single `dry.wav` and all target wet stems mapped to that pickup switch position.
 - Model names follow the zero-scroll display budget ($\le 34$ characters) and filename ceiling ($\le 64$ characters).
 
@@ -124,16 +119,16 @@ Allomorph provides two dedicated training backends in `src/allomorph/trainer/`:
 
 ---
 
-## 6. Audio QA Telemetry & Catalog Auditing (`allomorph --stage audit`)
+## 6. Audio QA Telemetry & Catalog Auditing (`allomorph audit`)
 
 To maintain pristine audio quality across all 25 target voices and source instrument digital twins, Allomorph includes an integrated audio QA telemetry suite:
 
 ```bash
 # Audit entire wet audio catalog across all instruments:
-uv run allomorph --stage audit
+uv run allomorph audit
 
 # Audit with verbose telemetry and strict pass/fail status:
-uv run allomorph --stage audit --verbose
+uv run allomorph audit --verbose
 ```
 
 ### Telemetry Guardrail Standards

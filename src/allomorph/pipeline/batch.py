@@ -10,7 +10,40 @@ from pathlib import Path
 
 from allomorph.config.schema import InstrumentConfig
 from allomorph.config.voices import VOICES
-from allomorph.pipeline.stages import run_circuit_simulation
+
+
+def run_circuit_simulation(
+    voice: str,
+    instrument: str = "30in",
+    input_wav: str | Path | None = None,
+    output_wav: str | Path | None = None,
+    max_samples: int | None = None,
+    normalize: bool = True,
+    force: bool = False,
+) -> bool:
+    """Executes a single voicing circuit simulation digital twin directly."""
+    try:
+        from allomorph.circuit.forward import simulate_instrument_voicing
+        from allomorph.config.instruments import load_instrument, resolve_target_voicing
+        from allomorph.config.preamps import PREAMPS
+        from allomorph.config.strings import STRINGS
+
+        inst_cfg = load_instrument(instrument)
+        tgt_inst, v_cfg = resolve_target_voicing(voice, instrument=inst_cfg)
+        simulate_instrument_voicing(
+            instrument=tgt_inst,
+            voicing=v_cfg,
+            input_wav=input_wav,
+            output_wav=output_wav,
+            max_samples=max_samples,
+            force=force,
+            preamps=PREAMPS,
+            strings=STRINGS,
+        )
+        return True
+    except Exception as e:  # noqa: BLE001
+        print(f"Error simulating voicing '{voice}' on instrument '{instrument}': {e}")
+        return False
 
 
 def _run_circuit_simulation_task(

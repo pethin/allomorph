@@ -3,6 +3,8 @@ Allomorph Trainer - Constants and Hyperparameter Defaults
 Schedule-driven natural convergence standards, optimizer annealing periods, and early stopping tolerances.
 """
 
+from typing import Literal
+
 # ------------------------------------------------------------------------------
 # Stock Engine Defaults (Standard upstream 200-epoch NAM/Lightning training)
 # ------------------------------------------------------------------------------
@@ -68,7 +70,7 @@ NATIVE_DEFAULT_SINE_AMPLITUDES: tuple[float, ...] = (0.25, 0.10, 0.05, 0.03, 0.0
 # General Platform & Architecture Invariants (Default Native Configuration)
 # ------------------------------------------------------------------------------
 DEFAULT_ARCHITECTURE: str = "A2"
-DEFAULT_ENGINE: str = "auto"
+DEFAULT_ENGINE: Literal["auto", "native", "stock"] = "auto"
 VALID_ENGINES: tuple[str, ...] = ("auto", "native", "stock")
 DEFAULT_SEED: int | None = None
 VALID_PRECISION_MODES: tuple[str, ...] = ("auto", "bf16-mixed", "16-mixed", "32-true", "32")

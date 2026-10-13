@@ -5,15 +5,17 @@
   "version": "v6.1.1",
   "allomorph_version": "0.5.0",
   "dsp_generation": 6,
+  "recipe_token": "alo_pck_b8432473b4507c36a235423a1f561b3643571211dd897afae2411acace0288ab",
   "bundles": {
     "neck": {
+      "recipe_token": "alo_bun_7df67e1f766cf13cc42d8e8123bbeea41c91a88a550ca9ed33d0388703784a18",
       "source_voicing": "neck_solo",
       "position_name": "Neck",
       "base_dry_file": "input.wav",
-      "base_dry_sha256": "9ffa7e6d51b6a10451df50979a0c66723e6b324b88bd271b74805d6ba10e3b0a",
+      "base_dry_token": "alo_dry_cda0bf51a1543539ac356a852a24bfedd37d61bb77a14e3eb24a4a1b2cec094f",
       "dry_file": "dry v6.1.1.wav",
       "dry_version": "v6.1.1",
-      "dry_sha256": "9de9662b61c59ec62876abfd9e4e965d888f500a5212f9289a5b0e5f031927b9",
+      "dry_recipe_token": "alo_stem_11e3a26b97c641e858213adf4ba40ab9ab60f619f0317e38e0263c6de1c4ae03",
       "instrument_id": "34in_preamp_soapbar",
       "instrument_version": 1,
       "source_voicing_version": 1,
@@ -27,7 +29,7 @@
           "target_voicing_version": 1,
           "version": "v6.1.1",
           "tone_name": "Precision Vintage",
-          "sha256": "347c2fc20967566b680616b577e729d29bb523af337ec77289017a3223625c41"
+          "recipe_token": "alo_stem_66e4f8dc7ace24c23154066150dd4901e2554b73c1e7e0610000596d5d07eacf"
         },
         {
           "filename": "Precision Active [Neck] v6.1.1.wav",
@@ -37,7 +39,7 @@
           "target_voicing_version": 1,
           "version": "v6.1.1",
           "tone_name": "Precision Active",
-          "sha256": "511a270d1d0f79adf8aad925f051e1e2fea4a7e456fbc4ab6ac69449f82d4b79"
+          "recipe_token": "alo_stem_700843c3e746e942589736d1e8df406d8871056d87812dba646d3b52b7d06ecd"
         },
         {
           "filename": "Precision Mids [Neck] v6.1.1.wav",
@@ -47,7 +49,7 @@
           "target_voicing_version": 1,
           "version": "v6.1.1",
           "tone_name": "Precision Mids",
-          "sha256": "80913d2b6e76862c543996232673e3cd0594cc84ef760ba2855827fac5fc5866"
+          "recipe_token": "alo_stem_dcfe7b45be2e4ce563b11193c2483857481b39a2b71bb217c34c3187e94f54b2"
         },
         {
           "filename": "Precision Warm [Neck] v6.1.1.wav",
@@ -57,7 +59,7 @@
           "target_voicing_version": 1,
           "version": "v6.1.1",
           "tone_name": "Precision Warm",
-          "sha256": "cc448fdf8bb1b7f9da31a3fdd9ff4c79e60f3691431821be84da27dd59a19c11"
+          "recipe_token": "alo_stem_1561579a2a796dd5d3b247e23e2b8e61a441ca62849af23081e3e55e36b8c195"
         },
         {
           "filename": "Precision Dub [Neck] v6.1.1.wav",
@@ -67,7 +69,7 @@
           "target_voicing_version": 1,
           "version": "v6.1.1",
           "tone_name": "Precision Dub",
-          "sha256": "707345dc9add6eba1b9cb4037f643928ec7634558a25f6c2ae19b99c7496f96d"
+          "recipe_token": "alo_stem_128235e79e4c3edbdc1fe9d862873b80c728ae3dddee1d21d645fdae1e2e01db"
         },
         {
           "filename": "Dingwall Middle [Neck] v6.1.1.wav",
@@ -77,7 +79,7 @@
           "target_voicing_version": 1,
           "version": "v6.1.1",
           "tone_name": "Dingwall Middle",
-          "sha256": "22aad00a8b7c798245bdbb83434255c03846cfddf77638f7818b6be20848f011"
+          "recipe_token": "alo_stem_3c4c17f22c7a10c414c91b51a5ec0be58f6448c62a80d205056371b7d2044f5b"
         },
         {
           "filename": "Mudbucker Deep [Neck] v6.1.1.wav",
@@ -87,7 +89,7 @@
           "target_voicing_version": 1,
           "version": "v6.1.1",
           "tone_name": "Mudbucker Deep",
-          "sha256": "55a4fa127bb63090023a7f4533b41f97c43ea238f269ae77e1be532287f8f762"
+          "recipe_token": "alo_stem_ed978707526fa02e963d9466d232ceac0729207c63207f21c0a125446646677c"
         },
         {
           "filename": "Upright Piezo [Neck] v6.1.1.wav",
@@ -97,7 +99,7 @@
           "target_voicing_version": 1,
           "version": "v6.1.1",
           "tone_name": "Upright Piezo",
-          "sha256": "5fad0982bd8609d3ff4d2a5f1c9e3a4936fe3ee9a3ed4bfdd7eefa9b02f8813a"
+          "recipe_token": "alo_stem_d95bba187ca2ae096e1830a3aff87f765be4408fa78daa9632e992ab74dff42b"
         },
         {
           "filename": "Jazz Neck Warm [Neck] v6.1.1.wav",
@@ -107,18 +109,19 @@
           "target_voicing_version": 1,
           "version": "v6.1.1",
           "tone_name": "Jazz Neck Warm",
-          "sha256": "c6b24d97a4681860c8edc3aa8b6d2cda6ecdba285d62e8a6838fc91eb3176bae"
+          "recipe_token": "alo_stem_46f5870298076b765165441a8da8c1a105b4f564da75e5bf545c7347558df3a9"
         }
       ]
     },
     "bridge": {
+      "recipe_token": "alo_bun_6d21fc8a192f03f376f8844dec87e0c8cf40a700b5ceb1c3dbaf347f1b780a19",
       "source_voicing": "bridge_solo",
       "position_name": "Bridge",
       "base_dry_file": "input.wav",
-      "base_dry_sha256": "9ffa7e6d51b6a10451df50979a0c66723e6b324b88bd271b74805d6ba10e3b0a",
+      "base_dry_token": "alo_dry_cda0bf51a1543539ac356a852a24bfedd37d61bb77a14e3eb24a4a1b2cec094f",
       "dry_file": "dry v6.1.1.wav",
       "dry_version": "v6.1.1",
-      "dry_sha256": "13d49c4dd3d28c50f1ff2cecb3762ff6a5ccadf07e5dff386ce3afcf8fa0a69c",
+      "dry_recipe_token": "alo_stem_9bdc9efc6c467bbf31257137e115f6273796a79cc3752dc34d1a820fbb81db23",
       "instrument_id": "34in_preamp_soapbar",
       "instrument_version": 1,
       "source_voicing_version": 1,
@@ -132,7 +135,7 @@
           "target_voicing_version": 1,
           "version": "v6.1.1",
           "tone_name": "Jazz Bridge Growl",
-          "sha256": "726387ef2bb59ee02a03de424d8b212e7d7df7ecc1649577e3202a5e89bfa155"
+          "recipe_token": "alo_stem_ecd990360046f553494ca7ebd032e811d88ae697a5f22d85d871b005524b9a16"
         },
         {
           "filename": "Jazz Bridge Open [Bridge] v6.1.1.wav",
@@ -142,7 +145,7 @@
           "target_voicing_version": 1,
           "version": "v6.1.1",
           "tone_name": "Jazz Bridge Open",
-          "sha256": "8d1d45bbb6023a140f9dc52066d930917d3e59337cd9171a53f780b0962f09b8"
+          "recipe_token": "alo_stem_bd94c015749399dcc3fe48a5b9e6bde37e35615cd11fc3b6f645a859b92122fa"
         },
         {
           "filename": "StingRay Parallel [Bridge] v6.1.1.wav",
@@ -152,7 +155,7 @@
           "target_voicing_version": 1,
           "version": "v6.1.1",
           "tone_name": "StingRay Parallel",
-          "sha256": "999933b8c4f400728f8d9b1eb2dc6470f69fd61b1e9c5ee239076fc89b731d07"
+          "recipe_token": "alo_stem_8213aeb38b72f0a38dbcabab1f19424764f1a9a51a42026eedfb82f4c111c391"
         },
         {
           "filename": "StingRay Series [Bridge] v6.1.1.wav",
@@ -162,7 +165,7 @@
           "target_voicing_version": 1,
           "version": "v6.1.1",
           "tone_name": "StingRay Series",
-          "sha256": "0d0cb5d3cb83c0777d1d77ebf22d6e7d3b149bcc98e274e3e232b90d9796d1eb"
+          "recipe_token": "alo_stem_223bbebff06050a1fa44fe44c616ab60ae5bfc7581ed23945548cf588f399477"
         },
         {
           "filename": "Rickenbacker Clank [Bridge] v6.1.1.wav",
@@ -172,7 +175,7 @@
           "target_voicing_version": 1,
           "version": "v6.1.1",
           "tone_name": "Rickenbacker Clank",
-          "sha256": "ded94f25ec55aae302dd988052547e228d39c59fcfd660b9b35022e9dd98d15f"
+          "recipe_token": "alo_stem_664e35378b79b4e56aa4ff3ad2acb97e1a72fb4f15ff16a0fbde713232340bc4"
         },
         {
           "filename": "Rickenbacker Open [Bridge] v6.1.1.wav",
@@ -182,7 +185,7 @@
           "target_voicing_version": 1,
           "version": "v6.1.1",
           "tone_name": "Rickenbacker Open",
-          "sha256": "30a1635571cae1699ef077daea77578a56a339f584052515f4b1b3629e9595c1"
+          "recipe_token": "alo_stem_d9ebcc71d7728cb365e63c79403279d884f08c65b2a0b423385fbb5bc2df0ffa"
         },
         {
           "filename": "Dingwall Bridge [Bridge] v6.1.1.wav",
@@ -192,18 +195,19 @@
           "target_voicing_version": 1,
           "version": "v6.1.1",
           "tone_name": "Dingwall Bridge",
-          "sha256": "b20fe89c0740bf17efa4689e6670a8e4c60f1d7004725712bd3bdfa8744d8f95"
+          "recipe_token": "alo_stem_bb4ba02fcefc8298dc3a2b9ecdbb3e6ad52002d42ca333f8b554fb720371aefb"
         }
       ]
     },
     "parallel": {
+      "recipe_token": "alo_bun_e041f77f610ae4f6c0685dc83853a5c835fe7c4157edc5031be4bc76ce7814a4",
       "source_voicing": "pair_parallel",
       "position_name": "Parallel",
       "base_dry_file": "input.wav",
-      "base_dry_sha256": "9ffa7e6d51b6a10451df50979a0c66723e6b324b88bd271b74805d6ba10e3b0a",
+      "base_dry_token": "alo_dry_cda0bf51a1543539ac356a852a24bfedd37d61bb77a14e3eb24a4a1b2cec094f",
       "dry_file": "dry v6.1.1.wav",
       "dry_version": "v6.1.1",
-      "dry_sha256": "c59d47357b2fccbf1a36b0d47947bcd163a651aa9b0c0f149d2b4f7bc2116e77",
+      "dry_recipe_token": "alo_stem_eaa59d492378f6e0d75feb95a07464e6cbdffe9084b948a018dc7f1eeabfd21b",
       "instrument_id": "34in_preamp_soapbar",
       "instrument_version": 1,
       "source_voicing_version": 1,
@@ -217,7 +221,7 @@
           "target_voicing_version": 1,
           "version": "v6.1.1",
           "tone_name": "Jazz Pair Open",
-          "sha256": "94230d36eeb7ce51b0ef7c705191782bc8bbbd69dca36b32faf09091f9481a40"
+          "recipe_token": "alo_stem_846d0c149e992ddb92778672fb4fee6cce1c46014d020c7412463074032071d8"
         },
         {
           "filename": "Jazz Pair Mids [Parallel] v6.1.1.wav",
@@ -227,7 +231,7 @@
           "target_voicing_version": 1,
           "version": "v6.1.1",
           "tone_name": "Jazz Pair Mids",
-          "sha256": "ccb2fc672d65c6483b2d8cb5859b63c0a572cddf20f4cedf7830a83954b16264"
+          "recipe_token": "alo_stem_6e25db5c4aa6e10c292c152d921a3157c6692b61c48f0145fa84aeb3ebdc56b2"
         },
         {
           "filename": "Jazz Pair Active [Parallel] v6.1.1.wav",
@@ -237,7 +241,7 @@
           "target_voicing_version": 1,
           "version": "v6.1.1",
           "tone_name": "Jazz Pair Active",
-          "sha256": "7d6dc07487deea0ef1c9cd8bb7a1750cd48899eecfe21f046532001cabf7af78"
+          "recipe_token": "alo_stem_0072264343dc328f03c3c2e7798d3b37d581ae7c156140ab26995c24aef51748"
         },
         {
           "filename": "P\u2215MM Parallel [Parallel] v6.1.1.wav",
@@ -247,7 +251,7 @@
           "target_voicing_version": 1,
           "version": "v6.1.1",
           "tone_name": "P\u2215MM Parallel",
-          "sha256": "f8eb20366d846fc1d09ba87f5db6f59ef75ad3bbfc58fdc9a43f128136b45dfb"
+          "recipe_token": "alo_stem_6935116d409750378ca2f46e4e9651b5d94a37be4ee13e989ccc76aa78bde06b"
         },
         {
           "filename": "P\u2215MM Series [Parallel] v6.1.1.wav",
@@ -257,7 +261,7 @@
           "target_voicing_version": 1,
           "version": "v6.1.1",
           "tone_name": "P\u2215MM Series",
-          "sha256": "6f2dba9c7e4a14856533975888df9f9ce296eadbdd0f9260a2c6f2748f613ea7"
+          "recipe_token": "alo_stem_e6a8bea95ab149998f2e70ed8884de311114b61ca44cc87e86bb78eb98381041"
         },
         {
           "filename": "PJ Active [Parallel] v6.1.1.wav",
@@ -267,7 +271,7 @@
           "target_voicing_version": 1,
           "version": "v6.1.1",
           "tone_name": "PJ Active",
-          "sha256": "d4b6aa17bf50e1d584477df3788cad4351113e4445c13ed3731f487b940bf5ed"
+          "recipe_token": "alo_stem_05d011c3897e2b05ebc0535e3f0b0d0e143b356b5f8e6bcfc1fb66988fa7db91"
         },
         {
           "filename": "PJ Passive [Parallel] v6.1.1.wav",
@@ -277,7 +281,7 @@
           "target_voicing_version": 1,
           "version": "v6.1.1",
           "tone_name": "PJ Passive",
-          "sha256": "05c9e82ebf5b18d48760304e6426f20e6c675f86f48acfe10178334b448fb78f"
+          "recipe_token": "alo_stem_cf21b2d6fbf0f70a4f0edd1ec2868d1e13fd672e2b004551fe736906fa1d16ae"
         },
         {
           "filename": "Dingwall Parallel [Parallel] v6.1.1.wav",
@@ -287,7 +291,7 @@
           "target_voicing_version": 1,
           "version": "v6.1.1",
           "tone_name": "Dingwall Parallel",
-          "sha256": "fa11c8ac9dc1a3415b6ce66b423ecd36495d4e5e4db4669e2aaa577961f0b220"
+          "recipe_token": "alo_stem_716b5aa4c27c7517b940b54a3c772e6121bc86b0673bae0645434dbb1c7f0c8e"
         }
       ]
     }
@@ -304,9 +308,9 @@
       "tone_name": "Precision Vintage",
       "sha256": "67a9ba282016e4779b543a3b19c3e564d0df59bd0ecbce0e51f41794b9bbf115",
       "dry_file": "dry v6.1.1.wav",
-      "dry_sha256": "9de9662b61c59ec62876abfd9e4e965d888f500a5212f9289a5b0e5f031927b9",
       "wet_file": "Precision Vintage [Neck] v6.1.1.wav",
-      "wet_sha256": "347c2fc20967566b680616b577e729d29bb523af337ec77289017a3223625c41"
+      "dry_recipe_token": "alo_stem_11e3a26b97c641e858213adf4ba40ab9ab60f619f0317e38e0263c6de1c4ae03",
+      "wet_recipe_token": "alo_stem_66e4f8dc7ace24c23154066150dd4901e2554b73c1e7e0610000596d5d07eacf"
     },
     "Precision Active [Neck] v6.1.1.nam": {
       "filename": "Precision Active [Neck] v6.1.1.nam",
@@ -319,9 +323,7 @@
       "tone_name": "Precision Active",
       "sha256": "f17535e88fce59b5dcfc3b9aaa6ffd873018a818ff00c7bf49f5781cc498d50c",
       "dry_file": "dry v6.1.1.wav",
-      "dry_sha256": "9de9662b61c59ec62876abfd9e4e965d888f500a5212f9289a5b0e5f031927b9",
       "wet_file": "Precision Active [Neck] v6.1.1.wav",
-      "wet_sha256": "511a270d1d0f79adf8aad925f051e1e2fea4a7e456fbc4ab6ac69449f82d4b79",
       "validation_esr": 7.868536340538412e-05,
       "validation_esr_a2_full": 7.868536340538412e-05,
       "validation_esr_a2_lite": 0.0001361822651233524,
@@ -334,7 +336,9 @@
       "precision": "bf16-mixed",
       "device_name": "AMD Radeon RX 9070 XT",
       "engine": "native",
-      "training_time_seconds": 320.45
+      "training_time_seconds": 320.45,
+      "dry_recipe_token": "alo_stem_11e3a26b97c641e858213adf4ba40ab9ab60f619f0317e38e0263c6de1c4ae03",
+      "wet_recipe_token": "alo_stem_700843c3e746e942589736d1e8df406d8871056d87812dba646d3b52b7d06ecd"
     },
     "Precision Mids [Neck] v6.1.1.nam": {
       "filename": "Precision Mids [Neck] v6.1.1.nam",
@@ -347,9 +351,7 @@
       "tone_name": "Precision Mids",
       "sha256": "89efbd0cd40482454c4832b16fc3c6f64a3b6f95e49ffdb35a588a9744cb3fc2",
       "dry_file": "dry v6.1.1.wav",
-      "dry_sha256": "9de9662b61c59ec62876abfd9e4e965d888f500a5212f9289a5b0e5f031927b9",
       "wet_file": "Precision Mids [Neck] v6.1.1.wav",
-      "wet_sha256": "80913d2b6e76862c543996232673e3cd0594cc84ef760ba2855827fac5fc5866",
       "validation_esr": 2.498286085028667e-05,
       "validation_esr_a2_full": 2.498286085028667e-05,
       "validation_esr_a2_lite": 4.79685295431409e-05,
@@ -362,7 +364,9 @@
       "precision": "bf16-mixed",
       "device_name": "AMD Radeon RX 9070 XT",
       "engine": "native",
-      "training_time_seconds": 319.7
+      "training_time_seconds": 319.7,
+      "dry_recipe_token": "alo_stem_11e3a26b97c641e858213adf4ba40ab9ab60f619f0317e38e0263c6de1c4ae03",
+      "wet_recipe_token": "alo_stem_dcfe7b45be2e4ce563b11193c2483857481b39a2b71bb217c34c3187e94f54b2"
     },
     "Precision Warm [Neck] v6.1.1.nam": {
       "filename": "Precision Warm [Neck] v6.1.1.nam",
@@ -375,9 +379,7 @@
       "tone_name": "Precision Warm",
       "sha256": "0b2194220319dc9d73df7e18b989ab5c7a2d6a1445a15f4b87e4a0e680501156",
       "dry_file": "dry v6.1.1.wav",
-      "dry_sha256": "9de9662b61c59ec62876abfd9e4e965d888f500a5212f9289a5b0e5f031927b9",
       "wet_file": "Precision Warm [Neck] v6.1.1.wav",
-      "wet_sha256": "cc448fdf8bb1b7f9da31a3fdd9ff4c79e60f3691431821be84da27dd59a19c11",
       "validation_esr": 0.0002057246892945841,
       "validation_esr_a2_full": 0.0002057246892945841,
       "validation_esr_a2_lite": 0.0002792823361232877,
@@ -390,7 +392,9 @@
       "precision": "bf16-mixed",
       "device_name": "AMD Radeon RX 9070 XT",
       "engine": "native",
-      "training_time_seconds": 321.1
+      "training_time_seconds": 321.1,
+      "dry_recipe_token": "alo_stem_11e3a26b97c641e858213adf4ba40ab9ab60f619f0317e38e0263c6de1c4ae03",
+      "wet_recipe_token": "alo_stem_1561579a2a796dd5d3b247e23e2b8e61a441ca62849af23081e3e55e36b8c195"
     },
     "Precision Dub [Neck] v6.1.1.nam": {
       "filename": "Precision Dub [Neck] v6.1.1.nam",
@@ -403,9 +407,7 @@
       "tone_name": "Precision Dub",
       "sha256": "22f865c81d1aaa1743ab9a100e5a8c3b029c48dbe4f83314caf13d3fff4d6839",
       "dry_file": "dry v6.1.1.wav",
-      "dry_sha256": "9de9662b61c59ec62876abfd9e4e965d888f500a5212f9289a5b0e5f031927b9",
       "wet_file": "Precision Dub [Neck] v6.1.1.wav",
-      "wet_sha256": "707345dc9add6eba1b9cb4037f643928ec7634558a25f6c2ae19b99c7496f96d",
       "validation_esr": 0.00015260139480233192,
       "validation_esr_a2_full": 0.00015260139480233192,
       "validation_esr_a2_lite": 0.00020790856797248125,
@@ -418,7 +420,9 @@
       "precision": "bf16-mixed",
       "device_name": "AMD Radeon RX 9070 XT",
       "engine": "native",
-      "training_time_seconds": 327.81
+      "training_time_seconds": 327.81,
+      "dry_recipe_token": "alo_stem_11e3a26b97c641e858213adf4ba40ab9ab60f619f0317e38e0263c6de1c4ae03",
+      "wet_recipe_token": "alo_stem_128235e79e4c3edbdc1fe9d862873b80c728ae3dddee1d21d645fdae1e2e01db"
     },
     "Dingwall Middle [Neck] v6.1.1.nam": {
       "filename": "Dingwall Middle [Neck] v6.1.1.nam",
@@ -431,9 +435,7 @@
       "tone_name": "Dingwall Middle",
       "sha256": "4b2e87129b040c6ed57065721d6fe073c4968fef207fd2e8ca029618eff17aff",
       "dry_file": "dry v6.1.1.wav",
-      "dry_sha256": "9de9662b61c59ec62876abfd9e4e965d888f500a5212f9289a5b0e5f031927b9",
       "wet_file": "Dingwall Middle [Neck] v6.1.1.wav",
-      "wet_sha256": "22aad00a8b7c798245bdbb83434255c03846cfddf77638f7818b6be20848f011",
       "validation_esr": 0.0002761610085144639,
       "validation_esr_a2_full": 0.0002761610085144639,
       "validation_esr_a2_lite": 0.0006541531765833497,
@@ -446,7 +448,9 @@
       "precision": "bf16-mixed",
       "device_name": "AMD Radeon RX 9070 XT",
       "engine": "native",
-      "training_time_seconds": 317.31
+      "training_time_seconds": 317.31,
+      "dry_recipe_token": "alo_stem_11e3a26b97c641e858213adf4ba40ab9ab60f619f0317e38e0263c6de1c4ae03",
+      "wet_recipe_token": "alo_stem_3c4c17f22c7a10c414c91b51a5ec0be58f6448c62a80d205056371b7d2044f5b"
     },
     "Mudbucker Deep [Neck] v6.1.1.nam": {
       "filename": "Mudbucker Deep [Neck] v6.1.1.nam",
@@ -459,9 +463,7 @@
       "tone_name": "Mudbucker Deep",
       "sha256": "06c10075770f806531d4d1139212be39294298113db0c5831f520b82774fbbb5",
       "dry_file": "dry v6.1.1.wav",
-      "dry_sha256": "9de9662b61c59ec62876abfd9e4e965d888f500a5212f9289a5b0e5f031927b9",
       "wet_file": "Mudbucker Deep [Neck] v6.1.1.wav",
-      "wet_sha256": "55a4fa127bb63090023a7f4533b41f97c43ea238f269ae77e1be532287f8f762",
       "validation_esr": 3.9986680349102244e-05,
       "validation_esr_a2_full": 3.9986680349102244e-05,
       "validation_esr_a2_lite": 6.861879955977201e-05,
@@ -474,7 +476,9 @@
       "precision": "bf16-mixed",
       "device_name": "AMD Radeon RX 9070 XT",
       "engine": "native",
-      "training_time_seconds": 319.03
+      "training_time_seconds": 319.03,
+      "dry_recipe_token": "alo_stem_11e3a26b97c641e858213adf4ba40ab9ab60f619f0317e38e0263c6de1c4ae03",
+      "wet_recipe_token": "alo_stem_ed978707526fa02e963d9466d232ceac0729207c63207f21c0a125446646677c"
     },
     "Upright Piezo [Neck] v6.1.1.nam": {
       "filename": "Upright Piezo [Neck] v6.1.1.nam",
@@ -487,9 +491,7 @@
       "tone_name": "Upright Piezo",
       "sha256": "6e7dc345bfe9273a61f24f368560105b8bac25ae03c7b030e473a52ecb02fadf",
       "dry_file": "dry v6.1.1.wav",
-      "dry_sha256": "9de9662b61c59ec62876abfd9e4e965d888f500a5212f9289a5b0e5f031927b9",
       "wet_file": "Upright Piezo [Neck] v6.1.1.wav",
-      "wet_sha256": "5fad0982bd8609d3ff4d2a5f1c9e3a4936fe3ee9a3ed4bfdd7eefa9b02f8813a",
       "validation_esr": 0.00026919518131762743,
       "validation_esr_a2_full": 0.00026919518131762743,
       "validation_esr_a2_lite": 0.0004201413248665631,
@@ -502,7 +504,9 @@
       "precision": "bf16-mixed",
       "device_name": "AMD Radeon RX 9070 XT",
       "engine": "native",
-      "training_time_seconds": 322.4
+      "training_time_seconds": 322.4,
+      "dry_recipe_token": "alo_stem_11e3a26b97c641e858213adf4ba40ab9ab60f619f0317e38e0263c6de1c4ae03",
+      "wet_recipe_token": "alo_stem_d95bba187ca2ae096e1830a3aff87f765be4408fa78daa9632e992ab74dff42b"
     },
     "Jazz Neck Warm [Neck] v6.1.1.nam": {
       "filename": "Jazz Neck Warm [Neck] v6.1.1.nam",
@@ -515,9 +519,7 @@
       "tone_name": "Jazz Neck Warm",
       "sha256": "b358c1927fd33240629feea762aaf8471ba9d389d612b1c8091b112fccdbf27b",
       "dry_file": "dry v6.1.1.wav",
-      "dry_sha256": "9de9662b61c59ec62876abfd9e4e965d888f500a5212f9289a5b0e5f031927b9",
       "wet_file": "Jazz Neck Warm [Neck] v6.1.1.wav",
-      "wet_sha256": "c6b24d97a4681860c8edc3aa8b6d2cda6ecdba285d62e8a6838fc91eb3176bae",
       "validation_esr": 3.916375499102287e-05,
       "validation_esr_a2_full": 3.916375499102287e-05,
       "validation_esr_a2_lite": 0.00011288374662399292,
@@ -530,7 +532,9 @@
       "precision": "bf16-mixed",
       "device_name": "AMD Radeon RX 9070 XT",
       "engine": "native",
-      "training_time_seconds": 318.99
+      "training_time_seconds": 318.99,
+      "dry_recipe_token": "alo_stem_11e3a26b97c641e858213adf4ba40ab9ab60f619f0317e38e0263c6de1c4ae03",
+      "wet_recipe_token": "alo_stem_46f5870298076b765165441a8da8c1a105b4f564da75e5bf545c7347558df3a9"
     },
     "Jazz Bridge Open [Bridge] v6.1.1.nam": {
       "filename": "Jazz Bridge Open [Bridge] v6.1.1.nam",
@@ -543,9 +547,7 @@
       "tone_name": "Jazz Bridge Open",
       "sha256": "2c6fa003520e6c6b159fe4bfb27f7b5725db3f97aec728a551b0217dd912639c",
       "dry_file": "dry v6.1.1.wav",
-      "dry_sha256": "13d49c4dd3d28c50f1ff2cecb3762ff6a5ccadf07e5dff386ce3afcf8fa0a69c",
       "wet_file": "Jazz Bridge Open [Bridge] v6.1.1.wav",
-      "wet_sha256": "8d1d45bbb6023a140f9dc52066d930917d3e59337cd9171a53f780b0962f09b8",
       "validation_esr": 7.3325376433786e-05,
       "validation_esr_a2_full": 7.3325376433786e-05,
       "validation_esr_a2_lite": 0.00013134843902662396,
@@ -558,7 +560,9 @@
       "precision": "bf16-mixed",
       "device_name": "AMD Radeon RX 9070 XT",
       "engine": "native",
-      "training_time_seconds": 320.17
+      "training_time_seconds": 320.17,
+      "dry_recipe_token": "alo_stem_9bdc9efc6c467bbf31257137e115f6273796a79cc3752dc34d1a820fbb81db23",
+      "wet_recipe_token": "alo_stem_bd94c015749399dcc3fe48a5b9e6bde37e35615cd11fc3b6f645a859b92122fa"
     },
     "StingRay Parallel [Bridge] v6.1.1.nam": {
       "filename": "StingRay Parallel [Bridge] v6.1.1.nam",
@@ -571,9 +575,7 @@
       "tone_name": "StingRay Parallel",
       "sha256": "62ff1ce6f7b2b88f9ff42d6b9f4ab74fa5d48597208a5a09553cb3646e6c6c5f",
       "dry_file": "dry v6.1.1.wav",
-      "dry_sha256": "13d49c4dd3d28c50f1ff2cecb3762ff6a5ccadf07e5dff386ce3afcf8fa0a69c",
       "wet_file": "StingRay Parallel [Bridge] v6.1.1.wav",
-      "wet_sha256": "999933b8c4f400728f8d9b1eb2dc6470f69fd61b1e9c5ee239076fc89b731d07",
       "validation_esr": 0.00019644256099127233,
       "validation_esr_a2_full": 0.00019644256099127233,
       "validation_esr_a2_lite": 0.0008340562926605344,
@@ -586,7 +588,9 @@
       "precision": "bf16-mixed",
       "device_name": "AMD Radeon RX 9070 XT",
       "engine": "native",
-      "training_time_seconds": 326.62
+      "training_time_seconds": 326.62,
+      "dry_recipe_token": "alo_stem_9bdc9efc6c467bbf31257137e115f6273796a79cc3752dc34d1a820fbb81db23",
+      "wet_recipe_token": "alo_stem_8213aeb38b72f0a38dbcabab1f19424764f1a9a51a42026eedfb82f4c111c391"
     },
     "StingRay Series [Bridge] v6.1.1.nam": {
       "filename": "StingRay Series [Bridge] v6.1.1.nam",
@@ -599,9 +603,7 @@
       "tone_name": "StingRay Series",
       "sha256": "8d9de239485c0d017be924e2fed745b220ad940164b3fe924f26d99a5f3bef55",
       "dry_file": "dry v6.1.1.wav",
-      "dry_sha256": "13d49c4dd3d28c50f1ff2cecb3762ff6a5ccadf07e5dff386ce3afcf8fa0a69c",
       "wet_file": "StingRay Series [Bridge] v6.1.1.wav",
-      "wet_sha256": "0d0cb5d3cb83c0777d1d77ebf22d6e7d3b149bcc98e274e3e232b90d9796d1eb",
       "validation_esr": 0.00013316978584043682,
       "validation_esr_a2_full": 0.00013316978584043682,
       "validation_esr_a2_lite": 0.0006829602061770856,
@@ -614,7 +616,9 @@
       "precision": "bf16-mixed",
       "device_name": "AMD Radeon RX 9070 XT",
       "engine": "native",
-      "training_time_seconds": 322.86
+      "training_time_seconds": 322.86,
+      "dry_recipe_token": "alo_stem_9bdc9efc6c467bbf31257137e115f6273796a79cc3752dc34d1a820fbb81db23",
+      "wet_recipe_token": "alo_stem_223bbebff06050a1fa44fe44c616ab60ae5bfc7581ed23945548cf588f399477"
     },
     "Rickenbacker Clank [Bridge] v6.1.1.nam": {
       "filename": "Rickenbacker Clank [Bridge] v6.1.1.nam",
@@ -627,9 +631,7 @@
       "tone_name": "Rickenbacker Clank",
       "sha256": "25eb2fa5a83eef8137373df71e540de89f2ac6a7f549196825b9fe8c482256d3",
       "dry_file": "dry v6.1.1.wav",
-      "dry_sha256": "13d49c4dd3d28c50f1ff2cecb3762ff6a5ccadf07e5dff386ce3afcf8fa0a69c",
       "wet_file": "Rickenbacker Clank [Bridge] v6.1.1.wav",
-      "wet_sha256": "ded94f25ec55aae302dd988052547e228d39c59fcfd660b9b35022e9dd98d15f",
       "validation_esr": 0.0005140191642567515,
       "validation_esr_a2_full": 0.0005140191642567515,
       "validation_esr_a2_lite": 0.0017622956074774265,
@@ -642,7 +644,9 @@
       "precision": "bf16-mixed",
       "device_name": "AMD Radeon RX 9070 XT",
       "engine": "native",
-      "training_time_seconds": 321.25
+      "training_time_seconds": 321.25,
+      "dry_recipe_token": "alo_stem_9bdc9efc6c467bbf31257137e115f6273796a79cc3752dc34d1a820fbb81db23",
+      "wet_recipe_token": "alo_stem_664e35378b79b4e56aa4ff3ad2acb97e1a72fb4f15ff16a0fbde713232340bc4"
     },
     "Rickenbacker Open [Bridge] v6.1.1.nam": {
       "filename": "Rickenbacker Open [Bridge] v6.1.1.nam",
@@ -655,9 +659,7 @@
       "tone_name": "Rickenbacker Open",
       "sha256": "1ad610ba6d404ff778c17c3e11bed5795150fa9719864eabc97bfacec7376fea",
       "dry_file": "dry v6.1.1.wav",
-      "dry_sha256": "13d49c4dd3d28c50f1ff2cecb3762ff6a5ccadf07e5dff386ce3afcf8fa0a69c",
       "wet_file": "Rickenbacker Open [Bridge] v6.1.1.wav",
-      "wet_sha256": "30a1635571cae1699ef077daea77578a56a339f584052515f4b1b3629e9595c1",
       "validation_esr": 0.00011075225484091789,
       "validation_esr_a2_full": 0.00011075225484091789,
       "validation_esr_a2_lite": 0.00020643742755055428,
@@ -670,7 +672,9 @@
       "precision": "bf16-mixed",
       "device_name": "AMD Radeon RX 9070 XT",
       "engine": "native",
-      "training_time_seconds": 318.84
+      "training_time_seconds": 318.84,
+      "dry_recipe_token": "alo_stem_9bdc9efc6c467bbf31257137e115f6273796a79cc3752dc34d1a820fbb81db23",
+      "wet_recipe_token": "alo_stem_d9ebcc71d7728cb365e63c79403279d884f08c65b2a0b423385fbb5bc2df0ffa"
     },
     "Dingwall Bridge [Bridge] v6.1.1.nam": {
       "filename": "Dingwall Bridge [Bridge] v6.1.1.nam",
@@ -683,9 +687,7 @@
       "tone_name": "Dingwall Bridge",
       "sha256": "c3c39fb5973e6efdde16f28564c58fb6b232e5a4e4ff2f27f7fe325792832e60",
       "dry_file": "dry v6.1.1.wav",
-      "dry_sha256": "13d49c4dd3d28c50f1ff2cecb3762ff6a5ccadf07e5dff386ce3afcf8fa0a69c",
       "wet_file": "Dingwall Bridge [Bridge] v6.1.1.wav",
-      "wet_sha256": "b20fe89c0740bf17efa4689e6670a8e4c60f1d7004725712bd3bdfa8744d8f95",
       "validation_esr": 0.0004088524146936834,
       "validation_esr_a2_full": 0.0004088524146936834,
       "validation_esr_a2_lite": 0.0008262640330940485,
@@ -698,7 +700,9 @@
       "precision": "bf16-mixed",
       "device_name": "AMD Radeon RX 9070 XT",
       "engine": "native",
-      "training_time_seconds": 319.57
+      "training_time_seconds": 319.57,
+      "dry_recipe_token": "alo_stem_9bdc9efc6c467bbf31257137e115f6273796a79cc3752dc34d1a820fbb81db23",
+      "wet_recipe_token": "alo_stem_bb4ba02fcefc8298dc3a2b9ecdbb3e6ad52002d42ca333f8b554fb720371aefb"
     },
     "Jazz Pair Open [Parallel] v6.1.1.nam": {
       "filename": "Jazz Pair Open [Parallel] v6.1.1.nam",
@@ -711,9 +715,7 @@
       "tone_name": "Jazz Pair Open",
       "sha256": "c672f7e808af04dda51384248a1574fb162a7b4bd0cd4c3c663baea08ce50039",
       "dry_file": "dry v6.1.1.wav",
-      "dry_sha256": "c59d47357b2fccbf1a36b0d47947bcd163a651aa9b0c0f149d2b4f7bc2116e77",
       "wet_file": "Jazz Pair Open [Parallel] v6.1.1.wav",
-      "wet_sha256": "94230d36eeb7ce51b0ef7c705191782bc8bbbd69dca36b32faf09091f9481a40",
       "validation_esr": 5.049605169915594e-05,
       "validation_esr_a2_full": 5.049605169915594e-05,
       "validation_esr_a2_lite": 0.00011987950711045414,
@@ -726,7 +728,9 @@
       "precision": "bf16-mixed",
       "device_name": "AMD Radeon RX 9070 XT",
       "engine": "native",
-      "training_time_seconds": 320.82
+      "training_time_seconds": 320.82,
+      "dry_recipe_token": "alo_stem_eaa59d492378f6e0d75feb95a07464e6cbdffe9084b948a018dc7f1eeabfd21b",
+      "wet_recipe_token": "alo_stem_846d0c149e992ddb92778672fb4fee6cce1c46014d020c7412463074032071d8"
     },
     "Jazz Pair Mids [Parallel] v6.1.1.nam": {
       "filename": "Jazz Pair Mids [Parallel] v6.1.1.nam",
@@ -739,9 +743,7 @@
       "tone_name": "Jazz Pair Mids",
       "sha256": "8cdc85ff3e60faff7d248548082e340497d0bd4aa0d6e7e1192869d6007bdd55",
       "dry_file": "dry v6.1.1.wav",
-      "dry_sha256": "c59d47357b2fccbf1a36b0d47947bcd163a651aa9b0c0f149d2b4f7bc2116e77",
       "wet_file": "Jazz Pair Mids [Parallel] v6.1.1.wav",
-      "wet_sha256": "ccb2fc672d65c6483b2d8cb5859b63c0a572cddf20f4cedf7830a83954b16264",
       "validation_esr": 4.0596907638246194e-05,
       "validation_esr_a2_full": 4.0596907638246194e-05,
       "validation_esr_a2_lite": 0.0001103913236875087,
@@ -754,7 +756,9 @@
       "precision": "bf16-mixed",
       "device_name": "AMD Radeon RX 9070 XT",
       "engine": "native",
-      "training_time_seconds": 318.31
+      "training_time_seconds": 318.31,
+      "dry_recipe_token": "alo_stem_eaa59d492378f6e0d75feb95a07464e6cbdffe9084b948a018dc7f1eeabfd21b",
+      "wet_recipe_token": "alo_stem_6e25db5c4aa6e10c292c152d921a3157c6692b61c48f0145fa84aeb3ebdc56b2"
     },
     "Jazz Pair Active [Parallel] v6.1.1.nam": {
       "filename": "Jazz Pair Active [Parallel] v6.1.1.nam",
@@ -767,9 +771,7 @@
       "tone_name": "Jazz Pair Active",
       "sha256": "e0c3a42cb9a70de4db435f072a7b1349a52d9c4d66451b53b57e17a8ca7865aa",
       "dry_file": "dry v6.1.1.wav",
-      "dry_sha256": "c59d47357b2fccbf1a36b0d47947bcd163a651aa9b0c0f149d2b4f7bc2116e77",
       "wet_file": "Jazz Pair Active [Parallel] v6.1.1.wav",
-      "wet_sha256": "7d6dc07487deea0ef1c9cd8bb7a1750cd48899eecfe21f046532001cabf7af78",
       "validation_esr": 9.006895561469719e-05,
       "validation_esr_a2_full": 9.006895561469719e-05,
       "validation_esr_a2_lite": 0.00016217146185226738,
@@ -782,7 +784,9 @@
       "precision": "bf16-mixed",
       "device_name": "AMD Radeon RX 9070 XT",
       "engine": "native",
-      "training_time_seconds": 319.78
+      "training_time_seconds": 319.78,
+      "dry_recipe_token": "alo_stem_eaa59d492378f6e0d75feb95a07464e6cbdffe9084b948a018dc7f1eeabfd21b",
+      "wet_recipe_token": "alo_stem_0072264343dc328f03c3c2e7798d3b37d581ae7c156140ab26995c24aef51748"
     },
     "P\u2215MM Parallel [Parallel] v6.1.1.nam": {
       "filename": "P\u2215MM Parallel [Parallel] v6.1.1.nam",
@@ -795,9 +799,7 @@
       "tone_name": "P\u2215MM Parallel",
       "sha256": "885705291b0aabf763554d9cefca412ded9f4df0ea689e6e63ff3b4474cf3d5a",
       "dry_file": "dry v6.1.1.wav",
-      "dry_sha256": "c59d47357b2fccbf1a36b0d47947bcd163a651aa9b0c0f149d2b4f7bc2116e77",
       "wet_file": "P\u2215MM Parallel [Parallel] v6.1.1.wav",
-      "wet_sha256": "f8eb20366d846fc1d09ba87f5db6f59ef75ad3bbfc58fdc9a43f128136b45dfb",
       "validation_esr": 6.775365909561515e-05,
       "validation_esr_a2_full": 6.775365909561515e-05,
       "validation_esr_a2_lite": 0.00012718608195427805,
@@ -810,7 +812,9 @@
       "precision": "bf16-mixed",
       "device_name": "AMD Radeon RX 9070 XT",
       "engine": "native",
-      "training_time_seconds": 321.4
+      "training_time_seconds": 321.4,
+      "dry_recipe_token": "alo_stem_eaa59d492378f6e0d75feb95a07464e6cbdffe9084b948a018dc7f1eeabfd21b",
+      "wet_recipe_token": "alo_stem_6935116d409750378ca2f46e4e9651b5d94a37be4ee13e989ccc76aa78bde06b"
     },
     "P\u2215MM Series [Parallel] v6.1.1.nam": {
       "filename": "P\u2215MM Series [Parallel] v6.1.1.nam",
@@ -823,9 +827,7 @@
       "tone_name": "P\u2215MM Series",
       "sha256": "99973c61734df6f0bd173e6a1cfbd96b8f600d96464b675e422732507cd63b58",
       "dry_file": "dry v6.1.1.wav",
-      "dry_sha256": "c59d47357b2fccbf1a36b0d47947bcd163a651aa9b0c0f149d2b4f7bc2116e77",
       "wet_file": "P\u2215MM Series [Parallel] v6.1.1.wav",
-      "wet_sha256": "6f2dba9c7e4a14856533975888df9f9ce296eadbdd0f9260a2c6f2748f613ea7",
       "validation_esr": 5.5230593716260046e-05,
       "validation_esr_a2_full": 5.5230593716260046e-05,
       "validation_esr_a2_lite": 0.0003395856765564531,
@@ -838,7 +840,9 @@
       "precision": "bf16-mixed",
       "device_name": "AMD Radeon RX 9070 XT",
       "engine": "native",
-      "training_time_seconds": 319.69
+      "training_time_seconds": 319.69,
+      "dry_recipe_token": "alo_stem_eaa59d492378f6e0d75feb95a07464e6cbdffe9084b948a018dc7f1eeabfd21b",
+      "wet_recipe_token": "alo_stem_e6a8bea95ab149998f2e70ed8884de311114b61ca44cc87e86bb78eb98381041"
     },
     "PJ Active [Parallel] v6.1.1.nam": {
       "filename": "PJ Active [Parallel] v6.1.1.nam",
@@ -851,9 +855,7 @@
       "tone_name": "PJ Active",
       "sha256": "8ac26da8201385f6408541e6c68926a66c38b3feabdfeabaf2b856fd67c4712b",
       "dry_file": "dry v6.1.1.wav",
-      "dry_sha256": "c59d47357b2fccbf1a36b0d47947bcd163a651aa9b0c0f149d2b4f7bc2116e77",
       "wet_file": "PJ Active [Parallel] v6.1.1.wav",
-      "wet_sha256": "d4b6aa17bf50e1d584477df3788cad4351113e4445c13ed3731f487b940bf5ed",
       "validation_esr": 0.0001154460696852766,
       "validation_esr_a2_full": 0.0001154460696852766,
       "validation_esr_a2_lite": 0.00024729486904107034,
@@ -866,7 +868,9 @@
       "precision": "bf16-mixed",
       "device_name": "AMD Radeon RX 9070 XT",
       "engine": "native",
-      "training_time_seconds": 318.52
+      "training_time_seconds": 318.52,
+      "dry_recipe_token": "alo_stem_eaa59d492378f6e0d75feb95a07464e6cbdffe9084b948a018dc7f1eeabfd21b",
+      "wet_recipe_token": "alo_stem_05d011c3897e2b05ebc0535e3f0b0d0e143b356b5f8e6bcfc1fb66988fa7db91"
     },
     "PJ Passive [Parallel] v6.1.1.nam": {
       "filename": "PJ Passive [Parallel] v6.1.1.nam",
@@ -879,9 +883,7 @@
       "tone_name": "PJ Passive",
       "sha256": "9911425df5482ee2a0699d7b015c100786e7a0e1ea1c0bf5d94bd43ea74a8445",
       "dry_file": "dry v6.1.1.wav",
-      "dry_sha256": "c59d47357b2fccbf1a36b0d47947bcd163a651aa9b0c0f149d2b4f7bc2116e77",
       "wet_file": "PJ Passive [Parallel] v6.1.1.wav",
-      "wet_sha256": "05c9e82ebf5b18d48760304e6426f20e6c675f86f48acfe10178334b448fb78f",
       "validation_esr": 5.915870133321732e-05,
       "validation_esr_a2_full": 5.915870133321732e-05,
       "validation_esr_a2_lite": 0.00016211725596804172,
@@ -894,7 +896,9 @@
       "precision": "bf16-mixed",
       "device_name": "AMD Radeon RX 9070 XT",
       "engine": "native",
-      "training_time_seconds": 322.07
+      "training_time_seconds": 322.07,
+      "dry_recipe_token": "alo_stem_eaa59d492378f6e0d75feb95a07464e6cbdffe9084b948a018dc7f1eeabfd21b",
+      "wet_recipe_token": "alo_stem_cf21b2d6fbf0f70a4f0edd1ec2868d1e13fd672e2b004551fe736906fa1d16ae"
     },
     "Dingwall Parallel [Parallel] v6.1.1.nam": {
       "filename": "Dingwall Parallel [Parallel] v6.1.1.nam",
@@ -907,9 +911,7 @@
       "tone_name": "Dingwall Parallel",
       "sha256": "215f5dc4554b4798da9a0daac792edb7b6a5c83a1af7ff683a5e60c469366471",
       "dry_file": "dry v6.1.1.wav",
-      "dry_sha256": "c59d47357b2fccbf1a36b0d47947bcd163a651aa9b0c0f149d2b4f7bc2116e77",
       "wet_file": "Dingwall Parallel [Parallel] v6.1.1.wav",
-      "wet_sha256": "fa11c8ac9dc1a3415b6ce66b423ecd36495d4e5e4db4669e2aaa577961f0b220",
       "validation_esr": 0.0004584656562656164,
       "validation_esr_a2_full": 0.0004584656562656164,
       "validation_esr_a2_lite": 0.001109408331103623,
@@ -922,7 +924,9 @@
       "precision": "bf16-mixed",
       "device_name": "AMD Radeon RX 9070 XT",
       "engine": "native",
-      "training_time_seconds": 320.03
+      "training_time_seconds": 320.03,
+      "dry_recipe_token": "alo_stem_eaa59d492378f6e0d75feb95a07464e6cbdffe9084b948a018dc7f1eeabfd21b",
+      "wet_recipe_token": "alo_stem_716b5aa4c27c7517b940b54a3c772e6121bc86b0673bae0645434dbb1c7f0c8e"
     },
     "Jazz Bridge Growl [Bridge] v6.1.1.nam": {
       "filename": "Jazz Bridge Growl [Bridge] v6.1.1.nam",
@@ -935,9 +939,7 @@
       "tone_name": "Jazz Bridge Growl",
       "sha256": "90801a7000900711d27ccbf77c012a662e0d9383e2de749f17b63717e4009f67",
       "dry_file": "dry v6.1.1.wav",
-      "dry_sha256": "13d49c4dd3d28c50f1ff2cecb3762ff6a5ccadf07e5dff386ce3afcf8fa0a69c",
       "wet_file": "Jazz Bridge Growl [Bridge] v6.1.1.wav",
-      "wet_sha256": "726387ef2bb59ee02a03de424d8b212e7d7df7ecc1649577e3202a5e89bfa155",
       "validation_esr": 0.00013603329716715962,
       "validation_esr_a2_full": 0.00013603329716715962,
       "validation_esr_a2_lite": 0.00032783986534923315,
@@ -950,7 +952,9 @@
       "precision": "bf16-mixed",
       "device_name": "AMD Radeon RX 9070 XT",
       "engine": "native",
-      "training_time_seconds": 331.87
+      "training_time_seconds": 331.87,
+      "dry_recipe_token": "alo_stem_9bdc9efc6c467bbf31257137e115f6273796a79cc3752dc34d1a820fbb81db23",
+      "wet_recipe_token": "alo_stem_ecd990360046f553494ca7ebd032e811d88ae697a5f22d85d871b005524b9a16"
     }
   }
 }

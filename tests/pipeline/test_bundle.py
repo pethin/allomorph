@@ -75,7 +75,7 @@ def test_build_bundle_manifest_entry():
             "target_voicing_version": 1,
             "version": "v2.1.1",
             "tone_name": "Precision Vintage",
-            "sha256": "abc12345",
+            "recipe_token": "alo_stem_1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef",
         }
     ]
     entry = build_bundle_manifest_entry(
@@ -84,22 +84,33 @@ def test_build_bundle_manifest_entry():
         source_voicing_id="vintage_open",
         dry_filename="dry v2.1.1.wav",
         dry_version="v2.1.1",
-        dry_sha256="deadbeef",
+        dry_recipe_token="alo_dry_deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef",
+        recipe_token="alo_bun_cafebabecafebabecafebabecafebabecafebabecafebabecafebabecafebabe",
         instrument_id="34in_standard_p",
         instrument_version=1,
         source_voicing_version=1,
         bundle_stems=stems,
         base_dry_file="test_input.wav",
-        base_dry_sha256="feedface",
+        base_dry_token="alo_dry_feedfacefeedfacefeedfacefeedfacefeedfacefeedfacefeedfacefeedface",
     )
 
     assert entry["bundle"] == "neck"
     assert entry["position_name"] == "Neck"
     assert entry["source_voicing"] == "vintage_open"
     assert entry["dry_file"] == "dry v2.1.1.wav"
-    assert entry["dry_sha256"] == "deadbeef"
+    assert (
+        entry["dry_recipe_token"]
+        == "alo_dry_deadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef"
+    )
+    assert (
+        entry["recipe_token"]
+        == "alo_bun_cafebabecafebabecafebabecafebabecafebabecafebabecafebabecafebabe"
+    )
     assert entry["base_dry_file"] == "test_input.wav"
-    assert entry["base_dry_sha256"] == "feedface"
+    assert (
+        entry["base_dry_token"]
+        == "alo_dry_feedfacefeedfacefeedfacefeedfacefeedfacefeedfacefeedfacefeedface"
+    )
     assert entry["stem_count"] == 1
     assert entry["stems"] == stems
 

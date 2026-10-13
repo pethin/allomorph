@@ -1,12 +1,13 @@
 {
   "bundle": "neck",
+  "recipe_token": "alo_bun_7df67e1f766cf13cc42d8e8123bbeea41c91a88a550ca9ed33d0388703784a18",
   "source_voicing": "neck_solo",
   "position_name": "Neck",
   "base_dry_file": "input.wav",
-  "base_dry_sha256": "9ffa7e6d51b6a10451df50979a0c66723e6b324b88bd271b74805d6ba10e3b0a",
+  "base_dry_token": "alo_dry_cda0bf51a1543539ac356a852a24bfedd37d61bb77a14e3eb24a4a1b2cec094f",
   "dry_file": "dry v6.1.1.wav",
   "dry_version": "v6.1.1",
-  "dry_sha256": "9de9662b61c59ec62876abfd9e4e965d888f500a5212f9289a5b0e5f031927b9",
+  "dry_recipe_token": "alo_stem_11e3a26b97c641e858213adf4ba40ab9ab60f619f0317e38e0263c6de1c4ae03",
   "instrument_id": "34in_preamp_soapbar",
   "instrument_version": 1,
   "source_voicing_version": 1,
@@ -20,7 +21,7 @@
       "target_voicing_version": 1,
       "version": "v6.1.1",
       "tone_name": "Precision Vintage",
-      "sha256": "347c2fc20967566b680616b577e729d29bb523af337ec77289017a3223625c41"
+      "recipe_token": "alo_stem_66e4f8dc7ace24c23154066150dd4901e2554b73c1e7e0610000596d5d07eacf"
     },
     {
       "filename": "Precision Active [Neck] v6.1.1.wav",
@@ -30,7 +31,7 @@
       "target_voicing_version": 1,
       "version": "v6.1.1",
       "tone_name": "Precision Active",
-      "sha256": "511a270d1d0f79adf8aad925f051e1e2fea4a7e456fbc4ab6ac69449f82d4b79"
+      "recipe_token": "alo_stem_700843c3e746e942589736d1e8df406d8871056d87812dba646d3b52b7d06ecd"
     },
     {
       "filename": "Precision Mids [Neck] v6.1.1.wav",
@@ -40,7 +41,7 @@
       "target_voicing_version": 1,
       "version": "v6.1.1",
       "tone_name": "Precision Mids",
-      "sha256": "80913d2b6e76862c543996232673e3cd0594cc84ef760ba2855827fac5fc5866"
+      "recipe_token": "alo_stem_dcfe7b45be2e4ce563b11193c2483857481b39a2b71bb217c34c3187e94f54b2"
     },
     {
       "filename": "Precision Warm [Neck] v6.1.1.wav",
@@ -50,7 +51,7 @@
       "target_voicing_version": 1,
       "version": "v6.1.1",
       "tone_name": "Precision Warm",
-      "sha256": "cc448fdf8bb1b7f9da31a3fdd9ff4c79e60f3691431821be84da27dd59a19c11"
+      "recipe_token": "alo_stem_1561579a2a796dd5d3b247e23e2b8e61a441ca62849af23081e3e55e36b8c195"
     },
     {
       "filename": "Precision Dub [Neck] v6.1.1.wav",
@@ -60,7 +61,7 @@
       "target_voicing_version": 1,
       "version": "v6.1.1",
       "tone_name": "Precision Dub",
-      "sha256": "707345dc9add6eba1b9cb4037f643928ec7634558a25f6c2ae19b99c7496f96d"
+      "recipe_token": "alo_stem_128235e79e4c3edbdc1fe9d862873b80c728ae3dddee1d21d645fdae1e2e01db"
     },
     {
       "filename": "Dingwall Middle [Neck] v6.1.1.wav",
@@ -70,7 +71,7 @@
       "target_voicing_version": 1,
       "version": "v6.1.1",
       "tone_name": "Dingwall Middle",
-      "sha256": "22aad00a8b7c798245bdbb83434255c03846cfddf77638f7818b6be20848f011"
+      "recipe_token": "alo_stem_3c4c17f22c7a10c414c91b51a5ec0be58f6448c62a80d205056371b7d2044f5b"
     },
     {
       "filename": "Mudbucker Deep [Neck] v6.1.1.wav",
@@ -80,7 +81,7 @@
       "target_voicing_version": 1,
       "version": "v6.1.1",
       "tone_name": "Mudbucker Deep",
-      "sha256": "55a4fa127bb63090023a7f4533b41f97c43ea238f269ae77e1be532287f8f762"
+      "recipe_token": "alo_stem_ed978707526fa02e963d9466d232ceac0729207c63207f21c0a125446646677c"
     },
     {
       "filename": "Upright Piezo [Neck] v6.1.1.wav",
@@ -90,7 +91,7 @@
       "target_voicing_version": 1,
       "version": "v6.1.1",
       "tone_name": "Upright Piezo",
-      "sha256": "5fad0982bd8609d3ff4d2a5f1c9e3a4936fe3ee9a3ed4bfdd7eefa9b02f8813a"
+      "recipe_token": "alo_stem_d95bba187ca2ae096e1830a3aff87f765be4408fa78daa9632e992ab74dff42b"
     },
     {
       "filename": "Jazz Neck Warm [Neck] v6.1.1.wav",
@@ -100,7 +101,7 @@
       "target_voicing_version": 1,
       "version": "v6.1.1",
       "tone_name": "Jazz Neck Warm",
-      "sha256": "c6b24d97a4681860c8edc3aa8b6d2cda6ecdba285d62e8a6838fc91eb3176bae"
+      "recipe_token": "alo_stem_46f5870298076b765165441a8da8c1a105b4f564da75e5bf545c7347558df3a9"
     }
   ]
 }

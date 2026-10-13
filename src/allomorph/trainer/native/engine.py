@@ -63,6 +63,7 @@ from allomorph.trainer.native.models import AllomorphWaveNetA2
 from allomorph.version import (
     DSP_GENERATION,
     compute_file_sha256,
+    compute_recipe_token,
     is_wet_stem_valid,
     resolve_tri_part_version,
 )
@@ -216,7 +217,19 @@ def train_voice_native(
             else (tgt_v.id or voice)
         )
         target_wet = AUDIO_DIR / "wet" / tgt_inst.id / f"{target_slug}.wav"
-        if not (target_wet.exists() and is_wet_stem_valid(target_wet, base_dry_path=input_path)):
+        target_recipe_token = compute_recipe_token(
+            instrument=tgt_inst,
+            voicing=tgt_v,
+            base_dry_path=input_path,
+        )
+        if not (
+            target_wet.exists()
+            and is_wet_stem_valid(
+                target_wet,
+                expected_recipe_token=target_recipe_token,
+                base_dry_path=input_path,
+            )
+        ):
             try:
                 from allomorph.circuit import simulate_instrument_voicing
 
@@ -244,8 +257,18 @@ def train_voice_native(
         reference_path = Path(input_wav)
     else:
         candidate_source = AUDIO_DIR / "wet" / inst_id / f"{src_voicing_id}.wav"
+        src_v = inst_cfg.voicings.get(src_voicing_id)
+        if src_v is None:
+            src_v = next(iter(inst_cfg.voicings.values()))
+        src_recipe_token = compute_recipe_token(
+            instrument=inst_cfg,
+            voicing=src_v,
+            base_dry_path=input_path,
+        )
         if candidate_source.exists() and is_wet_stem_valid(
-            candidate_source, base_dry_path=input_path
+            candidate_source,
+            expected_recipe_token=src_recipe_token,
+            base_dry_path=input_path,
         ):
             reference_path = candidate_source
         else:
@@ -315,9 +338,7 @@ def train_voice_native(
         print(f"  Hardware:       {device_name} ({hw_device})")
         print(f"  Batch Size:     {resolved_bs} | Precision: {resolved_precision}")
         print(f"  Schedule:       {lr_scheduler} (max_epochs={epochs}, warmup={min_epochs})")
-        print(
-            f"  Loss Config:    MSE={mse_weight:.2f}, MRSTFT={mrstft_weight:.4f}"
-        )
+        print(f"  Loss Config:    MSE={mse_weight:.2f}, MRSTFT={mrstft_weight:.4f}")
         print("-------------------------------------------------------", flush=True)
 
     # 9. In-VRAM Zero-Copy Audio Loading
@@ -336,14 +357,16 @@ def train_voice_native(
     train_samples = n_samples - val_samples
 
     # 9a. Transfer directly to accelerator VRAM in native precision
-    autocast_dtype: torch.dtype = torch.bfloat16 if resolved_precision == "bf16-mixed" else torch.float16
+    autocast_dtype: torch.dtype = (
+        torch.bfloat16 if resolved_precision == "bf16-mixed" else torch.float16
+    )
     can_autocast = False
     if resolved_precision in ("bf16-mixed", "16-mixed"):
         try:
             with torch.autocast(device_type=hw_device.type, dtype=autocast_dtype):
                 pass
             can_autocast = True
-        except (RuntimeError, TypeError, ValueError, OSError):
+        except RuntimeError, TypeError, ValueError, OSError:
             can_autocast = False
 
     use_autocast = can_autocast and hw_device.type in ("cuda", "mps", "xla", "cpu")
@@ -417,8 +440,12 @@ def train_voice_native(
                 normalize="none",
                 apply_dither=False,
             )
-            rms_x_full = float(torch.sqrt(torch.mean(torch.square(x_full[:train_samples].float()))).item())
-            rms_y_full = float(torch.sqrt(torch.mean(torch.square(y_full[:train_samples].float()))).item())
+            rms_x_full = float(
+                torch.sqrt(torch.mean(torch.square(x_full[:train_samples].float()))).item()
+            )
+            rms_y_full = float(
+                torch.sqrt(torch.mean(torch.square(y_full[:train_samples].float()))).item()
+            )
             stem_gain_ratio = rms_y_full / max(rms_x_full, 1e-9)
 
             chirp_src_rms = float(np.sqrt(np.mean(c_src_ref**2)))
@@ -541,9 +568,9 @@ def train_voice_native(
     mrstft = MultiResolutionSTFTLoss().to(hw_device) if mrstft_weight > 0.0 else None
     hp_kernel: torch.Tensor | None = None
     if fir_hp_weight > 0.0:
-        hp_kernel = design_sharp_fir_highpass(
-            fc=fir_hp_fc, fs=float(sample_rate), num_taps=255
-        ).to(device=hw_device, dtype=vram_dtype)
+        hp_kernel = design_sharp_fir_highpass(fc=fir_hp_fc, fs=float(sample_rate), num_taps=255).to(
+            device=hw_device, dtype=vram_dtype
+        )
 
     # 11. Slicing Parameters
     ny = slice_len
@@ -600,9 +627,7 @@ def train_voice_native(
             cur_lr = target_lr * (epoch / warmup_epochs)
         elif lr_scheduler == "cosine":
             effective_t_max = (
-                max(1, epochs - warmup_epochs)
-                if lr_t_max == DEFAULT_LR_T_MAX
-                else lr_t_max
+                max(1, epochs - warmup_epochs) if lr_t_max == DEFAULT_LR_T_MAX else lr_t_max
             )
             t_cur = min(epoch - warmup_epochs, effective_t_max)
             cur_lr = eta_min + 0.5 * (target_lr - eta_min) * (
@@ -888,7 +913,11 @@ def train_voice_native(
                 try:
                     with open(m_path, "r", encoding="utf-8") as mf:
                         m_data = json.load(mf)
-                    if isinstance(m_data, dict) and "models" in m_data and isinstance(m_data["models"], dict):
+                    if (
+                        isinstance(m_data, dict)
+                        and "models" in m_data
+                        and isinstance(m_data["models"], dict)
+                    ):
                         m_entry = m_data["models"].setdefault(target_nam.name, {})
                         m_entry.setdefault("filename", target_nam.name)
                         m_entry["sha256"] = compute_file_sha256(target_nam)
@@ -918,7 +947,7 @@ def train_voice_native(
                         with open(m_path, "w", encoding="utf-8") as mf:
                             json.dump(m_data, mf, indent=2)
                         break
-                except (OSError, json.JSONDecodeError):
+                except OSError, json.JSONDecodeError:
                     pass
 
     if not silent:

@@ -262,7 +262,7 @@ To prevent inter-sample clipping when 24-bit PCM digital twin audio is reconstru
 #### 3.8.4 Provenance Invariant: Cryptographic Bit-Provenance & Telemetry Audit
 1. **DSP Tri-Part Semantic Versioning:** All compiled wet stems, Tone3000 upload packs, and models embed the DSP Generation 6 semantic token `v6.[inst].[voice]`.
 2. **Sidecar Manifest Telemetry:** Sidecar `manifest.json` files record `sample_rate`, `peak_dbfs`, `rms_dbfs`, `true_peak_dbfs`, `lufs`, `base_dry_sha256`, and `version`.
-3. **Automated Verification:** The `allomorph --stage audit` command programmatically audits 100% of wet files in the catalog, verifying zero clipping ($\text{true\_peak} \le 0.9900$) and uniform loudness compliance.
+3. **Automated Verification:** The `allomorph audit` command programmatically audits 100% of wet files in the catalog, verifying zero clipping ($\text{true\_peak} \le 0.9900$) and uniform loudness compliance.
 
 ---
 

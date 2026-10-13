@@ -63,6 +63,7 @@ from allomorph.physics.strings import (
 from allomorph.version import (
     DSP_GENERATION,
     compute_file_sha256,
+    compute_recipe_token,
     is_wet_stem_valid,
     resolve_tri_part_version,
     write_manifest,
@@ -755,13 +756,30 @@ def simulate_instrument_voicing(
         out_path = WET_AUDIO_DIR / inst.id / f"{voicing_id}.wav"
         out_path.parent.mkdir(parents=True, exist_ok=True)
 
-    # Cryptographic Bit-Provenance Cache Check
+    # Compute deterministic recipe token for this instrument voicing
+    recipe_tok = compute_recipe_token(
+        instrument=inst,
+        voicing=voicing_cfg,
+        base_dry_path=in_path,
+        dsp_generation=DSP_GENERATION,
+        preamps=preamps,
+        strings=strings,
+    )
+
+    # Cryptographic Recipe-Provenance Cache Check
     if in_path is not None and out_path is not None and not force:
         inst_ver = getattr(inst, "version", 1)
         voice_ver = getattr(voicing_cfg, "version", 1)
         v_tag = resolve_tri_part_version(DSP_GENERATION, inst_ver, voice_ver)
-        if is_wet_stem_valid(out_path, base_dry_path=in_path, expected_version=v_tag):
-            print(f"[Forward Sim] Cached {inst.id}:{voicing_id} ({v_tag}) -> {out_path.name}")
+        if is_wet_stem_valid(
+            out_path,
+            expected_recipe_token=recipe_tok,
+            base_dry_path=in_path,
+            expected_version=v_tag,
+        ):
+            print(
+                f"[Forward Sim] Cached {inst.id}:{voicing_id} ({v_tag}, {recipe_tok[:17]}...) -> {out_path.name}"
+            )
             if return_audio:
                 audio_cached, _ = read_wav(out_path)
                 return out_path, audio_cached
@@ -803,7 +821,8 @@ def simulate_instrument_voicing(
         print(
             f"[Forward Sim] {inst.id}:{voicing_id} -> {out_path.name}: "
             f"True Peak = {final_tp_db:.2f} dBFS (lin={final_tp_lin:.4f}), "
-            f"RMS = {final_rms_db:.2f} dBFS, Loudness = {lufs_str}"
+            f"RMS = {final_rms_db:.2f} dBFS, Loudness = {lufs_str}, "
+            f"Token = {recipe_tok[:17]}..."
         )
 
         if in_path is not None:
@@ -825,6 +844,7 @@ def simulate_instrument_voicing(
                     base_dry_file=in_path.name,
                     instrument_version=inst_ver,
                     voicing_version=voice_ver,
+                    recipe_token=recipe_tok,
                 )
             except OSError, ValueError, RuntimeError:
                 pass

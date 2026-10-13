@@ -49,6 +49,7 @@ from allomorph.trainer.constants import (
     NATIVE_DEFAULT_VAL_INTERVAL,
     NATIVE_DEFAULT_WEIGHT_DECAY,
     STOCK_DEFAULT_MAX_EPOCHS,
+    STOCK_DEFAULT_VAL_LOSS_METRIC,
     VALID_ENGINES,
 )
 
@@ -298,15 +299,19 @@ def resolve_hardware_precision(precision: str = DEFAULT_PRECISION) -> str:
                     test_tensor = torch.zeros(2, dtype=torch.bfloat16, device="mps")
                     _ = test_tensor + test_tensor
                 return "bf16-mixed"
-            except (RuntimeError, TypeError, ValueError, OSError):
+            except RuntimeError, TypeError, ValueError, OSError:
                 return "32-true"
 
         # 4. CPU (Intel Sapphire Rapids+ / AMD Zen 4+ with AVX-512 VNNI/AMX)
-        if hasattr(torch, "cpu") and hasattr(torch.cpu, "is_bf16_supported") and torch.cpu.is_bf16_supported():
+        if (
+            hasattr(torch, "cpu")
+            and hasattr(torch.cpu, "is_bf16_supported")
+            and torch.cpu.is_bf16_supported()
+        ):
             return "bf16-mixed"
 
         return "32-true"
-    except (ImportError, RuntimeError):
+    except ImportError, RuntimeError:
         return "32-true"
 
 
@@ -475,6 +480,7 @@ def train_voice(
     sine_regularizer: bool = NATIVE_DEFAULT_SINE_REGULARIZER,
     sine_frequencies: Sequence[float] = NATIVE_DEFAULT_SINE_FREQUENCIES,
     sine_amplitudes: Sequence[float] = NATIVE_DEFAULT_SINE_AMPLITUDES,
+    val_loss_metric: str = STOCK_DEFAULT_VAL_LOSS_METRIC,
 ) -> bool:
     """Trains a Neural Amp Modeler Architecture 2 model container using the configured engine."""
     resolved_engine = resolve_trainer_engine(engine)

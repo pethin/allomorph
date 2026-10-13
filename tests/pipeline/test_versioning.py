@@ -196,52 +196,50 @@ def test_simulate_instrument_pickup_with_version_tag(
         m = json.load(f)
     assert m["version"] == "v6.1.1"
     assert wet_p.name in m["files"]
-    assert "base_dry_sha256" in m
-    assert m["files"][wet_p.name]["base_dry_sha256"] == m["base_dry_sha256"]
+    assert "recipe_token" in m
+    assert m["recipe_token"].startswith("alo_stem_")
+    assert m["files"][wet_p.name]["recipe_token"] == m["recipe_token"]
 
 
 def test_wet_stem_manifest_validation_and_invalidation(tmp_path: Path):
-    """Verify is_wet_stem_valid detects valid stems and catches stale/mismatched base dry audio."""
-    from allomorph.version import compute_file_sha256, is_wet_stem_valid, write_manifest
+    """Verify is_wet_stem_valid detects valid stems and catches stale/mismatched recipe tokens."""
+    from allomorph.version import is_wet_stem_valid, write_manifest
 
-    # 1. Setup mock base dry excitation file
-    base_dry_file = tmp_path / "test_base_dry.wav"
-    base_dry_file.write_bytes(b"ORIGINAL_BASE_DRY_EXCITATION_DATA_12345")
-    original_sha = compute_file_sha256(base_dry_file)
-
-    # 2. Setup mock wet stem
+    # 1. Setup mock wet stem
     wet_stem = tmp_path / "mock_wet.wav"
     wet_stem.write_bytes(b"MOCK_WET_CONVOLVED_AUDIO_DATA_67890")
 
-    # 3. Initially without manifest -> invalid
-    assert not is_wet_stem_valid(wet_stem, base_dry_path=base_dry_file)
+    original_token = "alo_stem_1111111111111111111111111111111111111111111111111111111111111111"
+    mutated_token = "alo_stem_2222222222222222222222222222222222222222222222222222222222222222"
 
-    # 4. Write authoritative manifest recording base_dry_sha256
+    # 2. Initially without manifest -> invalid
+    assert not is_wet_stem_valid(wet_stem, expected_recipe_token=original_token)
+
+    # 3. Write authoritative manifest recording recipe_token
     manifest_p = write_manifest(
         output_dir=tmp_path,
         stage="voicing",
         files=[wet_stem],
-        base_dry_sha256=original_sha,
-        base_dry_file=base_dry_file.name,
+        version_tag="v6.1.1",
+        recipe_token=original_token,
     )
     assert manifest_p.exists()
 
-    # 5. Now it must be valid
-    assert is_wet_stem_valid(wet_stem, base_dry_path=base_dry_file)
-    assert is_wet_stem_valid(wet_stem, base_dry_path=base_dry_file, expected_version="v6.1.1")
-    assert not is_wet_stem_valid(wet_stem, base_dry_path=base_dry_file, expected_version="v6.2.1")
+    # 4. Now it must be valid
+    assert is_wet_stem_valid(wet_stem, expected_recipe_token=original_token)
+    assert is_wet_stem_valid(
+        wet_stem, expected_recipe_token=original_token, expected_version="v6.1.1"
+    )
+    assert not is_wet_stem_valid(
+        wet_stem, expected_recipe_token=original_token, expected_version="v6.2.1"
+    )
 
-    # 6. Mutate base dry file (simulating re-generated / updated optimal_bass_dry)
-    base_dry_file.write_bytes(b"UPDATED_MUTATED_BASE_DRY_EXCITATION_99999")
-    mutated_sha = compute_file_sha256(base_dry_file)
-    assert mutated_sha != original_sha
+    # 5. Mutate expected recipe token -> must immediately invalidate stale wet stem cache!
+    assert not is_wet_stem_valid(wet_stem, expected_recipe_token=mutated_token)
 
-    # 7. Must immediately invalidate stale wet stem cache!
-    assert not is_wet_stem_valid(wet_stem, base_dry_path=base_dry_file)
-
-    # 8. Non-existent wet stem returns False
+    # 6. Non-existent wet stem returns False
     missing_stem = tmp_path / "missing_stem.wav"
-    assert not is_wet_stem_valid(missing_stem, base_dry_path=base_dry_file)
+    assert not is_wet_stem_valid(missing_stem, expected_recipe_token=original_token)
 
 
 def test_manifest_tracks_instrument_and_voicing_versions(tmp_path: Path):
@@ -369,7 +367,7 @@ def test_ensure_input_audio_wav(tmp_path: Path):
 
 
 def test_is_wet_stem_valid_comprehensive_matrix(tmp_path: Path):
-    """Verify is_wet_stem_valid condition matrix (missing files, invalid JSON, version/hash mismatch)."""
+    """Verify is_wet_stem_valid condition matrix (missing files, invalid JSON, version/token mismatch)."""
     from allomorph.version import is_wet_stem_valid, write_manifest
 
     base_dry = tmp_path / "base_dry.wav"
@@ -377,27 +375,28 @@ def test_is_wet_stem_valid_comprehensive_matrix(tmp_path: Path):
     stem = tmp_path / "wet_stem.wav"
     stem.write_bytes(b"wet audio stem content")
     manifest_p = tmp_path / "manifest.json"
+    expected_token = "alo_stem_0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
 
     # 1. Stem file does not exist
     non_existent = tmp_path / "non_existent.wav"
-    assert is_wet_stem_valid(non_existent, base_dry_path=base_dry) is False
+    assert is_wet_stem_valid(non_existent, expected_recipe_token=expected_token) is False
 
     # 2. Manifest does not exist
-    assert is_wet_stem_valid(stem, base_dry_path=base_dry) is False
+    assert is_wet_stem_valid(stem, expected_recipe_token=expected_token) is False
 
     # 3. Manifest contains invalid JSON
     manifest_p.write_text("invalid json {", encoding="utf-8")
-    assert is_wet_stem_valid(stem, base_dry_path=base_dry) is False
+    assert is_wet_stem_valid(stem, expected_recipe_token=expected_token) is False
 
     # 4. Manifest missing stem entry
     manifest_p.write_text(json.dumps({"files": {}}), encoding="utf-8")
-    assert is_wet_stem_valid(stem, base_dry_path=base_dry) is False
+    assert is_wet_stem_valid(stem, expected_recipe_token=expected_token) is False
 
-    # 5. Manifest entry missing base_dry_sha256
+    # 5. Manifest entry missing recipe_token
     manifest_p.write_text(
         json.dumps({"files": {stem.name: {"version": "v6.1.1"}}}), encoding="utf-8"
     )
-    assert is_wet_stem_valid(stem, base_dry_path=base_dry) is False
+    assert is_wet_stem_valid(stem, expected_recipe_token=expected_token) is False
 
     # 6. Expected version mismatch
     write_manifest(
@@ -406,36 +405,40 @@ def test_is_wet_stem_valid_comprehensive_matrix(tmp_path: Path):
         [stem],
         version_tag="v2.1.1",
         base_dry_file=base_dry.name,
-        base_dry_sha256="wrong_sha",
+        recipe_token=expected_token,
     )
-    assert is_wet_stem_valid(stem, base_dry_path=base_dry, expected_version="v3.1.1") is False
+    assert (
+        is_wet_stem_valid(stem, expected_recipe_token=expected_token, expected_version="v3.1.1")
+        is False
+    )
 
-    # 7. Base dry path does not exist
-    missing_dry = tmp_path / "missing_dry.wav"
-    assert is_wet_stem_valid(stem, base_dry_path=missing_dry) is False
-
-    # 8. SHA mismatch
+    # 7. Token mismatch
     write_manifest(
         tmp_path,
         "sim",
         [stem],
         version_tag="v6.1.1",
         base_dry_file=base_dry.name,
-        base_dry_sha256="dummy_hash",
+        recipe_token="alo_stem_wrongtoken000000000000000000000000000000000000000000000000000000",
     )
-    assert is_wet_stem_valid(stem, base_dry_path=base_dry, expected_version="v6.1.1") is False
+    assert (
+        is_wet_stem_valid(stem, expected_recipe_token=expected_token, expected_version="v6.1.1")
+        is False
+    )
 
-    # 9. Valid stem: matching hash and version
-    real_sha = compute_file_sha256(base_dry)
+    # 8. Valid stem: matching token and version
     write_manifest(
         tmp_path,
         "sim",
         [stem],
         version_tag="v6.1.1",
         base_dry_file=base_dry.name,
-        base_dry_sha256=real_sha,
+        recipe_token=expected_token,
     )
-    assert is_wet_stem_valid(stem, base_dry_path=base_dry, expected_version="v6.1.1") is True
+    assert (
+        is_wet_stem_valid(stem, expected_recipe_token=expected_token, expected_version="v6.1.1")
+        is True
+    )
 
 
 def test_write_manifest_dict_files(tmp_path: Path):

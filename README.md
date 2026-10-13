@@ -169,95 +169,141 @@ Allomorph includes pre-configured physical and electrical parameters for **24 di
 
 ---
 
-## SPICE $\to$ NAM Pipeline & CLI Usage
+## Modern Modular CLI & Pipeline Usage
 
-Allomorph models acoustic aperture and scale tension in Python, executes the passive circuit digital twin directly using its native WAV SPICE simulator, and trains lightweight NAM (`.nam`) neural captures for Block 1 of the Darkglass Anagram:
+Allomorph provides a unified, high-performance CLI powered by **Cyclopts** and **Rich** (`allomorph`):
 
-### 1. Interactive Acoustic & Electrical Visualizer (`scripts/analyze_voices.py`)
+```
+allomorph [COMMAND] [OPTIONS]
+├── viz (visualize)     # Altair interactive frequency response curves & master portal
+├── stems               # Forward digital twin wet stem management
+│   ├── generate        # Direct forward synthesis with in-process token caching
+│   └── prune           # Orphan stem and sidecar cleanup
+├── pack                # Tone3000 upload pack bundling with recipe validation
+├── train               # NAM A2 neural model training with dynamic engine options
+├── audit               # Audio QA telemetry, LUFS, and true-peak compliance audit
+└── list                # Catalog browser (instruments, voices, tone packs)
+```
+
+---
+
+### 1. Interactive Acoustic & Electrical Visualizer (`allomorph viz`)
 Renders interactive frequency response curves in Altair (Vega-Lite), comparing all 24 target configurations against any source instrument. Outputs are organized into per-instrument standalone charts and a unified interactive portal:
 
 ```bash
 # Generate interactive charts for all configured source instruments and refresh master portal:
-uv run python scripts/analyze_voices.py
+uv run allomorph viz
 
 # Generate or refresh for a specific instrument (preserves all other instrument charts):
-uv run python scripts/analyze_voices.py --instrument 32in_fretless
-uv run python scripts/analyze_voices.py --instrument 30in
+uv run allomorph viz 30in_emg_mmtw
+uv run allomorph viz 34in_standard_p
 ```
 *Outputs: Master interactive portal at `docs/frequency_responses.html` (and `docs/frequency_responses/index.html`) with embedded tabbed navigation and spec breakdown, and per-instrument standalone visualizations in `docs/frequency_responses/<instrument_id>.html`.*
 
-### 2. Native WAV SPICE Circuit Simulation (`allomorph-sim`)
-Directly streams raw bass string excitation audio (`audio/input.wav`) through the entire physical digital twin in a single in-memory forward pass:
+---
+
+### 2. Forward Digital Twin Wet Stem Synthesis (`allomorph stems`)
+Directly streams raw bass string excitation audio through the entire physical digital twin in a single in-memory forward pass:
 1. **Acoustic Aperture & Placement:** De-humbucking sinc aperture filtering, spatial standing-wave comb filtering, displacement tilt ($\Delta x$), scale tension filtering, saddle boundary layer stiffness ($H_{\text{saddle}}$), and multi-pickup causal arrival delay ($\tau_i$).
 2. **Branch-Wise Dynamic Non-Linear Compliance:** Pre-summing magnetic saturation for composite pickups with soft-knee saturation ($V_{\text{sat}} \cdot \tanh(v / V_{\text{sat}})$), Lenz flux sag, Dahl hysteresis, back-EMF braking, dynamic reluctance quack, velocity-modulated aperture bloom ($\kappa_{\text{ap}}$), and GIL-free (`nogil=True`) state-space ODE kernels for full multi-core scalability.
 3. **Passive Pickup Circuit Twin:** Exact closed-form nodal AC transfer functions, Foster 2-stage eddy-current damping, solid Alnico pole skin dispersion, authentic volume/tone pot dividers, active preamp buffers (flat DC transmission, zero Gibbs ripples), hybrid treble bleed, cable capacitance ($750\text{ pF}$), and pedalboard load ($1\text{ M}\Omega \parallel 30\text{ pF}$).
 4. **Calibrated Loudness & True-Peak Safety:** ITU-R BS.1770-4 gated loudness normalization ($-20.50\text{ LUFS}$ / $-20.50\text{ dBFS}$ RMS) strictly bounded by a 4x oversampled true-peak safety ceiling ($\le 0.9900$ / $-0.09\text{ dBFS}$) via transparent linear peak scaling to avoid double compression.
 
-Allomorph features a built-in **WAV SPICE simulator** running natively on Apple Silicon (`arm64`). Accelerated by a master 21-point Lossless $C^\infty$ SIMD, Tensor & Real-FFT Optimization Suite (pure real-FFT homomorphic cepstrum synthesis, 2D continuum tensor broadcasting, branchless 3-stage `fsqrt` rail limiters, Horner dipole polynomials, and passband-constrained oversampling), the engine evaluates exact analytical nodal equations and vector non-linearities directly in memory on the audio waveform, eliminating external SPICE dependencies (such as LTspice or ngspice) and intermediate disk writes while executing in ~0.8s per voice (>1500x faster than traditional transient SPICE engines):
-
 ```bash
-# Run unified WAV SPICE simulation from raw audio for a specific voice (~0.8s):
-uv run allomorph-sim --voice precision_active --instrument 30in
+# Synthesize wet stems for specific targets (with in-process recipe-token skip logic):
+uv run allomorph stems generate 30in_emg_mmtw:precision_active
 
-# Simulate all voices in parallel across multi-core CPU (-j / --jobs):
-uv run allomorph-sim --voice all --instrument 30in -j 8
+# Synthesize all configured wet stems:
+uv run allomorph stems generate all
 
-# Rapid prototyping run on first 2 seconds (96,000 samples):
-uv run allomorph-sim --voice stingray_parallel --max-samples 96000
+# Force regeneration regardless of existing valid tokens:
+uv run allomorph stems generate all --force
 
-# Run via master pipeline (direct forward simulation stage):
-uv run allomorph --stage sim --voice precision_active
+# Preview orphan audio stems and sidecars without deleting:
+uv run allomorph stems prune --dry-run
+
+# Prune obsolete audio stems and purge empty directories:
+uv run allomorph stems prune
 ```
 
-### 3. NAM Neural Model Training (Architecture 2 / A2)
-Trains a high-efficiency **NAM Architecture 2 (A2)** neural model directly pairing the source instrument wet stem ($X_{\text{src}}$) to the target voice wet stem ($Y_{\text{tgt}}$). A2 replaces legacy A1 models (nano/feather/standard) with a "slimmable (full/lite)" neural architecture designed specifically for low-power hardware like the Darkglass Anagram:
+---
+
+### 3. Tone3000 Upload Pack Bundling (`allomorph pack`)
+Packages turnkey Tone3000 upload bundles respecting the strict "1 Dry + Multiple Wet Stems" constraint:
 
 ```bash
-# Train NAM Architecture 2 (A2) model for Darkglass Anagram Block 1:
-# Both input (X_src) and target (Y_tgt) are synthesized wet audio files:
-nam train audio/wet/30in_emg_mmtw/mmtw_dual.wav audio/wet/34in_standard_p/precision_vintage.wav ./models/30in_emg_mmtw/precision_vintage.nam --architecture "A2"
+# Package all tone packs (skips packs whose stems and manifests are already fresh):
+uv run allomorph pack packs
 
-# Run via the automated Allomorph trainer (defaults to Architecture 2 slimmable container with goal ESR <= 0.0080):
-uv run allomorph --stage train --instrument 30in --voice precision_active
+# Package a specific tone pack:
+uv run allomorph pack pack:34in_standard_p
 
-# Customize goal ESR or disable early stopping:
-uv run allomorph --stage train --instrument 30in --voice precision_active --goal-esr 0.0050
-uv run allomorph --stage train --instrument 30in --voice precision_active --no-goal-esr --epochs 400
-
-# Train A2-Lite channels_8 only (instead of the default slimmable container):
-uv run allomorph --stage train --instrument 30in --voice precision_active --a2-lite-only
+# Force repackaging regardless of cached recipe tokens:
+uv run allomorph pack pack:34in_standard_p --force
 ```
-*(In modern versions of `neural-amp-modeler` and the official Google Colab trainer, `--architecture A2` is the default. With the optimal bass dry excitation file featuring the Section 9E Dedicated Representative Bass Performance Suite, Allomorph trains the full slimmable Architecture 2 container (both `channels_3` and `channels_8`) by default under the **A2 Studio Reference** standard (`--goal-esr 0.0080`, `400` max epoch safety ceiling, `--batch-size 32`, monitoring `channels_8`). To isolate the 8-channel submodel only, supply `--a2-lite-only`).*
 
-> [!NOTE]
-> **Complete Training Guide & Audio Pairings:**
-> For the complete reference table of input/target audio pairings for direct single-block and Tone3000 models, see [`docs/training.md`](docs/training.md).
+---
 
-### 4. Master Automation Runner (`allomorph`)
-Execute the entire pipeline or specific stages with a single command:
+### 4. NAM Neural Model Training (`allomorph train`)
+Trains high-efficiency **NAM Architecture 2 (A2)** neural models directly pairing source instrument wet stems ($X_{\text{src}}$) to target voice wet stems ($Y_{\text{tgt}}$). Features dynamic engine options tailored for both the native in-VRAM PyTorch engine and upstream stock NAM / PyTorch Lightning:
 
 ```bash
-# Run complete pipeline for 30" source instrument (sim -> pack -> train -> viz):
-uv run allomorph --instrument 30in
+# Train using the high-throughput native engine (default):
+uv run allomorph train 30in_emg_mmtw:precision_active --engine native
 
-# Direct forward simulation of wet audio stems (with multi-core parallel jobs):
-uv run allomorph --stage sim --instrument 30in --jobs 4
+# Train all target voices for a tone pack with adaptive early stopping:
+uv run allomorph train pack:34in_standard_p --epochs 120 --patience 15
 
-# Clear audio/ directory and regenerate wet stems across all instruments:
-uv run allomorph --clean-audio --stage sim --jobs 4
+# Train using the upstream stock NAM engine (standard 200-epoch baseline):
+uv run allomorph train 34in_standard_p:precision_dub --engine stock --epochs 200
 
-# Export Tone3000 upload bundles:
-uv run allomorph --stage pack --instrument 30in
+# Retrain existing models and overwrite fresh files:
+uv run allomorph train 30in_emg_mmtw:precision_active --force
 
-# Train local NAM models:
-uv run allomorph --stage train --instrument 30in --voice precision_active
+# View dynamic engine-specific CLI options:
+uv run allomorph train --engine native --help
+uv run allomorph train --engine stock --help
+```
 
-# Audit catalog audio telemetry (loudness, true-peak, crest factor, DC offset):
-uv run allomorph --stage audit
-uv run allomorph --stage audit --verbose
+---
 
-# Generate interactive Altair frequency visualizations:
-uv run allomorph --stage viz
+### 5. Audio QA Telemetry & Catalog Auditing (`allomorph audit`)
+Audits 100% of synthesized wet files in the catalog, verifying zero clipping ($\text{true\_peak} \le 0.9900$) and uniform BS.1770-4 loudness compliance:
+
+```bash
+# Run catalog audio audit with summary telemetry table:
+uv run allomorph audit
+
+# Run audit with full per-file detail rows:
+uv run allomorph audit --verbose
+```
+
+---
+
+### 6. Interactive Catalog Listing (`allomorph list`)
+Inspect configured source instruments, target voicings, and tone pack definitions with rich styled tables:
+
+```bash
+# List all instruments, target voices, and tone packs:
+uv run allomorph list
+
+# List specific catalog sections:
+uv run allomorph list instruments
+uv run allomorph list voices
+uv run allomorph list packs
+```
+
+---
+
+### 7. Low-Level Native WAV SPICE Simulation (`allomorph-sim`)
+Built-in standalone runner for analytical SPICE netlist execution directly on audio waveforms at >1500x speed:
+
+```bash
+# Simulate a single voice from raw audio:
+uv run allomorph-sim --voice precision_active --instrument 30in_emg_mmtw
+
+# Simulate all voices in parallel across multi-core CPU:
+uv run allomorph-sim --voice all --instrument 30in_emg_mmtw -j 8
 ```
 
 ---
@@ -332,16 +378,27 @@ allomorph/
 │       │   ├── dataframe.py               # Polars data modeling & continuum transfer curves
 │       │   ├── charts.py                  # Interactive Altair visualization builders
 │       │   └── portal.py                  # Responsive dark-mode HTML portal generator
-│       ├── pipeline/                      # Multi-stage automation & batch orchestration
-│       │   ├── stages.py                  # Visualization, prefilter, simulation, training stages
+│       ├── cli/                           # Modular Cyclopts CLI application
+│       │   ├── audit_cmd.py               # Audio QA telemetry command
+│       │   ├── console.py                 # Rich console singleton & formatted tables
+│       │   ├── list_cmd.py                # Instruments, voices, and packs listing
+│       │   ├── pack_cmd.py                # Tone3000 pack exporter command
+│       │   ├── stems_cmd.py               # Wet stem generation & orphan pruning
+│       │   ├── targets.py                 # Strict target grammar parser & resolver
+│       │   ├── train_cmd.py               # Dynamic engine training command & auto-pruner
+│       │   └── visualize_cmd.py           # Altair visualization & portal generator
+│       ├── pipeline/                      # Batch orchestration & packaging
 │       │   ├── batch.py                   # Concurrency pool & ProcessPoolExecutor runner
-│       │   └── cli.py                     # Allomorph CLI argument parsing & workflow dispatcher
-│       └── cli.py                         # Master CLI entrypoint delegation for `allomorph`
+│       │   ├── bundle.py                  # Tone3000 bundle partitioning & stem packaging
+│       │   ├── manifest.py                # Cryptographic manifest generation & verification
+│       │   └── pack.py                    # Tone pack builder & artifact assembler
+│       └── trainer/                       # Dedicated neural training engines
+│           ├── native/                    # High-throughput in-VRAM A2 training engine
+│           └── stock/                     # Upstream NAM / Lightning A2 training engine
 ├── scripts/                               # Workflow utilities & CLI entrypoints
-│   ├── analyze_voices.py                  # Thin delegating CLI wrapper for allomorph.visualizer
-│   ├── train_nam.py                       # Local NAM A2 PyTorch/MPS GPU trainer
+│   ├── debug_stem.py                      # Diagnostic WAV SPICE stem probe
 │   └── generate_tone3000_artwork.py       # Tone3000 storefront artwork generator
-├── tests/                                 # Hierarchical pytest test suite (543 tests)
+├── tests/                                 # Hierarchical pytest test suite (539 tests)
 │   ├── circuit/                           # SPICE netlists, nodal RLC solving, ODE saturation, simulation
 │   ├── config/                            # Instrument, voicing, and naming schema validation
 │   ├── dsp/                               # Wave synthesis, loudness gating, Hilbert FIR, 24-bit I/O
@@ -363,10 +420,10 @@ allomorph/
 - [x] **Native WAV SPICE Simulator:** High-performance Apple Silicon engine (`allomorph-sim`) solving analytical nodal RLC equations, Foster 2-stage core eddy diffusion, Dahl magnetic domain-wall pinning hysteresis, asymmetric magnet saturation compliance, sub-audible 8 Hz DC blocking, passive RLC Johnson noise dither, and automatic output level normalization based on input sweep dBFS at >1500x speed.
 - [x] **Lossless $C^\infty$ SIMD, Tensor & Real-FFT Optimization Suite:** Master 21-point mathematical vectorization accelerating FIR synthesis via pure real-FFT homomorphic cepstrum, 2D continuum tensor broadcasting, branchless 3-stage `fsqrt` rail limiting, passband-constrained oversampling, and analytical impedance Jacobians.
 - [x] **24 Master Voice Profiles & Transducers:** Modern active 2-band Jazz, vintage single-coil, split-coil, series/parallel dual-coils, active Music Man, fanned multi-scale, upright double-bass bridge piezo force transducers, and flat dynamic twins.
-- [x] **DSP Generation 6 & Acoustic Vibration Synthesis Engine:** Direct unified forward digital twin simulation, physical string harmonic tilt damping ($f_{\text{corner}} = 1200\text{ Hz}$), 2D modal string plucks with inharmonicity stiffness dispersion, branch-wise pre-summing magnetic saturation with causal delay $\tau_i$, dynamic ITU-R BS.1770-4 gated loudness matching ($-20.50\text{ LUFS}$), 4x oversampled true-peak safety ceiling ($\le 0.9900$), Tone3000 upload pack bundles (`bundles/<pickup>/`), and automated catalog audit (`allomorph --stage audit`). Documented in [`docs/dsp_synthesis_engine.md`](docs/dsp_synthesis_engine.md) and [`docs/dsp_simulation_engine.md`](docs/dsp_simulation_engine.md).
+- [x] **DSP Generation 6 & Acoustic Vibration Synthesis Engine:** Direct unified forward digital twin simulation, physical string harmonic tilt damping ($f_{\text{corner}} = 1200\text{ Hz}$), 2D modal string plucks with inharmonicity stiffness dispersion, branch-wise pre-summing magnetic saturation with causal delay $\tau_i$, dynamic ITU-R BS.1770-4 gated loudness matching ($-20.50\text{ LUFS}$), 4x oversampled true-peak safety ceiling ($\le 0.9900$), Tone3000 upload pack bundles (`bundles/<pickup>/`), and automated catalog audit (`allomorph audit`). Documented in [`docs/dsp_synthesis_engine.md`](docs/dsp_synthesis_engine.md) and [`docs/dsp_simulation_engine.md`](docs/dsp_simulation_engine.md).
 - [x] **Interactive Visualization Portal:** Polars + Altair frequency response portal with spec sheets and per-instrument interactive charts (`docs/frequency_responses.html`).
 - [x] **Native High-Throughput In-VRAM NAM Training Engine:** Custom PyTorch Architecture 2 engine with universal hardware `bfloat16` acceleration, 255-tap Blackman FIR regularizer ($f_c = 1200\text{ Hz}$), dynamic probe calibration gain alignment, and continuous 100% GPU compute saturation ($2.26\text{--}2.75\text{s/epoch}$ on AMD ROCm).
-- [x] **Automated Test Suite:** Comprehensive 543-test pytest verification covering physical filters, nodal transfer functions, real-FFT homomorphic cepstrum DSP, 2D tensor continuum, ODE saturation, audio simulation, native training engine, and architectural guardrails.
+- [x] **Automated Test Suite:** Comprehensive 539-test pytest verification covering physical filters, nodal transfer functions, real-FFT homomorphic cepstrum DSP, 2D tensor continuum, ODE saturation, audio simulation, native training engine, and architectural guardrails.
 
 ### Upcoming Objectives
 - [ ] **Interactive A/B Audio Auditioning CLI:** Terminal and real-time audio auditioning tool (`scripts/preview_voices.py`) with seamless dry-to-wet switching, looping bass riffs, and instantaneous A/B comparison across pickup voices before neural training or pedalboard export.

@@ -4,7 +4,6 @@ Automates creation, partitioning, packaging, and local training of Tone3000 uplo
 respecting Tone3000's strict '1 Dry File + Multiple Wet Stems' batch upload constraint.
 """
 
-import contextlib
 import hashlib
 import json
 import shutil
@@ -50,7 +49,10 @@ from allomorph.trainer.constants import (
 )
 from allomorph.version import (
     DSP_GENERATION,
-    compute_file_sha256,
+    compute_bundle_recipe_token,
+    compute_pack_recipe_token,
+    compute_recipe_token,
+    get_dry_excitation_token,
     is_wet_stem_valid,
     resolve_tri_part_version,
 )
@@ -69,6 +71,72 @@ def _sha256_file(path: Path) -> str:
         while chunk := f.read(65536):
             h.update(chunk)
     return h.hexdigest()
+
+
+def check_pack_needs_repacking(
+    instrument: InstrumentConfig | str | Path,
+    output_dir: Path | str | None = None,
+    input_wav: Path | str | None = None,
+    catalog_targets: Sequence[tuple[str, str]] | None = None,
+) -> bool:
+    """Checks whether a tone pack requires repacking based on directory existence,
+    bundle file integrity, and cryptographic recipe tokens."""
+    inst = (
+        load_instrument(instrument) if not isinstance(instrument, InstrumentConfig) else instrument
+    )
+    pack_dir = Path(output_dir) if output_dir else PACKS_DIR / inst.id
+    bundles_dir = pack_dir / "bundles"
+    manifest_path = pack_dir / "manifest.json"
+
+    if not manifest_path.exists() or not bundles_dir.exists():
+        return True
+
+    bundles = partition_instrument_bundles(inst, catalog_targets=catalog_targets)
+    is_multi_pickup = len(bundles) > 1
+
+    try:
+        with open(manifest_path, "r", encoding="utf-8") as mf:
+            existing_pack_data = json.load(mf)
+        recorded_pack_token = existing_pack_data.get("recipe_token")
+
+        expected_bundle_tokens: dict[str, str] = {}
+        for b_name, b_bundle in bundles.items():
+            b_src_v = inst.voicings[b_bundle.source_voicing]
+            b_dry_tok = compute_recipe_token(
+                instrument=inst,
+                voicing=b_src_v,
+                base_dry_path=input_wav,
+                dsp_generation=DSP_GENERATION,
+            )
+            b_descs = resolve_bundle_target_file_descriptors(b_bundle, is_multi_pickup)
+            b_stem_toks = [
+                (
+                    desc["stem_filename"],
+                    compute_recipe_token(
+                        instrument=desc["target_ref"].instrument,
+                        voicing=desc["target_ref"].voicing,
+                        base_dry_path=input_wav,
+                        dsp_generation=DSP_GENERATION,
+                    ),
+                )
+                for desc in b_descs
+            ]
+            expected_bundle_tokens[b_name] = compute_bundle_recipe_token(
+                dry_recipe_token=b_dry_tok,
+                stem_tokens=b_stem_toks,
+            )
+        expected_pack_token = compute_pack_recipe_token(
+            inst.id, expected_bundle_tokens, dsp_generation=DSP_GENERATION
+        )
+
+        all_bundles_exist = all(
+            (bundles_dir / b_name / "manifest.json").exists()
+            and (bundles_dir / b_name / "upload_instructions.txt").exists()
+            for b_name in bundles
+        )
+        return not (recorded_pack_token == expected_pack_token and all_bundles_exist)
+    except json.JSONDecodeError, KeyError, OSError:
+        return True
 
 
 def export_tone_pack(
@@ -90,12 +158,22 @@ def export_tone_pack(
         load_instrument(instrument) if not isinstance(instrument, InstrumentConfig) else instrument
     )
 
-    # 1. Partition instrument into pickup bundles first to validate before creating directories
-    bundles = partition_instrument_bundles(inst, catalog_targets=catalog_targets)
-
     pack_dir = Path(output_dir) if output_dir else PACKS_DIR / inst.id
     bundles_dir = pack_dir / "bundles"
     nam_dir = pack_dir / "nam"
+
+    if not overwrite and not check_pack_needs_repacking(
+        inst, output_dir=pack_dir, input_wav=input_wav, catalog_targets=catalog_targets
+    ):
+        print(
+            f"\n[Tone Pack Exporter] Tone Pack already exists and is fresh at '{pack_dir}'. Pass overwrite=True (or --force) to force repack."
+        )
+        return pack_dir
+
+    # 1. Partition instrument into pickup bundles first to validate before creating directories
+    bundles = partition_instrument_bundles(inst, catalog_targets=catalog_targets)
+    is_multi_pickup = len(bundles) > 1
+
     pack_dir.mkdir(parents=True, exist_ok=True)
     bundles_dir.mkdir(parents=True, exist_ok=True)
     if train:
@@ -107,21 +185,8 @@ def export_tone_pack(
             shutil.rmtree(existing_item)
 
     manifest_path = pack_dir / "manifest.json"
-    if not overwrite and manifest_path.exists():
-        all_bundles_exist = all(
-            (bundles_dir / b_name / "manifest.json").exists()
-            and (bundles_dir / b_name / "upload_instructions.txt").exists()
-            for b_name in bundles
-        )
-        if all_bundles_exist:
-            print(
-                f"\n[Tone Pack Exporter] Tone Pack already exists at '{pack_dir}'. Pass overwrite=True (or --force) to force repack."
-            )
-            return pack_dir
 
     # 2. Process each bundle
-    is_multi_pickup = len(bundles) > 1
-
     def _process_bundle(item: tuple[str, VoicingBundle]) -> tuple[str, dict[str, Any]]:
         b_name, bundle = item
         b_dir = bundles_dir / b_name
@@ -136,6 +201,13 @@ def export_tone_pack(
         src_v = inst.voicings[src_v_id]
         source_voice_ver = getattr(src_v, "version", 1)
 
+        dry_recipe_token = compute_recipe_token(
+            instrument=inst,
+            voicing=src_v,
+            base_dry_path=input_wav,
+            dsp_generation=DSP_GENERATION,
+        )
+
         # A. Synthesize / Copy Source Audio for this bundle (Tone3000 upload contract requires dry v[dsp].[inst].[voicing].wav)
         dry_v_tag = resolve_tri_part_version(DSP_GENERATION, inst.version, source_voice_ver)
         dry_filename = f"dry {dry_v_tag}.wav"
@@ -148,6 +220,7 @@ def export_tone_pack(
 
         if max_samples is None and is_wet_stem_valid(
             source_wet_path,
+            expected_recipe_token=dry_recipe_token,
             base_dry_path=input_wav,
             expected_version=dry_v_tag,
         ):
@@ -173,8 +246,6 @@ def export_tone_pack(
                 force=True,
             )
 
-        dry_sha256 = _sha256_file(dry_dest)
-
         # B. Wet Audio Stems (Copy cached wet audio from audio/wet or compile then copy)
         bundle_stems: list[dict[str, Any]] = []
         stem_filenames: list[str] = []
@@ -189,9 +260,17 @@ def export_tone_pack(
             target_slug = desc["target_slug"]
             target_wet_path = WET_AUDIO_DIR / target_ref.instrument_id / f"{target_slug}.wav"
 
+            target_recipe_token = compute_recipe_token(
+                instrument=target_ref.instrument,
+                voicing=target_ref.voicing,
+                base_dry_path=input_wav,
+                dsp_generation=DSP_GENERATION,
+            )
+
             if max_samples is None:
                 if not is_wet_stem_valid(
                     target_wet_path,
+                    expected_recipe_token=target_recipe_token,
                     base_dry_path=input_wav,
                     expected_version=target_v_tag,
                 ):
@@ -225,7 +304,6 @@ def export_tone_pack(
                     "Tone3000 will reject training on identical dry/wet stems."
                 )
 
-            stem_sha256 = _sha256_file(stem_path)
             stem_filenames.append(stem_filename)
             bundle_stems.append(
                 {
@@ -236,7 +314,7 @@ def export_tone_pack(
                     "target_voicing_version": target_ref.voicing.version,
                     "version": target_v_tag,
                     "tone_name": tone_name,
-                    "sha256": stem_sha256,
+                    "recipe_token": target_recipe_token,
                 }
             )
 
@@ -252,7 +330,12 @@ def export_tone_pack(
         instructions_path.write_text(instr_content, encoding="utf-8")
 
         base_dry_p = Path(input_wav) if input_wav else get_default_input_path()
-        base_dry_sha = compute_file_sha256(base_dry_p) if base_dry_p.exists() else None
+        base_dry_token = get_dry_excitation_token(base_dry_p)
+
+        bundle_recipe_token = compute_bundle_recipe_token(
+            dry_recipe_token=dry_recipe_token,
+            stem_tokens=[(s["filename"], s["recipe_token"]) for s in bundle_stems],
+        )
 
         bundle_manifest = build_bundle_manifest_entry(
             bundle_name=b_name,
@@ -260,25 +343,27 @@ def export_tone_pack(
             source_voicing_id=src_v_id,
             dry_filename=dry_filename,
             dry_version=dry_v_tag,
-            dry_sha256=dry_sha256,
+            dry_recipe_token=dry_recipe_token,
+            recipe_token=bundle_recipe_token,
             instrument_id=inst.id,
             instrument_version=inst.version,
             source_voicing_version=source_voice_ver,
             bundle_stems=bundle_stems,
             base_dry_file=base_dry_p.name,
-            base_dry_sha256=base_dry_sha,
+            base_dry_token=base_dry_token,
         )
         with open(b_dir / "manifest.json", "w", encoding="utf-8") as bf:
             json.dump(bundle_manifest, bf, indent=2)
 
         bundle_entry = {
+            "recipe_token": bundle_recipe_token,
             "source_voicing": src_v_id,
             "position_name": pos_label,
             "base_dry_file": base_dry_p.name,
-            "base_dry_sha256": base_dry_sha,
+            "base_dry_token": base_dry_token,
             "dry_file": dry_filename,
             "dry_version": dry_v_tag,
-            "dry_sha256": dry_sha256,
+            "dry_recipe_token": dry_recipe_token,
             "instrument_id": inst.id,
             "instrument_version": inst.version,
             "source_voicing_version": source_voice_ver,
@@ -296,9 +381,15 @@ def export_tone_pack(
     else:
         bundle_results = [_process_bundle(item) for item in bundles.items()]
 
+    pack_bundle_tokens = {b_name: b_meta["recipe_token"] for b_name, b_meta in bundle_results}
+    pack_recipe_token = compute_pack_recipe_token(
+        inst.id, pack_bundle_tokens, dsp_generation=DSP_GENERATION
+    )
+
     manifest_entries = assemble_root_pack_manifest(
         inst=inst,
         bundle_entries={b_name: b_meta for b_name, b_meta in bundle_results},
+        recipe_token=pack_recipe_token,
         dsp_generation=DSP_GENERATION,
     )
 
@@ -335,16 +426,38 @@ def export_tone_pack(
             shutil.copyfile(cand, dest_artwork)
             break
 
-    # 5. Manifest JSON
+    # 5. Manifest JSON: preserve and migrate any existing trained models
     manifest_path = pack_dir / "manifest.json"
     if manifest_path.exists():
-        with (
-            contextlib.suppress(json.JSONDecodeError, OSError),
-            open(manifest_path, "r", encoding="utf-8") as mf,
-        ):
-            old_m = json.load(mf)
-            if old_models := old_m.get("models"):
-                manifest_entries["models"] = old_models
+        try:
+            with open(manifest_path, "r", encoding="utf-8") as mf:
+                old_m = json.load(mf)
+            if (old_models := old_m.get("models")) and isinstance(old_models, dict):
+                stem_lookup: dict[tuple[str, str] | str, tuple[dict[str, Any], dict[str, Any]]] = {}
+                for b_name, b_info in manifest_entries["bundles"].items():
+                    for s_info in b_info.get("stems", []):
+                        stem_lookup[(b_name, s_info["filename"])] = (b_info, s_info)
+                        stem_lookup[s_info["filename"]] = (b_info, s_info)
+
+                updated_models: dict[str, Any] = {}
+                for m_name, m_entry in old_models.items():
+                    entry = dict(m_entry)
+                    entry.pop("dry_sha256", None)
+                    entry.pop("wet_sha256", None)
+                    b_name = entry.get("bundle", "")
+                    wet_file = entry.get("wet_file", "")
+                    lookup_hit = stem_lookup.get((b_name, wet_file)) or stem_lookup.get(wet_file)
+                    if lookup_hit:
+                        b_info, s_info = lookup_hit
+                        if "dry_recipe_token" in b_info:
+                            entry["dry_recipe_token"] = b_info["dry_recipe_token"]
+                        if "recipe_token" in s_info:
+                            entry["wet_recipe_token"] = s_info["recipe_token"]
+                    updated_models[m_name] = entry
+                manifest_entries["models"] = updated_models
+        except json.JSONDecodeError, OSError:
+            pass
+
     with open(manifest_path, "w", encoding="utf-8") as f:
         json.dump(manifest_entries, f, indent=2)
 
@@ -385,12 +498,12 @@ def _populate_manifest_model_entry(
     if dry_info:
         if "dry_file" in dry_info:
             entry["dry_file"] = dry_info["dry_file"]
-        if "dry_sha256" in dry_info:
-            entry["dry_sha256"] = dry_info["dry_sha256"]
+        if "dry_recipe_token" in dry_info:
+            entry["dry_recipe_token"] = dry_info["dry_recipe_token"]
     if "filename" in stem_info:
         entry["wet_file"] = stem_info["filename"]
-    if "sha256" in stem_info:
-        entry["wet_sha256"] = stem_info["sha256"]
+    if "recipe_token" in stem_info:
+        entry["wet_recipe_token"] = stem_info["recipe_token"]
     try:
         with open(nam_path, "r", encoding="utf-8") as f:
             nam_data = json.load(f)
@@ -600,7 +713,7 @@ def train_tone_pack(
                             is_invalid = True
                     else:
                         is_invalid = True
-                except (json.JSONDecodeError, OSError):
+                except json.JSONDecodeError, OSError:
                     is_invalid = True
 
                 if is_invalid:
@@ -664,7 +777,7 @@ def train_tone_pack(
                     try:
                         with open(manifest_path, "r", encoding="utf-8") as f:
                             manifest_data = json.load(f)
-                    except (json.JSONDecodeError, OSError):
+                    except json.JSONDecodeError, OSError:
                         pass
                 if "models" not in manifest_data or not isinstance(manifest_data["models"], dict):
                     manifest_data["models"] = {}

@@ -67,6 +67,7 @@ def build_file_manifest_entry(
     instrument_version: int | None = None,
     voicing_version: int | None = None,
     compute_audio_metrics: bool = True,
+    recipe_token: str | None = None,
 ) -> dict[str, Any]:
     """Builds an authoritative metadata entry for a single physical file on disk."""
     path = Path(file_path)
@@ -74,6 +75,8 @@ def build_file_manifest_entry(
         "size_bytes": path.stat().st_size,
         "sha256": compute_file_sha256(path),
     }
+    if recipe_token is not None:
+        entry["recipe_token"] = recipe_token
     if base_dry_sha256 is not None:
         entry["base_dry_sha256"] = base_dry_sha256
     if base_dry_file is not None:
@@ -100,6 +103,7 @@ def build_dict_manifest_entry(
     version_tag: str | None = None,
     instrument_version: int | None = None,
     voicing_version: int | None = None,
+    recipe_token: str | None = None,
 ) -> dict[str, Any]:
     """Merges provenance and file size defaults into caller-provided metadata dictionary."""
     path = Path(file_path)
@@ -107,6 +111,8 @@ def build_dict_manifest_entry(
     if path.exists():
         entry.setdefault("size_bytes", path.stat().st_size)
         entry.setdefault("sha256", compute_file_sha256(path))
+    if recipe_token is not None:
+        entry.setdefault("recipe_token", recipe_token)
     if base_dry_sha256 is not None:
         entry.setdefault("base_dry_sha256", base_dry_sha256)
     if base_dry_file is not None:
@@ -145,6 +151,7 @@ def assemble_manifest_document(
     dsp_generation: int = DSP_GENERATION,
     allomorph_version: str = ALLOMORPH_VERSION,
     updated_at: str | None = None,
+    recipe_token: str | None = None,
 ) -> dict[str, Any]:
     """Assembles the complete manifest document dictionary."""
     manifest_data: dict[str, Any] = {
@@ -156,6 +163,8 @@ def assemble_manifest_document(
         "updated_at": updated_at if updated_at is not None else datetime.now(UTC).isoformat(),
         "file_count": len(file_entries),
     }
+    if recipe_token is not None:
+        manifest_data["recipe_token"] = recipe_token
     if base_dry_sha256 is not None:
         manifest_data["base_dry_sha256"] = base_dry_sha256
     if base_dry_file is not None:
@@ -178,6 +187,7 @@ def write_manifest(
     base_dry_file: str | None = None,
     instrument_version: int | None = None,
     voicing_version: int | None = None,
+    recipe_token: str | None = None,
 ) -> Path:
     """Emits an authoritative manifest.json sidecar file in the output directory.
 
@@ -208,6 +218,7 @@ def write_manifest(
                     version_tag=tag,
                     instrument_version=instrument_version,
                     voicing_version=voicing_version,
+                    recipe_token=recipe_token,
                 )
                 file_entries[f_path.name] = entry
         else:
@@ -222,6 +233,7 @@ def write_manifest(
                         instrument_version=instrument_version,
                         voicing_version=voicing_version,
                         compute_audio_metrics=True,
+                        recipe_token=recipe_token,
                     )
                     file_entries[f_path.name] = entry
 
@@ -233,6 +245,7 @@ def write_manifest(
             base_dry_file=eff_base_dry_file,
             instrument_version=instrument_version,
             voicing_version=voicing_version,
+            recipe_token=recipe_token,
         )
 
         with manifest_path.open("w", encoding="utf-8") as f:

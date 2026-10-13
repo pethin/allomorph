@@ -155,6 +155,7 @@ def test_export_tone_pack_parallel_bundles_and_cached_stems(
     # Mock simulate_instrument_voicing to quickly write a valid WAV file and manifest
     def _mock_sim_voicing(
         *args: Any,
+        instrument: Any = None,
         voicing: Any = None,
         output_wav: Path | str | None = None,
         **kwargs: Any,
@@ -171,13 +172,20 @@ def test_export_tone_pack_parallel_bundles_and_cached_stems(
             val = 0.35 if is_dry else 0.85
             samples = np.array([0.0, val, -val], dtype=np.float32)
             write_wav_24bit(p, samples, sample_rate=48000)
+            from allomorph.version import compute_recipe_token
+
+            recipe_tok = compute_recipe_token(
+                instrument=instrument,
+                voicing=voicing,
+                base_dry_path=mini_dry_audio,
+            )
             write_manifest(
                 p.parent,
                 "sim",
                 [p],
                 version_tag="v6.1.1",
                 base_dry_file=mini_dry_audio.name,
-                base_dry_sha256=_sha256_file(mini_dry_audio),
+                recipe_token=recipe_tok,
             )
 
     monkeypatch.setattr("allomorph.pipeline.pack.simulate_instrument_voicing", _mock_sim_voicing)
@@ -318,6 +326,12 @@ def test_train_tone_pack_flat_structure_mocked(
         assert model_meta["epochs_trained"] == 24
         assert model_meta["stop_reason"] == "triple_gate_converged"
         assert len(model_meta["sha256"]) == 64
+        assert "dry_recipe_token" in model_meta
+        assert model_meta["dry_recipe_token"].startswith("alo_")
+        assert "wet_recipe_token" in model_meta
+        assert model_meta["wet_recipe_token"].startswith("alo_stem_")
+        assert "dry_sha256" not in model_meta
+        assert "wet_sha256" not in model_meta
 
     # 2. Resumption & Skipping: calling again with overwrite=False skips existing models
     mock_train_calls.clear()
