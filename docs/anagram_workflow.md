@@ -124,7 +124,7 @@ Group the pickup profiles into dedicated 3-button banks on the Anagram hardware:
 
 ### Bank 4: Series Punch & Maximum Inductance
 * **Footswitch A:** `StingRay Series [Bridge] v6.1.1.nam` (Music Man Series Humbucker Mid-Punch)
-* **Footswitch B:** `P∕MM Series [Series] v6.1.1.nam` (P/MM Series Sum)
+* **Footswitch B:** `P∕MM Series [Parallel] v7.1.1.nam` (P/MM Bridge MM Series Coils)
 * **Footswitch C:** `Mudbucker Deep [Neck] v6.1.1.nam` (Gibson Mudbucker Series)
 
 ### Bank 5: Multi-Scale, Acoustic & Vintage Filtered

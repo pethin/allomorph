@@ -5,7 +5,7 @@
   "version": "v7.1.1",
   "allomorph_version": "0.5.0",
   "dsp_generation": 7,
-  "recipe_token": "alo_pck_4bc6c3976308daf3a0c5c85893eb6c92efaaeb78d89317e1eb46cbdc8b989410",
+  "recipe_token": "alo_pck_fcfb83bd600c8bb06696c5c2ae26ed3e200f3bc8baef94da77a799a75e34a877",
   "bundles": {
     "neck": {
       "recipe_token": "alo_bun_a33b46cddb4744a35e338a49ae1b2eafad6f1d24dc32ce241ae7aebcb130ab0b",
@@ -34,7 +34,7 @@
       "stem_count": 7
     },
     "parallel": {
-      "recipe_token": "alo_bun_aeeb255629c9004e5b49b7fec665dc1bc8558b5178c9d8f68cd6e76b78b0df0b",
+      "recipe_token": "alo_bun_9a852b495f86cd55f9a35ec1385cd13ee9bf8cd75d79196963a070418927608e",
       "source": "34in_active_emg:pair_parallel",
       "position_name": "Parallel",
       "base_dry_file": "input.wav",

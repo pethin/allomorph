@@ -161,8 +161,8 @@ Below is the definitive catalog of all 24 Allomorph target voices under the syst
 | `stingray_series` | `StingRay Series` | `[Bridge]` | `StingRay Series [Bridge] v6.1.1` | 31 | **Zero-Scroll** | Muscular, mid-forward high-output MM punch |
 | `rickenbacker_clank` | `Rickenbacker Clank` | `[Bridge]` | `Rickenbacker Clank [Bridge] v6.1.1` | 34 | **Zero-Scroll** | Classic 4003 bridge coil with high-pass clank |
 | `rickenbacker_open` | `Rickenbacker Open` | `[Bridge]` | `Rickenbacker Open [Bridge] v6.1.1` | 33 | **Zero-Scroll** | Modern 4003 bridge coil, vintage cap bypassed |
-| `p_mm_parallel` | `P∕MM Parallel` | `[Parallel]` | `P∕MM Parallel [Parallel] v6.1.1` | 31 | **Zero-Scroll** | Split-P + MM bridge in parallel with active buffer |
-| `p_mm_series` | `P∕MM Series` | `[Series]` | `P∕MM Series [Series] v6.1.1` | 27 | **Zero-Scroll** | Split-P + MM bridge in series with active buffer |
+| `p_mm_parallel` | `P∕MM Parallel` | `[Parallel]` | `P∕MM Parallel [Parallel] v7.1.1` | 31 | **Zero-Scroll** | Split-P + MM bridge (parallel coils) with Lakland LH-3 active preamp |
+| `p_mm_series` | `P∕MM Series` | `[Parallel]` | `P∕MM Series [Parallel] v7.1.1` | 29 | **Zero-Scroll** | Split-P + MM bridge (series coils) with Lakland LH-3 active preamp |
 | `mudbucker_deep` | `Mudbucker Deep` | `[Neck]` | `Mudbucker Deep [Neck] v6.1.1` | 29 | **Zero-Scroll** | Massive 14.4H sidewinder neck sub-bass rumble |
 | `dingwall_bridge` | `Dingwall Bridge` | `[Bridge]` | `Dingwall Bridge [Bridge] v6.1.1` | 32 | **Zero-Scroll** | High-tension fanned-fret progressive clarity |
 | `dingwall_middle` | `Dingwall Middle` | `[Neck]` | `Dingwall Middle [Neck] v6.1.1` | 29 | **Zero-Scroll** | Focused aggressive low-mid punch & vocal growl |

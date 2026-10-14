@@ -81,8 +81,8 @@ Every pack provides comprehensive coverage across eight modular sonic families, 
    - **StingRay Parallel** (Music Man StingRay Active 2-Band Parallel, Classic Hollow Mid-Scoop & Clank)
    - **StingRay Series** (Music Man StingRay Active 2-Band Series, Aggressive 2.1 kHz Bark & +2.5 dB EMF)
 3. **P/MM Modern Hybrids:**
-   - **Modern P/MM Active** (Modern Active P/MM Bass, Sandberg/Lakland Parallel Split + MM Sweet Spot)
-   - **P/MM Hybrid Series** (P/MM Hybrid Series Sum, Massive 7.2H Inductive Surge & +5.8 dB Punch)
+   - **P∕MM Parallel** (Modern Boutique Session Hybrid, Lakland LH-3 Active Preamp & Bridge MM Parallel Coils)
+   - **P∕MM Series** (Modern Active P/MM Hybrid, Lakland LH-3 Active Preamp & Bridge MM Series Coils)
 4. **Progressive & Classic Rock Legends:**
    - **Rickenbacker 4003 Clank** (Rickenbacker 4003 Bridge, Vintage 4.7nF Series HPF Clank)
    - **Rickenbacker 4003 Open** (Rickenbacker 4003 Bridge, Modern Push-Pull Vintage Cap Bypassed)

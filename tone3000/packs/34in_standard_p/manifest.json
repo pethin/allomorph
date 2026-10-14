@@ -5,10 +5,10 @@
   "version": "v7.1.1",
   "allomorph_version": "0.5.0",
   "dsp_generation": 7,
-  "recipe_token": "alo_pck_9ed1a26f435d89d22e2f3cb2ff7bb78cccca1d973d8a893d440a789c9045d555",
+  "recipe_token": "alo_pck_e8c2cc236a81b4c4d44fadefc2d86abf97b8975442d992f8645c619ba19d7ed2",
   "bundles": {
     "split": {
-      "recipe_token": "alo_bun_d852a4e42dda260900fe555d2a5bf3ef4bc2f2f38c174f3978690638b5a8ee2f",
+      "recipe_token": "alo_bun_7db4c783e11e8c6fa0f0e3862543a7f9b8d071381d2785f3136ab1c1bf15b0c8",
       "source": "34in_standard_p:vintage_open",
       "position_name": "Split",
       "base_dry_file": "input.wav",
@@ -367,9 +367,9 @@
       "engine": "native",
       "training_time_seconds": 320.12,
       "dry_recipe_token": "alo_rec_0e56d75279045ae31bbcd2683d6136d15cc8590fa6c8de0cc94c85c284b7fea6",
-      "wet_recipe_token": "alo_rec_7dd8886299035b2f6627bd1fe31f5586e95596474c2a4ffa8913f411d9b4dcb5",
+      "wet_recipe_token": "alo_rec_f99707e5710d75c2ec2199a842566baa76d6c85b9d616e0e80a71845942d418e",
       "dry_digest_token": "alo_stem_264750f0dfb40e8d060393024ad7b8f79a98fb4754adc8ba17a69b4c17ec6614",
-      "wet_digest_token": "alo_stem_001c7102f232d380d50808495e3d5f1647ed72b500a2595d7de9a2ac51649f08"
+      "wet_digest_token": "alo_stem_2705ae1b9f99f3851410c1df0a9889bf01b90c1766db9ad789b22f49abe5cd8b"
     },
     "P\u2215MM Series v6.1.1.nam": {
       "filename": "P\u2215MM Series v6.1.1.nam",
@@ -396,9 +396,9 @@
       "engine": "native",
       "training_time_seconds": 319.29,
       "dry_recipe_token": "alo_rec_0e56d75279045ae31bbcd2683d6136d15cc8590fa6c8de0cc94c85c284b7fea6",
-      "wet_recipe_token": "alo_rec_606f20d58219b10c935c1ae71c951e52f430dced0a9fcccc1ade5ad56b0b53d1",
+      "wet_recipe_token": "alo_rec_4d6be2b7f98a39c62bc720ae0f26f47714824f78338d10ec30ab1c899d3d6e5b",
       "dry_digest_token": "alo_stem_264750f0dfb40e8d060393024ad7b8f79a98fb4754adc8ba17a69b4c17ec6614",
-      "wet_digest_token": "alo_stem_c21430b39009c25c0d30da443155d85258e2eb405f699f3c7ccc2127a0f2070c"
+      "wet_digest_token": "alo_stem_47639d73312fefae2fe43abd0d491d71fb7774c8c28de8f8a4530eb050eb0ee0"
     },
     "Rickenbacker Open v6.1.1.nam": {
       "filename": "Rickenbacker Open v6.1.1.nam",
