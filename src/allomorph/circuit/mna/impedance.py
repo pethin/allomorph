@@ -4,20 +4,9 @@ Computes Foster 2-stage ladder impedance, Jordan after-effect permeability dispe
 and solid pole eddy skin-effect dispersion.
 """
 
-import functools
 import math
 
 import numpy as np
-
-
-@functools.lru_cache(maxsize=16)
-def _get_cached_s_ratio_power(alpha: float, n_points: int) -> np.ndarray:
-    """Caches normalized s_ratio ** alpha vectors for standard frequency grids."""
-    freqs_arr = np.linspace(0.0, 24000.0, n_points)
-    w = 2.0 * np.pi * freqs_arr
-    w0 = 2.0 * np.pi * 1000.0
-    s_ratio = np.where(w > 0.0, w / w0, 0.0)
-    return s_ratio**alpha
 
 
 def compute_core_impedance(
@@ -88,7 +77,12 @@ def compute_core_impedance_jacobians(
         mu_rel = 1.0
         dZ_dchi_mu = 0.0
 
-    dZ_dL = s * mu_rel
+    if L > 0.0 and L_core > 0.0 and R_core > 0.0:
+        k_core = L_core / L
+        denom_core = s * L_core + R_core
+        dZ_dL = s * mu_rel * ((1.0 - k_core) + (k_core * (R_core**2)) / (denom_core**2))
+    else:
+        dZ_dL = s * mu_rel
 
     if k_skin > 0.0 and omega_skin > 0.0:
         dZ_dk_skin = Rdc * (np.sqrt(1.0 + s / omega_skin) - 1.0)

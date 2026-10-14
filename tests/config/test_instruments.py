@@ -406,5 +406,3 @@ def test_ultra2_pj_and_pure_passive_p_configurations():
     # 4. Old modern_active cleanly removed (no backward compat)
     with pytest.raises(KeyError):
         resolve_target_voicing("34in_standard_p:modern_active")
-
-

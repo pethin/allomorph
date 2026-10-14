@@ -190,7 +190,7 @@ def check_pack_needs_repacking(
             for b_name in bundles
         )
         return not (recorded_pack_token == expected_pack_token and all_bundles_exist)
-    except (json.JSONDecodeError, KeyError, OSError):
+    except json.JSONDecodeError, KeyError, OSError:
         return True
 
 
@@ -219,9 +219,7 @@ def export_tone_pack(
     if not check_pack_needs_repacking(
         inst, output_dir=pack_dir, input_wav=input_wav, catalog_targets=catalog_targets
     ):
-        print(
-            f"\n[Tone Pack Exporter] Tone Pack already exists and is fresh at '{pack_dir}'."
-        )
+        print(f"\n[Tone Pack Exporter] Tone Pack already exists and is fresh at '{pack_dir}'.")
         return pack_dir
 
     # 1. Partition instrument into pickup bundles first to validate before creating directories
@@ -281,7 +279,7 @@ def export_tone_pack(
                             old_stems_by_tone[s["tone_name"]] = s
                 else:
                     existing_b_man = None
-            except (json.JSONDecodeError, OSError):
+            except json.JSONDecodeError, OSError:
                 existing_b_man = None
 
         # A. Synthesize / Copy Source Audio for this bundle
@@ -596,7 +594,7 @@ def export_tone_pack(
                                 if "tone_name" in s_info:
                                     stem_lookup[(b_name, s_info["tone_name"])] = (b_man, s_info)
                                     stem_lookup[s_info["tone_name"]] = (b_man, s_info)
-                        except (json.JSONDecodeError, OSError):
+                        except json.JSONDecodeError, OSError:
                             pass
 
                 updated_models: dict[str, Any] = {}
@@ -644,7 +642,9 @@ def export_tone_pack(
                             if "version" in s_info:
                                 entry["version"] = s_info["version"]
                             if "target_instrument_version" in s_info:
-                                entry["target_instrument_version"] = s_info["target_instrument_version"]
+                                entry["target_instrument_version"] = s_info[
+                                    "target_instrument_version"
+                                ]
                             if "target_voicing_version" in s_info:
                                 entry["target_voicing_version"] = s_info["target_voicing_version"]
 
@@ -656,7 +656,7 @@ def export_tone_pack(
                             entry["bundle"] = b_name
                     updated_models[m_name] = entry
                 manifest_entries["models"] = updated_models
-        except (json.JSONDecodeError, OSError):
+        except json.JSONDecodeError, OSError:
             pass
 
     with open(manifest_path, "w", encoding="utf-8") as f:
@@ -853,7 +853,7 @@ def train_tone_pack(
                 with open(b_manifest_path, "r", encoding="utf-8") as bmf:
                     b_manifest = json.load(bmf)
                 b_stems = b_manifest.get("stems", [])
-            except (json.JSONDecodeError, OSError):
+            except json.JSONDecodeError, OSError:
                 missing_stems = True
                 break
             for s_info in b_stems:
@@ -911,7 +911,9 @@ def train_tone_pack(
             raw_slug = raw_tone.lower().replace(" ", "_").replace("∕", "_").replace("/", "_")
             target_str = s_info.get("target", "")
             target_voicing = (
-                target_str.split(":", 1)[1] if ":" in target_str else s_info.get("target_voicing", "")
+                target_str.split(":", 1)[1]
+                if ":" in target_str
+                else s_info.get("target_voicing", "")
             )
             canonical_voice = VOICE_SLUG_ALIASES.get(raw_slug, raw_slug)
             if canonical_voice not in VOICES:
@@ -945,8 +947,12 @@ def train_tone_pack(
 
             if existing_nam_path is not None and not overwrite:
                 # Stage 2: Compare digest tokens
-                recorded_dry_digest = existing_m_entry.get("dry_digest_token") if existing_m_entry else None
-                recorded_wet_digest = existing_m_entry.get("wet_digest_token") if existing_m_entry else None
+                recorded_dry_digest = (
+                    existing_m_entry.get("dry_digest_token") if existing_m_entry else None
+                )
+                recorded_wet_digest = (
+                    existing_m_entry.get("wet_digest_token") if existing_m_entry else None
+                )
                 current_dry_digest = b_info.get("dry_digest_token")
                 current_wet_digest = s_info.get("digest_token")
 
@@ -977,7 +983,7 @@ def train_tone_pack(
                                 is_invalid = True
                         else:
                             is_invalid = True
-                    except (json.JSONDecodeError, OSError):
+                    except json.JSONDecodeError, OSError:
                         is_invalid = True
 
                     if not is_invalid and not recorded_dry_digest and not recorded_wet_digest:

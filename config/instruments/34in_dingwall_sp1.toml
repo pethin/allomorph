@@ -55,9 +55,9 @@ type = "split_coil"
 magnet_type = "neodymium"
 coils = [
     # Strings 3, 4 & 5 see forward coil half
-    { id = "forward", strings = [3, 4, 5], position_from_bridge_m = 0.1380, aperture_width_in = 0.45, pole_type = "rod", L = 1.9, Rdc = 5250.0, Reddy = 180000.0, Ccoil = 3e-11, weight = 0.5 },
+    { id = "forward", strings = [3, 4, 5], position_from_bridge_m = 0.1380, aperture_width_in = 0.45, pole_type = "rod", L = 1.9, Rdc = 5250.0, Reddy = 180000.0, Ccoil = 3e-11, weight = 1.0 },
     # Strings 1 & 2 see rearward coil half
-    { id = "rearward", strings = [1, 2], position_from_bridge_m = 0.1120, aperture_width_in = 0.45, pole_type = "rod", L = 1.9, Rdc = 5250.0, Reddy = 180000.0, Ccoil = 3e-11, weight = 0.5 },
+    { id = "rearward", strings = [1, 2], position_from_bridge_m = 0.1120, aperture_width_in = 0.45, pole_type = "rod", L = 1.9, Rdc = 5250.0, Reddy = 180000.0, Ccoil = 3e-11, weight = 1.0 },
 ]
 
 [pickups.bridge]
@@ -70,8 +70,8 @@ type = "split_coil"
 magnet_type = "neodymium"
 coils = [
     # Reverse split-P: treble strings (1, 2) forward half, bass strings (3, 4, 5) rearward half
-    { id = "forward", strings = [1, 2], position_from_bridge_m = 0.06625, aperture_width_in = 0.40, pole_type = "rod", L = 1.15, Rdc = 2200.0, Reddy = 150000.0, Ccoil = 6e-11, weight = 0.5 },
-    { id = "rearward", strings = [3, 4, 5], position_from_bridge_m = 0.04975, aperture_width_in = 0.40, pole_type = "rod", L = 1.15, Rdc = 2200.0, Reddy = 150000.0, Ccoil = 6e-11, weight = 0.5 },
+    { id = "forward", strings = [1, 2], position_from_bridge_m = 0.06625, aperture_width_in = 0.40, pole_type = "rod", L = 1.15, Rdc = 2200.0, Reddy = 150000.0, Ccoil = 6e-11, weight = 1.0 },
+    { id = "rearward", strings = [3, 4, 5], position_from_bridge_m = 0.04975, aperture_width_in = 0.40, pole_type = "rod", L = 1.15, Rdc = 2200.0, Reddy = 150000.0, Ccoil = 6e-11, weight = 1.0 },
 ]
 
 # ------------------------------------------------------------------------------

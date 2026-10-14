@@ -1181,4 +1181,3 @@ def test_fender_ultra2_mna_simulation():
     assert mag_325[idx_325] > mag_750[idx_325]
     # 750 Hz boost should be higher at 750 Hz than 325 Hz curve
     assert mag_750[idx_750] > mag_325[idx_750]
-

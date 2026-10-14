@@ -40,9 +40,7 @@ def pack(
         log_step("PACK", f"[{idx}/{len(target_inst_ids)}] Exporting tone pack for '{inst_id}'...")
         try:
             inst = load_instrument(inst_id)
-            if not check_pack_needs_repacking(
-                inst, output_dir=output_dir, input_wav=input_wav
-            ):
+            if not check_pack_needs_repacking(inst, output_dir=output_dir, input_wav=input_wav):
                 log_step(
                     "SKIP",
                     f"[{idx}/{len(target_inst_ids)}] Pack '{inst_id}' already fresh.",

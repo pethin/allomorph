@@ -32,7 +32,7 @@ def test_determine_pickup_resonance_and_q_synthetic_rlc():
     w0 = 2.0 * np.pi * 3500.0
     q_true = 1.8
     # Theoretical peak for 2nd-order lowpass: f_peak = f0 * sqrt(1 - 1/(2*Q^2)) = 3218.6 Hz
-    h = w0**2 / (-w**2 + 1j * w * w0 / q_true + w0**2)
+    h = w0**2 / (-(w**2) + 1j * w * w0 / q_true + w0**2)
     fr, q = determine_pickup_resonance_and_q(np.abs(h), f)
     assert fr is not None and 3210.0 <= fr <= 3225.0
     assert q is not None and 1.4 <= q <= 1.6
@@ -174,7 +174,9 @@ def test_assign_target_to_bundle():
 
     b_configs = [
         PackBundleConfig(name="neck", source="inst_test:v_neck", targets=["inst_target:target_a"]),
-        PackBundleConfig(name="bridge", source="inst_test:v_bridge", targets=["inst_target:target_b"]),
+        PackBundleConfig(
+            name="bridge", source="inst_test:v_bridge", targets=["inst_target:target_b"]
+        ),
     ]
 
     # Explicit config target

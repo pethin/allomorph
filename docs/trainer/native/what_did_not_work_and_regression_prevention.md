@@ -49,7 +49,7 @@ $$f'(x) = \begin{cases} 1.0 & \text{if } x > 0 \\ 0.01 & \text{if } x \le 0 \end
 The network learned steep non-linear gain curves to satisfy the artificial flat sweep. When fed natural bass plucks or quiet guitar chimes oscillating across zero, this steep slope discontinuity acted as a half-wave rectifier, spraying audible odd and even harmonic distortion throughout the $4\text{--}10\text{ kHz}$ band ($+19\text{ dB}$ louder buzz than reference).
 
 #### The Fix:
-Reverted dry excitation to first-principles physical string modeling ([`src/allomorph/dsp/dry.py`](file:///home/peter/Projects/pethin/allomorph/src/allomorph/dsp/dry.py)):
+Reverted dry excitation to first-principles physical string modeling ([`src/allomorph/dsp/dry.py`](../../../src/allomorph/dsp/dry.py)):
 $$H_{\text{tilt}}(f) = \frac{1}{\sqrt{1 + (f / 1200)^2}}$$
 Restoring natural harmonic rolloff eliminated the unphysical drive and allowed the optimizer to converge to smooth linear subspaces.
 
@@ -84,7 +84,7 @@ Calling `normalize="auto"` invoked ITU-R BS.1770-4 gated loudness matching on *e
 - The neural network received contradictory supervision: full-track sweeps demanded the authentic notch and boost, but synthetic probes demanded flat $0.0\text{ dB}$ gain. The optimizer split the difference, under-representing the mid scoop notch (only $-2.1\text{ dB}$ achieved instead of $-5.9\text{ dB}$) and compressing treble boosts.
 
 #### The Fix:
-All synthetic probe generation in [`engine.py`](file:///home/peter/Projects/pethin/allomorph/src/allomorph/trainer/native/engine.py) strictly specifies `normalize="none"`, `apply_saturation=False`, and `apply_dither=False`, preserving the uncorrupted physical transfer ratio $H_{\text{tgt}}(f) / H_{\text{src}}(f)$ across every frequency bin.
+All synthetic probe generation in [`engine.py`](../../../src/allomorph/trainer/native/engine.py) strictly specifies `normalize="none"`, `apply_saturation=False`, and `apply_dither=False`, preserving the uncorrupted physical transfer ratio $H_{\text{tgt}}(f) / H_{\text{src}}(f)$ across every frequency bin.
 
 ---
 
@@ -102,7 +102,7 @@ However, synthetic probe slices generated with `normalize="none"` carried raw ph
 - The network resolved this contradiction by forming sharp LeakyReLU slope kinks around zero crossings. On quiet guitar chime harmonics (`Harmonics - Guitar.wav`), this caused severe diode rectification buzz.
 
 #### The Fix:
-Dynamically calibrate probe gain in [`engine.py`](file:///home/peter/Projects/pethin/allomorph/src/allomorph/trainer/native/engine.py):
+Dynamically calibrate probe gain in [`engine.py`](../../../src/allomorph/trainer/native/engine.py):
 $$\text{probe\_gain\_correction} = \frac{\text{stem\_gain\_ratio}}{\text{raw\_dsp\_gain\_ratio}} = \frac{\text{rms}(y_{\text{train}}) / \text{rms}(x_{\text{train}})}{\text{rms}(c_{\text{tgt}}) / \text{rms}(c_{\text{src}})}$$
 Multiplying synthetic probe targets by `probe_gain_correction` guarantees bit-exact gain coherence ($0.00\text{ dB}$ conflict) between audio sweeps and chime probes, eliminating LeakyReLU kinks and dropping air noise on guitar harmonics to $\le -55.3\text{ dBc}$.
 

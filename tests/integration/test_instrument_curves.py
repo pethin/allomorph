@@ -177,7 +177,7 @@ def test_bridge_proximity_bass_excursion_curve():
 
 
 def test_pmm_series_differential_curve():
-    """Validates that P/MM Parallel -> P/MM Series difference curve stays <= +2.0 dB across 5-20 kHz."""
+    """Validates that P/MM Parallel -> P/MM Series difference curve stays <= +2.0 dB relative to passband across 5-20 kHz."""
     inst_par, v_par = resolve_target_voicing("p_mm_parallel")
     inst_ser, v_ser = resolve_target_voicing("p_mm_series")
     df_par = build_voice_dataframe(inst_par, v_par)
@@ -185,11 +185,13 @@ def test_pmm_series_differential_curve():
 
     freqs = np.array(df_par["frequency"])
     diff = np.array(df_ser["magnitude_db"]) - np.array(df_par["magnitude_db"])
+    pb_mask = (freqs >= 100.0) & (freqs <= 800.0)
+    pb_diff = float(np.median(diff[pb_mask]))
 
     hf_mask = freqs >= 5000.0
-    max_hf_diff = float(np.max(diff[hf_mask]))
-    assert max_hf_diff <= 2.0, (
-        f"P/MM Series difference exhibited unexpected treble boost: {max_hf_diff:.2f} dB (expected <= +2.0 dB)"
+    max_hf_rel = float(np.max(diff[hf_mask]) - pb_diff)
+    assert max_hf_rel <= 2.0, (
+        f"P/MM Series difference exhibited unexpected treble boost: {max_hf_rel:.2f} dB above passband (expected <= +2.0 dB)"
     )
 
 

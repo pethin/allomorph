@@ -12,6 +12,8 @@ specified in AGENTS.md Section 5 and docs/architectural_guardrails.md are strict
 """
 
 import math
+import re
+from pathlib import Path
 
 import numpy as np
 import pytest
@@ -297,11 +299,95 @@ def test_guardrail_5_3_difference_high_frequency_ceiling():
     mag_par = np.array(df_par["magnitude_db"])
     mag_ser = np.array(df_ser["magnitude_db"])
     diff = mag_ser - mag_par
+    pb_mask = (freqs >= 100.0) & (freqs <= 800.0)
+    pb_diff = float(np.median(diff[pb_mask]))
 
     # Across high frequencies (5 kHz - 20 kHz), Series targeting from Parallel must NOT
-    # produce a spurious treble spike. Difference must stay <= +2.0 dB across the upper band.
+    # produce a spurious treble spike. Difference relative to passband must stay <= +2.0 dB across the upper band.
     hf_mask = freqs >= 5000.0
-    max_hf_diff = float(np.max(diff[hf_mask]))
-    assert max_hf_diff <= 2.0, (
-        f"P/MM Series difference exhibited spurious treble boost: {max_hf_diff:.2f} dB (expected <= +2.0 dB)"
+    max_hf_rel = float(np.max(diff[hf_mask]) - pb_diff)
+    assert max_hf_rel <= 2.0, (
+        f"P/MM Series difference exhibited spurious treble boost: {max_hf_rel:.2f} dB above passband (expected <= +2.0 dB)"
     )
+
+
+def test_guardrail_agents_md_progressive_disclosure_budgets() -> None:
+    """Guardrail: Root AGENTS.md (< 5,000 bytes) and scoped AGENTS.md files (< 2,500 bytes each)
+    must remain concise progressive-disclosure routers well below the 24,000-byte context cap."""
+    repo_root = Path(__file__).resolve().parent.parent
+    root_agents = repo_root / "AGENTS.md"
+    assert root_agents.is_file(), "Root AGENTS.md is missing"
+    root_size = root_agents.stat().st_size
+    assert root_size < 5000, (
+        f"Root AGENTS.md size ({root_size} bytes) exceeds 5,000-byte progressive disclosure budget"
+    )
+
+    scoped_paths = [
+        "src/allomorph/physics/AGENTS.md",
+        "src/allomorph/circuit/AGENTS.md",
+        "src/allomorph/dsp/AGENTS.md",
+        "src/allomorph/trainer/AGENTS.md",
+        "src/allomorph/visualizer/AGENTS.md",
+        "src/allomorph/pipeline/AGENTS.md",
+        "config/AGENTS.md",
+        "tests/AGENTS.md",
+    ]
+    for rel_path in scoped_paths:
+        scoped_file = repo_root / rel_path
+        assert scoped_file.is_file(), f"Scoped AGENTS.md missing at {rel_path}"
+        scoped_size = scoped_file.stat().st_size
+        assert scoped_size < 2500, (
+            f"Scoped {rel_path} size ({scoped_size} bytes) exceeds 2,500-byte progressive disclosure budget"
+        )
+
+
+def test_guardrail_documentation_markdown_links_valid() -> None:
+    """Guardrail: All relative markdown file links in AGENTS.md, README.md, CONTRIBUTING.md,
+    and docs/**/*.md must resolve to existing files or directories on disk."""
+    repo_root = Path(__file__).resolve().parent.parent
+    md_files: list[Path] = [
+        repo_root / "AGENTS.md",
+        repo_root / "README.md",
+        repo_root / "CONTRIBUTING.md",
+        repo_root / "config/AGENTS.md",
+        repo_root / "tests/AGENTS.md",
+        *sorted((repo_root / "src/allomorph").glob("*/AGENTS.md")),
+        *sorted((repo_root / "docs").rglob("*.md")),
+    ]
+
+    # Strip fenced code blocks and inline code spans before scanning links
+    fenced_code_re = re.compile(r"```.*?```", re.DOTALL)
+    inline_code_re = re.compile(r"`[^`]+`")
+    md_link_re = re.compile(r"!?\[[^\]]*\]\(([^)]+)\)")
+
+    broken_links: list[str] = []
+    for md_file in md_files:
+        assert md_file.is_file(), f"Expected markdown file missing: {md_file}"
+        raw_text = md_file.read_text(encoding="utf-8")
+        cleaned_text = inline_code_re.sub("", fenced_code_re.sub("", raw_text))
+
+        for match in md_link_re.finditer(cleaned_text):
+            raw_target = match.group(1).strip()
+            # Strip optional title in link: (path "title")
+            target_url = raw_target.split()[0]
+            if not target_url or target_url.startswith(
+                ("#", "http://", "https://", "mailto:", "file://", "conversation://")
+            ):
+                continue
+
+            path_part = target_url.split("#")[0]
+            if not path_part:
+                continue
+
+            if "training.md" in path_part:
+                broken_links.append(
+                    f"Deprecated docs/training.md link in {md_file.relative_to(repo_root)}: {raw_target}"
+                )
+
+            resolved = (md_file.parent / path_part).resolve()
+            if not resolved.exists():
+                broken_links.append(
+                    f"{md_file.relative_to(repo_root)} -> '{raw_target}' (missing {resolved})"
+                )
+
+    assert not broken_links, "Broken markdown links found:\n" + "\n".join(broken_links)

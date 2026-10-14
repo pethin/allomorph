@@ -148,9 +148,7 @@ def generate_stems(
     simulated_count = 0
     failures: list[tuple[str, str]] = []
 
-    tasks_to_simulate: list[
-        tuple[int, InstrumentConfig, VoicingConfig, str, Path, str]
-    ] = []
+    tasks_to_simulate: list[tuple[int, InstrumentConfig, VoicingConfig, str, Path, str]] = []
 
     for idx, (inst, v_cfg) in enumerate(unique_tasks, 1):
         v_label = v_cfg.tone_name or v_cfg.id or "default"

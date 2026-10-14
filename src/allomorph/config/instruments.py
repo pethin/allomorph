@@ -343,7 +343,9 @@ def partition_instrument_bundles(
         for b_cfg in pack_cfg.bundles:
             bundle = pack_bundles[b_cfg.name]
             for target_entry in b_cfg.targets:
-                target_token = target_entry if isinstance(target_entry, str) else target_entry.target
+                target_token = (
+                    target_entry if isinstance(target_entry, str) else target_entry.target
+                )
                 custom_name = None if isinstance(target_entry, str) else target_entry.name
 
                 tgt_inst_id, tgt_vid = parse_target_voicing_token(

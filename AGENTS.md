@@ -1,161 +1,41 @@
-# Allomorph - Agent Development Guidelines
+# Allomorph — Agent Development & Discovery Guide
 
-Welcome to **Allomorph**. This repository houses an analog digital twin and universal modeling pipeline designed to transform active, passive, and acoustic bass pickup and transducer configurations (P-Bass, Jazz Bass, StingRay, Rickenbacker, P/J, P/MM, upright bass piezos) into authentic high-impedance passive and active target voicings tailored for the **Darkglass Anagram** pedalboard, Neural Amp Modeler (NAM), and DAW plugin hosts.
+**Allomorph** is a forward electroacoustic Digital Twin simulation and Neural Amp Modeler (NAM) A2 training pipeline. It simulates standalone **Forward Digital Twins** of source and target bass instruments from a shared string excitation (`audio/input.wav`), pairing `Source Digital Twin → Target Digital Twin` so a trained NAM model in **Darkglass Anagram Block 1** transforms the physical source bass into the target instrument (`Physical Twin A ≈ Digital Twin A → NAM → Digital Twin B ≈ Physical Twin B`).
 
----
+## 1. Global Tech Stack & Tooling Rules
 
-## 1. Physical Hardware Specifications & Datums
+- **Environment:** Always use **`uv`** (`uv run`, `uv add`).
+- **Core Stack:** Strictly use **`numpy`**, **`polars`**, **`altair`**, **`pedalboard`**, **`pydantic`**, and **`numba`**. Never add `scipy`, `pandas`, `matplotlib`, or `soundfile`.
+- **Lint & Format:** Pass `uv run ruff check` and `uv run ruff format --check` targeting Python 3.14 (`py314`).
+- **Strict Typing:** Pass `uv run pyrefly check` (`preset = "strict"` in [`pyproject.toml`](pyproject.toml)). Never disable rules, downscale presets, or use `# type: ignore`.
+- **Testing:** Run `uv run pytest`. All changes must pass [`test_guardrails.py`](tests/test_guardrails.py).
+- **Git & CLA:** Sign off commits via `git commit -s` per [`CLA.md`](CLA.md) and [`CONTRIBUTING.md`](CONTRIBUTING.md).
+- **Search Hygiene:** Always exclude `*.nam` and `*.wav` files when searching (`rg`, `git grep`, `grep`).
 
-### Source Instruments
-1. **Current Bass (30" Short Scale):**
-   - Pickup: Single active 18V EMG MMTWX (X-series, equivalent to 35TWX in MMTW housing; dual-mode Ceramic & Steel blades: CSX MM dual coil $f_r = 2.5\text{ kHz}$ or JCSX single-coil $f_r = 3.5\text{ kHz}$, coil spacing $d=0.90''$, coil aperture $w=0.75''$).
-   - Physical Datum: Centerline located **$77.5\text{ mm}$ from the bridge** ($303.5\text{ mm}$ from the 12th fret; neck coil $88.9\text{ mm}$, bridge coil $66.1\text{ mm}$).
-   - Character: Warm low-mid bloom ($180\text{--}250\text{ Hz}$), reduced string tension compared to 34", selectable J-bridge growl or MM authority, open X-series dynamic headroom with zero premature compression.
+## 2. Core Cross-Cutting Principles
 
-2. **Planned Bass (32" Medium Scale):**
-   - Routing: Reverse EMG PX split (Ceramic blades, $f_r = 3.2\text{ kHz}$, $122.8\text{ mm}$ from bridge) + EMG MMTWX (Ceramic & Steel blades, $62.2\text{ mm}$ centerline, $50.8\text{ mm}$ bridge coil) with EMG ABCX active blend.
-   - Reference: `Pickup Placement - P_MM.md`.
+1. **Fail-Fast Integrity:** Never silently substitute default scales, pickups, voices, or circuits on missing/invalid configs; raise explicit `ValueError` or `KeyError` exceptions.
+2. **$C^\infty$ Smoothness:** Never use piecewise `np.where` kinks on physical or DSP curves; use smooth analytic transitions per [`architectural_guardrails.md`](docs/architectural_guardrails.md).
+3. **Catalog Clamp Validation:** Empirically validate all clamps across the catalog matrix and register them in [`clamp_and_limit_registry.md`](docs/clamp_and_limit_registry.md).
+4. **Physical Primacy:** First-principles equations are ground truth; update legacy test expectations when refining physical formulas rather than warping equations.
 
-### Target Instruments & Tonal Scalings
-- **Standard 34" Scale:** Standard Fender ($125.0\text{ mm}$ P, $155.6\text{ mm}$ 60s J neck, $63.5\text{ mm}$ 60s J bridge) and Music Man ($66.0\text{ mm}$ StingRay).
-- **34"-37" Multi-Scale (Dingwall Fanned Fret):** High-tension wave speeds ($77.4\text{--}169.3\text{ m/s}$), angled bridge sweet spot ($48.0\text{ mm}$ datum), FD3n neodymium reverse split-P SPICE netlist ($f_r = 7.3\text{ kHz}$ active / $3.6\text{ kHz}$ passive, $Q = 1.5$), and stainless-steel roundwound harmonic extension.
+## 3. Progressive Disclosure & Codebase Discovery Map
 
----
+Consult the directory-scoped `AGENTS.md` and Single-Source-of-Truth (SSOT) docs before modifying a subsystem:
 
-## 2. Tech Stack & Engineering Constraints
+| Subsystem / Domain | Scoped `AGENTS.md` | Canonical Documentation (SSOT) |
+| :--- | :--- | :--- |
+| **Invariants & $C^\infty$ Math** | [`AGENTS.md`](AGENTS.md) | [`architectural_guardrails.md`](docs/architectural_guardrails.md), [`clamp_and_limit_registry.md`](docs/clamp_and_limit_registry.md) |
+| **Spatial & Scale Physics** | [`physics/AGENTS.md`](src/allomorph/physics/AGENTS.md) | [`aperture_math.md`](docs/aperture_math.md) |
+| **MNA Circuits & Saturation** | [`circuit/AGENTS.md`](src/allomorph/circuit/AGENTS.md) | [`circuit_theory.md`](docs/circuit_theory.md), [`dsp_simulation_engine.md`](docs/dsp_simulation_engine.md) |
+| **Excitation, FIR, LUFS & I/O** | [`dsp/AGENTS.md`](src/allomorph/dsp/AGENTS.md) | [`dsp_synthesis_engine.md`](docs/dsp_synthesis_engine.md) |
+| **NAM A2 Neural Trainer** | [`trainer/AGENTS.md`](src/allomorph/trainer/AGENTS.md) | [`trainer/README.md`](docs/trainer/README.md) |
+| **Polars + Altair Visualizer** | [`visualizer/AGENTS.md`](src/allomorph/visualizer/AGENTS.md) | [`architectural_guardrails.md`](docs/architectural_guardrails.md) |
+| **Packaging, Naming & CLI** | [`pipeline/AGENTS.md`](src/allomorph/pipeline/AGENTS.md) | [`naming.md`](docs/tone_packs/naming.md), [`ranking.md`](docs/tone_packs/ranking.md), [`catalog.md`](docs/tone_packs/catalog.md) |
+| **TOML Configs & Voices** | [`config/AGENTS.md`](config/AGENTS.md) | [`configuration_reference.md`](docs/configuration_reference.md), [`voice_catalog.md`](docs/voice_catalog.md), [`anagram_workflow.md`](docs/anagram_workflow.md) |
+| **Test Suite & Guardrails** | [`tests/AGENTS.md`](tests/AGENTS.md) | [`CONTRIBUTING.md`](CONTRIBUTING.md), [`test_guardrails.py`](tests/test_guardrails.py) |
 
-When contributing to or maintaining this repository, strictly adhere to these architectural standards:
+## 4. Maintaining `AGENTS.md` & Documentation
 
-- **Package & Environment Manager:** Always use **`uv`** (`uv run`, `uv add`).
-- **Tabular Data & Visualizations:** Strictly use **`polars`** for dataframes (`pl.DataFrame`, `pl.concat`) and **`altair`** (Vega-Lite declarative charts compiling to standalone HTML in `docs/`). Do **NOT** use `pandas` or `matplotlib`.
-- **Numerical Math & DSP:** Strictly use **`numpy`** for 1D frequency responses, acoustic/electrical vector math, and FFTs (`np.fft`).
-- **Audio DSP & I/O:**
-  - 24-bit audio file I/O uses **Spotify's `pedalboard`** (JUCE-backed SIMD C++ engine).
-  - Minimum-phase FIR synthesis uses our internal homomorphic real-cepstrum Hilbert transform engine vectorized with NumPy.
-  - Do **NOT** add `scipy` or `soundfile` as dependencies (they carry legacy C/Fortran bloat).
-- **Linting, Code Quality & Static Typing:**
-  - Strictly use **`ruff`** (`uv run ruff check`, `uv run ruff check --fix`) for linting, code formatting, and import sorting targeting Python 3.14 (`py314`).
-  - Strictly use **`pyrefly`** (`uv run pyrefly check`) with the strict preset (`preset = "strict"` in `pyproject.toml`) for type checking across the entire codebase. Do NOT disable rules, downscale presets, or suppress type checks with `# type: ignore` unless proven fundamentally impossible. Use `pydantic` for structured schemas and runtime validation where appropriate.
-- **Git & Contribution Governance:** All commits must be signed off using `git commit -s` (or `Signed-off-by: Legal Name <email>`) to satisfy `CLA.md` and pass automated DCO CI checks.
-- **Code Search & Workspace Inspection:** Always exclude `*.nam` model files and `*.wav` audio files when searching the repository (`git grep`, `rg`, `grep`). `.nam` files are large unformatted single-line JSON models that dump excessive content or cause buffer overflows. Repository-level `.ignore` and `.gitattributes` files are configured to enforce this by default.
-- **Circuit Simulation Engine:**
-  - **Native WAV SPICE Engine:** Built-in Apple Silicon (`arm64`) WAV SPICE circuit simulation engine (`src/allomorph/circuit/`, `allomorph-sim`) providing zero-external-dependency SPICE netlist parsing, analytical nodal RLC solving, regularized differential SPICE transfer functions ($H_{\text{diff}} = H_{\text{target}} / H_{\text{source}}$), dynamic core saturation bypass, and vector soft-knee saturation ($V_{\text{sat}} \cdot \tanh(v/V_{\text{sat}})$) directly on audio waveforms at >1500x speed.
-
----
-
-## 3. Repository Layout
-
-```
-allomorph/
-├── .github/
-│   ├── workflows/dco.yml     # Hardened injection-safe DCO / CLA sign-off check
-│   └── PULL_REQUEST_TEMPLATE.md # Contributor pull request checklist
-├── AGENTS.md                 # Antigravity project rules and context (this file)
-├── CLA.md                    # Harmony-based Contributor License Agreement (Dual-licensing)
-├── CONTRIBUTING.md           # Contributor guide, setup, and sign-off instructions
-├── LICENSE                   # PolyForm Noncommercial License 1.0.0
-├── pyproject.toml            # Project metadata (polars, altair, pedalboard)
-├── README.md                 # Comprehensive architecture, CLI usage, roadmap
-├── src/                      # Core reusable library package
-│   └── allomorph/            # Modern package (cli/, config/, physics/, circuit/, visualizer/, pipeline/, trainer/)
-├── audio/                    # Generated 24-bit audio digital twins (audio/<instrument>/)
-├── config/                   # Modular TOML configuration files
-│   ├── instruments/          # Source bass definitions with embedded [pickups.<id>.circuit]
-│   ├── preamps.toml          # Reusable active preamp catalog (Sadowsky, StingRay, Aguilar, Dingwall)
-│   ├── scales.toml           # Standard scale wave speeds
-│   └── strings.toml          # Physical string core/wrap presets
-├── docs/                     # Technical documentation & interactive charts
-│   ├── architectural_guardrails.md # Master mathematical reference handbook & derivations
-│   ├── clamp_and_limit_registry.md # Master catalog-wide inventory of all 25 clamps, limits, and thresholds
-│   ├── tone_packs/           # Tone pack documentation, naming rules & catalog
-│   │   ├── naming.md         # Normative tone naming rules, character limits & bassist lexicon
-│   │   ├── ranking.md        # Storefront voicing ranking architecture
-│   │   └── catalog.md        # Tone3000 storefront pack catalog & instrument configs
-│   ├── voice_catalog.md      # Passive pickup models, RLC parameters, character
-│   ├── circuit_theory.md     # Differential equations, 500k volume pot, treble bleed
-│   ├── aperture_math.md      # Aperture sinc, wave speeds, multi-scale filters
-│   ├── anagram_workflow.md   # Darkglass Anagram Block 1 routing & banks
-│   ├── trainer/
-│   │   ├── stock/            # Upstream NAM / Lightning trainer docs (standard 200-epoch baseline)
-│   │   └── native/           # Custom native A2 trainer docs (architecture, in-VRAM slicing & loss)
-│   ├── frequency_responses.html # Master interactive portal
-│   └── frequency_responses/     # Per-instrument standalone Altair visualizations
-├── models/                   # Trained Neural Amp Modeler (.nam) models (models/<instrument>/)
-├── scripts/                  # Workflow utilities & CLI entrypoints
-│   ├── debug_stem.py         # Diagnostic WAV SPICE stem probe
-│   └── generate_tone3000_artwork.py # Tone3000 storefront artwork generator
-├── tests/                    # Hierarchical test suite (circuit/, config/, dsp/, integration/, physics/, pipeline/, tone3000/, visualizer/, test_guardrails.py)
-└── tone3000/                 # Tone3000 storefront packs, artwork, and bundles
-    └── assets/               # Production-ready vector SVG and 1024x1024 JPG artwork
-```
-
----
-
-## 4. Signal Flow on Darkglass Anagram
-
-The models produced by Allomorph are loaded into **Block 1** (as a high-impedance passive/transducer front-end before preamp and drive):
-```
-[Bass: Active / Piezo / Direct] -> [Block 1: Allomorph NAM] -> [Block 2: Darkglass Preamp/Drive] -> [Block 3: Cab IR Loader] -> [FOH/Audio Interface]
-```
-- **Block 1 (NAM Preamp):** Load trained `.nam` neural model (A2 architecture) capturing full RLC resonance, eddy currents, and non-linear magnetic feel.
-- **Block 2 (Darkglass Preamp/Drive):** Microtubes B7K, Vintage Ultra, or Alpha·Omega for bass saturation.
-- **Block 3 (Cabinet IR Loader):** Downstream speaker cabinet impulse responses (4x10, 8x10, 2x12).
-
----
-
-## 5. Architectural Guardrails (Core Invariants)
-
-All code contributions must strictly satisfy the following normative invariants (verified automatically via `tests/test_guardrails.py`). Complete mathematical proofs and derivations are documented in [`docs/architectural_guardrails.md`](docs/architectural_guardrails.md).
-
-### 5.1 Spatial Acoustics, Scale Physics & Continuum Routing
-1. **Dynamic Spatial Boundaries:** Derive comb null and de-combing taper boundaries dynamically from delays ($\bar{c}/x_{\text{src}}$); never hardcode static cutoff bins.
-2. **Coherence Decay & Vector Causal Normalization:** Multi-pickup spatial arrival delays ($\tau_i$) must be normalized causally via Vector Causal Normalization ($\tau_i = \Delta\tau_i - \min_j \Delta\tau_j$) and applied via causal integer sample shifts ($[0]*k + \text{fir}[:-k]$); never clamp early pickups to zero or rotate phase via circular FFT ($e^{-j 2\pi f \tau_i}$) which injects high-frequency Gibbs truncation ripples. Cross-coherence decay across dual coils must transition smoothly ($C^\infty$ $\tanh$ sigmoid) into incoherent summation when $\lambda \le d$ (engage whenever $\Delta\text{samples} > 0$). Model sidewinders as a single centered coil ($w \approx 1.25''$). Distinguish 2D cylindrical rod poles ($J_1(k r_p)/(k r_p)$) from 1D blade slits, and model saddle witness-point boundary stiffness ($H_{\text{saddle}}$) for close bridge pickups ($x < 75\text{ mm}$). Level each pickup independently in isolation ($K_{\text{iso}}$) modeling authentic luthier setup (raising bridge pickups closer to strings to compensate for smaller displacement envelope $\eta = x/L$), with blended configurations summing these individually compensated pickup branch responses.
-3. **Fractional Coordinates, Low-Shelf Displacement Ratio & First-Principles Scale Dynamics:** Evaluate bridge proximity fundamental excursion via scale-normalized fractional standing-wave displacement ratios ($\Delta G = 20 \log_{10}(\eta_{\text{tgt}} / \eta_{\text{src}})$) bounded by an asymmetric order-4 algebraic limiter (`alg4`, $+12.0\text{ dB}$ boost / $-16.0\text{ dB}$ cut) and implemented through an asymptotically flat single low-shelf filter ($H_{\text{pos}}(f)$, corner 220 Hz); never apply artificial symmetrical high-frequency counter-shelves that boost bridge clank or cut neck treble. Model scale-dependent string brilliance and attack snap strictly through first-principles mechanisms (wave-speed continuum sinc passband widening, Gaussian RBF stiffness dispersion, and viscoelastic wrap damping $H_{\text{wrap}}$); strictly omit artificial empirical EQ shelves ($H_{\text{tension}}$) and arbitrary baseline reference constants. Longitudinal steel core clank is an instantaneous mechanical attack transient, not a steady-state linear filter.
-4. **Wave-Speed Continuum & Inharmonicity RBF:** Integrate aperture responses across a continuous 24-point log continuum ($30.87\text{ to } 100\text{ Hz}$) routed geometrically by register halves (`[1, 2]` treble vs `[3, 4]` bass), never note names. Interpolate empirical string stiffness inharmonicity anchors ($B_s$) via an exact $C^\infty$ Gaussian RBF solver reproducing calibration table values to $< 10^{-10}$ relative error with strictly decreasing monotonicity across bass fundamental registers. Local neural network training via `allomorph train` targets studio-grade high-fidelity Architecture 2 neural modeling tailored for the Darkglass Anagram, unconstrained by cloud training limits and free to achieve superior convergence, lower ESR, and bass-optimized loss weighting.
-
-### 5.2 Mathematical Smoothness & Regularization ($C^\infty$)
-1. **Regularized Denominators, Smooth Limiters & Blending:** Never clamp denominators with premature hard floors; use $\max(\text{mag}, 10^{-6})$ so identical setups yield exact $0.00\text{ dB}$. Bound analog rail saturation via an asymptotic $C^\infty$ algebraic limiter ($x / (1 + (|x|/V_{\text{sat}})^8)^{1/8}$ with $V_{\text{sat}} = 0.985$). Use smooth softplus blending (`logaddexp`) across $0\text{ dB}$ (no piecewise conditionals or slope kinks). Bound boost/cut via smooth partition-of-unity convex blends, asymptotic soft-knee saturation ($g \cdot \tanh(r_{\text{db}}/g)$), or strictly $C^\infty$ thresholded soft-knee saturation (`smooth_soft_knee_db`: $x - \text{excess} + w \cdot \tanh(\text{excess}/w)$ where $\text{excess} = \text{logaddexp}(0, \alpha(x - \text{thresh}))/\alpha$; never use piecewise conditional soft knees `np.where(x > thresh, ...)`). Model asymmetric norms using Charbonnier pseudo-norms ($\sqrt{x^2 + \epsilon^2} - \epsilon$) and regularized quadratic Steinmetz loss ($(x^2 / (1 + x^2))^{0.8}$) to eliminate infinite gradient singularities at $x=0$.
-2. **Quadrature Null Floors & Absolute Units:** Preserve 3D flux fringing with a quadrature floor ($\epsilon_{\text{quad}} \approx 0.18$) at comb nulls. Evaluate curves in absolute gain units ($20\log_{10}(\max(h_{\text{diff}}, 10^{-6}))$); never normalize by an arbitrary mid-frequency bin.
-3. **Catalog-Driven Empirical Analysis for Clamps & Limits:** Clamps, soft-knees, saturation limits, and regularization floors must **NEVER** be chosen arbitrarily, heuristically, or without empirical evaluation. Any limit, threshold, or gain ceiling introduced into physical or DSP pipelines must be analyzed across the entire catalog matrix (all playable source pickups $\times$ all target voices). Limits must provide sufficient physical headroom so genuine electroacoustic transformations (e.g. passive differential RLC circuit resonance peaks up to $+7\text{ dB}$, scale-length bridge displacement excursion ratios, and scale tension snap) pass through linearly and uncompressed under normal playing conditions. Compression or saturation must only engage above legitimate catalog maxima to prevent unphysical numerical singularities, out-of-band noise amplification, or 24-bit PCM integer wrapping. Limiters addressing asymmetric physical phenomena (e.g. neck-to-bridge vs bridge-to-neck displacement excursion) must reflect that asymmetry rather than imposing artificial symmetric truncation.
-
-### 5.3 True Differential Circuit Deconvolution & Staging Integrity
-1. **True Differential Deconvolution:** Evaluate $H_{\text{diff}} = H_{\text{tgt}} / H_{\text{src}}$ using dedicated declarative circuit models in `config/instruments/` for active/buffered instruments. Exact equality must evaluate to $0.00\text{ dB}$ across all bins.
-2. **Multi-Channel Branch FIRs:** Multi-channel target circuits evaluate branch FIRs with unity weight ($p_{\text{weight}} = 1.0$), letting the SPICE nodal network evaluate current division.
-3. **Sub-Audible DC Transmission:** Active preamps must feature flat, finite DC transmission ($H_{\text{preamp}}(0) \ge 1.0$). Strictly omit sub-audible AC-coupling differentiators ($s / (s + \omega_{\text{sub}})$) from preamp EQ models to prevent Gibbs truncation ripples ($\Delta f = f_s / N = 23.4\text{ Hz}$) across $20\text{--}300\text{ Hz}$.
-4. **Transducer Taxonomy & Zero-Conditional Deconvolution:** Model all sensors strictly through a first-class physical taxonomy (`sensor_type = "magnetic" | "bridge_force" | "direct"`). Never inject ad-hoc voice ID conditionals (`if voice_id == ...`) or conditional impulse bypasses. Direct sensors define flat acoustic transfer ($H_{\text{tgt, acoustic}} \equiv 1.0$) and flat active circuit response ($H_{\text{circuit}} \equiv 1.0$), naturally solving the inverse macro-aperture ($1 / H_{\text{src}}$) through the universal Wiener regularized quotient.
-5. **Fail-Fast Declarative Integrity & Zero Silent Fallbacks:** Never silently substitute fallback models, arbitrary pickups, assumed scales, or unvoiced circuits when a configuration block or parameter is missing or invalid. Missing passive pickup circuits, invalid voice IDs, unknown scale strings, unmapped pickups, unknown string presets, and unrecognized magnet types must immediately raise explicit, diagnostic `ValueError` or `KeyError` exceptions. Silent fallbacks mask configuration errors, violate declarative reproducibility, and corrupt downstream deconvolution filters.
-6. **Direct Unified Digital Twin Architecture & Tone Pack Fidelity:** Replaces the legacy two-stage Canonical Intermediate architecture with direct single-block forward digital twin simulation:
-   - **Forward Simulation & Zero-Latency Alignment:** Synthesizes wet stems directly from dry string excitation ($W = X_{\text{dry}} * h_{\text{aperture}} * h_{\text{circuit}}$) using homomorphic minimum-phase causal FIRs starting strictly at sample 0 (zero latency, no artificial leading zeroes). Calibrated ITU-R BS.1770-4 gated LUFS volume matching (NAM reference standard $-20.50\text{ LUFS}$) guarantees uniform stage gain with transparent linear peak-based scaling bounded by a $-0.09\text{ dBFS}$ (0.9900) true-peak ceiling to preserve tonal quality and avoid double compression, providing $>20.4\text{ dB}$ crest factor headroom so 100% of target voicings pass through cleanly without triggering the peak scaler.
-   - **Tone3000 Upload Bundles (`bundles/<pickup>/`):** Solves Tone3000's strict 1 Dry + Multiple Wet Stems constraint by partitioning target voicings via physical position affinity (`neck`, `bridge`, `parallel`, `direct`). Each bundle contains a single `dry v[dsp].[inst].[voicing].wav`, mapped target wet stems with zero-scroll display names ($\le 34$ chars), `upload_instructions.txt`, and `manifest.json`.
-
-### 5.4 Differential Non-Linear Metallurgy & Dynamics
-1. **Differential Metallurgy Softening:** Soften differentially based on relative target vs source metallurgy ($\Delta\alpha, \Delta k_{\text{sag}}, \Delta k_{\text{eddy}}, \Delta\kappa_{\text{geom}}, \Delta k_{\text{stein}}, \Delta k_{\text{emf}}, \Delta\lambda_L$). Bypass on small signals ($\le 0.10$) to preserve bit-exact test linearity.
-2. **Dynamic Magnetic Feel:** Model register-weighted magnetic string pull damping and attack pitch sag ($w_{\text{reg}}$ in `_lenz_velocity_drag_core`), electromechanical back-EMF string braking ($k_{\text{emf}}$), dynamic reluctance inductance modulation ($\lambda_L$ "vowel quack"), displacement-modulated touch highpass tilt ($\tau_{\text{touch}}$), eddy de-Qing, $2f_0$ orbit bloom, core curvature wobble, soft-knee slew limiting, conformal clearance divergence, and $-108\text{ dBFS}$ Johnson noise dither.
-
-### 5.5 Complex Electrical Impedance & Harnesses
-1. **Fractional Dielectric, Permeability & Skin Dispersion:** Model tone cap and cable admittance via continuous Cole-Davidson fractional frequency scaling down to DC ($f=0\text{ Hz}$, $\alpha_{\text{tone}} \approx 0.988, \alpha_{\text{cable}} \approx 0.994$), causal Jordan core relaxation ($\mu^*(\omega)$), and solid Alnico pole eddy skin-effect fractional series dispersion ($Z_{\text{skin}}(s) \propto \sqrt{s}$).
-2. **Coupled System & Harness Controls:** Solve coupled $2\times 2$ nodal transfer matrix for parallel coils, hyperbolic transmission line admittance ($\tanh(\gamma)/\gamma$), and interactive volume/tone wiper splitting with cable capacitance loading ($P_{\text{vol}}, P_{\text{tone}}$).
-
-### 5.6 Tone Naming, Bassist Lexicon & Display Character Budgets
-All target voice naming, Tone3000 model exports (`.nam`), wet audio stems, and storefront listings must satisfy the normative guidelines in [`docs/tone_packs/naming.md`](docs/tone_packs/naming.md):
-1. **First-Principles Grammar:** Every tone name must follow the strict 2-to-3 token grammar: `[Family] [Configuration] [Voicing Modifier]`. Combined with physical switch positions and version tags, the full model name is: `[Tone Name] [Pickup Position] v[dsp].[inst].[voice]`.
-2. **Pedalboard Zero-Scroll Target ($\le 34$ chars):** The Darkglass Anagram screen displays 34 characters without scrolling. All 24 target voices must achieve 100% zero-scroll ($\le 34$ characters) on stage including pickup position and version tag.
-3. **Character Length Hard Limit ($\le 64$ chars):** The Tone3000 uploader enforces a strict 64-character ceiling on model filenames (excluding `.nam`). Filenames exceeding 64 characters raise diagnostic `ValueError` exceptions in `get_t3k_basename()`.
-4. **Permitted Taxonomy Vocabulary:** Draw tokens strictly from the approved taxonomy dictionary:
-   - Families: `Jazz`, `Precision`, `StingRay`, `PJ`, `P∕MM`, `Rickenbacker`, `Mudbucker`, `Dingwall`, `Upright`.
-   - Configurations: `Pair`, `Bridge`, `Neck`, `Parallel`, `Series` (omitted when inherent, as in `Precision`, `Upright`).
-   - Modifiers: `Open`, `Mids`, `Warm`, `Dub`, `Vintage`, `Modern`, `Active`, `Passive`, `Growl`, `Clank`, `Deep`, `Acoustic`, `Direct`.
-5. **Musician-Facing Sonic Descriptors (No Component Values):** Strictly omit electrical component values (`22nF`, `47nF`, `100nF`) and ad-hoc artist nicknames. Replace them with functional musical descriptors (`Mids`, `Warm`, `Dub`, `Growl`).
-6. **No Redundant Source Instrument Names:** Omit the source bass name from the tone name (e.g. `Precision Vintage [Split] v2.1.1` instead of `34in Standard P Precision Vintage [Split] v2.1.1`). Tone packs are dedicated to a specific source edition; repeating the instrument name wastes 15-25 characters and triggers scrolling.
-7. **Standard Bracketed Physical Switch Selectors:** Multi-pickup source basses must use standardized physical selector tags: `[Parallel]`, `[Series]`, `[Neck]`, `[Bridge]`, `[Split]`. Single-pickup basses and character presets omit bracketed tags automatically.
-8. **Filesystem Safety:** Replace `/` and `\` with the Unicode Division Slash (`∕`, `\u2215`), and arrows (`->`, `-->`) with the Unicode Rightwards Arrow (`→`, `\u2192`).
-
----
-
-## 6. High-Performance Audio DSP & SIMD Directives
-
-To maintain simulation speeds exceeding $>1500\times$ real time:
-1. **Buffer & Recurrence Acceleration:** Never execute interpreted Python loops over audio buffers. Compile recursive ODE state solvers with Numba (`@njit(fastmath=True)`). Pack 24-bit little-endian WAV bytes via C view slicing (`.astype("<i4").view(np.uint8)`). Formulate nodal circuit transfers on complex NumPy vectors ($s = 1j \cdot \omega$).
-2. **Stage Fusion & Caching:** Fuse linear filter stages in the frequency domain. Broadcast input forward FFTs across channels. Cache parsed netlists with `@functools.lru_cache`. Precompute global target voice dataframes once.
-3. **Automated Verification & Test Evolution:** All changes must satisfy automated property assertions in `tests/test_guardrails.py` as well as zero errors under `uv run ruff check` and `uv run pyrefly check`. Hardcoded test values (dB thresholds, frequency ranges, bounds) are viable and expected to change when refining physical modeling or mathematical representations, provided the underlying formulas are justifiably sound. Never warp, tune, or artificially clamp genuine physical equations to appease obsolete or heuristic legacy test assertions; instead, update the tests to reflect the verified physical behavior.
-4. **Visualizer Vectorization & Payload Bounding (Commit `7c6e634`):** Never invoke `build_voice_dataframe(mode="difference")`, FIR synthesis, or multi-rate FFTs inside per-voice loops of visualizer generators. Always leverage globally cached universal target voicings (`get_cached_target_dfs(step=step)`) with vectorized NumPy array math. Ensure `step=3` downsampling (200 points) and float rounding to keep chart HTML payloads minimal and `test_generate_all_charts` runtime strictly under $5.0\text{ seconds}$.
+- **Zero Duplication:** Keep `AGENTS.md` files strictly as routing maps (`< 5,000` B root, `< 2,500` B scoped). Never copy formulas, numeric constants, metallurgy tables, or vocabulary lists into `AGENTS.md`.
+- **Single Source of Truth:** Document every equation, clamp (`CL-XX`), or schema change in its canonical `docs/` file per [`CONTRIBUTING.md` §5](CONTRIBUTING.md#5-maintaining-agentsmd--documentation-architecture) and link to it.

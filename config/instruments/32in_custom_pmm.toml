@@ -52,6 +52,7 @@ type = "split_coil"
 magnet_type = "ceramic"
 pole_type = "blade"
 has_internal_buffer = true
+active_variant = "x_series"
 buffer_output_impedance = 2000.0
 coils = [
     # Strings 1 & 2 see only forward D/G coil half
@@ -72,6 +73,7 @@ type = "dual_coil_parallel"
 magnet_type = "ceramic_steel"
 pole_type = "blade"
 has_internal_buffer = true
+active_variant = "x_series"
 buffer_output_impedance = 2000.0
 coils = [
     { id = "neck", strings = ["all"], position_from_bridge_m = 0.0737, aperture_width_in = 0.45, weight = 0.5, pole_type = "blade", L = 0.80, Rdc = 2800.0, Reddy = 150000.0, Ccoil = 2.4e-9 },

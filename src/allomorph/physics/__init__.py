@@ -1,12 +1,11 @@
 """
 Allomorph Physics Engine
-Universal spatial acoustics, string dispersion, and transducer deconvolution.
+Universal spatial acoustics, string dispersion, and forward transducer modeling.
 """
 
 from allomorph.physics.aperture import (
     CALIBRATION_EXCURSION_ETA,
     FRACTIONAL_EXCURSION_CALIBRATION_ETA,
-    aperture_response,
     build_wave_speed_continuum_partitions,
     combine_coherent_incoherent_aperture,
     compute_coil_aperture,
@@ -17,12 +16,8 @@ from allomorph.physics.aperture import (
     compute_string_dispersion_tensor,
     get_coil_register,
     is_voice_matching_source,
-    numpy_aperture,
     numpy_pickup_acoustic_response,
-    numpy_pickup_macro_aperture,
-    numpy_position,
     pickup_acoustic_response,
-    position_envelope,
     soft_clamp_displacement_ratio,
 )
 from allomorph.physics.strings import (
@@ -30,7 +25,6 @@ from allomorph.physics.strings import (
     INHARMONICITY_ANCHORS_F0,
     MEAN_BASS_F0,
     NOTE_NAMES,
-    SENSOR_SCALE_EXPONENTS,
     STRING_FUNDAMENTALS,
     compute_dispersive_wave_speed,
     compute_forward_string_transfer,
@@ -50,9 +44,7 @@ __all__ = [
     "INHARMONICITY_ANCHORS_F0",
     "MEAN_BASS_F0",
     "NOTE_NAMES",
-    "SENSOR_SCALE_EXPONENTS",
     "STRING_FUNDAMENTALS",
-    "aperture_response",
     "build_wave_speed_continuum_partitions",
     "combine_coherent_incoherent_aperture",
     "compute_coil_aperture",
@@ -69,13 +61,9 @@ __all__ = [
     "get_voice_string",
     "infer_string_names",
     "is_voice_matching_source",
-    "numpy_aperture",
     "numpy_pickup_acoustic_response",
-    "numpy_pickup_macro_aperture",
-    "numpy_position",
     "pickup_acoustic_response",
     "pitch_to_note_name",
-    "position_envelope",
     "resolve_scale_length",
     "resolve_scale_range",
     "soft_clamp_displacement_ratio",

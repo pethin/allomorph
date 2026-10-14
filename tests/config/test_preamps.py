@@ -146,4 +146,3 @@ def test_fender_ultra2_3band_configuration():
     assert treble.type == "high_shelf"
     assert treble.freq_hz == 8000.0
     assert treble.gain_db == 0.0
-

@@ -31,9 +31,11 @@ from allomorph.circuit import (
 
 def test_passive_saturation_bypassed(generic_instrument_config: InstrumentConfig):
     """Verify that forward saturation is bypassed when apply_saturation is False."""
+    sr = 48000
     n_samples = 4800
-    # High amplitude input (0.80) exceeding vsat (0.45)
-    in_heavy = np.full((1, n_samples), 0.80, dtype=np.float32)
+    t = np.arange(n_samples, dtype=np.float32) / sr
+    # High amplitude 100 Hz sine input (0.80) exceeding saturation knee
+    in_heavy = (0.80 * np.sin(2.0 * np.pi * 100.0 * t)).reshape(1, n_samples).astype(np.float32)
 
     with (
         tempfile.NamedTemporaryFile(suffix=".wav") as tmp_act,
@@ -69,8 +71,55 @@ def test_passive_saturation_bypassed(generic_instrument_config: InstrumentConfig
         with pedalboard.io.AudioFile(tmp_pas.name) as f:
             audio_pas = f.read(f.frames)[0]
 
-    # Linear uncompressed output maintains higher peak
-    assert np.max(np.abs(audio_pas)) > np.max(np.abs(audio_act))
+    # Linear uncompressed output maintains higher RMS energy than compressed saturation output
+    rms_pas = float(np.sqrt(np.mean(audio_pas**2)))
+    rms_act = float(np.sqrt(np.mean(audio_act**2)))
+    assert rms_pas > rms_act
+    assert not np.allclose(audio_pas, audio_act, atol=1e-3)
+
+
+def test_oversampled_saturation_decimation_gain_parity_and_continuity():
+    """Verify exact 1/m decimation scaling across oversample=1, 2, 4 and continuity across max_in=0.10."""
+    sr = 48000
+    t = np.linspace(0, 0.1, int(sr * 0.1), endpoint=False, dtype=np.float32)
+    sig = (0.105 * np.sin(2.0 * np.pi * 200.0 * t)).astype(np.float32)
+
+    # Zero nonlinear coefficients isolate the oversample/decimate linear chain
+    outs = [
+        apply_oversampled_saturation(
+            sig,
+            vsat=10.0,
+            alpha=0.0,
+            alpha3=0.0,
+            eta_hyst=0.0,
+            kappa_orbit=0.0,
+            kappa_geom=0.0,
+            tau_touch=0.0,
+            kappa_ap=0.0,
+            oversample=m,
+            displacement_weighting=True,
+            magnet_drag=False,
+            slew_limit=False,
+        )
+        for m in (1, 2, 4)
+    ]
+
+    rms_1x = float(np.sqrt(np.mean(outs[0] ** 2)))
+    rms_2x = float(np.sqrt(np.mean(outs[1] ** 2)))
+    rms_4x = float(np.sqrt(np.mean(outs[2] ** 2)))
+
+    assert abs(20.0 * math.log10(rms_2x / rms_1x)) < 0.01
+    assert abs(20.0 * math.log10(rms_4x / rms_1x)) < 0.01
+
+    # Verify continuity across small-signal threshold max_in = 0.10
+    sig_below = (0.099 * np.sin(2.0 * np.pi * 200.0 * t)).astype(np.float32)
+    sig_above = (0.101 * np.sin(2.0 * np.pi * 200.0 * t)).astype(np.float32)
+    out_below = apply_oversampled_saturation(sig_below, vsat=1.0, alpha=0.12, oversample=2)
+    out_above = apply_oversampled_saturation(sig_above, vsat=1.0, alpha=0.12, oversample=2)
+    gain_step_db = abs(
+        20.0 * math.log10(float(np.max(np.abs(out_above))) / float(np.max(np.abs(out_below))))
+    )
+    assert gain_step_db < 0.50
 
 
 def test_anti_aliased_oversampling_suppression():

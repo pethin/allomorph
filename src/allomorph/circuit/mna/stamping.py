@@ -52,6 +52,7 @@ class _CoilBranch:
         Ccoil: float,
         Z_br: np.ndarray,
         Y_br: np.ndarray,
+        k_dist: float = 0.0,
     ) -> None:
         self.pickup_id = pickup_id
         self.coil_id = coil_id
@@ -63,6 +64,7 @@ class _CoilBranch:
         self.Ccoil = Ccoil
         self.Z_br = Z_br
         self.Y_br = Y_br
+        self.k_dist = k_dist
         self.h_internal: np.ndarray | None = None
         self.y_self: np.ndarray | None = None
         self.y_mutual: np.ndarray | float = 0.0

@@ -121,9 +121,7 @@ def apply_calibrated_normalization(
 
     if mode in ("auto", "lufs"):
         in_lufs = (
-            ref_lufs
-            if ref_lufs is not None
-            else compute_lufs(ref_mono, sample_rate=sample_rate)
+            ref_lufs if ref_lufs is not None else compute_lufs(ref_mono, sample_rate=sample_rate)
         )
         cur_lufs = compute_lufs(filtered, sample_rate=sample_rate)
         if not (
@@ -144,9 +142,7 @@ def apply_calibrated_normalization(
                 scale_rms = target_rms / out_rms
                 filtered = filtered * scale_rms
                 final_lufs = (
-                    cur_lufs + 20.0 * math.log10(scale_rms)
-                    if not math.isinf(cur_lufs)
-                    else -100.0
+                    cur_lufs + 20.0 * math.log10(scale_rms) if not math.isinf(cur_lufs) else -100.0
                 )
     elif mode == "rms":
         target_rms = (

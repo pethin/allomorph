@@ -519,4 +519,3 @@ def test_dual_token_excitation_and_stems(tmp_path: Path):
 
     pcm_digest = compute_pcm_stem_digest(samples)
     assert pcm_digest == stem_digest
-

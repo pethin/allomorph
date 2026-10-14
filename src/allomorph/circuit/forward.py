@@ -123,10 +123,8 @@ def simulate_pickup_transducer_branch(
             if (pickup is not None and pickup.alpha is not None)
             else float(sp_props.alpha)
         )
-        drive_db = float(getattr(voicing, "gain_db", 0.0) or 0.0)
-        drive_in = v_ac if drive_db == 0.0 else v_ac * (10.0 ** (drive_db / 20.0))
         emf = apply_oversampled_saturation(
-            drive_in.astype(np.float32),
+            v_ac.astype(np.float32),
             vsat=sp_vsat,
             alpha=sp_alpha,
             alpha3=float(sp_props.alpha3),
@@ -150,31 +148,33 @@ def simulate_pickup_transducer_branch(
         ).astype(np.float64)
     elif apply_saturation and sensor_type == "bridge_force":
         p_vsat = float(pickup.vsat) if (pickup is not None and pickup.vsat is not None) else 0.42
-        drive_db = float(getattr(voicing, "gain_db", 0.0) or 0.0)
-        drive_in = v_ac if drive_db == 0.0 else v_ac * (10.0 ** (drive_db / 20.0))
-        max_in = float(np.max(np.abs(drive_in))) if len(drive_in) > 0 else 0.0
+        max_in = float(np.max(np.abs(v_ac))) if len(v_ac) > 0 else 0.0
         if max_in > 0.10 and p_vsat > 0.0:
             alpha_p = (
                 float(pickup.alpha) if (pickup is not None and pickup.alpha is not None) else 0.15
             )
-            v_piezo = drive_in * (1.0 + alpha_p * np.tanh(drive_in / p_vsat))
+            v_piezo = v_ac * (1.0 + alpha_p * np.tanh(v_ac / p_vsat))
             emf = (p_vsat * np.tanh(v_piezo / p_vsat)).astype(np.float64)
         else:
-            emf = drive_in
+            emf = v_ac
     else:
         emf = v_ac
 
     # Block 2: Coil Output Stage for this branch
     v_coil = fft_convolve(emf, np.asarray(fir_circ, dtype=np.float64), mode="causal")[:n_samples]
 
-    # Active pickup internal op-amp dynamics
+    # Active pickup internal op-amp dynamics (x_series 18V headroom vs classic 9V soft-limiting)
     active_var = pickup.active_variant if pickup is not None else None
     if active_var is not None and apply_saturation:
-        sub_vsat = float(pickup.vsat) if (pickup is not None and pickup.vsat is not None) else 2.40
+        default_vsat = 0.50 if active_var == "classic" else 2.40
+        k_level = 0.25 if active_var == "classic" else 0.0
+        sub_vsat = (
+            float(pickup.vsat) if (pickup is not None and pickup.vsat is not None) else default_vsat
+        )
         b_audio = apply_active_pickup_dynamics(
             v_coil.astype(np.float32),
             vsat=sub_vsat,
-            k_level=0.0,
+            k_level=k_level,
             tau_att=0.003,
             tau_rel=0.045,
             sr=sample_rate,
@@ -353,6 +353,11 @@ def simulate_voicing_dsp(
 
         preamps = PREAMPS
 
+    if strings is None:
+        from allomorph.config.strings import STRINGS
+
+        strings = STRINGS
+
     harness_id = voicing_cfg.harness
     used_mna = bool(getattr(inst, "harnesses", None) and harness_id in inst.harnesses)
     if not used_mna:
@@ -486,7 +491,7 @@ def simulate_voicing_dsp(
         ref_pos = max(single_positions) if len(single_positions) > 1 else None
 
         if is_composite and (p_components or len(active_pickups) >= 2):
-            N = 8192
+            N = max(16384, num_taps * 4)
             f_bins = np.fft.rfftfreq(N, 1.0 / 48000.0)
             c_mean = 2.0 * scale_m * MEAN_BASS_F0
 
@@ -513,6 +518,11 @@ def simulate_voicing_dsp(
                 branch_positions.append(compute_effective_position(b_coils))
 
             pos_max = max(branch_positions) if branch_positions else 0.0
+            k_iso_raw = [
+                compute_pickup_isolation_leveling(b_pos, scale_m=scale_m, ref_pos_m=ref_pos)
+                for b_pos in branch_positions
+            ]
+            k_iso_mean = float(np.mean(k_iso_raw)) if k_iso_raw else 1.0
             H_channels = []
             H_channels_delayed = []
             peaks = []
@@ -533,7 +543,7 @@ def simulate_voicing_dsp(
 
                 b_pos = branch_positions[i]
                 h_pos = compute_displacement_proximity_shelf(f_bins, b_pos, scale_m=scale_m)
-                k_iso = compute_pickup_isolation_leveling(b_pos, scale_m=scale_m, ref_pos_m=ref_pos)
+                k_iso = k_iso_raw[i] / max(k_iso_mean, 1e-6)
                 ac = ac_raw * h_pos * k_iso
 
                 min_pos = min((c.position_from_bridge_m for c in b_coils), default=0.10)
@@ -541,8 +551,8 @@ def simulate_voicing_dsp(
                     h_saddle = compute_saddle_boundary_coupling(f_bins, min_pos)
                     ac = ac * np.asarray(h_saddle, dtype=np.float64)
 
-                fir_ac = synthesize_minimum_phase_fir(ac, num_taps=2048, normalize=False)
-                fir_circ = synthesize_minimum_phase_fir(c_curve, num_taps=2048, normalize=False)
+                fir_ac = synthesize_minimum_phase_fir(ac, num_taps=num_taps, normalize=False)
+                fir_circ = synthesize_minimum_phase_fir(c_curve, num_taps=num_taps, normalize=False)
                 H_ac_fft = np.fft.rfft(fir_ac, N)
                 H_circ_fft = np.fft.rfft(fir_circ, N)
                 H_channels.append(H_ac_fft * H_circ_fft)
@@ -550,8 +560,8 @@ def simulate_voicing_dsp(
                 tau_i = (pos_max - b_pos) / c_mean if len(branch_coils_list) > 1 else 0.0
                 delay_samples = round(tau_i * 48000.0)
                 fir_ac_del = list(fir_ac)
-                if 0 < delay_samples < 2048:
-                    fir_ac_del = [0.0] * delay_samples + fir_ac_del[: 2048 - delay_samples]
+                if 0 < delay_samples < num_taps:
+                    fir_ac_del = [0.0] * delay_samples + fir_ac_del[: num_taps - delay_samples]
                 H_ac_del_fft = np.fft.rfft(fir_ac_del, N)
                 H_channels_delayed.append(H_ac_del_fft * H_circ_fft)
                 peaks.append(delay_samples)
@@ -590,8 +600,7 @@ def simulate_voicing_dsp(
             h_ac = np.asarray(h_ac_raw, dtype=np.float64)
 
             h_pos = compute_displacement_proximity_shelf(f, eff_pos, scale_m=scale_m)
-            k_iso = compute_pickup_isolation_leveling(eff_pos, scale_m=scale_m, ref_pos_m=ref_pos)
-            h_ac = h_ac * h_pos * k_iso
+            h_ac = h_ac * h_pos
 
             min_pos = min((c.position_from_bridge_m for c in coils), default=0.10)
             if min_pos < 0.075:
@@ -775,12 +784,11 @@ def simulate_instrument_voicing(
 
     Convolves:
       1. Physical sensor/aperture acoustics H_ac(f) with multi-pickup branch coupling
-      2. Loaded RLC circuit transfer H_elec(f) with volume/tone wiper tapers
-      3. Scale-length tension snap H_tension(f) and longitudinal clank resonance H_long(f)
-      4. String damping and tension compliance differential mechanics H_string(f)
-      5. Onboard active preamp EQ contour H_preamp(f)
-      6. Oversampled non-linear magnetic saturation across all 16 physical parameters
-      7. Sub-audible 8 Hz DC blocking and passive RLC-colored Johnson noise dither
+      2. Scale-normalized fractional displacement low-shelf H_pos(f) and saddle stiffness H_saddle(f)
+      3. Loaded MNA RLC circuit transfer H_elec(f) with volume/tone wiper tapers and active preamp EQ
+      4. Forward viscoelastic string wrap damping H_wrap(f)
+      5. Oversampled non-linear transducer saturation and active pickup op-amp headroom dynamics
+      6. Sub-audible 8 Hz DC blocking and passive RLC-colored Johnson noise dither
     Synthesizes a causal minimum-phase FIR starting at sample 0 (zero latency).
     Exports 24-bit 48 kHz PCM audio with calibrated LUFS volume matching and 4x true-peak ceiling protection.
     """
@@ -934,7 +942,7 @@ def simulate_instrument_voicing(
                     recipe_token=recipe_tok,
                     digest_token=stem_digest,
                 )
-            except (OSError, ValueError, RuntimeError):
+            except OSError, ValueError, RuntimeError:
                 pass
 
     if return_audio:

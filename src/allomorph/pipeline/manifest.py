@@ -147,7 +147,7 @@ def read_existing_manifest(manifest_path: Path | str) -> dict[str, Any]:
         with path.open("r", encoding="utf-8") as f:
             data = json.load(f)
             return data if isinstance(data, dict) else {}
-    except (json.JSONDecodeError, OSError):
+    except json.JSONDecodeError, OSError:
         return {}
 
 

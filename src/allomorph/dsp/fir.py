@@ -33,8 +33,8 @@ def compute_minimum_phase_spectrum(
         mag_grid = mag_grid.copy()
         mag_grid[0] = mag_grid[1]
 
-    # Build half-spectrum log-magnitude with C^inf quadratic regularization
-    log_mag = 0.5 * np.log(mag_grid**2 + 1e-8)
+    # Build half-spectrum log-magnitude with C^inf quadratic regularization (-120 dB floor)
+    log_mag = 0.5 * np.log(mag_grid**2 + 1e-12)
 
     # Real cepstrum via IRFFT directly on conjugate-symmetric half-spectrum
     c = np.fft.irfft(log_mag, n_fft)

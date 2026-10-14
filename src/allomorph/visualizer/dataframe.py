@@ -86,11 +86,7 @@ def build_voice_dataframe(
         H_emp = np.abs(H_complex)
 
         mag_raw = np.interp(freqs, f_bins, H_emp)
-        mag_db = 20.0 * np.log10(np.maximum(mag_raw, 1e-4))
-
-        mid_mask = (freqs >= 100.0) & (freqs <= 800.0)
-        if len(mag_db[mid_mask]) > 0:
-            mag_db = mag_db - np.median(mag_db[mid_mask])
+        mag_db = 20.0 * np.log10(np.maximum(mag_raw, 1e-6))
 
         if cache_key is not None:
             _VOICING_CURVE_CACHE[cache_key] = mag_db

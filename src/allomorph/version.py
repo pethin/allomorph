@@ -202,7 +202,7 @@ def compute_stem_digest_token(
                 and file_entry.get("size_bytes") == p.stat().st_size
             ):
                 return str(tok)
-        except (json.JSONDecodeError, OSError):
+        except json.JSONDecodeError, OSError:
             pass
 
     from allomorph.dsp.io import read_wav
@@ -308,7 +308,7 @@ def get_dry_excitation_token(
                     token = str(tok)
                     _DRY_TOKEN_CACHE[resolved_str] = (size, token)
                     return token
-            except (json.JSONDecodeError, OSError):
+            except json.JSONDecodeError, OSError:
                 pass
 
     # Cold path: Compute robust audio digest and persist to sidecar
@@ -333,7 +333,7 @@ def get_dry_excitation_token(
             }
             with sidecar_p.open("w", encoding="utf-8") as sf:
                 json.dump(sidecar_data, sf, indent=2)
-        except (json.JSONDecodeError, OSError):
+        except json.JSONDecodeError, OSError:
             pass
 
     return token
@@ -520,7 +520,7 @@ def check_wet_stem_freshness(
     try:
         with manifest_p.open("r", encoding="utf-8") as f:
             manifest = json.load(f)
-    except (json.JSONDecodeError, OSError):
+    except json.JSONDecodeError, OSError:
         return False, "manifest.json unreadable"
 
     files = manifest.get("files", {})

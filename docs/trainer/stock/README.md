@@ -74,14 +74,14 @@ The stock engine seamlessly integrates with Allomorph's synthetic and measured a
 [Wet Target Stem: target.wav]   ──┘
 ```
 
-1. **Dry/Wet Input Detection:** [`configure_a2_architecture`](file:///home/peter/Projects/pethin/allomorph/src/allomorph/trainer/stock/engine.py#L53-L135) hooks `_detect_input_version` and `_check_data` in upstream NAM, allowing arbitrary dry excitation and wet target stem pairs to be fed directly without dataset conversion scripts.
+1. **Dry/Wet Input Detection:** [`configure_a2_architecture`](../../../src/allomorph/trainer/stock/engine.py#L53-L135) hooks `_detect_input_version` and `_check_data` in upstream NAM, allowing arbitrary dry excitation and wet target stem pairs to be fed directly without dataset conversion scripts.
 2. **Audio File Validation:** Verifies that audio files exist, have matching sample rates ($48\text{ kHz}$), matching channel layouts, and satisfy 24-bit PCM requirements.
 
 ---
 
 ## 5. Telemetry & Terminal Progress Logging
 
-The stock engine uses [`EsrProgressCallback`](file:///home/peter/Projects/pethin/allomorph/src/allomorph/trainer/callbacks.py) to provide real-time terminal telemetry during the 200-epoch run:
+The stock engine uses [`EsrProgressCallback`](../../../src/allomorph/trainer/callbacks.py) to provide real-time terminal telemetry during the 200-epoch run:
 
 ```
 Epoch 042/200 [1.85s] Train: 0.0018 | Val: 0.0012 | ESR Ch8: 0.000854 (-30.7 dB) | ESR Ch3: 0.001241 (-29.1 dB)

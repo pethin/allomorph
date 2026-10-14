@@ -113,7 +113,6 @@ from allomorph.physics import (
     compute_coil_aperture,
     generate_wave_speed_continuum,
     numpy_pickup_acoustic_response,
-    numpy_pickup_macro_aperture,
 )
 from allomorph.pipeline.batch import (
     simulate_all_instrument_voicings,
@@ -170,7 +169,6 @@ __all__ = [
     "load_strings_config",
     "load_voices_config",
     "numpy_pickup_acoustic_response",
-    "numpy_pickup_macro_aperture",
     "read_wav",
     "read_wav_24bit",
     "resolve_instruments",

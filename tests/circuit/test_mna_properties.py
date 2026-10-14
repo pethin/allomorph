@@ -145,3 +145,57 @@ def test_active_preamp_biquads_stability_and_finite_coefficients(
         # Strict stability for audio filters
         assert p1 < 1.0001
         assert p2 < 1.0001
+
+
+def test_core_impedance_jacobians_match_finite_difference() -> None:
+    """Analytical core impedance Jacobians (including dZ/dL with Jordan dispersion) must match finite differences."""
+    from allomorph.circuit.mna import compute_core_impedance_jacobians
+
+    freqs = np.array([100.0, 1000.0, 5000.0, 15000.0])
+    s = 1j * 2.0 * np.pi * freqs
+    L = 3.5
+    k_core = 0.08
+    f_core = 2500.0
+    L_core = k_core * L
+    R_core = 2.0 * math.pi * f_core * L_core
+    Rdc = 7500.0
+    k_skin = 0.08
+    omega_skin = 2.0 * math.pi * 3200.0
+    chi_mu = 0.035
+
+    jac = compute_core_impedance_jacobians(
+        s,
+        L=L,
+        L_core=L_core,
+        R_core=R_core,
+        Rdc=Rdc,
+        k_skin=k_skin,
+        omega_skin=omega_skin,
+        chi_mu=chi_mu,
+    )
+
+    eps = 1e-6
+    L_p = L + eps
+    L_m = L - eps
+    Z_p = compute_core_impedance(
+        s,
+        L=L_p,
+        L_core=k_core * L_p,
+        R_core=R_core,
+        chi_mu=chi_mu,
+        k_skin=k_skin,
+        omega_skin=omega_skin,
+        Rdc=Rdc,
+    )
+    Z_m = compute_core_impedance(
+        s,
+        L=L_m,
+        L_core=k_core * L_m,
+        R_core=R_core,
+        chi_mu=chi_mu,
+        k_skin=k_skin,
+        omega_skin=omega_skin,
+        Rdc=Rdc,
+    )
+    fd_dZ_dL = (Z_p - Z_m) / (2.0 * eps)
+    assert np.allclose(jac["dZ_dL"], fd_dZ_dL, rtol=1e-5, atol=1e-5)

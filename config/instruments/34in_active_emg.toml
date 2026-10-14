@@ -51,6 +51,7 @@ type = "dual_coil_parallel"
 magnet_type = "ceramic"
 pole_type = "blade"
 has_internal_buffer = true
+active_variant = "classic"
 buffer_output_impedance = 10000.0
 coils = [
     { id = "forward", strings = ["all"], position_from_bridge_m = 0.14325, aperture_width_in = 0.40, weight = 0.5, pole_type = "blade", L = 2.0, Rdc = 4500.0, Reddy = 72000.0, Ccoil = 6.25e-10 },
@@ -67,6 +68,7 @@ type = "dual_coil_parallel"
 magnet_type = "ceramic"
 pole_type = "blade"
 has_internal_buffer = true
+active_variant = "classic"
 buffer_output_impedance = 10000.0
 coils = [
     { id = "forward", strings = ["all"], position_from_bridge_m = 0.06325, aperture_width_in = 0.40, weight = 0.5, pole_type = "blade", L = 2.0, Rdc = 4500.0, Reddy = 72000.0, Ccoil = 6.25e-10 },

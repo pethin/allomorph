@@ -445,11 +445,15 @@ def test_tone_pack_and_bundle_config():
 
     # Source without colon raises ValidationError
     with pytest.raises(ValidationError):
-        PackBundleConfig(name="neck", source="invalid_source", targets=["34in_standard_p:vintage_open"])
+        PackBundleConfig(
+            name="neck", source="invalid_source", targets=["34in_standard_p:vintage_open"]
+        )
 
     # Target without colon raises ValidationError
     with pytest.raises(ValidationError):
-        PackBundleConfig(name="neck", source="34in_standard_jazz:neck_warm", targets=["invalid_target"])
+        PackBundleConfig(
+            name="neck", source="34in_standard_jazz:neck_warm", targets=["invalid_target"]
+        )
 
     # Mismatched pack instrument and bundle source raises ValidationError
     with pytest.raises(ValidationError):
@@ -587,4 +591,3 @@ def test_tone_pack_config_schema_validation():
         storefront_description="",
     )
     assert cfg_empty.full_storefront_description == ""
-

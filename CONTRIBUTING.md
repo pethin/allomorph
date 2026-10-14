@@ -99,17 +99,54 @@ All contributions must adhere to the following test coverage and performance ben
 * Every fixture parameter (`monkeypatch: pytest.MonkeyPatch`, `tmp_path: Path`, `capsys: pytest.CaptureFixture[str]`), helper function, and mock callback must include explicit type annotations.
 
 ### 4.5 Architectural Invariants Verification
-* All mathematical invariants defined in [`AGENTS.md`](AGENTS.md) and [`docs/architectural_guardrails.md`](docs/architectural_guardrails.md) are verified by [`tests/test_guardrails.py`](tests/test_guardrails.py), including:
-  - $C^\infty$ algebraic rail saturation ceiling ($V_{\text{sat}} \le 0.985$).
-  - Asymmetric standing-wave displacement ratio limits (`alg4`, $+12.0\text{ dB}$ boost / $-16.0\text{ dB}$ cut).
-  - Exact inharmonicity RBF solver monotonicity across bass fundamental registers ($< 10^{-10}$ relative error).
-  - Sub-audible DC transmission ($H_{\text{preamp}}(0) \ge 1.0$).
-  - Zero-scroll tone naming display budgets ($\le 34$ chars).
-  - Strict fail-fast declarative integrity with zero silent fallbacks.
+* All mathematical, physical, tone-naming, and documentation progressive-disclosure invariants indexed in [`docs/architectural_guardrails.md`](docs/architectural_guardrails.md) are enforced automatically by [`tests/test_guardrails.py`](tests/test_guardrails.py).
 
 ---
 
-## 5. Submitting a Pull Request
+## 5. Maintaining `AGENTS.md` & Documentation Architecture
+
+Allomorph uses a **Progressive-Disclosure Documentation Architecture** coupled with a strict **Single Source of Truth (SSOT)** policy to minimize AI agent context token usage and eliminate drift between code, agent instructions, and technical documentation.
+
+### 5.1 Two-Tier `AGENTS.md` Hierarchy & Byte Budgets
+1. **Root [`AGENTS.md`](AGENTS.md) ($< 5,000\text{ bytes}$):**
+   - Automatically injected into the agent's context window on every turn.
+   - Must contain **only** the 1-paragraph project identity, global tech stack/tooling commands, core cross-cutting principles, and the Progressive Disclosure & Codebase Discovery Map.
+2. **Directory-Scoped `AGENTS.md` Files ($< 2,500\text{ bytes}$ each):**
+   - Located in [`src/allomorph/physics/AGENTS.md`](src/allomorph/physics/AGENTS.md), [`src/allomorph/circuit/AGENTS.md`](src/allomorph/circuit/AGENTS.md), [`src/allomorph/dsp/AGENTS.md`](src/allomorph/dsp/AGENTS.md), [`src/allomorph/trainer/AGENTS.md`](src/allomorph/trainer/AGENTS.md), [`src/allomorph/visualizer/AGENTS.md`](src/allomorph/visualizer/AGENTS.md), [`src/allomorph/pipeline/AGENTS.md`](src/allomorph/pipeline/AGENTS.md), [`config/AGENTS.md`](config/AGENTS.md), and [`tests/AGENTS.md`](tests/AGENTS.md).
+   - Loaded on demand when an agent inspects or edits files in that directory.
+
+### 5.2 The Zero-Duplication Rule for `AGENTS.md`
+`AGENTS.md` files are **routing tables**, never encyclopedias. To prevent conflicting guidance between `AGENTS.md` and `docs/`:
+* **Never** inline mathematical derivations, numeric constants, clamp thresholds, metallurgy tables, or storefront vocabulary lists inside any `AGENTS.md` file.
+* Every scoped `AGENTS.md` must follow a strict 3-section structure:
+  1. **Key Modules:** Bullet list of files in that directory with 1-sentence responsibility summaries.
+  2. **Required Reading (Single Source of Truth):** Relative links to the canonical `docs/*.md` files governing that subsystem and its registered `CL-XX` clamp IDs.
+  3. **Verification:** The targeted `uv run pytest ...` command for that subsystem.
+* When adding a new module to a subpackage, add a 1-line entry under **Key Modules** in that directory's `AGENTS.md`. When creating a new top-level subpackage under `src/allomorph/`, create a corresponding scoped `AGENTS.md` and register it in root [`AGENTS.md`](AGENTS.md) and [`tests/test_guardrails.py`](tests/test_guardrails.py).
+
+### 5.3 Single-Source-of-Truth (SSOT) Documentation Map
+Every domain concept, equation, or schema belongs in **exactly one** canonical document. Other documents (including [`README.md`](README.md) and [`docs/architectural_guardrails.md`](docs/architectural_guardrails.md)) must link to the canonical owner rather than repeating its contents:
+
+| When You Modify... | Update This Canonical Document (SSOT) |
+| :--- | :--- |
+| **Any clamp, threshold, knee, or numeric bound** | [`docs/clamp_and_limit_registry.md`](docs/clamp_and_limit_registry.md) (`CL-01`–`CL-29`) |
+| **Cross-cutting $C^\infty$ primitives (`cinf_smoothstep`, `alg4`, `fsqrt`), fail-fast policy, or visualizer contracts** | [`docs/architectural_guardrails.md`](docs/architectural_guardrails.md) |
+| **Spatial pickup apertures, scale-length continuum, inharmonicity RBF, multi-pickup delays, or saddle stiffness** | [`docs/aperture_math.md`](docs/aperture_math.md) |
+| **MNA circuit equations, active preamp EQ topologies, impedance dispersion, or `MAGNET_PROPERTIES` metallurgy** | [`docs/circuit_theory.md`](docs/circuit_theory.md) |
+| **SIMD execution pipeline, stage fusion, 2x/4x oversampling, Numba JIT, or `allomorph-sim` CLI** | [`docs/dsp_simulation_engine.md`](docs/dsp_simulation_engine.md) |
+| **Dry signal synthesis (`audio/input.wav`), homomorphic cepstrum FIR, or ITU-R BS.1770-4 LUFS** | [`docs/dsp_synthesis_engine.md`](docs/dsp_synthesis_engine.md) |
+| **NAM A2 WaveNet training hyperparameters, ESR/MR-STFT loss, or Stock vs Native engines** | [`docs/trainer/README.md`](docs/trainer/README.md) (plus [`stock/README.md`](docs/trainer/stock/README.md) or [`native/engine_architecture.md`](docs/trainer/native/engine_architecture.md)) |
+| **Tone3000 naming budgets, storefront vocabulary, ranking algorithm, or catalog matrix** | [`docs/tone_packs/naming.md`](docs/tone_packs/naming.md), [`docs/tone_packs/ranking.md`](docs/tone_packs/ranking.md), [`docs/tone_packs/catalog.md`](docs/tone_packs/catalog.md) |
+| **TOML instrument/pack schemas, target voice definitions, or Darkglass Anagram routing** | [`docs/configuration_reference.md`](docs/configuration_reference.md), [`docs/voice_catalog.md`](docs/voice_catalog.md), [`docs/anagram_workflow.md`](docs/anagram_workflow.md) |
+
+### 5.4 Automated Documentation Guardrails
+[`tests/test_guardrails.py`](tests/test_guardrails.py) enforces documentation hygiene on every test run:
+* `test_guardrail_agents_md_progressive_disclosure_budgets`: Asserts root `AGENTS.md` $< 5,000$ bytes and all 8 scoped `AGENTS.md` files $< 2,500$ bytes.
+* `test_guardrail_documentation_markdown_links_valid`: Scans `AGENTS.md`, all scoped `AGENTS.md` files, `README.md`, `CONTRIBUTING.md`, and `docs/**/*.md` to verify that every relative markdown file link resolves to an existing path on disk.
+
+---
+
+## 6. Submitting a Pull Request
 
 1. **Fork the repository** on GitHub.
 2. **Create a topic branch** (`git checkout -b feat/my-new-pickup`).
@@ -125,3 +162,4 @@ All contributions must adhere to the following test coverage and performance ben
    git commit -s -m "feat: description of changes"
    ```
 5. **Open a Pull Request** against the `main` branch with a clear description of your changes and motivation.
+

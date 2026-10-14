@@ -12,7 +12,6 @@ from allomorph.circuit.mna.biquads import (
     evaluate_analog_band,
 )
 from allomorph.circuit.mna.impedance import (
-    _get_cached_s_ratio_power,
     compute_core_impedance,
     compute_core_impedance_jacobians,
 )
@@ -23,7 +22,6 @@ from allomorph.circuit.mna.stamping import DisjointSet, _CoilBranch
 __all__ = [
     "DisjointSet",
     "_CoilBranch",
-    "_get_cached_s_ratio_power",
     "compute_active_preamp_biquads",
     "compute_active_preamp_eq",
     "compute_active_preamp_transfer",

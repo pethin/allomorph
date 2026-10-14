@@ -561,7 +561,7 @@ def ensure_input_audio_wav(
             from allomorph.version import get_dry_excitation_token
 
             get_dry_excitation_token(p, force=True)
-        except (OSError, json.JSONDecodeError, ValueError):
+        except OSError, json.JSONDecodeError, ValueError:
             pass  # Manifest sidecar emission is best-effort during dry audio synthesis
 
     return p

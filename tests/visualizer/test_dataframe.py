@@ -45,9 +45,9 @@ def test_build_voice_dataframe(
     assert freqs[0] >= 20.0
     assert freqs[-1] <= 20000.0
 
-    # Magnitude should be in reasonable dB range (e.g. -60 dB to +20 dB) and strictly finite
+    # Magnitude should be in reasonable dB range (-120 dB floor to +20 dB) and strictly finite
     mags = df["magnitude_db"].to_list()
-    assert all(-60.0 <= m <= 20.0 for m in mags)
+    assert all(-120.0 <= m <= 20.0 for m in mags)
     assert not df["magnitude_db"].is_nan().any()
     assert not df["magnitude_db"].is_null().any()
 

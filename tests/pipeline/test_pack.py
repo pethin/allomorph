@@ -761,4 +761,3 @@ def test_pack_preserves_nam_tokens_on_digest_mismatch(tmp_path: Path, mini_dry_a
     assert updated_entry["wet_file"] == matching_stem["filename"]
     assert updated_entry["wet_recipe_token"] == matching_stem["recipe_token"]
     assert updated_entry["version"] == matching_stem["version"]
-

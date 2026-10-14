@@ -1,8 +1,8 @@
 """
-Allomorph - Nodal RLC Matrix Solver & Differential Transfer Functions
+Allomorph - Nodal RLC Matrix Solver & Forward Transfer Functions
 Evaluates closed-form nodal AC transfer functions across frequencies using
 vectorized NumPy SIMD operations, Cole-Davidson dielectric relaxation,
-Jordan after-effect permeability dispersion, and Wiener-regularized deconvolution.
+Jordan after-effect permeability dispersion, and hyperbolic transmission-line admittance.
 """
 
 import math
@@ -13,7 +13,6 @@ import numpy as np
 from allomorph.circuit.mna import (
     DisjointSet,
     _CoilBranch,
-    _get_cached_s_ratio_power,
     compute_active_preamp_biquads,
     compute_active_preamp_eq,
     compute_active_preamp_transfer,
@@ -36,7 +35,6 @@ from allomorph.dsp import FREQS
 __all__ = [
     "DisjointSet",
     "_CoilBranch",
-    "_get_cached_s_ratio_power",
     "compute_active_preamp_biquads",
     "compute_active_preamp_eq",
     "compute_active_preamp_transfer",
@@ -74,8 +72,9 @@ def solve_mna_harness(
 
     if harness.type == "direct":
         res_direct: dict[str, np.ndarray] = {}
+        g_lin = 10.0 ** (float(voicing.gain_db or 0.0) / 20.0)
         for p_id, p_cfg in instrument.pickups.items():
-            arr = np.ones(n_freqs, dtype=np.complex128 if return_complex else np.float64)
+            arr = np.ones(n_freqs, dtype=np.complex128 if return_complex else np.float64) * g_lin
             res_direct[p_id] = arr
             for c in p_cfg.coils:
                 if c.id:
@@ -393,9 +392,19 @@ def solve_mna_harness(
             Z_br = 1.0 / Y_br
 
             h_int: np.ndarray | None = None
+            k_dist = float(getattr(props, "k_dist", 0.0) or 0.0)
             if p_cfg.has_internal_buffer:
                 # Active internal buffer: op-amp input senses internal coil RLC tank voltage
-                Y_shunt_int = s * Ccoil + (1.0 / 1e6)
+                if k_dist > 0.0 and Ccoil > 0.0:
+                    w_dist = 2.0 * math.pi * 10000.0
+                    gamma_dist = k_dist * np.sqrt(s / w_dist)
+                    corr = np.ones_like(s, dtype=np.complex128)
+                    nz = np.abs(gamma_dist) > 1e-12
+                    corr[nz] = np.tanh(gamma_dist[nz]) / gamma_dist[nz]
+                    y_ccoil_int = (s * Ccoil) * corr
+                else:
+                    y_ccoil_int = s * Ccoil
+                Y_shunt_int = y_ccoil_int + (1.0 / 1e6)
                 h_int = Y_br / (Y_br + Y_shunt_int)
                 r_buf = float(p_cfg.buffer_output_impedance)
                 Z_br = np.full(n_freqs, r_buf, dtype=np.complex128)
@@ -413,6 +422,7 @@ def solve_mna_harness(
                 Ccoil=Ccoil,
                 Z_br=np.asarray(Z_br, dtype=np.complex128),
                 Y_br=np.asarray(Y_br, dtype=np.complex128),
+                k_dist=k_dist,
             )
             cb.h_internal = h_int
             coils_dict[coil_key] = cb
@@ -429,7 +439,16 @@ def solve_mna_harness(
     for idx_a in range(len(coil_keys)):
         k_a = coil_keys[idx_a]
         c_a = coils_dict[k_a]
-        stamp_adm(c_a.t_hot, c_a.t_cold, s * c_a.Ccoil)
+        if c_a.k_dist > 0.0 and c_a.Ccoil > 0.0:
+            w_dist = 2.0 * math.pi * 10000.0
+            gamma_dist = c_a.k_dist * np.sqrt(s / w_dist)
+            corr = np.ones_like(s, dtype=np.complex128)
+            nz = np.abs(gamma_dist) > 1e-12
+            corr[nz] = np.tanh(gamma_dist[nz]) / gamma_dist[nz]
+            y_c_p = (s * c_a.Ccoil) * corr
+        else:
+            y_c_p = s * c_a.Ccoil
+        stamp_adm(c_a.t_hot, c_a.t_cold, y_c_p)
 
         coupled_b: _CoilBranch | None = None
         idx_b = -1
@@ -587,9 +606,8 @@ def solve_mna_harness(
                 for ctrl_id, ctrl in harness.controls.items():
                     if ctrl.type == "preamp_band":
                         matches = (
-                            (b_id is not None and (ctrl.band == b_id or ctrl_id == b_id))
-                            or ctrl.band == b.type
-                        )
+                            b_id is not None and (ctrl.band == b_id or ctrl_id == b_id)
+                        ) or ctrl.band == b.type
                         if matches:
                             ctrl_val = voicing.controls.get(
                                 ctrl_id,
@@ -611,7 +629,6 @@ def solve_mna_harness(
             H_eq = compute_active_preamp_transfer(
                 adjusted_bands, s, gain_db=float(preamp_spec.gain_db) + voicing.gain_db
             )
-
 
         r_out_stage = 100.0
         r_pre_out = ds.find("preamp.out")
@@ -639,6 +656,10 @@ def solve_mna_harness(
 
         for k_coil in list(H_coils.keys()):
             H_coils[k_coil] = H_coils[k_coil] * H_eq * H_post
+    elif voicing.gain_db:
+        g_lin = 10.0 ** (float(voicing.gain_db) / 20.0)
+        for k_coil in list(H_coils.keys()):
+            H_coils[k_coil] = H_coils[k_coil] * g_lin
 
     for k_coil, c_info in list(coils_dict.items()):
         alias = c_info.alias_key

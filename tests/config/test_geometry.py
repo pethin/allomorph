@@ -49,17 +49,17 @@ def test_resolve_voice_pickups():
     # 1. Multi-pickup: jazz_pair_active
     p_act = resolve_voice_pickups(VOICES["jazz_pair_active"])
     assert len(p_act) == 2
-    assert p_act[0].fr == 6789.7
+    assert p_act[0].fr == 6764.9
     assert p_act[0].Q == 0.69
-    assert p_act[1].fr == 7078.0
+    assert p_act[1].fr == 7053.4
     assert p_act[1].Q == 0.72
 
     # 2. Multi-pickup: jazz_pair_open
     p_jazz = resolve_voice_pickups(VOICES["jazz_pair_open"])
     assert len(p_jazz) == 2
-    assert p_jazz[0].fr == 2737.1
+    assert p_jazz[0].fr == 2734.7
     assert p_jazz[0].Q == 0.92
-    assert p_jazz[1].fr == 2905.0
+    assert p_jazz[1].fr == 2902.6
     assert p_jazz[1].Q == 0.91
 
     # 3. Multi-pickup: pj_active (Ultra II 3-band flat buffer: fr and Q are None)
@@ -69,7 +69,7 @@ def test_resolve_voice_pickups():
     assert p_pj_act[0].Q is None
     assert p_pj_act[0].weight == 0.5
     assert len(p_pj_act[0].coils) == 2  # P-split E/A + D/G
-    assert p_pj_act[1].fr == 5167.1
+    assert p_pj_act[1].fr == 5133.0
     assert p_pj_act[1].Q == 0.96
     assert p_pj_act[1].weight == 0.5
     assert len(p_pj_act[1].coils) == 1  # J-bridge
@@ -77,7 +77,7 @@ def test_resolve_voice_pickups():
     # 4. Multi-pickup: pj_passive
     p_pj_pas = resolve_voice_pickups(VOICES["pj_passive"])
     assert len(p_pj_pas) == 2
-    assert p_pj_pas[0].fr == 2521.9
+    assert p_pj_pas[0].fr == 2520.4
     assert p_pj_pas[0].Q == 0.99
     assert p_pj_pas[1].fr is None
     assert p_pj_pas[1].Q is None
@@ -85,16 +85,16 @@ def test_resolve_voice_pickups():
     # 5. Multi-pickup: p_mm_series & p_mm_parallel
     p_pmm = resolve_voice_pickups(VOICES["p_mm_series"])
     assert len(p_pmm) == 2
-    assert p_pmm[0].fr == 4008.8
-    assert p_pmm[0].Q == 1.18
-    assert p_pmm[1].fr == 4079.9
-    assert p_pmm[1].Q == 1.24
+    assert p_pmm[0].fr == 4006.6
+    assert p_pmm[0].Q == 1.17
+    assert p_pmm[1].fr == 4077.8
+    assert p_pmm[1].Q == 1.23
 
     p_pmm_act = resolve_voice_pickups(VOICES["p_mm_parallel"])
     assert len(p_pmm_act) == 2
-    assert p_pmm_act[0].fr == 5387.4
-    assert p_pmm_act[0].Q == 0.91
-    assert p_pmm_act[1].fr == 5566.0
+    assert p_pmm_act[0].fr == 5375.2
+    assert p_pmm_act[0].Q == 0.90
+    assert p_pmm_act[1].fr == 5554.7
     assert p_pmm_act[1].Q == 1.00
 
     # 6. Single-pickup voice auto-wrapping: precision_active (Ultra II flat buffer: fr and Q are None)

@@ -1,7 +1,8 @@
 """
 Allomorph - String Mechanics & Wave Dispersion Modeling
-Computes differential string damping and tension compliance, longitudinal clank resonance,
-inharmonicity B_s interpolation, scale-length conversions, and dispersive wave speeds.
+Computes forward viscoelastic string wrap damping, Gaussian RBF inharmonicity B_s
+interpolation, scale-length conversions, and dispersive wave speeds across the
+24-point log wave-speed continuum.
 """
 
 import math
@@ -20,7 +21,6 @@ __all__ = [
     "INHARMONICITY_ANCHORS_F0",
     "MEAN_BASS_F0",
     "NOTE_NAMES",
-    "SENSOR_SCALE_EXPONENTS",
     "STRING_FUNDAMENTALS",
     "WaveSpeedContinuumPoint",
     "compute_dispersive_wave_speed",
@@ -56,16 +56,6 @@ _RBF_WEIGHTS = np.linalg.solve(_RBF_A, _LOG_BS_ANCHORS)
 MEAN_BASS_F0 = (
     66.9045  # Mean open-string fundamental frequency (E1=41.203, A1=55.000, D2=73.416, G2=97.999)
 )
-
-
-# Sensor scale and compliance coupling exponents derived from spatial derivative order:
-# (kappa_exc, kappa_snap) = (1.0, 1.0) for transverse displacement/velocity (magnetic)
-# (0.0, 0.0) for boundary shear force (bridge piezo) and direct (DI)
-SENSOR_SCALE_EXPONENTS: dict[str, tuple[float, float]] = {
-    "magnetic": (1.0, 1.0),
-    "bridge_force": (0.0, 0.0),
-    "direct": (0.0, 0.0),
-}
 
 
 def compute_forward_string_transfer(

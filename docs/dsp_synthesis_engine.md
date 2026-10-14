@@ -129,13 +129,15 @@ $$w_{\text{Blackman}}[n] = 0.42 - 0.50 \cos\left(\frac{2\pi n}{M-1}\right) + 0.0
 - Normalized to exact $1.00$ ($0.00\text{ dB}$) passband gain.
 - Evaluated via PyTorch GPU GEMM 1D convolution (`F.conv1d`) with `padding="valid"` to eliminate boundary step transients.
 
-### 6.2 Minimum-Phase Synthesis via Real-Cepstrum Hilbert Transform
-For zero-latency pedalboard execution, linear magnitude responses $|H(f)|$ are converted to causal minimum-phase FIR kernels:
-1. Log-magnitude spectrum: $X_{\text{log}}[k] = \ln(|H[k]| + \epsilon)$.
-2. Real cepstrum: $c[n] = \text{IFFT}(X_{\text{log}})$.
-3. Causal windowing: $c_{\text{min}}[n] = c[n] \cdot \text{sgn\_window}[n]$.
-4. Minimum-phase impulse response: $h_{\text{min}}[n] = \text{real}(\text{FFT}(\exp(\text{FFT}(c_{\text{min}}))))$.
-Guarantees strictly zero latency with peak energy concentrated at tap 0.
+### 6.2 Minimum-Phase Synthesis via Pure Real-FFT Homomorphic Cepstrum
+For zero-latency pedalboard execution, linear magnitude responses $|H[k]|$ are converted to causal minimum-phase FIR kernels ($N = 4096$ taps, $N_{\text{fft}} = 16384$) via a pure real-FFT pipeline (`irfft` $\to$ causal folding $\to$ `rfft` $\to$ `irfft`) with cepstral power regularization floor $\epsilon = 10^{-12}$ ($-120\text{ dB}$):
+1. **Real Cepstrum Computation:** Given real, conjugate-symmetric log-magnitude spectrum $L[k] = \frac{1}{2}\ln(|H[k]|^2 + 10^{-12})$ for $k \in [0, N]$:
+   $$\hat{c}[n] = \text{irfft}(L)[n]$$
+2. **Causal Liftering:** Zero non-causal negative cepstral time indices and double positive time indices:
+   $$c_{\text{min}}[n] = \begin{cases} \hat{c}[0], & n = 0 \\ 2\hat{c}[n], & 1 \le n < N \\ \hat{c}[N], & n = N \\ 0, & N < n < 2N \end{cases}$$
+3. **Analytic Spectrum & Direct Inverse Real FFT:**
+   $$S[k] = \text{rfft}(c_{\text{min}})[k] = \ln|H[k]| + j \theta_{\text{min}}[k], \quad h[n] = \text{irfft}(\exp(S))[:N]$$
+4. **Real-Analytic Tail Windowing:** The trailing 15% of taps are tapered with $w(t) = 1.0 - S_\infty(t)$ (`cinf_smoothstep`), vanishing all boundary derivatives at buffer termination and guaranteeing zero latency with peak energy concentrated at tap 0.
 
 ---
 

@@ -1,8 +1,8 @@
 # Allomorph Clamp & Limit Registry
 
-In accordance with **Guardrail 5.2.3 (Catalog-Driven Empirical Analysis for Clamps & Limits)**, all clamping, limiting, thresholding, and regularization mechanisms across the Allomorph codebase must be systematically analyzed across the entire catalog matrix (735 playable source-to-target pairs) to prevent arbitrary squashing of authentic electroacoustic dynamics.
+In accordance with **Guardrail 5.2.3 (Catalog-Driven Empirical Analysis for Clamps & Limits)**, all clamping, limiting, thresholding, and regularization mechanisms across the Allomorph codebase must be systematically analyzed across the entire catalog matrix to prevent arbitrary squashing of authentic electroacoustic dynamics.
 
-This document serves as the master living registry tracking every clamp, limit, threshold, and regularizer in the pipeline.
+This document serves as the master living registry tracking every active clamp, limit, threshold, and regularizer in the Forward Digital Twin pipeline.
 
 ---
 
@@ -10,142 +10,51 @@ This document serves as the master living registry tracking every clamp, limit, 
 
 | ID | Parameter / Mechanism | Location | Formulation | Catalog Extrema | Status |
 |---|---|---|---|---|---|
-| **CL-01** | Scale Tension Snap Zero-Center | Retired (formerly `prefilter.py:456`) | Retired in favor of pure forward first-principles scale dynamics (aperture sinc widening, RBF dispersion, and scale clank) | N/A (Retired) | 🛑 **Retired** (Eliminated artificial EQ shelf and 34"/155 lb constants) |
-| **CL-02** | Circuit Deconvolution Headroom | `solver.py:879` | `smooth_soft_knee_db(h_db, thresh=5.5, ceiling=8.0)` | $[0.00\text{ dB}, +6.77\text{ dB}]$ | ✅ **Evaluated & Verified** (Passive split-P reaches $+6.77\text{ dB}$) |
-| **CL-03** | Differential Prefilter & Output Limiter | `solver.py:879`, `prefilter.py:253, 433` | `smooth_soft_knee_db(raw_db, thresh=6.0, ceiling=8.0)` | $[0.00\text{ dB}, +8.00\text{ dB}]$ | ✅ **Evaluated & Verified** (100% linear $< +6.0\text{ dB}$) |
-| **CL-04** | Spatial Bridge Displacement (`alg4`) | `aperture.py:115` | Unified $C^\infty$ Partition-of-Unity Algebraic Limiter (`alg4`) | $[-9.11\text{ dB}, +9.11\text{ dB}]$ | ✅ **Evaluated & Verified** ($< 0.004\text{ dB}$ deviation from legacy piecewise curve, zero kinks) |
-| **CL-05** | Saddle Witness-Point Coupling | `prefilter.py:301, 501` | Direct ratio $H_{\text{saddle, tgt}} / H_{\text{saddle, src}}$ | $[-1.76\text{ dB}, +1.38\text{ dB}]$ | ✅ **Evaluated & Verified** (Redundant `tanh` removed) |
-| **CL-06** | Acoustic Aperture Positive Boost | `prefilter.py:253, 433` | `smooth_soft_knee_db(q_db, thresh=6.0, ceiling=g_max)` | $[0.00\text{ dB}, +4.89\text{ dB}]$ | ✅ **Evaluated & Verified** (100% linear for all magnetic pairs) |
-| **CL-07** | String Damping Positive Boost | `strings.py:89` | `smooth_soft_knee_db(r_db, thresh=5.0, ceiling=8.0)` | $[0.00\text{ dB}, +2.54\text{ dB}]$ | ✅ **Evaluated & Verified** (100% linear for stainless clank) |
-| **CL-08** | Acoustic Aperture Negative Cut | `prefilter.py:254, 434` | `-smooth_soft_knee_db(-q_db, thresh=10.0, ceiling=14.0)` | $[-8.10\text{ dB}, 0.00\text{ dB}]$ | ✅ **Evaluated & Verified** (100% linear across all 735 catalog pairs) |
-| **CL-09** | String Damping Negative Cut | `strings.py:90` | `-smooth_soft_knee_db(-r_db, thresh=24.0, ceiling=36.0)` | $[-28.23\text{ dB}, 0.00\text{ dB}]$ | ✅ **Evaluated & Verified** (100% linear down to $-24\text{ dB}$, $-28.06\text{ dB}$ on heavy flats) |
-| **CL-10** | Audio Drive Peak Normalization | `forward.py:672` | `min(in_peak * 0.687, 0.70)` | In-peak $\in [0.10, 1.00]$ | ✅ **Evaluated & Verified** (Linear scalar drive ceiling into non-linear ODE solver) |
-| **CL-11** | Differential Metallurgy Denominator | `simulation.py:938, 996` | `1.0 - min(0.85, tgt_vsat / src_vsat) + 0.15` | Ratio $\in [0.45, 1.00]$ | ℹ️ **Numerical Guard** (Prevents division by zero when $V_{\text{sat}}$ matches) |
-| **CL-12** | Differential Circuit HF Shelving | `solver.py:881-890` | `excess_boost * (1 - cinf_smoothstep(...))` | Max $20\text{ kHz} = +1.49\text{ dB}$ | ✅ **Evaluated & Verified** ($C^\infty$ roll-off above $8\text{ kHz}$; Guardrail 5.3.6: $< +2.0\text{ dB}$ at $20\text{ kHz}$) |
-| **CL-13** | Analog Power Rail Ceiling | `saturation.py:1001` | $x / (1 + (|x|/V_{\text{sat}})^8)^{1/8}$ with $V_{\text{sat}} = 0.985$ | $\|x\| \le 1.0$ | ✅ **Evaluated & Verified** ($< 0.05\%$ compression for normal levels) |
+| **CL-04** | Spatial Bridge Displacement (`alg4`) | `aperture.py:114` | Unified $C^\infty$ Partition-of-Unity Algebraic Limiter (`alg4`) | $[-9.11\text{ dB}, +9.11\text{ dB}]$ | ✅ **Evaluated & Verified** (Asymmetric $+12.0\text{ dB}$ boost / $-16.0\text{ dB}$ cut relative to $\eta_0 = 0.1082677$) |
+| **CL-10** | Audio Drive Peak Normalization | `forward.py:679` | `min(in_peak * 0.687, 0.70)` | In-peak $\in (0.10, 1.00]$ | ✅ **Evaluated & Verified** (Linear scalar drive ceiling into non-linear ODE solver) |
+| **CL-13** | Analog Power Rail Ceiling | `saturation.py:638` | $x / (1 + (|x|/V_{\text{sat}})^8)^{1/8}$ with $V_{\text{sat}} = 0.985$ | $\|x\| \le 1.0$ | ✅ **Evaluated & Verified** ($< 0.05\%$ compression for normal levels) |
 | **CL-14** | Buffer Slew Rate Ceiling | `saturation.py:147` | $f_{\text{slew}} = 16\text{ kHz}$, `max_delta = 2*pi*f*vsat/sr` | Slew rate limit | ✅ **Evaluated & Verified** (Engages only on extreme pick spikes) |
-| **CL-15** | Sub-Audible DC Floor | `prefilter.py:263, 439` | $\max(\eta, 10^{-4})$, $\max(\cdot, 10^{-6})$ | $20\text{ Hz} \in [-5.85, +7.10]\text{ dB}$ | ✅ **Evaluated & Verified** (Guardrail 5.3.6: $[-12, +12]\text{ dB}$) |
-| **CL-16** | True-Peak PCM Ceiling | `forward.py:512, 827`, `staging.py:263` | `filtered * (CALIBRATION_PEAK_CEILING / max_peak)` | Maximum audio sample | ✅ **Evaluated & Verified** (Linear peak-based scaling paired with $-20.50\text{ dBFS}$ RMS reference, guaranteeing $0/25$ voicings hit ceiling) |
-| **CL-17** | 24-bit PCM Integer Clamp | `dsp.py:128`, `simulation.py:534` | `np.clip(x * 8388608, -8388608, 8388607)` | Output integer array | 🔒 **PCM Container Guard** (Prevents integer overflow wrap) |
-| **CL-18** | Potentiometer Position Bounds | `parser.py:260, 414, 425, 438` | `np.clip(pos, 0.0, 1.0)` | Wiper $[0.0, 1.0]$ | 🔒 **Physical Potentiometer Wiper Datum** |
-| **CL-19** | Multi-Pickup Coherence Decay Sigmoid | `aperture.py:352-353`, `dataframe.py:200` | $0.5 \cdot (1 - \tanh((f - f_{\text{mid}}) / f_{\text{sigma}}))$ | Smooth $C^\infty$ blend | ✅ **Evaluated & Verified** (Guardrail 5.1.2: engages when $\lambda \le d$) |
-| **CL-20** | Inharmonicity Frequency Floor | `strings.py:155` | $\max(f_0, 15.0\text{ Hz})$ | Fundamental $f_0$ | ✅ **Evaluated & Verified** (Prevents $\log_2(0)$ divergence) |
-| **CL-21** | Multi-Rate Anti-Aliasing Decimation Mask | `saturation.py:100` | `1.0 - cinf_smoothstep((f - 18000) / 6000)` | Transition $[18\text{ kHz}, 24\text{ kHz}]$ | ✅ **Evaluated & Verified** ($C^\infty$ decimation lowpass, vanishes all boundary derivatives at Nyquist) |
-| **CL-22** | Dynamic Lenz Saturation Core Drag | `saturation.py:114, 185` | Softplus excess ($\alpha=16.0$) + $w \cdot \tanh(\text{excess}/w)$ | In-core signal envelope $e \ge 0$ | ✅ **Evaluated & Verified** ($C^\infty$ softplus replacing $C^0$ conditional `if e > vsat:`) |
-| **CL-23** | Homomorphic Real-Cepstrum FIR Tail Window | `dsp.py:108` | `1.0 - cinf_smoothstep(t)` on trailing 15% taps | Normalized tap index $t \in [0, 1]$ | ✅ **Evaluated & Verified** ($C^\infty$ mollifier replacing $C^1$ cosine; eliminates $O(1/n^2)$ boundary leakage) |
-| **CL-24** | Acoustic Aperture Comb-Null De-Combing Taper | `prefilter.py:221, 401` | `1.0 - cinf_smoothstep((f - f_start) / (f_end - f_start))` | Transition $[f_{\text{start}}, f_{\text{end}}]$ | ✅ **Evaluated & Verified** ($C^\infty$ de-combing taper, zero slope kinks at boundary) |
-| **CL-25** | Differential Circuit Deconvolution HF Taper | `solver.py:885-886` | `1.0 - cinf_smoothstep((f - 8000) / 12000)` | Transition $[8\text{ kHz}, 20\text{ kHz}]$ | ✅ **Evaluated & Verified** ($C^\infty$ high-frequency deconvolution shelf to $0.00\text{ dB}$) |
-| **CL-26** | Luthier Pickup Isolation Leveling | `aperture.py:171` | $M \cdot \tanh(\text{excess} / M)$ with shifted softplus ($\alpha=2.0, M=6.0\text{ dB}$) | $[0.00\text{ dB}, +5.26\text{ dB}]$ | ✅ **Evaluated & Verified** (Exact $0.000\text{ dB}$ for neck/middle pickups; $+5.26\text{ dB}$ on Jazz bridge; $+4.51\text{ dB}$ on Dingwall bridge) |
-| **CL-27** | Dynamic BS.1770-4 LUFS Matching | `forward.py`, `dsp.py` | ITU-R BS.1770-4 / EBU R128 dual-gated integrated loudness ($\Delta G = L_{\text{tgt}} - L_{\text{wet}}$) | Target $-20.50\text{ LUFS}$ ($\pm 0.5\text{ LU}$) | ✅ **Evaluated & Verified** (Eliminates passive tone capacitor RMS loudness skew) |
-| **CL-28** | 4x Oversampled True-Peak Ceiling | `forward.py`, `staging.py` | 4x zero-padded FFT sinc interpolation, linear scale if $tp > 0.9900$ | $tp \le 0.9900$ ($-0.087\text{ dBFS}$) | ✅ **Evaluated & Verified** (Zero DAC reconstruction inter-sample clipping) |
+| **CL-16** | True-Peak PCM Ceiling | `forward.py:553, 825` | `filtered * (CALIBRATION_PEAK_CEILING / max_peak)` | Maximum audio sample | ✅ **Evaluated & Verified** (Linear peak-based scaling paired with $-20.50\text{ LUFS}$ reference) |
+| **CL-17** | 24-bit PCM Integer Clamp | `dsp/pcm.py` | `np.clip(x * 8388607, -8388608, 8388607)` | Output integer array | 🔒 **PCM Container Guard** (Prevents integer overflow wrap) |
+| **CL-18** | Potentiometer Position Bounds | `parser.py` | `np.clip(pos, 0.0, 1.0)` | Wiper $[0.0, 1.0]$ | 🔒 **Physical Potentiometer Wiper Datum** |
+| **CL-19** | Multi-Pickup Coherence Decay Sigmoid | `aperture.py:322`, `dataframe.py` | $0.5 \cdot (1 - \tanh((f - f_{\text{mid}}) / f_{\text{sigma}}))$ | Smooth $C^\infty$ blend | ✅ **Evaluated & Verified** (Guardrail 5.1.2: engages when $\lambda \le d$) |
+| **CL-20** | Inharmonicity Frequency Floor | `strings.py` | $\max(f_0, 15.0\text{ Hz})$ | Fundamental $f_0$ | ✅ **Evaluated & Verified** (Prevents $\log_2(0)$ divergence) |
+| **CL-21** | Multi-Rate Anti-Aliasing Decimation Mask | `saturation.py:258` | `1.0 - cinf_smoothstep((f - 18000) / 6000)` | Transition $[18\text{ kHz}, 24\text{ kHz}]$ | ✅ **Evaluated & Verified** ($C^\infty$ decimation lowpass, vanishes all boundary derivatives at Nyquist) |
+| **CL-22** | Dynamic Lenz Saturation Core Drag | `saturation.py:85, 113` | Softplus excess ($\alpha=16.0$) + $V_{\text{sat}} \cdot \tanh(\text{excess}_{\text{raw}}/V_{\text{sat}})$ | In-core signal envelope $e \ge 0$ | ✅ **Evaluated & Verified** ($C^\infty$ softplus + rational drag $1 / (1 + \dots \cdot \text{excess})$) |
+| **CL-23** | Homomorphic Real-Cepstrum FIR Tail Window & Power Floor | `dsp/fir.py:37, 46` | Power floor $10^{-12}$ ($-120\text{ dB}$); `1.0 - cinf_smoothstep(t)` on trailing 15% taps | Normalized tap index $t \in [0, 1]$ | ✅ **Evaluated & Verified** ($C^\infty$ mollifier; $-120\text{ dB}$ floor preserves deep tone-rolled stopbands) |
+| **CL-26** | Luthier Pickup Isolation Leveling | `aperture.py:168`, `forward.py:617` | $M \cdot \tanh(\text{excess} / M)$ with shifted softplus ($\alpha=2.0, M=6.0\text{ dB}$), mean-normalized in blends | $[0.00\text{ dB}, +5.26\text{ dB}]$ | ✅ **Evaluated & Verified** (Mean-normalized across active branches in multi-pickup blends) |
+| **CL-27** | Dynamic BS.1770-4 LUFS Matching | `forward.py`, `dsp/loudness.py` | ITU-R BS.1770-4 / EBU R128 dual-gated integrated loudness ($\Delta G = L_{\text{tgt}} - L_{\text{wet}}$) | Target $-20.50\text{ LUFS}$ | ✅ **Evaluated & Verified** (Eliminates passive tone capacitor RMS loudness skew) |
+| **CL-28** | 4x Oversampled True-Peak Ceiling | `forward.py`, `dsp/loudness.py` | 4x zero-padded FFT sinc interpolation, linear scale if $tp > 0.9900$ | $tp \le 0.9900$ ($-0.087\text{ dBFS}$) | ✅ **Evaluated & Verified** (Zero DAC reconstruction inter-sample clipping) |
 | **CL-29** | Dynamic Magnetic Aperture Bloom | `saturation.py`, `parser.py` | $\kappa_{\text{ap}} \cdot \text{excess} \cdot \tanh(x/V_{\text{sat}})$ | $\kappa_{\text{ap}} \in [0.000, 0.045]$ | ✅ **Evaluated & Verified** (Alnico/Ceramic displacement aperture expansion, exact $0.00$ on small signals) |
+| **CL-30** | Schedule-Driven Natural Convergence | `trainer/core.py`, `trainer/constants.py` | Cosine Annealing ($T_{\max}=115$, $\eta_{\min}=10^{-6}$) + Anti-Drift Pareto early exit | All target voicings | ✅ **Evaluated & Verified** (Deep annealing to micro-step basin) |
+| **CL-31** | Dynamic Hardware Execution Tuning | `trainer/core.py`, `trainer/constants.py` | VRAM-scaled batch size ($8/16/32$), auto precision (`bf16-mixed`/`16-mixed`/`32-true`) | GPU / MPS / CPU | ✅ **Evaluated & Verified** (Maintains $[35, 55]$ gradient steps/epoch) |
 
 ---
 
-## 2. In-Depth Analysis of Identified Candidates
+## 2. Evaluated & Verified Forward Digital Twin Invariants
 
-### Candidate 1: Acoustic Aperture Negative Cut (`prefilter.py:254, 434`)
-- **Current Formulation:**
-  ```python
-  g_min_db = -14.0
-  f_neg = g_min_db * np.tanh(q_db / g_min_db)
-  ```
-- **Catalog Finding:**
-  - Across all 735 source-to-target pairs, 310 pairs require an acoustic cut deeper than $-6.0\text{ dB}$.
-  - The deepest legitimate physical aperture cut in the catalog is **$-8.10\text{ dB}$** (e.g. Dingwall bridge/middle pickup into modern P/MM active voices).
-  - Because `f_neg` uses an unthresholded `tanh` scaled by $-14.0\text{ dB}$, compression starts immediately at $0.0\text{ dB}$.
-  - At $-8.10\text{ dB}$, $-14.0 \cdot \tanh(-8.10 / -14.0) = -7.31\text{ dB}$, causing **$0.80\text{ dB}$ of unphysical loss** on legitimate aperture transformations.
-  - At $-6.00\text{ dB}$, it squashes to $-5.65\text{ dB}$ ($0.35\text{ dB}$ loss).
-- **Recommendation:**
-  Replace with strictly $C^\infty$ thresholded soft-knee limiting:
-  ```python
-  # Linear passband transparency down to -10.0 dB, smoothly saturating to -14.0 dB floor
-  f_neg = -smooth_soft_knee_db(-q_db, thresh=10.0, ceiling=abs(g_min_db), alpha=2.0)
-  ```
-  All 735 pairs in the catalog (minimum $-8.10\text{ dB}$) will achieve **100% linear passband transparency** ($< 10^{-4}\text{ dB}$ error), while non-invertible comb nulls deeper than $-10.0\text{ dB}$ will be smoothly regularized without infinite attenuation.
+The following mechanisms have been audited and verified across the Forward Digital Twin catalog:
 
----
+1. **Spatial Bridge Excursion Limiter (`alg4`, CL-04):**
+   Unified partition-of-unity algebraic formulation: $\Delta G_{\text{soft}} = dg / (1 + (dg / g_{\text{eff}})^4)^{0.25}$ with $g_{\text{eff}} = \sigma(dg) \cdot 12 + (1 - \sigma(dg)) \cdot 16$ and $\sigma(dg) = 0.5(1 + \tanh(dg / 4.0))$. Eliminates piecewise boundary kinks, allowing Mudbucker neck ($+9.11\text{ dB}$) and close bridge pickups ($-9.11\text{ dB}$) to retain authentic fundamental standing-wave excursion via the $220\text{ Hz}$ low-shelf $H_{\text{pos}}(f)$ with zero artificial high-frequency counter-shelves.
+2. **Audio Drive Peak Normalization (CL-10):**
+   ```python
+   target_drive_peak = min(in_peak * 0.687, 0.70)
+   audio_mono = (audio_mono / max(in_peak, 1e-9)) * target_drive_peak
+   ```
+   When `in_peak > 0.10` (full-scale audio playback), this linearly scales the audio peak into the non-linear ODE solver so forte plucks experience authentic magnetic saturation while preserving small-signal linearity ($\le 0.10$).
+3. **Multi-Rate Anti-Aliasing Decimation Mask (CL-21):**
+   $C^\infty$ lowpass filter mask evaluated via $1.0 - S_\infty((f - 18\text{ kHz}) / 6\text{ kHz})$ combined with exact $1/m$ polyphase decimation normalization (`out = np.fft.irfft(Y_down, n_sig) / float(m)`). All derivatives vanish identically at $18\text{ kHz}$ and Nyquist ($24\text{ kHz}$), eliminating $O(1/n^2)$ algebraic boundary truncation leakage and guaranteeing $0.00\text{ dB}$ gain parity across `oversample = 1, 2, 4`.
+4. **Dynamic Lenz Saturation Core Drag (CL-22):**
+   Evaluated in ODE state loops via $C^\infty$ softplus excess ($\alpha=16.0$) with $V_{\text{sat}} \cdot \tanh(\text{excess}_{\text{raw}}/V_{\text{sat}})$ and strictly positive rational velocity drag $1.0 / (1.0 + \dots \cdot \text{excess})$. Eliminates $C^0$ conditional slope kinks (`if e > vsat:`) while ensuring smooth differentiability across the core saturation boundary.
+5. **Homomorphic Real-Cepstrum FIR Synthesis Tail Window & Power Floor (CL-23):**
+   Cepstral power regularization floor $\epsilon = 10^{-12}$ ($-120\text{ dB}$) matches the visualizer's $10^{-6}$ amplitude floor so deep tone-rolled passive circuits (`precision_dub`, `jazz_neck_warm`) retain their authentic stopband roll-off without premature $-80\text{ dB}$ shelving. Tail windowing across the final 15% of FIR taps uses $1.0 - S_\infty(t)$, vanishing all boundary derivatives at the window transition ($t=0$) and buffer end ($t=1$).
+6. **True-Peak PCM Linear Peak Scaling (CL-16 & CL-28):**
+   Peak-based linear whole-file scaling (`filtered * (CALIBRATION_PEAK_CEILING / max_peak)`) is paired with the calibrated $-20.50\text{ LUFS}$ excitation reference standard (providing $> 20.4\text{ dB}$ crest factor headroom), guaranteeing that 100% of target voicings pass through cleanly below $-0.09\text{ dBFS}$ ($0.9900$) with zero double-compression.
+7. **Luthier Individual Pickup Isolation Leveling (CL-26):**
+   Models authentic luthier setup in multi-pickup blends (raising bridge pickups closer to strings to compensate for fractional standing-wave displacement $\eta = x/L$). Formulated as a smooth, shifted softplus ($\alpha = 2.0$) with asymptotic $\tanh$ ceiling ($M = 6.0\text{ dB}$) and mean-normalized across active branches ($\tilde{K}_{\text{iso}, i} = K_{\text{iso}, i} / \overline{K}_{\text{iso}}$) in composite blends (`len(active_branches) > 1`).
+8. **Schedule-Driven Natural Convergence Architecture (CL-30):**
+   Deterministic Cosine Annealing learning rate schedule ($T_{\max} = 115$ epochs, warmup floor $100$ epochs, $\eta_{\min} = 10^{-6}$) paired with Anti-Drift Pareto early stopping on validation loss.
+9. **Dynamic Hardware Execution Tuning (CL-31):**
+   Auto-resolves batch size ($8/16/32$), precision (`bf16-mixed`, `16-mixed`, `32-true`), and zero-copy in-VRAM slicing based on detected accelerator and VRAM headroom.
 
-### Candidate 2: String Viscoelastic Damping Negative Cut (`strings.py:90`)
-- **Current Formulation:**
-  ```python
-  g_min_db = -36.0
-  f_neg = g_min_db * np.tanh(r_db / g_min_db)
-  ```
-- **Catalog Finding:**
-  - When transforming from stainless steel roundwounds (`roundwound_stainless_clank`) to vintage heavy flatwounds (`flatwound_vintage_heavy`), the analytical damping ratio reaches **$-28.23\text{ dB}$** at $20\text{ kHz}$.
-  - Because `f_neg` uses unthresholded `tanh(r_db / -36.0)`, compression starts immediately at $0.0\text{ dB}$:
-    - At $-10.0\text{ dB}$, $-36 \cdot \tanh(-10 / -36) = -9.77\text{ dB}$ ($0.23\text{ dB}$ loss).
-    - At $-20.0\text{ dB}$, $-36 \cdot \tanh(-20 / -36) = -18.15\text{ dB}$ ($1.85\text{ dB}$ loss).
-    - At $-28.23\text{ dB}$, $-36 \cdot \tanh(-28.23 / -36) = -23.59\text{ dB}$ (**$4.64\text{ dB}$ of unphysical loss**).
-- **Recommendation:**
-  Apply thresholded soft-knee limiting:
-  ```python
-  # Linear passband transparency down to -24.0 dB, smoothly saturating to -36.0 dB floor
-  f_neg = -smooth_soft_knee_db(-r_db, thresh=24.0, ceiling=abs(g_min_db), alpha=2.0)
-  ```
-  Legitimate flatwound damping roll-off down to $-24\text{ dB}$ will remain 100% linear, with smooth asymptotic saturation preventing $-\infty$ numerical singularities.
-
----
-
-### Candidate 3: Audio Drive Peak Normalization (`forward.py:672`)
-- **Current Formulation:**
-  ```python
-  target_drive_peak = min(in_peak * 0.687, 0.70)
-  audio_mono = (audio_mono / max(in_peak, 1e-9)) * target_drive_peak
-  ```
-- **Physical Context:**
-  - $0.687$ corresponds to $-3.26\text{ dBFS}$, and $0.70$ corresponds to $-3.10\text{ dBFS}$.
-  - When `in_peak > 0.10` (full-scale audio playback), this linearly scales the audio peak into the non-linear ODE solver so forte plucks experience authentic magnetic saturation.
-  - Linear scaling preserves the relative harmonic balance and transient envelope of the excitation signal prior to non-linear ODE state solving.
-- **Status:** ✅ **Evaluated & Verified**.
-
----
-
-## 3. Evaluated & Verified Invariants
-
-The following mechanisms have been fully audited and verified against the complete catalog matrix:
-
-1. **Scale Tension Snap Zero-Center (Retired):**
-   Retired completely in favor of pure forward first-principles scale dynamics. Wave-speed continuum aperture passband widening ($v = 2 L f_0$), inharmonicity stiffness dispersion ($B_s$), and forward viscoelastic wrap damping ($H_{\text{wrap}}$) naturally produce the authentic snap and brilliance of long scales without empirical EQ shelves, arbitrary reference baselines, or static filter bumps.
-2. **Circuit Deconvolution Headroom:**
-   $6.0\text{ dB} \to 8.0\text{ dB}$ expansion allows passive split-P pickups to authentically reach their $+6.77\text{ dB}$ resonance peak when deconvolved against active or wideband reference circuits without premature clipping.
-3. **Differential Prefilter & Output Limiter:**
-   `smooth_soft_knee_db(raw_db, thresh=6.0, ceiling=8.0)` guarantees 100% linear passband transparency below $+6.0\text{ dB}$ while bounding peak differential gain to $\le +8.0\text{ dB}$.
-4. **Spatial Bridge Excursion Limiter (`alg4`):**
-   Unified partition-of-unity algebraic formulation: $\Delta G_{\text{soft}} = dg / (1 + (dg / g_{\text{eff}})^4)^{0.25}$ with $g_{\text{eff}} = \sigma(dg) \cdot 12 + (1 - \sigma(dg)) \cdot 16$. Eliminates piecewise boundary kinks, differing from legacy by $< 0.004\text{ dB}$ across all catalog pairs. Mudbucker neck ($+9.11\text{ dB}$) and 60s J bridge ($-9.11\text{ dB}$) retain full excursion while sub-audible DC gain remains strictly within $[-5.85\text{ dB}, +7.10\text{ dB}] \subset [-12\text{ dB}, +12\text{ dB}]$.
-5. **Acoustic Aperture Positive Boost:**
-   Thresholded at $+6.0\text{ dB}$ with $+8.0\text{ dB}$ ceiling ($+12.0\text{ dB}$ for direct sensors). All 735 magnetic pairs peak at $\le +4.89\text{ dB}$, ensuring 100% linear passband transparency.
-6. **String Damping Positive Boost:**
-   Thresholded at $+5.0\text{ dB}$ with $+8.0\text{ dB}$ ceiling. Stainless steel roundwound clank ($+2.54\text{ dB}$) passes with $< 2 \times 10^{-9}\text{ dB}$ error.
-7. **Saddle Witness-Point Boundary Layer:**
-   Redundant `tanh` squashing removed; ratio evaluated directly as $10^{r_{\text{saddle}}/20}$, verified bounded within $[-1.76\text{ dB}, +1.38\text{ dB}]$.
-8. **Differential Circuit High-Frequency Shelving & Ultrasonic Rolloff:**
-   $C^\infty$ roll-off evaluated via `cinf_smoothstep` above $8\text{ kHz}$. Verified across all instruments: $20\text{ kHz}$ ultrasonic gain is strictly between $-16.71\text{ dB}$ and $+1.49\text{ dB} < +2.0\text{ dB}$.
-9. **Multi-Rate Anti-Aliasing Decimation Mask:**
-   $C^\infty$ lowpass filter mask evaluated via $1.0 - S_\infty((f - 18\text{ kHz}) / 6\text{ kHz})$. All derivatives vanish identically at $18\text{ kHz}$ and Nyquist ($24\text{ kHz}$), eliminating $O(1/n^2)$ algebraic boundary truncation leakage during $2\times$ and $4\times$ decimation.
-10. **Dynamic Lenz Saturation Core Drag:**
-    Evaluated in ODE state loops via $C^\infty$ softplus excess ($\alpha=16.0$) with $w \cdot \tanh(\text{excess}/w)$. Eliminates $C^0$ conditional slope kinks (`if e > vsat:`) while ensuring smooth differentiability across the core saturation boundary.
-11. **Homomorphic Real-Cepstrum FIR Synthesis Tail Window:**
-    Tail windowing across the final 15% of FIR taps uses $1.0 - S_\infty(t)$ instead of half-cosine. Vanishes all boundary derivatives at the window transition ($t=0$) and buffer end ($t=1$), eliminating Gibbs truncation ripples in minimum-phase impulse responses.
-12. **Acoustic Aperture Comb-Null De-Combing Tapers:**
-    Smooth de-combing tapers in both upright bass piezo and standard magnetic prefilters use $1.0 - S_\infty(t)$, providing a strictly $C^\infty$ transition to bridge reference without piecewise slope kinks.
-13. **Differential Circuit Deconvolution HF Taper:**
-    High-frequency shelving from $8\text{ kHz}$ to $20\text{ kHz}$ uses $1.0 - S_\infty(t)$, smoothly damping out-of-band deconvolution to $0.00\text{ dB}$ with zero derivative discontinuity.
-14. **True-Peak PCM Linear Peak Scaling (CL-16):**
-    Peak-based linear whole-file scaling (`filtered * (CALIBRATION_PEAK_CEILING / max_peak)`) is strictly preferred over non-linear rail limiters when tonal quality is to be preserved. Because Stage 8 already models the 15-parameter non-linear magnetic saturation and core dynamics (`apply_oversampled_saturation`), downstream non-linear limiters act as a second compressor, altering transient dynamics and harmonic purity. Linear peak-based scaling is paired with the calibrated $-20.50\text{ dBFS}$ RMS excitation reference standard (providing $> 20.4\text{ dB}$ crest factor headroom), guaranteeing that 100% of all 25 target voicings pass through cleanly below $-0.09\text{ dBFS}$ with zero compression, zero peak-scaler engagement, and exact stage gain parity.
-15. **Luthier Individual Pickup Isolation Leveling (CL-26):**
-    Leveling each pickup independently in isolation ($K_{\text{iso}}$) models authentic luthier setup (raising bridge pickups closer to strings and winding them hotter to compensate for fractional standing-wave displacement $\eta = x/L$). Formulated as a smooth, shifted softplus ($\alpha = 2.0$) with asymptotic $\tanh$ ceiling ($M = 6.0\text{ dB}$): evaluates to exact $0.000\text{ dB}$ identity ($1.0000$) for neck/middle pickups, $+5.26\text{ dB}$ on Jazz bridge, and $+4.51\text{ dB}$ on Dingwall bridge. Multi-pickup blended configurations (Jazz Pair, Dingwall Parallel, PJ, P/MM) sum these individually compensated pickup branch responses, preserving authentic comb-filtering notches while ensuring solo bridge models achieve full stage performance volume without scrolling or perceived loudness deficits.
-16. **Schedule-Driven Natural Convergence Architecture (CL-30):**
-    - **Location:** `src/allomorph/trainer/core.py`, `src/allomorph/trainer/callbacks.py`, `src/allomorph/trainer/constants.py`
-    - **Formulation:** Replaces legacy heuristic fixed loss thresholds (`goal_esr = 0.00020`, `max_mrstft = 0.320`) and fragile baseline denominator ratios ($\text{Loss} / \text{Baseline}$) with a deterministic, monotonic Cosine Annealing learning rate schedule ($T_{\max} = 40$ epochs, linear warmup 5 epochs, $\eta_{\min} = 10^{-5}$) paired with deep learning rate annealing down to micro-step regimes ($10^{-4} \to 10^{-5}$) and adaptive diminishing-returns early exit on composite validation loss ($\mathcal{L}_{\text{total}} = \text{ESR}_{\text{full}} + \text{ESR}_{\text{lite}}$).
-    - **Stopping Invariants:** Exits early post-exploration (epoch $\ge 20$) if composite `val_loss` improves by less than `min_delta` ($1.0\times 10^{-6}$) over `patience = 8` epochs AND rolling OLS linear regression slope satisfies $\frac{dL}{dt} \ge -5.0\times 10^{-7}$.
-    - **Catalog Evaluation:** Verified across all 25 target voicings. Baseline validation distances vary by $> 11.7\times$ across pickup configurations ($0.0768$ on subtle `P∕MM Parallel` vs $0.8992$ on distant `Precision Dub`). Deep annealing provides $> 60\%$ error reduction (up to $-4\text{ dB}$ ESR improvement) on demanding bridge voicings (e.g. Dingwall Bridge ESR $0.0044 \to 0.0017$) by preventing premature exit before the learning rate has annealed into the fine minimum basin, while bounding model execution time to $\le 105\text{ seconds/model}$ on AMD Radeon RX 9070 XT hardware and restoring global peak fidelity submodel checkpoints across both tiers for final `.nam` container export.
-17. **Dynamic Hardware Execution Tuning: Dynamic Batch Sizing, Automatic Precision, and Zero-Copy Workers (CL-31):**
-    - **Location:** `src/allomorph/trainer/core.py`, `src/allomorph/trainer/constants.py`
-    - **Formulation:** Dynamically auto-resolves hardware execution parameters based on detected device accelerator (CUDA/ROCm, Apple Silicon MPS, or CPU), GPU VRAM headroom, and dataset memory architecture:
-      - **Batch Size:** On GPUs with $\ge 12.0\text{ GB}$ VRAM (e.g. AMD Radeon RX 9070 XT 16GB, RTX 4080/4090), batch size dynamically resolves to $32$. On 6–12GB VRAM GPUs, resolves to $16$; on low VRAM / CPU, resolves to $8$.
-      - **Gradient Step Density Bound:** For standard 240-second audio sweeps ($1,353$ training slices of $8,192$ samples), $N / 32 = 42\text{ steps/epoch}$. This maintains the optimal update regime ($[35, 55]$ steps/epoch) for AdamW WaveNet convergence, preventing the underfitting risks of larger batch sizes (e.g. batch size 64 provides only 21 updates/epoch with zero additional GPU throughput).
-      - **Precision Auto-Tuning:** On ROCm/HIP environments (e.g. AMD Radeon RX 9070 XT on ROCm 10.1.0 / PyTorch 2.14.0), precision auto-resolves to `16-mixed` (FP16 AMP with `GradScaler`), and `setup_headless_environment()` sets `TORCH_BLAS_PREFER_HIPBLASLT=0` and `MIOPEN_FIND_MODE=FAST` per official AMD ROCm documentation. This eliminates ROCm Composable Kernel descriptor logging, prevents hipBLASLt crashes on RDNA 4 (`gfx1201`), and caches tuned MIOpen convolution kernels for $>15\times$ speedup (~140 ms/batch). On CUDA GPUs supporting native bfloat16, Lightning Trainer precision auto-resolves to `bf16-mixed`, falling back to `16-mixed` on legacy CUDA and `32-true` on CPU / Apple Silicon MPS.
-      - **Zero-Copy In-Memory Workers:** Resolves `num_workers = 0` and `pin_memory = True` for in-memory contiguous audio tensors, eliminating multiprocessing IPC queue serialization and process spawn churn in WSL 2.
-      - **Fixed-Shape Kernel Autotuning:** Enables `torch.backends.cudnn.benchmark = True` on CUDA/ROCm to cache optimal convolution algorithms for constant batch dimensions.

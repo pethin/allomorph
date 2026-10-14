@@ -606,7 +606,7 @@ def apply_oversampled_saturation(
             v_sat = _slew_limit_core(v_sat, max_delta)
         Y_down = np.fft.rfft(v_sat)[:n_half_pass] * aa_mask_pass
 
-    out = np.fft.irfft(Y_down, n_sig)
+    out = np.fft.irfft(Y_down, n_sig) / float(m)
     return out.astype(np.float32)
 
 

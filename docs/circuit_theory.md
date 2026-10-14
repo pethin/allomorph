@@ -179,24 +179,17 @@ Unlike magnetic pickups whose output is induced via Faraday's Law across an indu
 
 ---
 
-## 5. Passive-to-Passive Modeling & Differential SPICE Engine
+## 5. Standalone Forward Digital Twin MNA Simulation
 
-When transforming a passive source bass (such as a stock Fender Precision Bass or Jazz Bass) into a target passive voice:
+Every passive, active, and piezo instrument voicing is simulated as a standalone **Forward Digital Twin** (`solve_mna_harness` in `src/allomorph/circuit/solver.py`):
 
 ```
-Active Source (EMG):    [Flat ~20 kHz] ──► [H_target(s)] ──► [Target Sound]
-Passive Source:         [V_string] ──► [H_source(s)] ──► [Track] ──► [H_diff(s)] ──► [Target Sound]
+[Master String Excitation] ──► [H_acoustic(f)] ──► [H_elec(s) MNA] ──► [Non-Linear Transducer] ──► [Digital Twin Stem]
 ```
 
-### The Regularized Differential Transfer Function
-To prevent double-filtering (which would cause a disastrous $-24\text{ dB/octave}$ cutoff), Allomorph uses an analytical differential transfer function:
-
-$$|H_{\text{diff}}(f)| = \frac{|H_{\text{target}}(f)| \cdot |H_{\text{source}}(f)|}{|H_{\text{source}}(f)|^2 + \epsilon^2}$$
-
-* $\epsilon = 0.05$ is the **Wiener regularization floor**, preventing division by near-zero stopband values.
-* **High-Frequency Clamping:** Above $4.5\text{ kHz}$, maximum boost is clamped to $+6.0\text{ dB}$ relative to $1\text{ kHz}$ reference gain, preventing amplification of passive coil noise and audio interface hiss.
-* **True Identity Verification:** When the source instrument equals the target voice (e.g., standard Precision Bass into `precision_vintage`, or standard Jazz Bass into `jazz_pair_open`), $H_{\text{diff}}$ evaluates to an exact flat line ($\Delta < 0.10\text{ dB}$ across $40\text{--}4500\text{ Hz}$).
-* **Dynamic Saturation Bypass:** When `electronics = "passive"`, forward $\tanh$ saturation is automatically bypassed, preserving authentic uncompressed dynamics.
+* **Source Digital Twin ("Dry" NAM Input):** Simulates the player's physical source instrument (`audio/wet/<source_inst>/<source_voicing>.wav`) with its exact coil geometry, MNA electrical loading, and magnet/op-amp dynamics.
+* **Target Digital Twin ("Wet" NAM Output):** Simulates the target instrument (`audio/wet/<target_inst>/<target_voicing>.wav`) from the identical master string excitation (`audio/input.wav`).
+* **Analytical Difference Mode (`mode="difference"`):** In visualizer difference charts, the analytical transfer difference is evaluated directly as $20\log_{10}|H_{\text{tgt}}(f)| - 20\log_{10}|H_{\text{src}}(f)|$, yielding exact $0.00\text{ dB}$ across all bins when source and target voicings match.
 
 ---
 
@@ -268,10 +261,10 @@ $$\tau_{\text{rel}} = 45\text{ ms} \implies \alpha_{\text{rel}} = 1 - e^{-1 / (f
 The envelope $\text{env}[n]$ tracks the absolute peak excursion:
 $$\text{env}[n] = \begin{cases} \text{env}[n-1] + \alpha_{\text{att}} (|x[n]| - \text{env}[n-1]), & \text{if } |x[n]| > \text{env}[n-1] \\ \text{env}[n-1] + \alpha_{\text{rel}} (|x[n]| - \text{env}[n-1]), & \text{otherwise} \end{cases}$$
 
-When $\text{env}[n] > V_{\text{sat}}$, the excess excursion ratio drives dynamic core drag:
-$$\text{excess}[n] = \text{clip}\left(\frac{\text{env}[n] - V_{\text{sat}}}{V_{\text{sat}}}, 0, 1\right)$$
-$$\text{drag}_{\text{high}}[n] = 1.0 - (k_{\text{sag}} + \text{eddy\_factor} + \text{pull\_damping} + \text{stein\_damping} + \text{emf\_damping}) \cdot \text{excess}[n]$$
-$$\text{drag}_{\text{low}}[n] = 1.0 - (0.25 \cdot k_{\text{sag}} + 0.50 \cdot \text{pull\_damping}) \cdot \text{excess}[n]$$
+Core saturation excess is evaluated via an infinitely differentiable ($C^\infty$) softplus excess with smooth soft-knee saturation ($w = V_{\text{sat}}$), driving rational velocity drag:
+$$\text{excess}_{\text{raw}}[n] = \frac{1}{\alpha}\text{logaddexp}(0, \alpha(e[n] - V_{\text{sat}})), \quad \text{excess}[n] = V_{\text{sat}} \cdot \tanh\left(\frac{\text{excess}_{\text{raw}}[n]}{V_{\text{sat}}}\right)$$
+$$\text{drag}_{\text{high}}[n] = \frac{1.0}{1.0 + (k_{\text{sag}} + \text{eddy\_factor} + \text{pull\_damping} + \text{stein\_damping} + \text{emf\_damping}) \cdot \text{excess}[n]}$$
+$$\text{drag}_{\text{low}}[n] = \frac{1.0}{1.0 + (0.25 \cdot k_{\text{sag}} + 0.50 \cdot \text{pull\_damping}) \cdot \text{excess}[n]}$$
 
 This separates the deep fundamental low-end energy from high-frequency string clank, providing organic pick compression on forte attacks that blooms into sustained notes without harsh clipping or flat-topping.
 
@@ -296,7 +289,7 @@ $$Z_{\text{skin}}(s) = R_{\text{dc}} \cdot k_{\text{skin}} \cdot \left( \sqrt{1 
 2. **High-Frequency Asymptote:** At high frequencies ($f \gg f_{\text{skin}}$):
    $$Z_{\text{skin}}(s) \approx R_{\text{dc}} \cdot k_{\text{skin}} \cdot \sqrt{\frac{s}{\omega_{\text{skin}}}} = R_{\text{dc}} \cdot k_{\text{skin}} \cdot \sqrt{\frac{\omega}{2 \omega_{\text{skin}}}} (1 + j)$$
    This introduces a natural $45^\circ$ phase angle and a $\sqrt{\omega}$ series loss that gently softens top-end hash without inducing artificial resonant peaking or Gibbs truncation ripples.
-3. **Metallurgy Mapping:** $k_{\text{skin}} = 0.08, f_{\text{skin}} = 3200\text{ Hz}$ for Alnico V; $k_{\text{skin}} = 0.10, f_{\text{skin}} = 2200\text{ Hz}$ for Alnico II; $k_{\text{skin}} = 0.02$ for high-resistivity Ceramic ferrite; $k_{\text{skin}} = 0.00$ for insulating Active/Piezo.
+3. **Metallurgy Mapping (`src/allomorph/circuit/parser.py`):** $k_{\text{skin}} = 0.10, f_{\text{skin}} = 3200\text{ Hz}$ for Alnico V; $k_{\text{skin}} = 0.12, f_{\text{skin}} = 2800\text{ Hz}$ for Alnico II; $k_{\text{skin}} = 0.025, f_{\text{skin}} = 5500\text{ Hz}$ for `ceramic_steel`; $k_{\text{skin}} = 0.00$ for insulating Ceramic ferrite, Active, and Piezo.
 
 ---
 
@@ -315,12 +308,10 @@ Where:
 * This provides a subtle, natural softening of high-$Q$ electrical resonance peaks by introducing causal phase delay and loss directly inside the inductor core.
 
 ### Analytical Core Impedance Jacobians ($\nabla_\theta Z_L(s)$)
-For gradient-based parameter calibration and sensitivity sweeps, the exact closed-form Jacobians with respect to all primary physical core parameters are evaluated in closed form without numerical perturbation:
-$$\frac{\partial Z_L}{\partial L_0} = s \cdot \mu_{\text{rel}}(s) \cdot \left[ (1 - k_{\text{core}}) + \frac{k_{\text{core}} R_{\text{core}}^2}{(s L_{\text{core}} + R_{\text{core}})^2} \right]$$
-$$\frac{\partial Z_L}{\partial k_{\text{core}}} = s L_0 \cdot \mu_{\text{rel}}(s) \cdot \left[ -1 + \frac{R_{\text{core}} (2 s L_{\text{core}} + R_{\text{core}})}{(s L_{\text{core}} + R_{\text{core}})^2} \right]$$
-$$\frac{\partial Z_L}{\partial f_{\text{core}}} = \mu_{\text{rel}}(s) \cdot \frac{2\pi s^2 L_{\text{core}}^3}{(s L_{\text{core}} + R_{\text{core}})^2}$$
+For gradient-based parameter calibration and sensitivity sweeps (`compute_core_impedance_jacobians` in `src/allomorph/circuit/mna/impedance.py`), the exact closed-form partial derivatives with respect to primary physical core parameters are evaluated directly on complex NumPy vectors without finite-difference perturbation noise:
+$$\frac{\partial Z_L}{\partial L} = s \cdot \mu_{\text{rel}}(s) \cdot \left[ (1 - k_{\text{core}}) + \frac{k_{\text{core}} R_{\text{core}}^2}{(s L_{\text{core}} + R_{\text{core}})^2} \right]$$
+$$\frac{\partial Z_L}{\partial \chi_{\mu}} = -\ln\left(1 + \frac{s}{\omega_{\mu}}\right) \cdot \left[ s L_{\infty} + \frac{s L_{\text{core}} R_{\text{core}}}{s L_{\text{core}} + R_{\text{core}}} \right]$$
 $$\frac{\partial Z_L}{\partial k_{\text{skin}}} = R_{\text{dc}} \cdot \left( \sqrt{1 + \frac{s}{\omega_{\text{skin}}}} - 1 \right)$$
-$$\frac{\partial Z_L}{\partial f_{\text{skin}}} = -R_{\text{dc}} \cdot k_{\text{skin}} \cdot \frac{\pi s}{\omega_{\text{skin}}^2 \sqrt{1 + \frac{s}{\omega_{\text{skin}}}}}$$
 
 ---
 
@@ -412,7 +403,7 @@ As a vibrating bass string approaches a magnet pole piece, the magnetic field in
 $$x_{\text{geom}}[n] = \frac{x_{\text{disp}}[n]}{1.0 - \kappa_{\text{geom}} \cdot \tanh\left(\frac{x_{\text{disp}}[n]}{V_{\text{sat}}}\right)}$$
 
 Where:
-* $\kappa_{\text{geom}}$ controls the proximity divergence factor ($0.22$ for Alnico V, $0.25$ for Alnico II, $0.15$ for Ceramic, $0.10$ for Neodymium).
+* $\kappa_{\text{geom}}$ controls the proximity divergence factor ($0.20$ for Alnico V, $0.24$ for Alnico II, $0.15$ for Ceramic, $0.10$ for Neodymium).
 * When string moves toward the pole ($x > 0$), denominator shrinks toward $1 - \kappa_{\text{geom}}$, creating asymmetrical growl, pick snap, and tactile resistance.
 * When string moves away ($x < 0$), denominator smoothly expands toward $1 + \kappa_{\text{geom}}$, avoiding harsh clipping and preserving natural acoustic decay.
 
@@ -420,13 +411,13 @@ Where:
 
 ## 16. Dynamic Steinmetz AC Core Loss ($k_{\text{stein}}$)
 
-Under forte pluck attacks, the rapid rate of magnetic flux change generates dynamic hysteresis and microscopic eddy losses proportional to the Steinmetz power law ($P_{\text{loss}} \propto B^{1.6} \cdot f$):
+Under forte pluck attacks, the rapid rate of magnetic flux change generates dynamic hysteresis and microscopic eddy losses proportional to the regularized Steinmetz power law ($P_{\text{loss}} \propto B^{1.6} \cdot f$):
 
-$$\text{flux\_rate}[n] = |x_{\text{high}}[n] - x_{\text{high}}[n-1]| \cdot 7.639437$$
-$$\text{stein\_damping}[n] = k_{\text{stein}} \cdot \text{excess}[n] \cdot \left(\frac{\text{flux\_rate}[n]}{V_{\text{sat}}}\right)^{0.6}$$
+$$\text{flux\_rate}[n] = \sqrt{(x_{\text{high}}[n] - x_{\text{high}}[n-1])^2 + 10^{-8}} \cdot 7.639437$$
+$$\text{rate\_reg}[n] = \sqrt{\left(\frac{\text{flux\_rate}[n]}{V_{\text{sat}}}\right)^2 + 10^{-8}}, \quad \text{stein\_damping}[n] = k_{\text{stein}} \cdot \text{excess}[n] \cdot (\text{rate\_reg}[n])^{0.6}$$
 
 Where:
-* $k_{\text{stein}} = 0.035$ for Alnico V; $0.045$ for Alnico II; $0.015$ for Ceramic; $0.008$ for Neodymium.
+* $k_{\text{stein}} = 0.030$ for Alnico V; $0.040$ for Alnico II; $0.015$ for Ceramic; $0.008$ for Neodymium.
 * This loss dynamically damps harsh, metallic high-frequency transients on the instantaneous pluck attack while leaving sustained notes open and airy.
 
 ---
@@ -435,16 +426,16 @@ Where:
 
 ### A. Dynamic Reluctance Modulation ($\lambda_L$ "Vowel Quack")
 Plucking a ferromagnetic steel string near a magnetic pickup pole momentarily compresses the magnetic air gap, decreasing magnetic reluctance ($\mathcal{R}_{\text{gap}} \propto g$) and dynamically increasing instantaneous coil inductance:
-$$L(t) = L_0 \cdot \left(1 + \Delta\lambda_L \cdot \text{excess}[n] \cdot \tanh\left(\frac{|x[n]|}{V_{\text{sat}}}\right)\right)$$
+$$L(t) = L_0 \cdot \left(1 + \lambda_L \cdot \text{excess}[n] \cdot \tanh\left(\frac{|x[n]|}{V_{\text{sat}}}\right)\right)$$
 
 In the recursive state formulation:
-$$\text{ind\_mod}[n] = -\Delta\lambda_L \cdot \text{excess}[n] \cdot \tanh\left(\frac{|x[n]|}{V_{\text{sat}}}\right) \cdot (x_{\text{high}}[n] - x_{\text{high}}[n-1])$$
+$$\text{ind\_mod}[n] = -\lambda_L \cdot \text{excess}[n] \cdot \tanh\left(\frac{|x[n]|}{V_{\text{sat}}}\right) \cdot (x_{\text{high}}[n] - x_{\text{high}}[n-1])$$
 
 This momentarily depresses the resonant frequency $f_r(t)$ downward by $5\text{--}10\%$ during high-amplitude pluck transients before gliding back to rest, producing the organic, vocal "quack" and tactile feel characteristic of passive Alnico split-coils.
 
 ### B. Electromechanical Back-EMF String Braking ($k_{\text{emf}}$)
 Current circulating through the pickup coil produces an opposing magnetic field that exerts a physical Lorentz braking force back on the vibrating string ($\mathbf{F}_{\text{EMF}} \propto i_{\text{coil}}(t)$):
-$$\text{emf\_damping}[n] = \Delta k_{\text{emf}} \cdot \text{excess}[n] \cdot \tanh\left(\frac{|x_{\text{high}}[n]|}{V_{\text{sat}}}\right)$$
+$$\text{emf\_damping}[n] = k_{\text{emf}} \cdot \text{excess}[n] \cdot \tanh\left(\frac{|x_{\text{high}}[n]|}{V_{\text{sat}}}\right)$$
 
 This provides instantaneous damping on extreme high-frequency string clank without deadening the fundamental pitch.
 
@@ -458,8 +449,8 @@ Physical pickups exert a static magnetic attraction on ferromagnetic strings ("S
 
 Allomorph dynamically weights string pull by the register excursion ratio:
 
-$$w_{\text{reg}} = 0.70 + 0.60 \cdot \frac{|x_{\text{low}}[n]|}{\max(|x_{\text{low}}[n]| + |x_{\text{high}}[n]|, 10^{-6})}$$
-$$\text{pull\_damping} = k_{\text{pull}} \cdot w_{\text{reg}} \cdot \text{excess}[n] \cdot \tanh\left(\frac{\max(x[n], 0)}{V_{\text{sat}}}\right)$$
+$$w_{\text{reg}} = 0.70 + 0.60 \cdot \frac{x_{\text{low}}[n]^2}{x_{\text{low}}[n]^2 + x_{\text{high}}[n]^2 + 10^{-8}}$$
+$$\text{pull\_damping} = k_{\text{pull}} \cdot w_{\text{reg}} \cdot \text{excess}[n] \cdot \tanh\left(\ln\left(1 + e^{x[n] / V_{\text{sat}}}\right)\right)$$
 $$\text{pitch\_sag} = -k_{\text{pull}} \cdot w_{\text{reg}} \cdot \text{excess}[n] \cdot (x_{\text{high}}[n] - x_{\text{high}}[n-1])$$
 
 Thick lower strings ($E_1, B_0$) experience up to $1.3\times$ pull damping and transient pitch sag, while upper strings sustain freely ($0.7\times$).
@@ -474,7 +465,7 @@ $$H_{\text{hp}}(s) = \frac{s}{s + 2\pi \cdot 400.0}$$
 $$\text{touch\_mod} = \tau_{\text{touch}} \cdot \tanh\left(\frac{|x_{\text{disp}}|}{V_{\text{sat}}}\right) \cdot x_{\text{disp,hp}}$$
 $$x_{\text{disp}} = x_{\text{disp}} + \text{touch\_mod}$$
 
-Where $\tau_{\text{touch}} \in [0.03, 0.05]$ dynamically brightens the attack proportional to plucking force, imparting touch-sensitive expressive dynamics.
+Where $\tau_{\text{touch}} \in [0.015, 0.045]$ dynamically brightens the attack proportional to plucking force, imparting touch-sensitive expressive dynamics.
 
 ---
 
@@ -512,7 +503,7 @@ Real high-impedance passive pickups generate thermal Johnson noise ($e_n = \sqrt
 2. Convolved with a 512-tap minimum-phase FIR shaped to the target pickup's specific RLC impedance curve.
 3. Normalized to target RMS:
    $$\text{target\_rms} = 10^{-108.0 / 20.0} \approx 3.98 \times 10^{-6}\ (-108\text{ dBFS})$$
-4. Bypassed on small signals ($\le 0.10$ peak) and identity transformations to preserve 100% test linearity.
+4. Bypassed on small signals ($\le 0.10$ peak) to preserve 100% test linearity.
 
 ---
 
@@ -523,83 +514,49 @@ Non-linear quadratic asymmetry terms ($v + \alpha v^2$) naturally generate a sma
 Allomorph applies a specialized sub-audible high-pass filter ($f_c = 8.0\text{ Hz}$):
 * Suppresses DC offset by $>140\text{ dB}$ ($< 10^{-10}$ DC mean).
 * Transparent across the entire bass playing register: $< 0.28\text{ dB}$ attenuation at Low B ($30.87\text{ Hz}$) and $< 0.15\text{ dB}$ at Low E ($41.20\text{ Hz}$).
-* **Gibbs Truncation Prevention:** Active preamps must feature flat, finite DC transmission ($H_{\text{preamp}}(0) \ge 1.0$). Sub-audible AC-coupling differentiators ($s / (s + \omega_{\text{sub}})$) are strictly excluded from active preamp transfer models, eliminating periodic Gibbs truncation ripples ($\Delta f = f_s / N = 23.4\text{ Hz}$) between $20\text{ Hz}$ and $300\text{ Hz}$.
+* **Gibbs Truncation Prevention:** Active preamps must feature flat, finite DC transmission ($H_{\text{preamp}}(0) \ge 1.0$). Sub-audible AC-coupling differentiators ($s / (s + \omega_{\text{sub}})$) are strictly excluded from active preamp transfer models, eliminating periodic Gibbs truncation ripples ($\Delta f = f_s / N$) between $20\text{ Hz}$ and $300\text{ Hz}$.
 * **Homomorphic Real-Cepstrum FIR Synthesis Tail Windowing:** In discrete causal FIR generation (`synthesize_minimum_phase_fir`), the trailing 15% of taps are tapered with the canonical real-analytic mollifier $w(t) = 1.0 - S_\infty(t)$ (`cinf_smoothstep`). Because all boundary derivatives vanish identically at the window onset and buffer end ($t=1$), algebraic $O(1/n^2)$ boundary truncation leakage is eliminated.
 
 ---
 
-## 24. Differential Non-Linear Metallurgy Softening Matrix
+## 24. Two-Block Active Pickup Metallurgy & Internal Op-Amp Dynamics
 
-When converting between different pickup metallurgies (e.g. Active EMG $\to$ Vintage Alnico V, or Ceramic $\to$ Alnico II), Allomorph evaluates dynamic softening **differentially**:
-
-$$\Delta\alpha = \max(\alpha_{\text{tgt}} - \alpha_{\text{src}}, 0), \quad \Delta\alpha_3 = \max(\alpha_{3,\text{tgt}} - \alpha_{3,\text{src}}, 0)$$
-$$\Delta\eta_{\text{hyst}} = \max(\eta_{\text{tgt}} - \eta_{\text{src}}, 0), \quad \Delta k_{\text{sag}} = \max(k_{\text{sag,tgt}} - k_{\text{sag,src}}, 0)$$
-$$\Delta k_{\text{eddy}} = \max(k_{\text{eddy,tgt}} - k_{\text{eddy,src}}, 0), \quad \Delta\kappa_{\text{orbit}} = \max(\kappa_{\text{orbit,tgt}} - \kappa_{\text{orbit,src}}, 0)$$
-$$\Delta\beta_{\text{curv}} = \max(\beta_{\text{curv,tgt}} - \beta_{\text{curv,src}}, 0), \quad \Delta k_{\text{pull}} = \max(k_{\text{pull,tgt}} - k_{\text{pull,src}}, 0)$$
-$$\Delta\tau_{\text{touch}} = \max(\tau_{\text{touch,tgt}} - \tau_{\text{touch,src}}, 0), \quad \Delta\kappa_{\text{geom}} = \max(\kappa_{\text{geom,tgt}} - \kappa_{\text{geom,src}}, 0)$$
-$$\Delta k_{\text{stein}} = \max(k_{\text{stein,tgt}} - k_{\text{stein,src}}, 0), \quad \Delta k_{\text{emf}} = \max(k_{\text{emf,tgt}} - k_{\text{emf,src}}, 0)$$
-$$\Delta\lambda_L = \max(\lambda_{L,\text{tgt}} - \lambda_{L,\text{src}}, 0)$$
-
-### Effective Saturation Ceiling ($V_{\text{sat,eff}}$):
-$$V_{\text{sat,eff}} = \begin{cases} V_{\text{sat,tgt}} & \text{if active source} \\ \frac{V_{\text{sat,tgt}}}{1.0 - \min\left(0.85, \frac{V_{\text{sat,tgt}}}{V_{\text{sat,src}}}\right) + 0.15} & \text{if passive source with } V_{\text{sat,tgt}} < V_{\text{sat,src}} \\ 10.0 & \text{otherwise (bypassed)} \end{cases}$$
-
-### $C^\infty$ Softplus Dynamic Lenz Velocity Drag:
-In `_lenz_velocity_drag_core`, core saturation excess is evaluated via an infinitely differentiable ($C^\infty$) softplus excess with smooth soft-knee saturation, eliminating piecewise conditional slope kinks (`if e > vsat:`):
-$$\text{excess}_{\text{raw}} = \frac{1}{\alpha} \ln(1 + e^{\alpha(e - V_{\text{sat}})}) = \frac{1}{\alpha} \text{logaddexp}(0, \alpha(e - V_{\text{sat}})), \quad \alpha = 16.0$$
-$$\text{excess} = \text{excess}_{\text{raw}} - \left(\text{excess}_{\text{raw}} - 0.5 \cdot \tanh\left(\frac{\text{excess}_{\text{raw}}}{0.5}\right)\right)$$
-This preserves small-signal linearity ($< 10^{-4}$ excess below threshold) while maintaining continuous derivatives across the saturation boundary in Numba-compiled ODE state loops.
-
-This guarantees that:
-1. Active sources (which exhibit zero passive core compression) receive full, authentic target saturation.
-2. Passive sources being converted to stiffer targets (e.g. Alnico V into Ceramic) bypass saturation, preventing unphysical double-compression.
-3. Identical instruments evaluate to bit-exact linear unity.
+Active pickups (e.g. EMG X-Series and Classic 9V series) consist of two physical transducer stages simulated in cascade in `simulate_pickup_transducer_branch`:
+1. **Block 1 (Magnetic Pole & Coil Core):** Preserves the pickup's physical `magnet_type` (`ceramic_steel` for `CS`/`CSX` models like `MMTWX` and `PCSX`, `ceramic` for `PX`/`40DC`, `alnico_v` for `PAX`/`JX`) in `apply_oversampled_saturation` and MNA coil impedance (`_compute_coil_admittances`).
+2. **Block 2 (Internal Differential Op-Amp Preamp):** Applies `apply_active_pickup_dynamics` parameterized by `active_variant`:
+   * `active_variant = "x_series"` (18V EMG X-Series): Wide linear headroom ($V_{\text{sat}} = 2.40\text{V}, k_{\text{level}} = 0.0$).
+   * `active_variant = "classic"` (9V Classic EMG): Classic 9V op-amp feedback compression and rail limiting ($V_{\text{sat}} = 0.50\text{V}, k_{\text{level}} = 0.25$).
 
 ---
 
 ## 25. Comprehensive Magnet Metallurgy Reference Table
 
-The following table summarizes all 15 electrical, magnetic, and dynamic parameters across the standard pickup metallurgy profiles implemented in Allomorph:
+The following table summarizes all electrical, magnetic, and dynamic parameters across the standard pickup metallurgy profiles implemented in [`src/allomorph/circuit/parser.py`](../src/allomorph/circuit/parser.py) (`MAGNET_PROPERTIES`):
 
-| Metallurgy Parameter | Symbol | Alnico V | Alnico II | Ceramic | Hybrid | Neodymium | Piezo | Active Buffer | Physical Phenomenon |
-| :--- | :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :--- |
-| **Eddy Loss Fraction** | $k_{\text{core}}$ | $0.08$ | $0.10$ | $0.02$ | $0.05$ | $0.01$ | $0.00$ | $0.00$ | Foster 2-stage ladder inductance reduction |
-| **Core Frequency (Hz)** | $f_{\text{core}}$ | $2500$ | $1800$ | $6500$ | $4500$ | $8500$ | $0$ | $0$ | Eddy loss pole-piece skin-depth transition |
-| **Skin Effect Fraction** | $k_{\text{skin}}$ | $0.08$ | $0.10$ | $0.02$ | $0.05$ | $0.02$ | $0.00$ | $0.00$ | Cylindrical pole piece series AC resistance |
-| **Skin Frequency (Hz)** | $f_{\text{skin}}$ | $3200$ | $2200$ | $6500$ | $4500$ | $8000$ | $0$ | $0$ | $\sqrt{\omega}$ skin resistance transition frequency |
-| **Reluctance Quack** | $\lambda_L$ | $0.05$ | $0.06$ | $0.02$ | $0.03$ | $0.01$ | $0.00$ | $0.00$ | Dynamic air-gap inductance modulation |
-| **Back-EMF Braking** | $k_{\text{emf}}$ | $0.04$ | $0.05$ | $0.02$ | $0.03$ | $0.01$ | $0.00$ | $0.00$ | Coil current Lorentz force clank damping |
-| **Dahl Hysteresis** | $\eta_{\text{hyst}}$ | $0.06$ | $0.09$ | $0.02$ | $0.04$ | $0.01$ | $0.00$ | $0.00$ | Magnetic domain-wall pinning sustain bloom |
-| **Quadratic Asymmetry**| $\alpha$ | $0.26$ | $0.32$ | $0.12$ | $0.18$ | $0.08$ | $0.00$ | $0.00$ | 2nd-harmonic dipole expansion warmth |
-| **Cubic Proximity** | $\alpha_3$ | $0.10$ | $0.14$ | $0.04$ | $0.07$ | $0.02$ | $0.00$ | $0.00$ | 3rd-harmonic tactile low-mid punch |
-| **Lenz Flux Sag** | $k_{\text{sag}}$ | $0.08$ | $0.12$ | $0.03$ | $0.05$ | $0.01$ | $0.00$ | $0.00$ | Dynamic counter-EMF core flux depression |
-| **Saturation Voltage** | $V_{\text{sat}}$ | $0.50\text{V}$ | $0.45\text{V}$ | $0.70\text{V}$ | $0.60\text{V}$ | $0.90\text{V}$ | $1.00\text{V}$ | $1.20\text{V}$ | Soft-knee analog dynamic compression floor |
-| **Eddy De-Qing** | $k_{\text{eddy}}$ | $0.16$ | $0.20$ | $0.03$ | $0.08$ | $0.01$ | $0.00$ | $0.00$ | Flux-rate high-frequency damping on plucks |
-| **Orbit Bloom (2f0)** | $\kappa_{\text{orbit}}$ | $0.06$ | $0.08$ | $0.02$ | $0.04$ | $0.01$ | $0.00$ | $0.00$ | 2D elliptical string precession bloom |
-| **Microphonic Body** | $k_{\text{body}}$ | $0.08$ | $0.10$ | $0.03$ | $0.05$ | $0.01$ | $0.00$ | $0.00$ | Mechanical wood-to-coil vibration coupling |
-| **Curvature Wobble** | $\beta_{\text{curv}}$ | $0.030$ | $0.040$ | $0.010$ | $0.020$ | $0.005$ | $0.000$ | $0.000$ | Excursion-dependent resonant wobble |
-| **Pole Pull Drag** | $k_{\text{pull}}$ | $0.040$ | $0.060$ | $0.015$ | $0.025$ | $0.010$ | $0.000$ | $0.000$ | Localized magnetic pull and attack pitch sag |
-| **Touch Spectral Tilt**| $\tau_{\text{touch}}$| $0.050$ | $0.060$ | $0.025$ | $0.035$ | $0.015$ | $0.000$ | $0.000$ | Excursion-modulated high-register brightness |
-| **Jordan Dispersion** | $\chi_{\mu}$ | $0.035$ | $0.050$ | $0.010$ | $0.020$ | $0.005$ | $0.000$ | $0.000$ | Complex magnetic permeability relaxation |
-| **Distributed Winding**| $k_{\text{dist}}$ | $0.18$ | $0.20$ | $0.12$ | $0.15$ | $0.10$ | $0.00$ | $0.00$ | Transmission line hyperbolic attenuation |
-| **Clearance Asymmetry**| $\kappa_{\text{geom}}$ | $0.22$ | $0.25$ | $0.15$ | $0.18$ | $0.10$ | $0.00$ | $0.00$ | Conformal rational air-gap growl |
-| **Steinmetz Core Loss** | $k_{\text{stein}}$ | $0.035$ | $0.045$ | $0.015$ | $0.025$ | $0.008$ | $0.000$ | $0.000$ | Flux-rate dynamic AC hysteresis core damping |
-
----
-
-## 26. Differential Circuit Deconvolution Headroom & $C^\infty$ High-Frequency Shelving
-
-When evaluating differential circuit transfer functions ($H_{\text{diff}} = H_{\text{target}} / H_{\text{source}}$), passive pickups with high coil inductance transforming into wideband active or buffered topologies generate authentic electrical resonance peaks up to $+6.77\text{ dB}$ (e.g. passive split-P).
-
-To accommodate genuine electroacoustic resonance without premature compression while bounding digital gain under Guardrail 5.3.6:
-1. **Thresholded Headroom Expansion (`smooth_soft_knee_db`):**
-   Circuit deconvolution headroom is bounded via strictly $C^\infty$ thresholded soft-knee saturation:
-   $$h_{\text{soft\_db}} = \text{smooth\_soft\_knee\_db}(h_{\text{db}}, \text{thresh}=5.5\text{ dB}, \text{ceiling}=8.0\text{ dB}, \alpha=2.0)$$
-   Passband responses below $+5.5\text{ dB}$ remain 100% linear, allowing passive split-P coils to authentically reach $+6.77\text{ dB}$ ($< 0.14\text{ dB}$ deviation from theoretical resonance).
-2. **$C^\infty$ Real-Analytic High-Frequency Shelving Taper:**
-   Above $8\text{ kHz}$, out-of-band circuit transfer inversions are smoothly shelved toward $0.00\text{ dB}$ at $20\text{ kHz}$ using the canonical real-analytic mollifier:
-   $$w(f) = 1.0 - S_\infty\left(\frac{f - 8000\text{ Hz}}{12000\text{ Hz}}\right)$$
-   $$H_{\text{diff,final}}(f) = 1.0 + w(f) \cdot (H_{\text{diff}}(f) - 1.0)$$
-   Because all boundary derivatives of $S_\infty$ vanish at $8\text{ kHz}$ and $20\text{ kHz}$, this shelves high-frequency noise without injecting spectral slope kinks.
+| Metallurgy Parameter | Symbol | Alnico V | Alnico II | Alnico III | Ceramic | `ceramic_steel` | `ceramic_alnico_hybrid` | Neodymium | Piezo | Active | Physical Phenomenon |
+| :--- | :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :--- |
+| **Eddy Loss Fraction** | $k_{\text{core}}$ | $0.08$ | $0.10$ | $0.09$ | $0.02$ | $0.035$ | $0.05$ | $0.01$ | $0.00$ | $0.00$ | Foster 2-stage ladder inductance reduction |
+| **Core Frequency (Hz)** | $f_{\text{core}}$ | $2500$ | $1800$ | $2000$ | $6500$ | $5500$ | $4500$ | $8500$ | $0$ | $0$ | Eddy loss pole-piece skin-depth transition |
+| **Skin Effect Fraction** | $k_{\text{skin}}$ | $0.10$ | $0.12$ | $0.11$ | $0.00$ | $0.025$ | $0.05$ | $0.02$ | $0.00$ | $0.00$ | Cylindrical pole piece series AC resistance |
+| **Skin Frequency (Hz)** | $f_{\text{skin}}$ | $3200$ | $2800$ | $2900$ | $0$ | $5500$ | $4500$ | $8000$ | $0$ | $0$ | $\sqrt{\omega}$ skin resistance transition frequency |
+| **Reluctance Quack** | $\lambda_L$ | $0.05$ | $0.07$ | $0.06$ | $0.02$ | $0.025$ | $0.03$ | $0.01$ | $0.00$ | $0.00$ | Dynamic air-gap inductance modulation |
+| **Back-EMF Braking** | $k_{\text{emf}}$ | $0.04$ | $0.05$ | $0.045$ | $0.02$ | $0.025$ | $0.03$ | $0.01$ | $0.00$ | $0.00$ | Coil current Lorentz force clank damping |
+| **Dahl Hysteresis** | $\eta_{\text{hyst}}$ | $0.06$ | $0.09$ | $0.08$ | $0.02$ | $0.030$ | $0.04$ | $0.01$ | $0.00$ | $0.00$ | Magnetic domain-wall pinning sustain bloom |
+| **Quadratic Asymmetry** | $\alpha$ | $0.26$ | $0.32$ | $0.30$ | $0.12$ | $0.15$ | $0.18$ | $0.08$ | $0.00$ | $0.00$ | 2nd-harmonic dipole expansion warmth |
+| **Cubic Proximity** | $\alpha_3$ | $0.10$ | $0.14$ | $0.12$ | $0.04$ | $0.055$ | $0.07$ | $0.02$ | $0.00$ | $0.00$ | 3rd-harmonic tactile low-mid punch |
+| **Lenz Flux Sag** | $k_{\text{sag}}$ | $0.08$ | $0.12$ | $0.10$ | $0.03$ | $0.045$ | $0.05$ | $0.01$ | $0.00$ | $0.00$ | Dynamic counter-EMF core flux depression |
+| **Saturation Voltage** | $V_{\text{sat}}$ | $1.00\text{V}$ | $0.90\text{V}$ | $0.96\text{V}$ | $1.40\text{V}$ | $1.28\text{V}$ | $1.04\text{V}$ | $1.80\text{V}$ | $2.00\text{V}$ | $2.40\text{V}$ | Soft-knee analog dynamic compression threshold |
+| **Eddy De-Qing** | $k_{\text{eddy}}$ | $0.16$ | $0.20$ | $0.18$ | $0.03$ | $0.060$ | $0.08$ | $0.01$ | $0.00$ | $0.00$ | Flux-rate high-frequency damping on plucks |
+| **Orbit Bloom (2f0)** | $\kappa_{\text{orbit}}$ | $0.06$ | $0.07$ | $0.065$ | $0.02$ | $0.030$ | $0.04$ | $0.01$ | $0.00$ | $0.00$ | 2D elliptical string precession bloom |
+| **Microphonic Body** | $k_{\text{body}}$ | $0.08$ | $0.10$ | $0.09$ | $0.03$ | $0.035$ | $0.05$ | $0.02$ | $0.00$ | $0.00$ | Mechanical wood-to-coil vibration coupling |
+| **Curvature Wobble** | $\beta_{\text{curv}}$ | $0.035$ | $0.050$ | $0.040$ | $0.010$ | $0.015$ | $0.025$ | $0.005$ | $0.000$ | $0.000$ | Excursion-dependent resonant wobble |
+| **Pole Pull Drag** | $k_{\text{pull}}$ | $0.040$ | $0.025$ | $0.020$ | $0.015$ | $0.018$ | $0.050$ | $0.010$ | $0.000$ | $0.000$ | Localized magnetic pull and attack pitch sag |
+| **Touch Spectral Tilt** | $\tau_{\text{touch}}$ | $0.045$ | $0.035$ | $0.035$ | $0.025$ | $0.028$ | $0.035$ | $0.015$ | $0.000$ | $0.000$ | Excursion-modulated high-register brightness |
+| **Jordan Dispersion** | $\chi_{\mu}$ | $0.035$ | $0.050$ | $0.040$ | $0.010$ | $0.018$ | $0.020$ | $0.005$ | $0.000$ | $0.000$ | Complex magnetic permeability relaxation |
+| **Distributed Winding** | $k_{\text{dist}}$ | $0.18$ | $0.22$ | $0.20$ | $0.12$ | $0.14$ | $0.15$ | $0.10$ | $0.00$ | $0.00$ | Transmission line hyperbolic attenuation |
+| **Clearance Asymmetry** | $\kappa_{\text{geom}}$ | $0.20$ | $0.24$ | $0.22$ | $0.15$ | $0.16$ | $0.18$ | $0.10$ | $0.00$ | $0.00$ | Conformal rational air-gap growl |
+| **Steinmetz Core Loss** | $k_{\text{stein}}$ | $0.030$ | $0.040$ | $0.035$ | $0.015$ | $0.020$ | $0.025$ | $0.008$ | $0.000$ | $0.000$ | Flux-rate dynamic AC hysteresis core damping |
+| **Aperture Bloom** | $\kappa_{\text{ap}}$ | $0.035$ | $0.045$ | $0.040$ | $0.020$ | $0.025$ | $0.030$ | $0.010$ | $0.000$ | $0.010$ | Dynamic displacement magnetic aperture expansion |
 
 
 

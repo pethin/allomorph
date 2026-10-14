@@ -1,404 +1,97 @@
-# Allomorph - Architectural Guardrails & Mathematical Modeling Handbook
+# Allomorph - Architectural Guardrails & Mathematical Primitives
 
-This document provides the definitive mathematical specifications, physical equations, circuit theorems, and numerical derivations underlying the Allomorph modeling pipeline. It serves as the primary technical reference companion to `AGENTS.md`.
-
----
-
-## 0. Meta-Architecture & Invariant Hierarchy
-
-To preserve fast agent reasoning and prevent LLM context exhaustion, Allomorph maintains a strict two-tier architecture:
-1. **`AGENTS.md` (Normative Core):** Contains only high-level rules, negative constraints ("Never do X"), and boundary conditions kept under **$18\text{ KB}$**.
-2. **`docs/architectural_guardrails.md` (Unabridged Handbook):** Contains all extensive LaTeX equations, matrix derivations, parameter mappings, and physics proofs.
-3. **`tests/test_guardrails.py` (Executable Invariants):** Programmatically enforces all rules on every test run.
-4. **Primacy of Physical Modeling over Hardcoded Test Values:** The physical equations and analytical derivations model real physical behavior and serve as the ground truth. When refining or correcting physical modeling (e.g. implementing $C^\infty$ smoothness, removing piecewise steps, regularizing singularities, or fixing multi-pickup delays), hardcoded test values (dB thresholds, frequency bins, gain bounds) are viable and expected to change. Never warp, tune, or artificially clamp genuine physical formulas to fit obsolete or heuristic legacy test assertions; instead, update the tests to reflect the verified physical behavior.
-5. **Catalog-Driven Empirical Analysis for Clamps, Limiters & Thresholds:** Never pick arbitrary constants, clipping bounds, or soft-knee thresholds by intuition, guesswork, or isolated single-voice tests. Every clamp, gain bound, soft-knee threshold, and regularization floor introduced into the modeling pipeline must be empirically evaluated across the entire Cartesian product of the catalog (all $N$ playable source pickups $\times$ all $M$ target voices, encompassing all 735+ catalog transformations). The analysis must strictly enforce:
-   - **100% Linear Passband Transparency:** Authentic physical and electrical transformations must remain uncompressed (linear identity) within normal musical operating bounds.
-   - **Thresholds Above Genuine Maxima:** Soft-knee thresholds and headroom ceilings must be calibrated above the highest legitimate electroacoustic peaks observed across the catalog (such as differential passive circuit resonance peaks up to $+6.9\text{ dB}$ or aperture displacement ratios from neck-to-bridge routing).
-   - **Physical Asymmetry Preservation:** If the underlying physics is directional or asymmetric (such as bridge displacement scaling, where strings have tighter boundary limits near the bridge than toward the neck), limiters must model that physical asymmetry (e.g. an asymmetric algebraic limiter like `alg4`) rather than imposing an artificial symmetric clamp (`tanh(x/g)`) that prematurely compresses the valid physical direction.
-   - **Strictly Targeted Regularization:** Clamping and saturation must strictly target genuine out-of-band divergence, non-invertible comb nulls, high-frequency Johnson noise/coil hiss amplification, or 24-bit fixed-point PCM integer overflow—never suppressing valid in-band acoustic or circuit response.
-   - **Living Inventory Registry:** All pipeline clamps, limits, ceilings, and floors must be registered, classified, and tracked in [`docs/clamp_and_limit_registry.md`](clamp_and_limit_registry.md).
-
-When adding new modeling features, write the mathematical derivations into this document, declare the rule in `AGENTS.md`, and add an invariant check to `tests/test_guardrails.py`.
+This document defines the cross-cutting mathematical primitives, software invariants, and Single-Source-of-Truth (SSOT) verification index for the Allomorph modeling pipeline.
 
 ---
 
-## 1. Spatial Acoustics, Scale Physics & Tuning/Gauge Invariance
+## 0. Meta-Architecture & Progressive Disclosure Hierarchy
 
-### 1.1 Dynamic Comb & De-Combing Boundaries
-Never hardcode static cutoff frequencies for wave/delay phenomena. Derive spatial transition boundaries dynamically from actual impulse peak delays or physical pickup datums:
-$$f_{\text{notch}} = \frac{1}{2\Delta\tau} = \frac{f_s}{2 \cdot \Delta\text{peaks}}, \quad f_{\text{start}} = f_{\text{notch}}, \quad f_{\text{end}} = 1.7 \cdot f_{\text{notch}}$$
-$$f_{\text{peak, src}} = \frac{\bar{c}}{x_{\text{src}}}, \quad f_{\text{taper\_start}} = \min(f_{\text{peak, src}}, 2500\text{ Hz}), \quad f_{\text{taper\_end}} = \min(1.8 f_{\text{taper\_start}}, 4500\text{ Hz})$$
+To prevent context exhaustion and eliminate contradictory documentation drift, Allomorph enforces a strict Single-Source-of-Truth (SSOT) progressive-disclosure hierarchy:
 
-### 1.2 Wavelength-Dependent Coherence Decay ($\lambda \le d$)
-Evaluate humbucker cross-coherence decay dynamically per string/continuum wave speed $v$ based on acoustic wavelength $\lambda = v/f$ relative to coil spacing $d$:
-$$f_{\text{mid}} = 1.4 \cdot \frac{v}{d}, \quad f_\sigma = \max\left(0.4 \cdot \frac{v}{d}, 1.0\right), \quad \gamma(f, v) = \frac{1}{2}\left[1 - \tanh\left(\frac{f - f_{\text{mid}}}{f_\sigma}\right)\right]$$
-The transition begins right after the constructive peak, smoothly blending ($C^\infty$) into incoherent power summation without piecewise cosine clipping. Always engage coherence decay for any non-zero sample delay:
-$$\text{has\_spatial\_delay} = (\text{len}(\text{channels}) > 1 \land \Delta\text{samples} > 0)$$
-
-### 1.3 Spatial Arrival Delays & Vector Causal Normalization
-When transforming between multi-pickup configurations with differing pickup spacings, the relative arrival delay across sensing channels must be normalized causally across the entire pickup array:
-$$\tau_{\text{diff}, i} = \tau_{\text{tgt}, i} - \tau_{\text{src}, i}, \quad \tau_i = \tau_{\text{diff}, i} - \min_{j} \tau_{\text{diff}, j}$$
-This guarantees strict physical causality ($\min(\tau_i) \equiv 0$, zero non-causal negative sample shifts) while preserving the exact differential delay between pickups ($\tau_0 - \tau_1 = \Delta\tau_{\text{phys}}$). Delays are applied strictly via causal discrete sample shifting:
-$$\text{delay\_samples}_i = \lfloor \tau_i \cdot f_s + 0.5 \rfloor, \quad \text{fir}_i = [0]^{\text{delay\_samples}_i} + \text{fir}_i[:N - \text{delay\_samples}_i]$$
-Never clamp early pickups to zero or invert spatial delays. Never implement fractional arrival delays on causal minimum-phase FIR filters via circular FFT phase rotation ($H(f) \cdot e^{-j 2\pi f \tau_i}$). Because the minimum-phase impulse response peak is concentrated at tap 0, continuous-time sinc interpolation wraps the negative-time non-causal sinc tail around to the end of the circular buffer. Slicing the buffer back to $N$ taps discards this wrapped tail, convolving the frequency spectrum with a Dirichlet kernel and injecting artificial periodic Gibbs truncation ripples ($\Delta f = 1/\tau_i$) across the high frequencies ($8\text{--}20\text{ kHz}$).
-
-### 1.4 Sidewinder Architecture
-If coils feed a single central row of pole pieces under the string ($\Delta x = 0$, e.g. Gibson EB Mudbucker), configure a single coil entry with effective center position ($x = x_{\text{center}}$) and expanded aperture width ($w \approx 1.25''$), never a multi-coil spaced array.
-
-### 1.5 Scale-Normalized Fractional Coordinates & Asymmetric Bridge Excursion Limiter (`alg4`)
-Never subtract raw millimeters across different scale lengths. Calculate displacement using fractional coordinates normalized to standard 34" equivalent inches:
-$$\eta_{\text{tgt}} = \frac{x_{\text{tgt}}}{L_{\text{tgt}}}, \quad \eta_{\text{src}} = \frac{x_{\text{src}}}{L_{\text{src}}}, \quad \Delta x_{\text{in}} = (\eta_{\text{tgt}} - \eta_{\text{src}}) \times 34.0''$$
-Evaluating fundamental standing-wave excursion yields the analytical excursion ratio $\Delta G = 20 \log_{10}(\eta_{\text{tgt}} / \eta_{\text{src}})$. Because vibrating strings exhibit asymmetric physical constraints near the bridge witness boundary compared to toward the neck center, Allomorph models bridge proximity displacement via an asymmetric Order-4 algebraic limiter (`alg4`). To eliminate piecewise derivative kinks at the origin ($\Delta G = 0$), the effective ceiling is evaluated via a smooth partition of unity:
-$$\sigma(dg) = \frac{1}{1 + e^{-\beta \cdot dg}}, \quad g_{\text{eff}}(dg) = \sigma(dg) \cdot g_{\text{pos}} + (1 - \sigma(dg)) \cdot g_{\text{neg}}$$
-$$\Delta G_{\text{soft}}(dg) = \frac{dg}{\left(1 + \left(\frac{dg}{g_{\text{eff}}(dg)}\right)^4\right)^{1/4}}$$
-where $g_{\text{pos}} = 12.0\text{ dB}$, $g_{\text{neg}} = 16.0\text{ dB}$, and $\beta = 1.0$. This formulation is strictly $C^\infty$ (infinitely differentiable) everywhere, matches catalog excursion to within $< 0.004\text{ dB}$ of legacy curves, guarantees absolute DC stability within $[-5.85\text{ dB}, +7.10\text{ dB}] \subset [-12\text{ dB}, +12\text{ dB}]$ across all 735 catalog pairs, and smoothly transitions between neck-ward fundamental boost and bridge-ward excursion cut without artificial symmetric truncation.
-
-
-### 1.6 Absolute Forward Scale & String Continuum Physics (Zero Empirical EQ Shelves)
-In a true forward digital twin, an excitation string does not possess an empirical high-shelf EQ filter ($f_0 = 2,800\text{ Hz}$) or arbitrary baseline-relative tension snap. The snappy attack, piano-like clarity, and tight low-end of longer scales and high-tension strings are produced entirely through first-principles physical mechanisms:
-1. **Aperture Sinc Passband Widening ($v = 2 L f_0$):** Higher wave speeds naturally widen the aperture sinc passband ($\text{sinc}(w f / v)$) and shift comb filter nulls upward.
-2. **Inharmonicity Stiffness Dispersion ($B_s$):** Gaussian RBF stiffness dispersion accelerates phase velocity at high frequencies.
-3. **Longitudinal Steel Core Clank Resonance ($f_L = c_L / 2L$):** Naturally shifts clank resonance dynamically with exact scale length $L$ ($c_L = 5,100\text{ m/s}$) and core coupling $k_{\text{long}}$.
-4. **Viscoelastic Wrap Damping ($H_{\text{wrap}}(f)$):** Absolute material low-pass attenuation governed by wrap metallurgy ($12.0\text{ kHz}$ for stainless steel, $8.5\text{ kHz}$ for nickel roundwounds, $1.8\text{--}3.2\text{ kHz}$ for flatwounds).
-5. **Fractional Standing-Wave Excursion ($\eta = x / L$):** Governed by dimensionless fractional coordinate $\eta$ relative to the nominal sweet-spot calibration datum ($\eta_0 = 0.1082677$), without double-counted scale denominators.
-Artificial empirical tension snap filters ($H_{\text{tension}} / H_{\text{snap}}$) and hardcoded 34.0" / 155.0 lb reference constants are strictly prohibited.
-
-### 1.7 Continuous Wave-Speed Continuum ($f_0 \in [30.87, 100]\text{ Hz}$)
-Never constrain acoustic spatial filtering to 4 discrete open-string wave speeds or note-name strings (`["E", "A"]`). Integrate acoustic aperture responses ($H_{\text{composite}}$) across a continuous, log-spaced distribution ($N \ge 24$ points, uniform $1/N$ weight) spanning Low B ($30.87\text{ Hz}$) to open G ($100.00\text{ Hz}$). Route continuum points geometrically via register halves (`[1, 2]` treble vs `[3, 4]` bass), never note names. On multi-scale instruments (e.g. 34"-37" Dingwall NG, 32"-35" Dingwall SP1), vibrating string length $L(f_0)$ smoothly interpolates logarithmically from $L_{\text{max}}$ at Low B ($30.87\text{ Hz}$) down to $L_{\text{min}}$ at High G ($100.0\text{ Hz}$):
-$$t(f_0) = \frac{\log_2(f_0) - \log_2(f_{\text{min}})}{\log_2(f_{\text{max}}) - \log_2(f_{\text{min}})}, \quad L(f_0) = L_{\text{max}} - t(f_0) \cdot (L_{\text{max}} - L_{\text{min}}), \quad v_0(f_0) = 2 \cdot L(f_0) \cdot f_0$$
-Derive string stiffness $B_s(f_0)$ via an exact $C^\infty$ Gaussian Radial Basis Function (RBF) solver across empirical laboratory anchors ($f_{0,i} \in \{27.50, 30.87, \dots, 196.00\}\text{ Hz}$):
-$$\mathbf{\Phi}_{i,j} = \exp\left(-\left(\epsilon \cdot \left|\log_2 f_{0,i} - \log_2 f_{0,j}\right|\right)^2\right), \quad \mathbf{\Phi} \mathbf{w} = \log_2 \mathbf{B}_s, \quad B_s(f_0) = 2^{\sum_j w_j \exp\left(-\left(\epsilon \cdot \left|\log_2 f_0 - \log_2 f_{0,j}\right|\right)^2\right)}$$
-with $\epsilon = 0.5$, reproducing calibration anchors to $< 10^{-10}$ relative error while guaranteeing strictly decreasing monotonicity across bass fundamental registers without piecewise linear slope kinks. The RBF evaluation across all continuum points is fully vectorized ($\mathbf{\Phi}_{\text{eval}} \mathbf{w}$). Calculate mean propagation delay using register centroid $\bar{f}_0 = 66.9045\text{ Hz}$ ($\bar{c} = 2 \bar{L} \bar{f}_0$).
-
-To eliminate nested scalar iterations across frequency bins and registers, continuum wave speeds are broadcast into a 2D tensor matrix ($\mathbf{V}_{\text{disp}} \in \mathbb{R}^{K \times M}$ where $K=24$ register rows and $M$ frequency columns):
-$$\mathbf{V}_{\text{disp}} = \mathbf{v}_0 \odot \sqrt{1 + \mathbf{B}_s \odot \frac{(\mathbf{F} \oslash \mathbf{f}_0)^2}{1 + (\mathbf{F} / 3500\text{ Hz})^2}}$$
-evaluating all aperture and spatial standing-wave responses across all continuum registers in a single SIMD vector pass.
-
-### 1.8 Transient Mechanical Attack Clank vs Steady-State Linear Invariance
-Plucking an electric bass string excites longitudinal compression waves propagating through the steel core wire ($c_L \approx 5,100\text{ m/s}$). In musical acoustics, magnetic pickups sense transverse velocity ($\partial y / \partial t$); longitudinal compression is an instantaneous mechanical attack transient excited at pluck impact via non-linear tension modulation ($\Delta T \propto (\partial y/\partial x)^2$) that damps out rapidly ($< 50\text{ ms}$) through wrap friction and bridge saddle absorption.
-
-To preserve authentic electromagnetic spatial comb filtering and eliminate artificial parametric EQ bumps (such as $Q=8$ resonant peaks protruding through dual-coil aperture comb nulls at $2.8\text{ kHz}$), steady-state linear transfer modeling ($H_{\text{downstream}}$) strictly omits static frequency-domain longitudinal resonance filters. Scale brilliance and attack dynamics are governed completely by first-principles wave speeds ($v = 2 L f_0$), flexural inharmonicity dispersion ($B_s$), and viscoelastic wrap damping ($H_{\text{wrap}}$).
-
-### 1.9 Cylindrical Rod vs Blade 2D Sensing Aperture
-Differentiate magnetic pole geometry across sensing coils using a unified geometric sensing aperture kernel:
-$$H_{\text{aperture}}(f, v; \beta, w) = \frac{1}{\sqrt{1 + \beta \cdot \left(\frac{2\pi (w/2) f}{v}\right)^2}}$$
-- **Cylindrical Rod Poles (Vintage Jazz/P, Music Man):** $\beta = 0.25$, evaluating circular 2D Airy disc sensitivity ($r_p = w_m / 2$):
-  $$\text{ap\_cyl}(f, v) = \frac{1}{\sqrt{1 + 0.25 \cdot \left(\frac{2\pi r_p f}{v}\right)^2}}$$
-- **Blade / Slit Sensors (Active EMG, Dual-Rails):** $\beta = 1/3$, evaluating 1D rectangular integration across aperture width $w_m$ ($r_p = w_m / 2 \implies 2\pi r_p = \pi w_m$):
-  $$\text{ap\_blade}(f, v) = \frac{1}{\sqrt{1 + \frac{1}{3} \cdot \left(\frac{\pi w_m f}{v}\right)^2}}$$
-Both formulations evaluate to exact $1.0000$ at DC ($f=0$) and exact $0.00\text{ dB}$ identity matching, unified under a single branchless SIMD kernel.
-
-### 1.10 Bridge Saddle Witness-Point Boundary Layer Stiffness ($H_{\text{saddle}}$)
-Bass strings have finite flexural bending stiffness ($E I$), creating an exponential boundary layer ($l_b \approx \sqrt{B_s} \cdot L \approx 2.0\text{--}3.5\text{ mm}$) at the saddle witness point. For pickups situated close to the bridge ($x < 0.075\text{ m}$):
-$$f_{\text{saddle}}(x) = 7200.0 \cdot \left(\frac{x}{0.075\text{ m}}\right) + 1200.0\text{ Hz}, \quad H_{\text{saddle}}(f, x) = \frac{1}{\sqrt{1 + (f / f_{\text{saddle}}(x))^2}}$$
-Evaluated differentially ($H_{\text{saddle,tgt}} / H_{\text{saddle,src}}$). Evaluates to exact $1.0000$ ($0.00\text{ dB}$) when $x \ge 0.075\text{ m}$ or on identity matching, gently rolling off brittle ultra-high-frequency artifacts ($> 7\text{ kHz}$) on close-bridge pickups without dulling mid growl.
-
-### 1.11 Luthier Individual Pickup Isolation Leveling ($K_{\text{iso}}$)
-On physical multi-pickup instruments (Jazz Bass, PJ, P/MM, Dingwall), luthiers mount bridge pickups significantly closer to the vibrating strings ($\sim 2.0\text{--}2.5\text{ mm}$ vs $\sim 3.5\text{--}4.0\text{ mm}$ at neck) and wind them with higher impedance/turns to compensate for the smaller string displacement envelope ($\eta(x) = x / L$). In accordance with the principle that **each pickup is leveled independently in isolation**, each pickup branch on an instrument is compensated by an individual luthier height factor:
-$$\text{deficit\_db} = 20 \log_{10}\left(\frac{\eta_{\text{ref}}}{\eta_P}\right), \quad \eta_{\text{ref}} = \max_{j} \frac{x_j}{L}$$
-$$\text{excess\_db} = \frac{\ln\left(1 + e^{\alpha \cdot \text{deficit\_db}}\right) - \ln(2)}{\alpha}, \quad \alpha = 2.0$$
-$$K_{\text{iso}}(P) = 10^{\frac{M \cdot \tanh(\max(\text{excess\_db}, 0) / M)}{20}}, \quad M = 6.0\text{ dB}$$
-Evaluates with 100% self-referential geometry: for multi-pickup instruments, bridge pickups are leveled against the instrument's own neck-most pickup ($x_{\text{ref}} = \max_j x_j$), evaluating to exact $1.0000$ ($0.00\text{ dB}$) when $x_P \ge x_{\text{ref}}$ (neck/middle pickups), $+5.26\text{ dB}$ on Jazz bridge, and $+4.51\text{ dB}$ on Dingwall bridge. For single-pickup configurations, $K_{\text{iso}} \equiv 1.0000$ ($0.00\text{ dB}$) identity. Blended configurations (`pair_parallel`, `pair_active`, `p_mm_parallel`) sum these individually compensated pickup branch responses, preserving authentic comb-filtering notches and ensuring solo bridge voicings have full stage performance volume.
+1. **Root [`AGENTS.md`](../AGENTS.md) & Scoped `AGENTS.md` Routers:** Minimal navigation guides (`< 4 KB` root, `< 2 KB` scoped) that map directories and modules to their canonical documentation and test suites without duplicating formulas or numeric constants.
+2. **Cross-Cutting Mathematical & Architectural Invariants (This File):** Defines universal $C^\infty$ smoothness primitives (`cinf_smoothstep`, `smooth_soft_knee_db`, `alg4`, `fsqrt` rail limiter), fail-fast declarative integrity, transducer taxonomy, and visualizer contracts, while indexing all domain invariants to their canonical domain documentation.
+3. **Canonical Domain Documentation (`docs/*.md`):** Every domain equation, circuit topology, or naming taxonomy is defined in exactly one canonical document:
+   - Spatial acoustics, scale continuum & arrival delays $\to$ [`docs/aperture_math.md`](aperture_math.md)
+   - MNA circuit theory, impedance dispersion & magnetic metallurgy $\to$ [`docs/circuit_theory.md`](circuit_theory.md)
+   - SIMD circuit simulation pipeline, oversampling & `allomorph-sim` $\to$ [`docs/dsp_simulation_engine.md`](dsp_simulation_engine.md)
+   - Master dry excitation, real-cepstrum FIR, BS.1770-4 LUFS & PCM I/O $\to$ [`docs/dsp_synthesis_engine.md`](dsp_synthesis_engine.md)
+   - NAM A2 pairing theory, native/stock trainers & QA audit $\to$ [`docs/trainer/README.md`](trainer/README.md)
+   - Tone naming grammar, character budgets & storefront packs $\to$ [`docs/tone_packs/naming.md`](tone_packs/naming.md)
+   - Catalog-wide active clamps, limits & thresholds $\to$ [`docs/clamp_and_limit_registry.md`](clamp_and_limit_registry.md)
+4. **Executable Verification ([`tests/test_guardrails.py`](../tests/test_guardrails.py)):** Programmatically enforces all architectural invariants on every test run.
+5. **Primacy of Physical Modeling over Hardcoded Test Values:** First-principles physical equations serve as ground truth. When refining physical modeling (e.g. enforcing $C^\infty$ smoothness or regularizing singularities), hardcoded legacy test values (dB thresholds, frequency bins) are expected to be updated to match verified physical behavior. Never warp or artificially clamp physical formulas to appease obsolete test numbers.
+6. **Catalog-Driven Empirical Analysis for Clamps & Limits:** Never pick arbitrary constants or clipping bounds by intuition. Every clamp, soft-knee threshold, or regularization floor must be evaluated across the entire Cartesian product of playable source pickups $\times$ target voices, preserving 100% linear passband transparency and physical asymmetry, and must be registered in [`docs/clamp_and_limit_registry.md`](clamp_and_limit_registry.md).
 
 ---
 
-## 2. Mathematical Smoothness, Regularization & Boundary Continuity ($C^1 / C^\infty$)
+## 1. Master Architectural Invariant Index
 
-### 2.1 Regularized Denominators, Asymptotic Limiters & Smooth Norms
-Never clamp transfer ratio denominators with premature floors (e.g. `np.maximum(mag, 0.05)`) or apply hard rectangular clipping (`np.clip(..., 0.15, 3.0)`). Use regularized denominators ($\max(\text{mag}, 10^{-6})$) so identical profiles evaluate to exact $1.0000$ ($0.00\text{ dB}$).
-- **Branchless 3-Stage `fsqrt` Algebraic Rail Limiter ($p=8$):** Output limiting on analog wet audio buffers is governed by:
-  $$f(x) = \frac{x}{\left(1 + \left(\frac{x}{V_{\text{sat}}}\right)^8\right)^{1/8}} = \frac{x}{\sqrt{\sqrt{\sqrt{1 + u^4}}}}, \quad u = \left(\frac{x}{V_{\text{sat}}}\right)^2, \quad V_{\text{sat}} = 0.985$$
-  Because $(x / V_{\text{sat}})^8 \ge 0$ for all real $x$, the absolute value $|x|$ is eliminated with zero sign checks or branching. The 4th power $u^4 = (u^2)^2$ evaluates with two fast multiplications, and the $1/8$-th power $(\cdot)^{1/8}$ is resolved via three successive hardware square roots (`fsqrt`). On modern SIMD and Apple Silicon (`arm64`) architectures, three pipelined hardware `fsqrt` instructions execute up to $4.8\times$ faster than general-purpose transcendental power routines (`np.power`) while maintaining exact mathematical equivalence ($\Delta < 10^{-14}$) down to the floating-point noise floor. The limiter guarantees strict boundedness $|f(x)| \le V_{\text{sat}}$, $C^1$ and $C^2$ continuity everywhere, and small-signal linearity ($|f(x) - x| < 10^{-8}$ for $|x| \le 0.10$).
-- **Fused Analytical String Damping Ratio:** Differential viscoelastic string damping between target and source is evaluated in closed form without separate reciprocal divisions:
-  $$\frac{H_{\text{damp, tgt}}(f)}{H_{\text{damp, src}}(f)} = \sqrt{\frac{1 + (f / f_{d,\text{src}})^{2 n_{\text{src}}}}{1 + (f / f_{d,\text{tgt}})^{2 n_{\text{tgt}}}}}$$
-  eliminating separate reciprocal calculations, halving floating-point division count, and guaranteeing strictly positive denominators for zero-risk logarithmic evaluation.
-- **Charbonnier Pseudo-Norm:** Discontinuous $|x|$ derivatives are regularized via:
-  $$\|x\|_\epsilon = \sqrt{x^2 + \epsilon^2} - \epsilon, \quad \frac{d\|x\|_\epsilon}{dx} = \frac{x}{\sqrt{x^2 + \epsilon^2}}$$
-  vanishing continuously at $x=0$.
-- **Quadratic Steinmetz Core:** The infinite gradient singularity of $|x|^{1.6}$ at origin is eliminated via quadratic regularization:
-  $$S(u) = \left(\frac{u^2}{1 + u^2}\right)^{0.8}$$
-- **Strictly $C^\infty$ Thresholded Soft-Knee Saturation (`smooth_soft_knee_db`):** When soft-limiting positive gain boost, unthresholded $g \cdot \tanh(r_{\text{db}} / g)$ begins compressing immediately at $0\text{ dB}$, artificially blunting legitimate low-to-mid boost (e.g. compressing $+4\text{ dB}$ to $+3.7\text{ dB}$). Furthermore, piecewise thresholded conditionals (`np.where(r > thresh, ...)`) introduce higher-derivative kinks at the boundary. Instead, Allomorph evaluates a strictly $C^\infty$ infinitely differentiable thresholded soft knee with smooth softplus excess:
-  $$\text{excess} = \frac{1}{\alpha} \ln\left(1 + e^{\alpha(r_{\text{db}} - \text{thresh})}\right) = \frac{1}{\alpha} \text{logaddexp}\left(0, \alpha(r_{\text{db}} - \text{thresh})\right), \quad \alpha = 2.0$$
-  $$\text{sat\_excess} = w \cdot \tanh\left(\frac{\text{excess}}{w}\right), \quad w = \text{ceiling} - \text{thresh}$$
-  $$r_{\text{soft\_db}} = r_{\text{db}} - \text{excess} + \text{sat\_excess}$$
-  where $\text{thresh}$ is chosen above the highest legitimate catalog peak (e.g. $\text{thresh} = 6.0\text{ dB}$, $\text{ceiling} = 8.0\text{ dB}$, $w = 2.0\text{ dB}$).
-  Properties:
-  - **Strictly $C^\infty$ Everywhere:** Continuous derivatives of all orders ($\frac{d^n y}{dx^n} \in C(\mathbb{R})$) with zero piecewise conditionals, zero `np.where`, and zero boundary kinks.
-  - **100% Linear Passband Transparency:** For $r_{\text{db}} \le \text{thresh} - 1.0\text{ dB}$, $|r_{\text{soft\_db}} - r_{\text{db}}| < 10^{-4}\text{ dB}$ (virtually bit-exact linear passband).
-  - **Strict Monotonicity:** $\frac{dy}{dx} = 1 - \sigma(\alpha(x - \text{thresh})) \cdot \tanh^2\left(\frac{\text{excess}}{w}\right) \in (0, 1]$ everywhere.
-  - **Asymptotic Boundedness:** As $r_{\text{db}} \to +\infty$, $r_{\text{soft\_db}} \to \text{ceiling}$ without overshoot.
+| Guardrail ID | Invariant Summary | Canonical SSOT Reference | Automated Verification |
+| :--- | :--- | :--- | :--- |
+| **5.1.1** | Dynamic spatial comb boundaries ($v_0 / \Delta x$) & quadrature null floor ($\epsilon_{\text{quad}} = 0.18$) | [`docs/aperture_math.md` (§2–3)](aperture_math.md#3-dual-coil-humbucker-spatial-comb-filtering-d) | `tests/physics/test_aperture.py` |
+| **5.1.2** | Causal integer arrival delay shifting ($\tau_i$), $C^\infty$ coherence decay ($\lambda \le d$), 2D rod vs 1D blade, saddle stiffness ($H_{\text{saddle}}$), & luthier leveling ($K_{\text{iso}}$) | [`docs/aperture_math.md` (§3, §8–12)](aperture_math.md#12-multi-pickup-spatial-propagation-delays-causal-shifting--luthier-isolation-leveling) | `tests/physics/test_aperture.py` |
+| **5.1.3** | Fractional standing-wave excursion ($\eta = x/L$ vs $\eta_0 = 0.1082677$), asymmetric `alg4` limiter ($+12\text{ dB}/-16\text{ dB}$), & $220\text{ Hz}$ low-shelf $H_{\text{pos}}(f)$ | [`docs/aperture_math.md` (§4.C)](aperture_math.md#c-scale-normalized-spatial-bridge-proximity-low-shelf-h_textpos) | `test_guardrail_5_1_asymmetric_displacement_limiter` |
+| **5.1.4** | 24-point log wave-speed continuum ($30.87\text{--}100\text{ Hz}$) & Gaussian RBF stiffness inharmonicity ($B_s$, $<10^{-6}$ anchor error, strict monotonicity) | [`docs/aperture_math.md` (§2)](aperture_math.md#2-multi-string-wave-speed-problem--the-allomorph-solution) | `test_guardrail_5_1_inharmonicity_rbf_calibration_and_monotonicity` |
+| **5.2.1** | Order-8 `fsqrt` rail limiter ($V_{\text{sat}} \le 0.9900$), $C^\infty$ thresholded soft-knee (`smooth_soft_knee_db`), & $-120\text{ dB}$ ($10^{-6}$) denominator floor | §2 below & [`docs/clamp_and_limit_registry.md`](clamp_and_limit_registry.md) | `test_guardrail_5_2_algebraic_rail_limiter_order_8`, `test_guardrail_5_2_smooth_soft_knee_c_inf` |
+| **5.2.2–3** | Absolute gain units ($20\log_{10}(\max(|H|, 10^{-6}))$, no mid-band normalization) & catalog-wide clamp validation | §2 below & [`docs/clamp_and_limit_registry.md`](clamp_and_limit_registry.md) | `tests/visualizer/`, `tests/test_guardrails.py` |
+| **5.3.1–2** | Standalone Forward Digital Twin synthesis (`input.wav` $\to$ stem), NAM wet-to-wet pairing, & unity multi-channel MNA branch FIR weighting | [`docs/trainer/README.md` (§1–3)](trainer/README.md), [`docs/dsp_simulation_engine.md` (§1–2)](dsp_simulation_engine.md) | `test_guardrail_5_3_difference_high_frequency_ceiling` |
+| **5.3.3** | Active preamp finite flat DC transmission ($|H_{\text{preamp}}(0)| \ge 1.0$, zero sub-audible differentiator poles) | [`docs/circuit_theory.md` (§23)](circuit_theory.md#23-sub-audible-dc-blocking-filter-80-hz--gibbs-truncation-ripple-prevention) | `test_guardrail_5_3_active_preamp_dc_transmission` |
+| **5.3.4** | First-class physical transducer taxonomy (`sensor_type = "magnetic" \| "bridge_force" \| "direct"`) with zero voice-ID bypasses | §3.1 below & [`docs/aperture_math.md` (§6)](aperture_math.md#6-upright-bass-bridge-saddle-force-transducer-physics-sensor_type--bridge_force) | `test_guardrail_5_3_transducer_taxonomy` |
+| **5.3.5** | Fail-fast declarative integrity & zero silent fallbacks (`ValueError`/`KeyError` on unknown instruments, voices, scales, pickups, or magnets) | §3.2 below & [`docs/configuration_reference.md`](configuration_reference.md) | `test_guardrail_5_3_zero_silent_fallbacks` |
+| **5.3.6** | Zero-latency homomorphic cepstrum FIRs, $-20.50\text{ LUFS}$ BS.1770-4 gated matching, $0.9900$ 4x true-peak linear ceiling, & Tone3000 affinity bundles | [`docs/dsp_synthesis_engine.md` (§5–6)](dsp_synthesis_engine.md#5-itu-r-bs1770-4-loudness-matching--peak-safety-loudnesspy) | `tests/dsp/`, `tests/pipeline/` |
+| **5.4.1–2** | 15-parameter non-linear magnetic feel, 2-block active op-amp headroom (`x_series` vs `classic`), $1/m$ polyphase decimation, & small-signal linear bypass ($\le 0.10$) | [`docs/circuit_theory.md` (§8, §15–25)](circuit_theory.md#24-two-block-active-pickup-metallurgy--internal-op-amp-dynamics) | `test_guardrail_5_4_small_signal_linearity` |
+| **5.5.1–2** | Cole-Davidson dielectric relaxation, Jordan core dispersion, solid Alnico skin effect ($\sqrt{s}$), hyperbolic winding admittance, & coupled $2\times 2$ nodal matrix | [`docs/circuit_theory.md` (§9–14)](circuit_theory.md#9-solid-pole-eddy-skin-effect-fractional-dispersion-z_textskins) | `tests/circuit/` |
+| **5.6** | Tone naming grammar (`[Family] [Configuration] [Voicing Modifier]`), zero-scroll pedalboard budget ($\le 34$ chars), & Tone3000 filename limit ($\le 64$ chars) | [`docs/tone_packs/naming.md`](tone_packs/naming.md) | `test_guardrail_5_6_tone_naming_pedalboard_budget` |
+| **6.1–6** | Numba `@njit` ODE acceleration, pure real-FFT cepstrum, stage fusion, & visualizer global caching (`get_cached_target_dfs`, `step=3`, $< 5.0\text{s}$) | §3.3 below & [`docs/dsp_simulation_engine.md` (§4)](dsp_simulation_engine.md#4-high-performance-simd-directives--concurrency) | `tests/visualizer/` |
+| **7.1–2** | Progressive disclosure `AGENTS.md` byte budgets (`< 4 KB` root, `< 2 KB` scoped) & repository markdown link integrity | §0 above & [`AGENTS.md`](../AGENTS.md) | `test_guardrail_agents_md_progressive_disclosure_budgets`, `test_guardrail_documentation_markdown_links_valid` |
 
-### 2.2 Smooth $C^\infty$ Transition Across $0\text{ dB}$ Threshold
-Never use piecewise conditionals (`np.where(h > 0, h * s, h)`) which create first-derivative slope kinks at $0\text{ dB}$. Use smooth softplus blending:
-$$\text{excess\_boost} = \frac{1}{\beta} \ln\left(1 + e^{\beta \cdot h_{\text{db\_soft}}}\right) = \frac{1}{\beta} \text{logaddexp}\left(0, \beta \cdot h_{\text{db\_soft}}\right), \quad \beta = 1.2$$
-$$h_{\text{db\_final}} = h_{\text{db\_soft}} - (1.0 - s) \cdot \text{excess\_boost}$$
+---
 
-### 2.3 Quadrature Regularization Floor at Comb Nulls
-Never evaluate multi-coil humbucker cancellation as a raw rectified phasor sum ($|\cos(\pi f d / v)|$), which creates non-differentiable V-shaped cusps at nulls. Account for 3D flux fringing with a quadrature regularized floor ($\epsilon_{\text{quad}} \approx 0.18$):
-$$p_{\text{coh\_reg}} = p_{\text{coh}} + \epsilon_{\text{quad}}^2 \cdot p_{\text{incoh}}, \quad m_{\text{blend}} = \frac{\sqrt{\gamma \cdot p_{\text{coh\_reg}} + (1 - \gamma) p_{\text{incoh}}}}{\text{dc\_norm}}$$
+## 2. Cross-Cutting $C^\infty$ Mathematical Smoothness Primitives
 
-### 2.4 Absolute Transfer Ratios (No Mid-Band Reference Normalization)
-Never normalize differential circuit curves by dividing by an arbitrary mid-frequency bin like 1 kHz (`h_diff / h_diff[1 kHz]`). Passive circuits naturally attenuate high frequencies; mid-band normalization artificially projects attenuation into false low-frequency boost, clamping tone-rolled profiles. Evaluate curves in absolute gain units:
-$$h_{\text{db}} = 20 \log_{10}\left(\max(h_{\text{diff}}, 10^{-6})\right)$$
+### 2.1 Regularized Denominators & Absolute Gain Units
+Never clamp transfer magnitudes or cepstral power with premature floors (`0.05` or `1e-8`). Use regularized floors ($\max(|H(f)|, 10^{-6})$, power floor $10^{-12}$, $-120\text{ dB}$) so identical profiles evaluate to exact $1.0000$ ($0.00\text{ dB}$) and deep passive tone-cap stopbands are preserved without premature shelving. Always evaluate frequency curves in absolute gain units:
+$$h_{\text{db}}(f) = 20 \log_{10}\left(\max(|H(f)|, 10^{-6})\right)$$
+Never normalize forward or differential curves by subtracting or dividing by an arbitrary mid-frequency band ($100\text{--}800\text{ Hz}$ median or $1\text{ kHz}$ bin).
 
-### 2.5 Universal Real-Analytic Mollifier (`cinf_smoothstep`) and Vanishing Boundary Derivatives
-Standard raised-cosine / half-cosine tapers ($w(t) = 0.5(1 + \cos(\pi t))$) possess continuous first derivatives ($w'(0) = w'(1) = 0$), but non-zero second derivatives ($\left.\frac{d^2 w}{dt^2}\right|_{t=0} = -\frac{\pi^2}{2} \ne 0$). When applied across discrete frequency bins or finite-length impulse responses, non-zero higher-order boundary derivatives cause algebraic $O(1/n^2)$ Gibbs spectral leakage, periodic truncation ripple artifacts, and slope discontinuities.
-
-Allomorph standardizes on the canonical real-analytic bump-derived mollifier `cinf_smoothstep(t)`:
+### 2.2 Universal Real-Analytic Mollifier (`cinf_smoothstep`)
+Standard raised-cosine tapers ($w(t) = 0.5(1 + \cos(\pi t))$) have discontinuous second derivatives ($w''(0) = -\pi^2/2 \ne 0$), causing algebraic $O(1/n^2)$ Gibbs spectral leakage. Allomorph standardizes on the canonical bump-derived mollifier `cinf_smoothstep(t)`:
 $$f(t) = \begin{cases} e^{-1/t} & t > 0 \\ 0 & t \le 0 \end{cases}, \quad S_\infty(t) = \begin{cases} 0 & t \le 0 \\ 1 & t \ge 1 \\ \frac{f(t)}{f(t) + f(1 - t)} & 0 < t < 1 \end{cases}$$
-The transition function $S_\infty(t)$ is strictly $C^\infty$ (infinitely differentiable) on the entire real line $\mathbb{R}$. All derivatives of all orders vanish identically at both transition boundaries:
-$$\forall n \ge 1, \quad \left.\frac{d^n S_\infty}{dt^n}\right|_{t=0^+} = 0, \quad \left.\frac{d^n S_\infty}{dt^n}\right|_{t=1^-} = 0$$
-This eliminates boundary discontinuity kinks and Gibbs truncation leakage across five foundational DSP stages:
-1. **Homomorphic Real-Cepstrum FIR Synthesis Tail Windowing (`dsp.py`):** The trailing 15% of the 2048-tap minimum-phase causal FIR is tapered with $w(t) = 1.0 - S_\infty(t)$. Vanishing all boundary derivatives at tap 2047 prevents cyclic truncation spikes when convolving the impulse response in time-domain hosts.
-2. **Multi-Rate Anti-Aliasing Decimation Lowpass Filter (`saturation.py`):** In 2x and 4x oversampled non-linear ODE saturation runs, the frequency-domain decimation anti-aliasing mask uses $H_{\text{aa}}(f) = 1.0 - S_\infty\left(\frac{f - 18000}{6000}\right)$ over $18\text{ kHz}$ to Nyquist ($24\text{ kHz}$). All derivatives vanish smoothly at $18\text{ kHz}$ and $24\text{ kHz}$, completely eliminating spectral foldback ripples without time-domain pre-ringing.
-3. **Differential Ultrasonic Roll-Off (`solver.py`):** Excess deconvolution boost above $8\text{ kHz}$ is smoothly rolled off via $h_{\text{final}} = h_{\text{clamped}} - h_{\text{excess}} \cdot S_\infty\left(\frac{f - 8000}{12000}\right)$, guaranteeing that ultrasonic gain at $20\text{ kHz}$ satisfies Guardrail 5.3.6 ($< +2.0\text{ dB}$) with infinite mathematical smoothness.
-4. **Differential Circuit Deconvolution HF Taper (`solver.py`):** Out-of-band circuit transfer inversions between $8\text{ kHz}$ and $20\text{ kHz}$ are smoothly shelved to $0.00\text{ dB}$ via $w(f) = 1.0 - S_\infty\left(\frac{f - 8000}{12000}\right)$, preventing noisy high-frequency circuit amplification.
-5. **Acoustic Aperture De-Combing Tapers (`prefilter.py`):** Multi-pickup comb-null regularization tapers (both standard magnetic and upright bass piezo) blend into the bridge reference spectrum using $w(f) = 1.0 - S_\infty(t)$, eliminating piecewise slope kinks at the de-combing cutoff boundaries.
+$S_\infty(t)$ is strictly $C^\infty$ on $\mathbb{R}$, with all derivatives of all orders vanishing identically at both transition boundaries ($\left.\frac{d^n S_\infty}{dt^n}\right|_{t=0^+} = \left.\frac{d^n S_\infty}{dt^n}\right|_{t=1^-} = 0$). It is used across:
+1. **Homomorphic Real-Cepstrum FIR Tail Windowing (`dsp/fir.py`):** Trailing 15% of taps tapered via $1.0 - S_\infty(t)$.
+2. **Multi-Rate Decimation Anti-Aliasing (`circuit/saturation.py`):** $H_{\text{aa}}(f) = 1.0 - S_\infty((f - 18000)/6000)$ over $[18\text{ kHz}, 24\text{ kHz}]$.
+3. **Saddle Witness-Point Boundary Coupling (`physics/aperture.py`):** Transitions over $[35\text{ mm}, 75\text{ mm}]$ via $S_\infty((x - 0.035)/0.040)$.
+
+### 2.3 Branchless 3-Stage `fsqrt` Order-8 Algebraic Rail Limiter (`apply_algebraic_rail_limiter`)
+Analog rail saturation is governed by the branchless order-8 algebraic limiter:
+$$f(x) = \frac{x}{\left(1 + \left(\frac{x}{V_{\text{sat}}}\right)^8\right)^{1/8}} = \frac{x}{\sqrt{\sqrt{\sqrt{1 + u^4}}}}, \quad u = \left(\frac{x}{V_{\text{sat}}}\right)^2, \quad V_{\text{sat}} = 0.985$$
+Evaluating $(\cdot)^{1/8}$ via three pipelined hardware square roots (`fsqrt`) executes up to $4.8\times$ faster than `np.power` while maintaining exact mathematical equivalence ($\Delta < 10^{-14}$), strict peak bounding ($|f(x)| \le V_{\text{sat}}$), $C^\infty$ smoothness, and passband linearity ($< 0.005\text{ dB}$ deviation for $|x| \le 0.3 V_{\text{sat}}$).
+
+### 2.4 Strictly $C^\infty$ Thresholded Soft-Knee Saturation (`smooth_soft_knee_db`)
+Never use piecewise conditional soft knees (`np.where(x > thresh, ...)`). Soft-limiting positive gain boost above $\text{thresh}$ uses smooth softplus excess (`logaddexp`):
+$$\text{excess} = \frac{1}{\alpha} \text{logaddexp}\left(0, \alpha(r_{\text{db}} - \text{thresh})\right), \quad \alpha = 2.0, \quad w = \text{ceiling} - \text{thresh}$$
+$$r_{\text{soft\_db}} = r_{\text{db}} - \text{excess} + w \cdot \tanh\left(\frac{\text{excess}}{w}\right)$$
+Similarly, smooth transitions across $0\text{ dB}$ use $\text{excess\_boost} = \frac{1}{\beta}\text{logaddexp}(0, \beta \cdot h_{\text{db\_soft}})$, and non-differentiable $|x|$ norms at origin are regularized via the **Charbonnier pseudo-norm** ($\sqrt{x^2 + \epsilon^2} - \epsilon$).
+
+### 2.5 Asymmetric Order-4 Partition-of-Unity Limiter (`alg4`, `soft_clamp_displacement_ratio`)
+To bound directional physical phenomena (such as neck-ward vs bridge-ward standing-wave displacement ratio $\Delta G = 20\log_{10}(\eta / \eta_0)$) without derivative kinks at $\Delta G = 0$:
+$$\sigma(dg) = \frac{1}{2}\left(1 + \tanh\left(\frac{dg}{4.0}\right)\right), \quad g_{\text{eff}}(dg) = \sigma(dg) \cdot g_{\text{pos}} + (1 - \sigma(dg)) \cdot g_{\text{neg}}$$
+$$\Delta G_{\text{soft}}(dg) = \frac{dg}{\left(1 + \left(\frac{dg}{g_{\text{eff}}(dg)}\right)^4\right)^{1/4}}, \quad g_{\text{pos}} = 12.0\text{ dB}, \quad g_{\text{neg}} = 16.0\text{ dB}$$
 
 ---
 
-## 3. True Differential Circuit Deconvolution & Staging Integrity
+## 3. Cross-Cutting Software & Visualizer Contracts
 
-### 3.1 True Differential Deconvolution ($H_{\text{diff}} = H_{\text{target}} / H_{\text{source}}$)
-- Never use ad-hoc identity bypass conditionals (`if is_identity: return 1.0`) in place of true deconvolution, and never treat active instruments as unvoiced generic EMGs. Define explicit source circuit models in `[pickups.<id>.circuit]` for all active instruments with onboard preamps (StingRay 2-band, Dingwall FD3n) directly in `config/instruments/*.toml`.
-- Directly evaluate model equality: $\text{if } \text{allclose}(H_{\text{tgt}}, H_{\text{src}}): H_{\text{diff}} \equiv 1.000$ ($0.00\text{ dB}$ identity across all frequencies).
-- Universally evaluate differential transfer functions whenever a source circuit is present.
+### 3.1 First-Class Transducer Taxonomy (`sensor_type`)
+All instruments and voicings must declare a valid physical `sensor_type` (never use procedural `if voice_id == ...` bypasses):
+- `"magnetic"`: Velocity sensing via inductive magnetic coils at position $x$ with spatial aperture $\sin(kx)\operatorname{sinc}(kw/2)$ (see [`docs/aperture_math.md`](aperture_math.md)).
+- `"bridge_force"`: Piezo force sensing at the bridge witness point ($x = 0$) with maple bridge rocking resonance ($800\text{ Hz}$) and wood mass roll-off ($3.2\text{ kHz}$) (see [`docs/aperture_math.md` (§6)](aperture_math.md#6-upright-bass-bridge-saddle-force-transducer-physics-sensor_type--bridge_force)).
+- `"direct"`: Studio DI baseline with flat acoustic transfer ($H_{\text{ac}}(f) \equiv 1.0$), flat active circuit response ($H_{\text{elec}}(f) \equiv 1.0$), and flat string transfer ($H_{\text{wrap}}(f) \equiv 1.0$), evaluating to bit-exact $0.00\text{ dB}$ across all bins at unity gain.
 
-### 3.2 Multi-Channel Branch FIR Weighting
-- When a target voice declares a multi-channel circuit, evaluate branch FIRs with unity weighting ($p_{\text{weight}} = 1.0$), letting the SPICE nodal network evaluate physical current division without $-6\text{ dB}$ double-attenuation.
+### 3.2 Fail-Fast Declarative Integrity & Zero Silent Fallbacks
+Every physical entity (instruments, pickups, coils, circuits, scales, strings, and magnet types) is defined declaratively through validated schemas (`src/allomorph/config/`). Missing pickup/harness blocks, unrecognized voice or instrument IDs, unknown scale presets, unmapped composite pickup references, or unknown string/magnet keys must immediately raise explicit diagnostic `ValueError` or `KeyError` exceptions. Never silently default unknown scales to 34" or substitute fallback pickups.
 
-### 3.3 Sub-Audible DC Decoupling & Gibbs Truncation Ripple Prevention
-- Active bass preamps feature DC-blocking capacitors ($10\text{--}47\ \mu\text{F}$) solely for power rail DC offset isolation. Never include sub-audible AC-coupling differentiator poles ($s / (s + \omega_{\text{sub}})$ where $\omega_{\text{sub}} \le 2\pi \cdot 20\text{ rad/s}$) in active preamp transfer functions (`compute_active_preamp_eq`).
-- Forcing $H_{\text{source}}(s) \to 0$ as $s \to 0$ causes differential deconvolution against passive targets ($H_{\text{target}}(0) > 0$) to synthesize an unphysical $>30\text{ dB}$ sub-audible inversion step ($0\text{--}5.86\text{ Hz}$, $T > 170\text{ ms}$).
-- In finite-tap minimum-phase FIR synthesis ($N = 2048$, duration $42.6\text{ ms}$ at $48\text{ kHz}$), truncating such long-period waves truncates the impulse response mid-cycle, convolving the spectrum with a Dirichlet kernel and generating periodic Gibbs truncation ripples:
-  $$\Delta f = \frac{f_s}{N} = \frac{48000\text{ Hz}}{2048} = 23.4375\text{ Hz}$$
-  across $20\text{--}300\text{ Hz}$.
-- Active preamp models must strictly represent musical shelving contours ($H_{\text{bass}} \cdot H_{\text{treble}}$) with flat, finite DC transmission ($H_{\text{preamp}}(0) \ge 1.0$), ensuring smooth, ripple-free differential curves down to $20\text{ Hz}$.
-
-### 3.4 Architecture D Normative Invariants (Direct Single-Block Digital Twin & Tone Pack Bundles)
-1. **Direct Single-Block Signal Flow:**
-   - Replaces the legacy two-stage Canonical Intermediate architecture with direct single-block forward digital twin simulation.
-   - **Calibrated LUFS Volume Matching & Linear Safety Ceiling:** Guarantees uniform stage gain across all target voicings calibrated to the $-20.50\text{ LUFS}$ reference baseline (ITU-R BS.1770-4 gated loudness). In Stage 11, linear whole-file peak scaling (`filtered * (CALIBRATION_PEAK_CEILING / max_peak)`) strictly bounds output true-peaks below $-0.09\text{ dBFS}$ (0.9900) without double-compressing the dynamic feel established by Stage 8 magnetic saturation. Peak-based linear scaling is strictly preferred over non-linear limiters to preserve transient dynamic transparency and authentic harmonic balance.
-   - **Full-Spectrum Excitation & System Identification Sweeps:** Logarithmic chirps synthesized in `dry.py` are electroacoustic system identification probes. Sweeps must remain strictly untilted (`string_tilt=False`), restoring full $+37\text{ dB}$ SNR across $2\text{--}22\text{ kHz}$ to prevent deconvolution starvation in upper registers. Dedicated air-tier sweeps ($2\text{--}22\text{ kHz}$ and $5\text{--}22\text{ kHz}$) ensure equal dwell-time coverage across the top octaves without skewing stem loudness (LUFS shifts $< 0.55\text{ dB}$, 100% absorbed by calibrated stem normalization).
-   - **A2 Studio Reference Standard & MRSTFT Loss:** Governed by Multi-Resolution STFT Loss (`MultiResolutionSTFTLoss`) with $C^\infty$ power clamping bounded at $\min=10^{-8}$ (zero silence gradient), combined with full-track epoch block permutation. Bypasses normalized high-pass ESR to eliminate small-signal denominator singularities, ensuring pristine small-signal linearity ($\le 1.6\%$ THD at $-40\text{ dBFS}$) while deconvolution accuracy achieves $\pm 0.2\text{ dB}$ across $3\text{--}10\text{ kHz}$ and validation ESR reaches project record levels ($-30.3\text{ dB}$). Training generates the full dual-tier slimmable Architecture 2 container containing both A2 Lite (`channels_3`) and A2 Full (`channels_8`).
-2. **Tone3000 Upload Bundles (`bundles/<pickup>/`):**
-   - Solves Tone3000's strict 1 Dry + Multiple Wet Stems constraint by partitioning target voicings via physical position affinity (`neck`, `bridge`, `parallel`, `direct`).
-   - Each bundle contains a single `dry v[dsp].[inst].[voicing].wav`, mapped target wet stems with zero-scroll display names ($\le 34$ chars), `upload_instructions.txt`, and `manifest.json`.
-3. **Single-Block Hardware Deployment (Darkglass Anagram Block 1):**
-   - Single neural slot deployment: The player loads the direct digital twin into **Block 1** (NAM Preamp), leaving 8 neural slots free for Darkglass drive engines (Block 2), cab IRs (Block 3), and time-based effects.
-   - The digital twin directly captures the full transformation $H_{\text{direct}} = H_{\text{tgt}} / H_{\text{src}}$ combined with non-linear magnetic feel, Alnico/Ceramic compliance, Lenz attack sag, dynamic eddy de-Qing, and core hysteresis.
-4. **Physical Source Knobs at 100% Invariant:**
-   - Accurate transformation mathematically requires physical source volume and tone pots wide open ($100\%$). Tone shaping (e.g. Vintage Warmth 47nF Motown, Dub 100nF, Active scoop) is modeled authentically in the target digital twin.
-
-### 3.5 First-Class Transducer Taxonomy & Zero-Conditional Deconvolution Invariant
-1. **Transducer Physical Taxonomy:**
-   Transducers are categorized strictly by physical transduction principles (`sensor_type`):
-   - `magnetic`: Velocity sensing via inductive magnetic coils at position $x$ with spatial aperture $\sin(k x) \cdot \operatorname{sinc}(k w / 2)$.
-   - `bridge_force`: Direct piezo force sensing at the bridge witness point with velocity-to-force leaky integration ($+6\text{ dB/oct}$ from $70\text{--}250\text{ Hz}$) and spruce acoustic damping.
-   - `direct`: Pure studio DI or dry string vibration baseline with an acoustic transfer function identically flat across all audible frequencies ($H_{\text{tgt, acoustic}}(f) \equiv 1.0$) and flat active buffer circuitry ($H_{\text{circuit}}(f) \equiv 1.0$).
-2. **Prohibition of Procedural Deconvolution Bypasses:**
-   Never short-circuit physical deconvolution using hardcoded voice ID branches (e.g. `if sensor_type == "direct": return [impulse]`). All acoustic transformations must flow through the universal regularized quotient:
-   $$H_{\text{quotient}}(f) = \frac{H_{\text{tgt, acoustic}}(f) \cdot H_{\text{src, macro}}(f)}{H_{\text{src, macro}}(f)^2 + \epsilon^2}$$
-   When $H_{\text{tgt, acoustic}}(f) = 1.0$, this equation naturally and stably evaluates the inverse macro-aperture ($1 / H_{\text{src}}$) of the source instrument without special-case logic.
-3. **Direct Output Invariant:**
-   In output mode, direct sensor targets must evaluate to bit-exact $0.00\text{ dB}$ across all frequency bins.
-
-### 3.6 Fail-Fast Declarative Integrity & Zero Silent Fallbacks Invariant
-1. **Zero Silent Fallback Policy:**
-   Every physical entity in Allomorph (instruments, pickups, coils, circuits, scales, strings, and magnet types) is defined declaratively through validated configuration schemas. The simulation, visualizer, and deconvolution pipelines must adhere to a strict fail-fast invariant: never substitute silent defaults, heuristics, or unverified hardware configurations when an explicit parameter or table is missing or invalid.
-2. **Normative Invariants:**
-   - **Passive Pickup Circuits:** Any passive instrument (`electronics = "passive"`) evaluated in circuit simulation, visualizer difference mode, or direct digital twin simulation must declare an explicit `[circuit]` model for the requested source pickup. A missing circuit model must immediately raise a `ValueError` identifying the missing block. Never default to an arbitrary 34" P-Bass split coil or generic biquad.
-   - **Pickup Option Validation:** Specifying a pickup via CLI or API (`--pickup <name>` or `pickup="<name>"`) must resolve to a valid key in the instrument's `[pickups]` table. Unrecognized pickup names must raise `KeyError` listing available pickups. Never silently fall back to `default_pickup`.
-   - **Instrument Default Pickups:** An instrument's `default_pickup` must exist in its `[pickups]` table. If an instrument specifies neither `default_pickup` nor a matching `pickup_mapping`, resolving the source pickup must raise `ValueError`. Never pick the first dictionary key arbitrarily.
-   - **Scale Resolution:** Scale lengths and multi-scale boundaries must resolve to valid presets in `config/scales.toml` or explicit numeric dimensions. Unknown scale names or malformed scale dictionaries must raise `ValueError`. Never silently default unknown scale names to 34" ($0.8636\text{ m}$).
-   - **String Presets & Magnet Metallurgy:** String presets and magnet types must exist in `config/strings.toml` and `MAGNET_PROPERTIES`. Unknown presets or magnet strings must raise `KeyError` listing available options. Never silently default unknown strings to standard nickel roundwounds or unknown magnets to Alnico V.
-   - **Composite Pickup Geometry:** All components in composite pickups referencing other pickups via `pickup = "<name>"` must exist in the parent instrument. Unrecognized references must raise `KeyError`.
-
-### 3.7 Visualizer-Pipeline DSP Staging & Voicing Comparator Invariants
-
-#### 3.7.1 Voicing Comparator & Interactive Voicings Explorer
-The interactive Voicing Comparator visualizer (`docs/frequency_responses/voicings_explorer.html` and master portal `docs/frequency_responses.html`):
-1. **Three-Line Analytical Graph:** For any selected source voicing and target voicing, evaluates a 3-line frequency response:
-   - Line 1: Source Voicing Response ($H_{\text{src}}(f)$)
-   - Line 2: Target Voicing Response ($H_{\text{tgt}}(f)$)
-   - Line 3: Differential Transformation ($H_{\text{diff}}(f) = H_{\text{tgt}}(f) / H_{\text{src}}(f)$)
-2. **Identity Evaluation:** When source and target voicings are identical, Line 3 evaluates to bit-exact $0.00\text{ dB}$ across all frequency bins.
-3. **Interactive Differential Analysis:** The interactive Voicings Explorer models the analytical magnitude and phase relationship across the audible spectrum ($20\text{ Hz to } 20\text{ kHz}$), providing intuitive visual inspection of aperture comb filtering, low-mid boundary proximity, and RLC resonant peaks.
-4. **Catalog Completeness:** Encompasses all 25 target voices with first-principles physical and electrical parameters, providing complete pair-wise differential modeling across all playable pickup positions.
-5. **Physical Electroacoustic Boundedness:** Decibels must be finite and non-null (zero NaNs, zero Infs), with peak resonant boost $< +25.0\text{ dB}$ and deep tone-cap roll-off attenuation bounded cleanly.
-
-#### 3.7.2 Performance & Vectorization Mandate
-All visualizer curves must be evaluated using precomputed, globally cached universal target matrices (`get_cached_target_dfs`) and vectorized NumPy array operations without invoking multi-rate FFT solvers inside per-pickup loops. Full generation of all charts must complete in $< 5.0\text{ seconds}$ (verified in `tests/test_guardrails.py`).
-
-### 3.8 Allomorph v0.5.x: Universal Forward Twin & Audio Telemetry Pipeline
-
-Allomorph v0.5.x establishes the next-generation forward simulation architecture for synthesizing 24-bit PCM digital twins directly from dry excitation audio, eliminating canonical intermediate abstractions, hardcoded piecewise branch combiners, and heuristic level matching.
-
-#### 3.8.1 Physical Invariant: Branch-Wise Pre-Summing Saturation
-In physical multi-pickup bass systems (e.g. Jazz Bass neck + bridge, PJ split + J single coil, Dingwall multi-scale dual coils), vibrating strings induce independent magnetic flux variations across physically separated magnetic apertures with different pole pieces, individual heights, and localized clearance. The non-linear dynamics of magnetic saturation occur in each pickup branch independently before electrical current summation at the control harness:
-1. **Discrete Branch Processing:** Each pickup branch $i \in [1, M]$ is convolved with its individual acoustic aperture response ($H_{\text{ac}, i}$), loaded circuit transfer ($H_{\text{elec}, i}$), and causal arrival delay ($\tau_i$).
-2. **Branch-Wise Saturation:** State-space non-linear saturation (`apply_oversampled_saturation`) is evaluated individually per branch using the specific sub-pickup's magnet properties ($V_{\text{sat}, i}, \alpha_i, k_{\text{sag}, i}, \kappa_{\text{ap}, i}$).
-3. **Current Summation & Spatial Coherence:** The saturated branch signals are summed in the time domain ($x_{\text{sum}}[n] = \sum_i x_i[n]$). If cross-coherence arrival delay is active ($\Delta\text{samples} > 0$), the cross-coherence filter:
-   $$H_{\text{spatial}}(f) = \frac{\sqrt{\gamma(f) P_{\text{coh}}(f) + (1 - \gamma(f)) P_{\text{incoh}}(f)}}{\max(|H_{\text{coh}}(f)|, 10^{-4})}$$
-   is synthesized into a causal minimum-phase FIR ($N = 1024$) and applied to the summed audio.
-4. **Downstream Staging:** Active preamp EQ ($H_{\text{preamp}}$) and viscoelastic string wrap damping ($H_{\text{wrap}}$) are applied downstream of the summed, saturated signal.
-5. **Linear Small-Signal Invariant:** On small signals ($\le 0.10$ peak), saturation kernels bypass non-linearity bit-exactly, guaranteeing that branch-wise simulation reduces mathematically to the unified linear convolution.
-
-#### 3.8.2 Psychoacoustic Invariant: EBU R128 / ITU-R BS.1770-4 Gated LUFS Matching
-Output stage gain must reflect human perceptual loudness rather than raw unweighted RMS energy. Standard bass frequency rolloffs (e.g. passive tone circuits with 47nF or 100nF capacitors) attenuate high frequencies by $-25\text{ to } -45\text{ dB}$, which unfairly skews unweighted RMS on synthetic test signals.
-1. **ITU-R BS.1770-4 K-Weighting:** Audio is processed through the standard 2-stage K-weighting filter:
-   - Stage 1: High-shelf pre-filter modeling head acoustic diffraction ($f_0 = 1681.97\text{ Hz}, G = +3.999\text{ dB}, Q = 0.7071$).
-   - Stage 2: 2nd-order highpass filter modeling torso/ear canal bass rejection ($f_0 = 38.14\text{ Hz}, Q = 0.5003$).
-2. **Dual-Gate Loudness Integration:** Energy is computed in $400\text{ ms}$ blocks with $75\%$ overlap ($100\text{ ms}$ hop). Blocks falling below the absolute threshold ($-70\text{ LUFS}$) or relative threshold ($-10\text{ LU}$ below un-gated mean) are gated out.
-3. **Dynamic Matching:** The wet audio is scaled by:
-   $$\Delta G_{\text{LUFS}} = L_{\text{tgt}} - L_{\text{wet}} \quad (\text{dB})$$
-   targeting the calibrated reference baseline ($-20.50\text{ LUFS}$).
-
-#### 3.8.3 Reconstruction Invariant: 4x Oversampled True-Peak Ceiling (-0.09 dBFS)
-To prevent inter-sample clipping when 24-bit PCM digital twin audio is reconstructed by downstream digital-to-analog converters (DACs) or neural inference engines (Darkglass Anagram, NAM):
-1. **4x Oversampled True-Peak Sinc Interpolation:** True peaks are evaluated by upsampling the audio $4\times$ via zero-padded frequency-domain FFT sinc interpolation (`compute_true_peak`).
-2. **Linear Headroom Ceiling:** If the 4x true peak exceeds $0.9900$ ($-0.087\text{ dBFS}$), the entire file is scaled transparently by $(0.9900 / \text{tp})$. Peak-based whole-file linear scaling preserves dynamic punch without introducing non-linear limiter pumping.
-
-#### 3.8.4 Provenance Invariant: Cryptographic Bit-Provenance & Telemetry Audit
-1. **DSP Tri-Part Semantic Versioning:** All compiled wet stems, Tone3000 upload packs, and models embed the DSP Generation 6 semantic token `v6.[inst].[voice]`.
-2. **Sidecar Manifest Telemetry:** Sidecar `manifest.json` files record `sample_rate`, `peak_dbfs`, `rms_dbfs`, `true_peak_dbfs`, `lufs`, `base_dry_token`, `recipe_token`, and `version`.
-3. **Automated Verification:** The `allomorph audit` command programmatically audits 100% of wet files in the catalog, verifying zero clipping ($\text{true\_peak} \le 0.9900$) and uniform loudness compliance.
-
----
-
-## 4. Differential Non-Linear Metallurgy, Magnetic Dynamics & Analog Realism
-
-### 4.1 Differential Magnetic Softening
-Never bypass saturation with blanket conditionals (`is_passive or has_source_circuit`). Evaluate differential metallurgy between source and target:
-$$\Delta\alpha = \max(\alpha_{\text{tgt}} - \alpha_{\text{src}}, 0), \quad \Delta\alpha_3 = \max(\alpha_{3,\text{tgt}} - \alpha_{3,\text{src}}, 0), \quad \Delta\eta_{\text{hyst}} = \max(\eta_{\text{tgt}} - \eta_{\text{src}}, 0), \quad \Delta k_{\text{sag}} = \max(k_{\text{sag,tgt}} - k_{\text{sag,src}}, 0)$$
-$$\Delta k_{\text{eddy}} = \max(k_{\text{eddy,tgt}} - k_{\text{eddy,src}}, 0), \quad \Delta\kappa_{\text{orbit}} = \max(\kappa_{\text{orbit,tgt}} - \kappa_{\text{orbit,src}}, 0), \quad \Delta\beta_{\text{curv}} = \max(\beta_{\text{curv,tgt}} - \beta_{\text{curv,src}}, 0)$$
-$$\Delta k_{\text{pull}} = \max(k_{\text{pull,tgt}} - k_{\text{pull,src}}, 0), \quad \Delta\tau_{\text{touch}} = \max(\tau_{\text{touch,tgt}} - \tau_{\text{touch,src}}, 0), \quad \Delta\kappa_{\text{geom}} = \max(\kappa_{\text{geom,tgt}} - \kappa_{\text{geom,src}}, 0), \quad \Delta k_{\text{stein}} = \max(k_{\text{stein,tgt}} - k_{\text{stein,src}}, 0)$$
-$$\Delta k_{\text{emf}} = \max(k_{\text{emf,tgt}} - k_{\text{emf,src}}, 0), \quad \Delta\lambda_L = \max(\lambda_{L,\text{tgt}} - \lambda_{L,\text{src}}, 0)$$
-
-$$V_{\text{sat,eff}} = \begin{cases} V_{\text{sat,tgt}} & \text{if active source} \\ \frac{V_{\text{sat,tgt}}}{1.0 - \min\left(0.85, \frac{V_{\text{sat,tgt}}}{V_{\text{sat,src}}}\right) + 0.15} & \text{if passive source with } V_{\text{sat,tgt}} < V_{\text{sat,src}} \\ 10.0 & \text{otherwise} \end{cases}$$
-Engage softening if and only if $(\text{not is\_identity}) \land (\text{not is\_passive} \lor \text{is\_target\_more\_saturated})$. Bypass saturation on small signals ($\le 0.10$ peak) to preserve bit-exact test linearity.
-
-### 4.2 Nonlinear Magnetic String Pull & Attack Pitch Sag ($k_{\text{pull}}$)
-In `_lenz_velocity_drag_core`, core saturation excess is evaluated via an infinitely differentiable ($C^\infty$) softplus excess with smooth soft-knee saturation, eliminating piecewise conditional slope kinks (`if e > vsat:`):
-$$\text{excess}_{\text{raw}} = \frac{1}{\alpha} \ln(1 + e^{\alpha(e - V_{\text{sat}})}) = \frac{1}{\alpha} \text{logaddexp}(0, \alpha(e - V_{\text{sat}})), \quad \alpha = 16.0$$
-$$\text{excess} = \text{excess}_{\text{raw}} - \left(\text{excess}_{\text{raw}} - w \cdot \tanh\left(\frac{\text{excess}_{\text{raw}}}{w}\right)\right), \quad w = 0.5$$
-where $e$ is the instantaneous core envelope $|x_{\text{low}}[n]| + 0.707 \cdot |x_{\text{high}}[n]|$. For small signals ($e \le V_{\text{sat}} - 0.2$), $\text{excess} < 10^{-4}$ (preserving exact small-signal linearity), while smoothly transitioning into soft saturation without derivative cusps in Numba-compiled ODE state loops.
-
-Dynamic pole pull damping and attack pitch sag are dynamically weighted by register excursion ratio:
-$$w_{\text{reg}} = 0.70 + 0.60 \cdot \frac{|x_{\text{low}}[n]|}{\max(|x_{\text{low}}[n]| + |x_{\text{high}}[n]|, 10^{-6})}$$
-$$\text{pull\_damping} = k_{\text{pull}} \cdot w_{\text{reg}} \cdot \text{excess} \cdot \tanh\left(\frac{\max(x[n], 0)}{V_{\text{sat}}}\right), \quad \text{pitch\_sag} = -k_{\text{pull}} \cdot w_{\text{reg}} \cdot \text{excess} \cdot (x_{\text{high}}[n] - x_{\text{high}}[n-1])$$
-$$\text{drag}_{\text{high}} = 1.0 - (k_{\text{sag}} + k_{\text{eddy}} + \text{pull\_damping} + \text{stein\_damping}) \cdot \text{excess}$$
-$$x_{\text{out}}[n] = \text{drag}_{\text{low}} x_{\text{low}}[n] + \text{drag}_{\text{high}} (x_{\text{high}}[n] + \text{wobble} + \text{pitch\_sag})$$
-Thick lower strings ($f_0 \le 60\text{ Hz}$) experience up to $1.3\times$ pull damping and transient pitch sag, capturing authentic Alnico pole drag without choking high-register sustain ($0.7\times$).
-
-### 4.3 Excursion-Dependent Dynamic Touch Spectral Tilt ($\tau_{\text{touch}}$)
-In saturation stage, inject highpass attack harmonics modulated by displacement envelope:
-$$H_{\text{hp}}(s) = \frac{s}{s + 2\pi \cdot 400.0}, \quad \text{touch\_mod} = \tau_{\text{touch}} \cdot \tanh\left(\frac{|x_{\text{disp}}|}{V_{\text{sat}}}\right) \cdot x_{\text{disp,hp}}, \quad x_{\text{disp}} = x_{\text{disp}} + \text{touch\_mod}$$
-
-### 4.4 Dynamic Eddy De-Qing, Orbital Bloom & Inductance Curvature Wobble
-- **Eddy current core de-Qing:** $\text{eddy\_factor} = k_{\text{eddy}} \cdot \text{excess} \cdot \tanh(|x_{\text{high}}| / V_{\text{sat}})$.
-- **2D Elliptical string orbit bloom:** $x_{\text{quad}} = x \cdot \mathcal{H}\{x\}$, $x_{\text{out}} = x + \Delta\kappa_{\text{orbit}} \cdot \tanh(|x| / V_{\text{sat}}) \cdot x_{\text{quad}}$ (zero DC bias $2f_0$ bloom).
-- **Core inductance curvature wobble:** $\text{wobble} = \beta_{\text{curv}} \cdot \tanh(x^2 / V_{\text{sat}}^2) \cdot (x_{\text{high}}[n] - x_{\text{high}}[n-1])$.
-
-### 4.5 Transient Magnetic Slew-Rate Limiting
-Bound domain-wall displacement delta via soft-knee saturation (`_slew_limit_core`):
-$$\Delta x_{\text{max}} = \frac{2\pi f_{\text{slew}} V_{\text{sat}}}{f_s}, \quad f_{\text{slew}} = 16000.0\text{ Hz}, \quad \Delta x_{\text{slew}}[n] = \Delta x_{\text{max}} \cdot \tanh\left(\frac{x[n] - x_{\text{slewed}}[n-1]}{\Delta x_{\text{max}}}\right)$$
-
-### 4.6 Thermal Dither Floor
-- Inject calibrated $-108\text{ dBFS}$ RLC-shaped Johnson noise dither to prevent hardware fixed-point neural gating pops (bypassed on small signals $\le 0.10$).
-
-### 4.7 Conformal Geometric Clearance & Dynamic Steinmetz AC Core Loss
-- **Conformal clearance divergence:** $x_{\text{disp}} / (1 - \kappa_{\text{geom}} \tanh(x_{\text{disp}} / V_{\text{sat}}))$ modeling pole proximity growl and pushback without negative rail clipping.
-- **Dynamic Steinmetz core loss:** $\text{stein\_damping} = k_{\text{stein}} \cdot \text{excess} \cdot (|dx_{\text{high}}/dt| / V_{\text{sat}})^{0.6}$ softening harsh flux spikes on attack plucks.
-
-### 4.8 Dynamic Reluctance Inductance Modulation & Back-EMF String Braking
-- **Dynamic Reluctance Inductance Modulation ($\lambda_L$ "Vowel Quack"):**
-  Plucking a ferromagnetic string near a pickup pole momentarily compresses the magnetic air gap, decreasing magnetic reluctance ($\mathcal{R}_{\text{gap}} \propto g$) and dynamically increasing instantaneous coil inductance $L(t) = L_0 (1 + \Delta\lambda_L \cdot \text{excess} \cdot \tanh(|x[n]| / V_{\text{sat}}))$. This dynamically shifts the pickup resonance $f_r(t)$ downward on hard pick/finger plucks before recovering during sustain. In the recursive state formulation:
-  $$\text{ind\_mod} = -\Delta\lambda_L \cdot \text{excess} \cdot \tanh\left(\frac{|x[n]|}{V_{\text{sat}}}\right) \cdot (x_{\text{high}}[n] - x_{\text{high}}[n-1])$$
-- **Electromechanical Back-EMF String Braking ($k_{\text{emf}}$):**
-  Induced coil current circulating through the pickup circuit creates an opposing Lenz Lorentz force acting back on the physical string ($\mathbf{F}_{\text{EMF}} \propto i_{\text{coil}}(t)$), providing instantaneous electromechanical braking on extreme high-frequency attack clank transients:
-  $$\text{emf\_damping} = \Delta k_{\text{emf}} \cdot \text{excess} \cdot \tanh\left(\frac{|x_{\text{high}}[n]|}{V_{\text{sat}}}\right)$$
-  $$\text{drag}_{\text{high}} = 1.0 - (k_{\text{sag}} + k_{\text{eddy}} + \text{pull\_damping} + \text{stein\_damping} + \text{emf\_damping}) \cdot \text{excess}$$
-
----
-
-## 5. Complex Electrical Impedance & Inter-Coil Transmission Modeling
-
-### 5.1 Fractional-Order Dielectric Absorption
-Model tone capacitor and cable admittance via Cole-Davidson fractional frequency scaling ($\alpha_{\text{tone}} \approx 0.988, \alpha_{\text{cable}} \approx 0.994, \omega_0 = 2\pi \cdot 1000\text{ rad/s}$):
-$$s_{\text{norm}} = \max\left(\frac{\omega}{\omega_0}, 10^{-6}\right), \quad Y_C(s) = s \cdot C \cdot s_{\text{norm}}^{\alpha - 1} \cdot e^{j(\alpha - 1)\pi / 2}$$
-
-### 5.2 Coupled $2\times 2$ Nodal Transfer Matrix
-For parallel dual-coil configurations, solve the coupled mutual system ($M = k_m \sqrt{L_n L_b}, Z_m = s M, Y_m = s C_m, \Delta_Z = Z_n Z_b - Z_m^2$):
-$$H_{n \to 2}(s) = \frac{Z_b - Z_m}{\Delta_Z(Y_{\text{eff}2} + Y_m) + Z_n + Z_b - 2 Z_m}, \quad H_{b \to 2}(s) = \frac{Z_n - Z_m}{\Delta_Z(Y_{\text{eff}2} + Y_m) + Z_n + Z_b - 2 Z_m}$$
-
-### 5.3 Complex Magnetic Permeability Dispersion ($\mu^*(\omega)$)
-In `compute_core_impedance`, model causal Jordan core relaxation via logarithmic dispersion:
-$$\mu_{\text{rel}}(s) = 1.0 - \chi_{\mu} \ln\left(1.0 + \frac{s}{\omega_{\mu}}\right), \quad \omega_{\mu} = 2\pi \cdot 1200.0\text{ rad/s}, \quad Z_L(s) = \mu_{\text{rel}}(s) \cdot \left[s L_{\infty} + \frac{s L_{\text{core}} R_{\text{core}}}{s L_{\text{core}} + R_{\text{core}}}\right]$$
-
-### 5.4 Distributed Inter-Winding Transmission Line Admittance
-Replace lumped parallel coil admittance with the hyperbolic transmission factor ($k_{\text{dist}} \in [0.00, 0.05], \omega_{\text{dist}} = 2\pi \cdot 10000\text{ rad/s}$):
-$$\gamma_{\text{dist}} = k_{\text{dist}} \sqrt{\frac{s}{\omega_{\text{dist}}}}, \quad Y_{\text{coil}}(s) = (s C_{\text{coil}} + G_{\text{coil}}) \cdot \frac{\tanh(\gamma_{\text{dist}})}{\gamma_{\text{dist}}}$$
-
-### 5.5 Interactive Potentiometer Wiper Division & Cable Loading
-Model Volume and Tone pot wiper positions ($P_{\text{vol}}, P_{\text{tone}} \in [0, 1]$). Rolling volume down splits $R_{\text{vol}}$ into series $R_{\text{top}}$ and shunt $R_{\text{bot}}$, interacting with cable capacitance $C_{\text{cable}}$; rolling tone down reduces series resistance into $C_{\text{tone}}$. Exactly preserves netlist defaults when $P_{\text{vol}} = 1.0, P_{\text{tone}} = 1.0$.
-
-### 5.6 Solid Alnico Pole Eddy Skin-Effect Fractional Dispersion ($Z_{\text{skin}}(s)$)
-In pickups with solid conducting metallic pole pieces (e.g. Alnico rod magnets in Fender Jazz and Precision basses), eddy currents circulating inside the cylindrical magnet volume force high-frequency magnetic flux to the cylinder periphery. This classical skin effect increases the series AC resistance of the inductive branch proportionally to $\sqrt{\omega}$:
-$$Z_{\text{skin}}(s) = R_{\text{dc}} \cdot k_{\text{skin}} \cdot \left(\sqrt{1 + \frac{s}{\omega_{\text{skin}}}} - 1\right), \quad \omega_{\text{skin}} = 2\pi f_{\text{skin}}$$
-- **Exact DC Transparency:** At DC ($s = 0$), $Z_{\text{skin}}(0) \equiv 0$, guaranteeing exact bit-exact preservation of measured DC coil resistance $R_{\text{dc}}$ and $0.00\text{ dB}$ DC transfer matching.
-- **High-Frequency Loss:** At high frequencies ($f \gg f_{\text{skin}}$), $Z_{\text{skin}}(s) \to R_{\text{dc}} \cdot k_{\text{skin}} \cdot \sqrt{s / \omega_{\text{skin}}}$, introducing the authentic $45^\circ$ phase angle and $\sqrt{\omega}$ loss that gently softens top-end hash without inducing un-damped resonant peaking or Gibbs truncation ripples.
-
----
-
-## 6. High-Performance Audio DSP & SIMD Directives
-
-### 6.1 Buffer & Recurrence Execution Acceleration
-- **No Interpreted Loops Over Audio Buffers:** Never write scalar Python loops (`for i in range(n)`) over audio buffers. Always accelerate recursive ODE state solvers (Lenz drag, Dahl hysteresis, slew limiting) using Numba JIT compilation (`@njit(fastmath=True)`) with graceful pure-Python fallback ($220\times$ speedup).
-- **NumPy View Byte Packing:** Vectorize 24-bit little-endian WAV packing in C via NumPy view slicing (`scaled.astype("<i4").view(np.uint8).reshape(-1, 4)[:, :3].tobytes()`, $135\times$ speedup).
-- **SIMD Circuit Transfer Evaluation:** Formulate all nodal impedances, admittances, and voltage divider ratios directly on complex NumPy frequency vectors ($s = 1j \cdot \omega$) rather than scalar loops ($12\times$ speedup).
-
-### 6.2 Pure Real-FFT Homomorphic Cepstrum Pipeline
-Minimum-phase causal FIR synthesis from log-magnitude curves ($N = 4096$ taps, $N_{\text{fft}} = 8192$) strictly utilizes a pure real-FFT pipeline (`irfft` $\to$ causal folding $\to$ `rfft` $\to$ `irfft`):
-1. **Real Cepstrum Computation:** Given real, conjugate-symmetric log-magnitude spectrum $L[k] = \frac{1}{2}\ln(|H[k]|^2 + \epsilon^2)$ for $k \in [0, N]$:
-   $$\hat{c}[n] = \text{irfft}(L)[n]$$
-   Because $L$ is purely real and even, $\hat{c}[n]$ is purely real by definition, eliminating all complex allocations and negative-frequency mirroring buffer concatenations.
-2. **Causal Liftering:** The minimum-phase analytic spectrum is obtained by zeroing non-causal negative cepstral time indices and doubling positive time indices:
-   $$c_{\text{min}}[n] = \begin{cases} \hat{c}[0], & n = 0 \\ 2\hat{c}[n], & 1 \le n < N \\ \hat{c}[N], & n = N \\ 0, & N < n < 2N \end{cases}$$
-3. **Analytic Spectrum & Direct Inverse Real FFT:**
-   $$S[k] = \text{rfft}(c_{\text{min}})[k] = \ln|H[k]| + j \theta_{\text{min}}[k]$$
-   $$h[n] = \text{irfft}(\exp(S))[:N]$$
-This guarantees exact mathematical equivalence ($\Delta < 10^{-14}$) to classical complex-FFT Hilbert synthesis while eliminating $100\%$ of imaginary leakage, cutting intermediate array allocations by half, and speeding up minimum-phase FIR generation across all stages.
-
-### 6.3 Frequency-Domain Stage Fusion & Caching
-- **Fuse Linear Stages in Frequency Domain:** Avoid redundant FFT/IRFFT round-trips. Apply displacement pre-filters ($X_{\text{up}} \cdot H_{\text{pre}}$) before inverse FFT, and combine de-emphasis ($H_{\text{de}} / \text{scale}$) and anti-aliasing lowpass ($aa\_mask$) into a single product before decimation.
-- **Passband-Constrained Oversampling:** Zero-padded frequency-domain multiplications in saturation oversampling are restricted strictly to audible passband bins ($k \le k_{\text{stop}} = \lceil 24000 \cdot N / f_s \rceil$), eliminating millions of redundant floating-point multiplications on known-zero ultrasonic frequencies.
-- **Broadcast Input FFTs:** In multi-pickup instruments, precompute the mono input forward FFT once across all channels using `max_ir_len` and broadcast it across channel FIRs (`fft_convolve_multi`).
-- **In-Memory Netlist LRU Caching:** Wrap SPICE netlist parsing with `@functools.lru_cache(maxsize=128)` and return shallow copies (`cached.model_copy()`), eliminating redundant disk reads and regex tokenization.
-
-### 6.4 Parallel Concurrency & Test Bounding
-- **Multi-Process Concurrency:** Expose parallel process execution using `concurrent.futures.ProcessPoolExecutor` with `-j/--jobs` CLI flags (defaulting to `min(4, os.cpu_count())`), dropping 16-voice batch simulation from $7+\text{ minutes}$ to $80\text{ seconds}$.
-- **Decouple Target vs Differential Curve Generation:** Precompute global target output voice master dataframe once globally. Compute source-to-target difference dataframes once per instrument, reducing dataframe builds by $73\%$.
-- **Frame-Bounded Audio Processing (`max_samples`):** Support bounded frame prefixes (`max_samples = 4800` to `48000`) in unit tests to drop test execution from $22\text{s}$ down to $0.15\text{s}$ while preserving complete signal pipeline verification.
-
-### 6.5 Visualizer Vectorization, Caching & Vega-Lite Payload Bounding (Commit `7c6e634`)
-- **Prohibition of Multi-Rate FFTs in Signal Flow Loops:** Never invoke `build_voice_dataframe(mode="difference")`, FIR filter synthesis, or multi-rate FFTs inside per-pickup/per-voice visualizer loops. Iterative synthesis executes hundreds of redundant 2048-tap FIR convolutions and 8192-point FFTs, blowing up chart generation from $< 3\text{ s}$ to $> 20\text{ s}$.
-- **Decoupled Universal Target Caching:** Target voicings are precomputed and cached globally once via `get_cached_target_dfs(step=step)`:
-  $$\text{db\_back\_dict}[vid] = \text{np.round}(\text{db\_tgt} - \text{db\_can}, 2)$$
-- **Analytical Mirror Reflection for Identity Matches:** For authentic source-to-target digital twin matches (`is_match`), set the mirror reflection directly in vector form:
-  $$\text{db\_back} = -\text{db\_front}, \quad \text{db\_out} = 0.00\text{ dB}$$
-  This simultaneously guarantees:
-  1. Exact $0.00\text{ dB}$ flat identity output across all frequency points.
-  2. Authentic Wiener-regularized circuit deconvolution ($\le +6\text{ dB}$ clamping) without unregularized $+24\text{ dB}$ ultrasonic spikes.
-  3. Microsecond execution speed with zero redundant multi-rate FFTs.
-- **For Non-Matching Voicings:** Evaluate directly as $\text{db\_back} = \text{db\_back\_dict}[vid]$ and $\text{db\_out} = \text{np.round}(\text{db\_front} + \text{db\_back}, 2)$ via vectorized NumPy array additions.
-- **Payload Bounding & Downsampling:** Downsample composite chart curves using `step = 3` (200 log-spaced points from $20\text{ Hz}$ to $20\text{ kHz}$) and round decibel magnitudes to 2 decimal places (`np.round(..., 2)`). Filter stages using Vega-Lite `PredicateComposition` (`(pickup_select & pred_stages_12) | (pickup_select & voice_select & pred_stages_34)`). This compresses standalone HTML payloads from $> 66\text{ MB}$ down to $\sim 5\text{ MB}$ ($92.5\%$ reduction) and prevents browser DOM freezes.
-- **Strict Latency Budget:** Full execution of `generate_all_charts` across all 11 playable instruments must complete in $< 5.0\text{ seconds}$ (verified in `tests/test_guardrails.py`).
-
-### 6.6 Differential Transformations Visualizer Architecture & Single-File Invariants
-- **Monolithic Differential Curves:** The Voicing Comparator visualizes the full differential transfer functions ($H_{\text{diff}} = H_{\text{tgt}} / H_{\text{src}}$) corresponding directly to the simulated outputs.
-- **Self-Contained Embedded JSON:** To avoid browser `file://` CORS security restrictions when viewing documentation locally without an HTTP server, the complete curve matrix is embedded directly into the HTML as `<script id="comparator-data" type="application/json">` and parsed in-memory via `JSON.parse(document.getElementById("comparator-data").textContent)`.
-- **Matrix Serialization & Payload Bounding:** Downsampling with `step = 3` (200 log-spaced points from $20\text{ Hz}$ to $20\text{ kHz}$) and 2-decimal rounding (`np.round(..., 2)`) bounds the complete 276-curve JSON payload to $\sim 390\text{ KB}$ and produces a self-contained HTML page under $450\text{ KB}$.
-- **Sub-Millisecond Multi-Select Vega Streaming:** Client-side selection filtering uses native JavaScript table assembly and `vegaView.change('table', vega.changeset().remove(...).insert(...)).runAsync()`, updating interactive multi-selected instrument $\times$ voicing combinations instantaneously without redrawing or recreating DOM elements.
-- **Physical Bounds & Identity Invariants:** Identity pairings evaluate to exact $0.00\text{ dB}$, while all other transformations strictly adhere to physical electroacoustic bounds ($< +30\text{ dB}$ boost, $> -100\text{ dB}$ attenuation per Section 5.3).
-
+### 3.3 Visualizer Vectorization, Caching & Single-File Portal Contracts (`src/allomorph/visualizer/`)
+1. **Three-Line Differential Evaluation:** Evaluates Source Forward ($20\log_{10}|H_{\text{src}}|$), Target Forward ($20\log_{10}|H_{\text{tgt}}|$), and Differential ($20\log_{10}|H_{\text{tgt}}| - 20\log_{10}|H_{\text{src}}|$), yielding bit-exact $0.00\text{ dB}$ on identity pairings and finite bounded curves ($[-120\text{ dB}, +25\text{ dB}]$) across all catalog pairs.
+2. **Global Target Caching Mandate:** Never invoke `build_voice_dataframe(mode="difference")`, FIR synthesis, or multi-rate FFTs inside per-pickup/per-voice loops. Precompute forward target curves globally once via `get_cached_target_dfs(step=3)` and evaluate differences via vectorized subtraction (`np.round(db_tgt[vid] - db_src, 2)`).
+3. **Payload & Latency Bounds:** Downsample with `step = 3` (200 log-spaced points from $20\text{ Hz}$ to $20\text{ kHz}$), embed self-contained `<script id="comparator-data" type="application/json">` for local `file://` compatibility (`< 450 KB`), and maintain full `generate_all_charts` execution under $< 5.0\text{ seconds}$.

@@ -7,8 +7,6 @@ import math
 from typing import TYPE_CHECKING
 
 import numpy as np
-from hypothesis import given
-from hypothesis import strategies as st
 
 if TYPE_CHECKING:
     from allomorph.config.schema import InstrumentConfig
@@ -16,85 +14,20 @@ if TYPE_CHECKING:
 from allomorph.config.schema import CoilConfig, VoiceCoilConfig, VoiceConfig
 from allomorph.dsp import FREQS
 
-SHORT_SCALE_SPEEDS = [62.79, 83.82, 111.89, 149.35]
 STANDARD_SCALE_SPEEDS = [71.16, 95.0, 126.81, 169.27]
 from allomorph.physics.aperture import (
     CALIBRATION_EXCURSION_ETA,
     FRACTIONAL_EXCURSION_CALIBRATION_ETA,
-    aperture_response,
     compute_coil_aperture,
     compute_displacement_proximity_shelf,
     compute_pickup_isolation_leveling,
     compute_saddle_boundary_coupling,
     get_coil_register,
     is_voice_matching_source,
-    numpy_aperture,
     numpy_pickup_acoustic_response,
-    numpy_pickup_macro_aperture,
-    numpy_position,
     pickup_acoustic_response,
-    position_envelope,
     soft_clamp_displacement_ratio,
 )
-
-
-def test_aperture_zero_frequency():
-    """Verify physical aperture DC identity: Sinc(0) = 1.0, Comb(0) = 1.0, Product = 1.0000 (0.00 dB)."""
-    speeds = SHORT_SCALE_SPEEDS
-    res = aperture_response(np.array([0.0]), w_in=1.5, d_in=0.75, speeds=speeds)[0]
-    assert math.isclose(res, 1.0, abs_tol=1e-6)
-
-    # Test numpy_aperture with default speeds and d_in == 0
-    res_single = numpy_aperture(np.array([0.0]), w_in=0.75, d_in=0.0)[0]
-    assert math.isclose(res_single, 1.0, abs_tol=1e-6)
-
-
-@given(
-    st.floats(min_value=0.1, max_value=3.0, allow_nan=False, allow_infinity=False),
-    st.floats(min_value=0.0, max_value=2.0, allow_nan=False, allow_infinity=False),
-)
-def test_aperture_dc_conservation_property(w_in: float, d_in: float) -> None:
-    """Property test verifying physical aperture DC identity: H(0) = 1.0 for arbitrary coil geometry."""
-    speeds = STANDARD_SCALE_SPEEDS
-    res = float(aperture_response(np.array([0.0]), w_in=w_in, d_in=d_in, speeds=speeds)[0])
-    assert math.isclose(res, 1.0, abs_tol=1e-5)
-
-
-@given(
-    st.floats(min_value=0.0, max_value=24000.0, allow_nan=False, allow_infinity=False),
-    st.floats(min_value=0.1, max_value=2.5, allow_nan=False, allow_infinity=False),
-)
-def test_numpy_aperture_bounding_property(f: float, w_in: float) -> None:
-    """Property test verifying single-coil aperture filtering magnitude |H(f)| <= 1.0 everywhere."""
-    res = float(numpy_aperture(np.array([f]), w_in=w_in, d_in=0.0)[0])
-    assert 0.0 <= res <= 1.0 + 1e-6
-
-
-def test_aperture_single_vs_dual():
-    """Verify dual coil exhibits narrower aperture transmission than narrow single coil at high frequencies."""
-    speeds = SHORT_SCALE_SPEEDS
-    val_single = aperture_response(np.array([5000.0]), w_in=0.75, d_in=0.0, speeds=speeds)[0]
-    val_dual = aperture_response(np.array([5000.0]), w_in=1.50, d_in=0.75, speeds=speeds)[0]
-
-    # Dual coil should have more high-frequency aperture filtering than narrow single coil
-    assert val_dual < val_single
-
-
-def test_position_envelope():
-    """Verify spatial standing-wave excursion envelope at bridge and neck positions."""
-    speeds = STANDARD_SCALE_SPEEDS
-    freqs = np.array([200.0, 1000.0, 5000.0])
-    res_bridge = position_envelope(freqs, pos_m=0.0406, speeds=speeds)
-    res_neck = position_envelope(freqs, pos_m=0.1250, speeds=speeds)
-
-    assert len(res_bridge) == 3
-    assert len(res_neck) == 3
-    assert all(val > 0.1 for val in res_bridge)
-    assert all(val > 0.1 for val in res_neck)
-
-    # Bridge witness point boundary condition: sin(0) = 0 at pos_m = 0
-    res_zero = numpy_position(freqs, pos_m=0.0, speeds=speeds)
-    assert np.allclose(res_zero, 0.0)
 
 
 def test_pickup_acoustic_response_single_coil():
@@ -231,26 +164,6 @@ def test_identity_acoustic_transfer_preserves_flat_bass(
         }
     )
     assert not is_voice_matching_source(generic_instrument_config, voice_mismatch)
-
-
-def test_numpy_pickup_macro_aperture_properties(
-    generic_instrument_config: InstrumentConfig,
-):
-    """Verify that macro aperture computes a smooth, comb-free sensing envelope."""
-    inst = generic_instrument_config
-    src_pickup = inst.pickups["main"]
-    speeds = inst.string_wave_speeds
-
-    freqs = np.linspace(20.0, 10000.0, 500)
-    macro_env = numpy_pickup_macro_aperture(freqs, src_pickup.coils, speeds)
-
-    # 1. DC / fundamental must be ~1.0 (within 0.1%)
-    assert math.isclose(macro_env[0], 1.0, rel_tol=1e-3)
-
-    # 2. Smooth aperture rolloff without comb nulls: > 0.70 at 2 kHz, > 0.05 at 10 kHz
-    f2k_idx = int(np.argmin(np.abs(freqs - 2000.0)))
-    assert macro_env[f2k_idx] > 0.70
-    assert all(x > 0.05 for x in macro_env)
 
 
 def test_cylindrical_rod_vs_blade_aperture():
@@ -516,28 +429,3 @@ def test_numpy_pickup_acoustic_response_advanced_branches():
     )
     assert len(resp_from_speeds) == len(freqs)
     assert math.isclose(resp_from_speeds[0], 1.0, abs_tol=1e-3)
-
-
-def test_numpy_pickup_macro_aperture_blade_and_speeds():
-    """Verify macro aperture with blade pole piece, custom string speeds, and empty coil fallback."""
-    freqs = np.asarray(FREQS, dtype=np.float64)
-    coils_blade = [
-        CoilConfig(
-            position_from_bridge_m=0.08,
-            aperture_width_in=0.75,
-            pole_type="blade",
-            weight=1.0,
-            polarity=1.0,
-            strings=["all"],
-        )
-    ]
-    macro_blade = numpy_pickup_macro_aperture(
-        freqs, coils_blade, string_speeds=[70.0, 95.0, 125.0, 165.0]
-    )
-    assert len(macro_blade) == len(freqs)
-    assert math.isclose(macro_blade[0], 1.0, abs_tol=1e-3)
-
-    # Empty coils fallback
-    macro_empty = numpy_pickup_macro_aperture(freqs, [])
-    assert len(macro_empty) == len(freqs)
-    assert math.isclose(macro_empty[0], 1.0, abs_tol=1e-3)
