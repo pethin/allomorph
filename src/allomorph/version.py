@@ -499,6 +499,47 @@ def write_manifest(
     )
 
 
+def check_wet_stem_freshness(
+    stem_path: Path | str,
+    expected_recipe_token: str,
+    base_dry_path: Path | str | None = None,
+    expected_version: str | None = None,
+) -> tuple[bool, str]:
+    """Validates that a compiled wet audio stem exists and matches the expected recipe token.
+
+    Returns (is_fresh, reason) where reason is 'cached & fresh' or diagnostic explanation.
+    """
+    stem_p = Path(stem_path)
+    if not stem_p.exists():
+        return False, "audio file missing"
+
+    manifest_p = stem_p.parent / "manifest.json"
+    if not manifest_p.exists():
+        return False, "manifest.json missing"
+
+    try:
+        with manifest_p.open("r", encoding="utf-8") as f:
+            manifest = json.load(f)
+    except (json.JSONDecodeError, OSError):
+        return False, "manifest.json unreadable"
+
+    files = manifest.get("files", {})
+    if stem_p.name not in files:
+        return False, "not registered in manifest.json"
+
+    file_entry = files[stem_p.name]
+    recorded_token = file_entry.get("recipe_token") or manifest.get("recipe_token")
+    if recorded_token != expected_recipe_token:
+        return False, "recipe token mismatch"
+
+    if expected_version is not None:
+        recorded_ver = file_entry.get("version") or manifest.get("version")
+        if recorded_ver != expected_version:
+            return False, f"version mismatch ({recorded_ver} != {expected_version})"
+
+    return True, "cached & fresh"
+
+
 def is_wet_stem_valid(
     stem_path: Path | str,
     expected_recipe_token: str,
@@ -514,35 +555,13 @@ def is_wet_stem_valid(
     - The manifest's recorded recipe_token does not match expected_recipe_token.
     - An expected_version is provided and the manifest version does not match it.
     """
-    stem_p = Path(stem_path)
-    if not stem_p.exists():
-        return False
-
-    manifest_p = stem_p.parent / "manifest.json"
-    if not manifest_p.exists():
-        return False
-
-    try:
-        with manifest_p.open("r", encoding="utf-8") as f:
-            manifest = json.load(f)
-    except (json.JSONDecodeError, OSError):
-        return False
-
-    files = manifest.get("files", {})
-    if stem_p.name not in files:
-        return False
-
-    file_entry = files[stem_p.name]
-    recorded_token = file_entry.get("recipe_token") or manifest.get("recipe_token")
-    if recorded_token != expected_recipe_token:
-        return False
-
-    if expected_version is not None:
-        recorded_ver = file_entry.get("version") or manifest.get("version")
-        if recorded_ver != expected_version:
-            return False
-
-    return True
+    valid, _ = check_wet_stem_freshness(
+        stem_path=stem_path,
+        expected_recipe_token=expected_recipe_token,
+        base_dry_path=base_dry_path,
+        expected_version=expected_version,
+    )
+    return valid
 
 
 __all__ = [
@@ -551,6 +570,7 @@ __all__ = [
     "DEFAULT_VOICE_VERSION",
     "DSP_GENERATION",
     "_MANIFEST_LOCK",
+    "check_wet_stem_freshness",
     "compute_bundle_recipe_token",
     "compute_excitation_digest_token",
     "compute_excitation_recipe_token",

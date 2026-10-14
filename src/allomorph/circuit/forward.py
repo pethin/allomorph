@@ -792,24 +792,26 @@ def simulate_instrument_voicing(
         else (voicing_cfg.id or "default_voicing")
     )
 
-    # Resolve input audio
+    # Resolve input audio path
     in_path: Path | None = None
+    if input_wav is not None and Path(input_wav).exists():
+        in_path = Path(input_wav)
+    else:
+        found = find_default_input_audio()
+        if found:
+            in_path = Path(found)
+
     if input_audio is not None:
         raw_audio = np.asarray(input_audio, dtype=np.float64)
         if max_samples is not None and len(raw_audio) > max_samples:
             raw_audio = raw_audio[:max_samples]
         sr = 48000
-    elif not input_wav or not Path(input_wav).exists():
-        found = find_default_input_audio()
-        if not found:
-            raise FileNotFoundError(
-                f"Input audio '{input_wav}' not found, and no standard excitation audio (input.wav) was detected."
-            )
-        in_path = Path(found)
+    elif in_path is not None:
         raw_audio, sr = read_wav(in_path, max_samples=max_samples, dtype=np.float64)
     else:
-        in_path = Path(input_wav)
-        raw_audio, sr = read_wav(in_path, max_samples=max_samples, dtype=np.float64)
+        raise FileNotFoundError(
+            f"Input audio '{input_wav}' not found, and no standard excitation audio (input.wav) was detected."
+        )
 
     # Resolve output path
     out_path: Path | None = None

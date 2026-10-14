@@ -34,8 +34,8 @@ from allomorph.dsp import (
 from allomorph.naming import get_default_input_path
 from allomorph.version import (
     DSP_GENERATION,
+    check_wet_stem_freshness,
     compute_recipe_token,
-    is_wet_stem_valid,
     resolve_tri_part_version,
 )
 
@@ -178,9 +178,10 @@ def generate_stems(
             getattr(v_cfg, "version", 1),
         )
 
-        is_fresh = False
-        if not force and target_path.exists():
-            is_fresh = is_wet_stem_valid(
+        if force:
+            is_fresh, reason = False, "force flag"
+        else:
+            is_fresh, reason = check_wet_stem_freshness(
                 target_path,
                 expected_recipe_token=recipe_tok,
                 base_dry_path=input_wav,
@@ -192,9 +193,16 @@ def generate_stems(
             cached_count += 1
             continue
 
+        log_step(
+            "QUEUE",
+            f"[{idx}/{total}] Queued for simulation ({reason}): {inst.id}:{stem_slug} ({v_tag})",
+        )
         tasks_to_simulate.append((idx, inst, v_cfg, stem_slug, target_path, v_tag))
 
     if tasks_to_simulate:
+        log_info(
+            f"Stem audit: {cached_count} cached & fresh, {len(tasks_to_simulate)} queued for synthesis."
+        )
         input_audio: np.ndarray | None = None
         ref_lufs: float | None = None
         if input_wav is not None and input_wav.exists():
