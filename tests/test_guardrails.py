@@ -178,7 +178,13 @@ def test_guardrail_5_3_active_preamp_dc_transmission():
 
     from allomorph.config.preamps import PREAMPS
 
-    for preamp_type in ["sadowsky_2band", "stingray_2band", "aguilar_3band", "dingwall_active"]:
+    for preamp_type in [
+        "sadowsky_2band",
+        "stingray_2band",
+        "aguilar_3band",
+        "dingwall_active",
+        "fender_ultra2_3band",
+    ]:
         H_eq = compute_active_preamp_eq(PREAMPS[preamp_type], s_dc)
         mag_dc = abs(H_eq)
         assert mag_dc >= 0.999, (

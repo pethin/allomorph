@@ -568,21 +568,50 @@ def solve_mna_harness(
 
                 preamp_spec = get_preamp(eff_preamp_id)
             adjusted_bands = []
-            for b in preamp_spec.bands:
+            for idx, b in enumerate(preamp_spec.bands):
                 b_gain = b.gain_db
+                b_freq = b.freq_hz
+                b_id = getattr(b, "id", None)
+
+                # Check dynamic frequency overrides from switches or voicing components
+                candidate_keys = [
+                    f"preamp.{b.type}.freq_hz",
+                    f"preamp.bands.{idx}.freq_hz",
+                ]
+                if b_id:
+                    candidate_keys.insert(0, f"preamp.{b_id}.freq_hz")
+                for key in candidate_keys:
+                    if key in active_components:
+                        b_freq = float(active_components[key])
+
                 for ctrl_id, ctrl in harness.controls.items():
-                    if ctrl.type == "preamp_band" and ctrl.band == b.type:
-                        ctrl_val = voicing.controls.get(ctrl_id, ctrl.default)
-                        if ctrl.default == 0.5:
-                            b_gain = (ctrl_val - 0.5) * 24.0
-                        elif ctrl.default > 0.0:
-                            b_gain = b.gain_db * (ctrl_val / ctrl.default)
-                        else:
-                            b_gain = ctrl_val * 12.0
-                adjusted_bands.append(b.model_copy(update={"gain_db": b_gain}))
+                    if ctrl.type == "preamp_band":
+                        matches = (
+                            (b_id is not None and (ctrl.band == b_id or ctrl_id == b_id))
+                            or ctrl.band == b.type
+                        )
+                        if matches:
+                            ctrl_val = voicing.controls.get(
+                                ctrl_id,
+                                voicing.controls.get(
+                                    f"controls.{ctrl_id}",
+                                    voicing.controls.get(f"preamp.{ctrl_id}", ctrl.default),
+                                ),
+                            )
+                            if ctrl.default == 0.5:
+                                b_gain = (ctrl_val - 0.5) * 24.0
+                            elif ctrl.default > 0.0:
+                                b_gain = b.gain_db * (ctrl_val / ctrl.default)
+                            else:
+                                b_gain = ctrl_val * 12.0
+                update_dict: dict[str, float] = {"gain_db": b_gain}
+                if b_freq != b.freq_hz:
+                    update_dict["freq_hz"] = b_freq
+                adjusted_bands.append(b.model_copy(update=update_dict))
             H_eq = compute_active_preamp_transfer(
                 adjusted_bands, s, gain_db=float(preamp_spec.gain_db) + voicing.gain_db
             )
+
 
         r_out_stage = 100.0
         r_pre_out = ds.find("preamp.out")

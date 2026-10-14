@@ -577,7 +577,7 @@
     "Precision Active v6.1.1.nam": {
       "filename": "Precision Active v6.1.1.nam",
       "bundle": "split",
-      "target": "34in_standard_p:modern_active",
+      "target": "34in_standard_pj:neck_active",
       "target_instrument_version": 1,
       "target_voicing_version": 1,
       "version": "v6.1.1",

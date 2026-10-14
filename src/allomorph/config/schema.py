@@ -172,6 +172,7 @@ class StringsCatalog(AllomorphBaseModel):
 class PreampBandConfig(AllomorphBaseModel):
     """Active onboard preamp equalizer band specification."""
 
+    id: str | None = None
     type: Literal["low_shelf", "high_shelf", "bell", "low_pass", "high_pass"]
     freq_hz: float = Field(..., gt=0.0, le=20000.0)
     gain_db: float = Field(..., ge=-30.0, le=30.0)

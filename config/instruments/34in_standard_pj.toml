@@ -65,8 +65,35 @@ coils = [
     { id = "bridge", position_from_bridge_m = 0.0635, aperture_width_in = 0.45, pole_type = "rod", L = 3.6, Rdc = 7800.0, Reddy = 125000.0, Ccoil = 7.0e-11, weight = 1.0 },
 ]
 
+[pickups.ultra2_split_p]
+name = "Ultra II Noiseless Vintage Split-P"
+position_name = "Neck"
+position_from_bridge_m = 0.1250  # Centerline 125.0mm
+aperture_width_in = 0.45         # 0.45" magnetic sensing aperture per split half
+coil_spacing_in = 0.0
+type = "split_coil"
+magnet_type = "alnico_v"
+coils = [
+    # Strings 3 & 4 see forward coil half (warmer, deeper fundamental)
+    { id = "forward", strings = [3, 4], position_from_bridge_m = 0.1390, aperture_width_in = 0.45, pole_type = "rod", L = 2.4, Rdc = 6000.0, Reddy = 95000.0, Ccoil = 3.5e-11, weight = 1.0 },
+    # Strings 1 & 2 see rearward coil half (tighter, punchier mid bite)
+    { id = "rearward", strings = [1, 2], position_from_bridge_m = 0.1110, aperture_width_in = 0.45, pole_type = "rod", L = 2.4, Rdc = 6000.0, Reddy = 95000.0, Ccoil = 3.5e-11, weight = 1.0 },
+]
+
+[pickups.ultra2_bridge_j]
+name = "Ultra II Noiseless Vintage Jazz Bridge"
+position_name = "Bridge"
+position_from_bridge_m = 0.0635  # 63.5mm from bridge (14 1/2" from 12th fret)
+aperture_width_in = 0.45         # 0.45" narrow sensing aperture
+coil_spacing_in = 0.0
+type = "single_coil"
+magnet_type = "alnico_v"
+coils = [
+    { id = "bridge", position_from_bridge_m = 0.0635, aperture_width_in = 0.45, pole_type = "rod", L = 5.8, Rdc = 14800.0, Reddy = 135000.0, Ccoil = 9.0e-11, weight = 1.0 },
+]
+
 # ------------------------------------------------------------------------------
-# 2. CONTROL HARNESSES (Multi-Harness: Authentic 2V/1T Passive and Active 2-Band)
+# 2. CONTROL HARNESSES (Multi-Harness: Authentic 2V/1T Passive and Ultra II Active)
 # ------------------------------------------------------------------------------
 
 [harnesses.passive]
@@ -119,25 +146,31 @@ cap = 4.7e-8
 default = 1.0
 
 [harnesses.active]
-name = "Sadowsky 2-Band Active Preamp"
+name = "Fender American Ultra II Active Preamp"
 type = "active_preamp"
-preamp = "sadowsky_2band"
+preamp = "fender_ultra2_3band"
 load_resistance = 1000000.0
 cable_pf = 30.0
 k_mutual = 0.04
 
 wiring = [
-    # Split P into neck_in
-    ["pickups.split_p.forward.cold", "pickups.split_p.rearward.hot"],
-    ["pickups.split_p.rearward.cold", "GND"],
-    ["pickups.split_p.forward.hot", "controls.blend.neck_in"],
+    # Ultra II Split P into neck_in
+    ["pickups.ultra2_split_p.forward.cold", "pickups.ultra2_split_p.rearward.hot"],
+    ["pickups.ultra2_split_p.rearward.cold", "GND"],
+    ["pickups.ultra2_split_p.forward.hot", "controls.blend.neck_in"],
 
-    # Bridge J into bridge_in
-    ["pickups.bridge_j.hot", "controls.blend.bridge_in"],
-    ["pickups.bridge_j.cold", "GND"],
+    # Ultra II Bridge J into bridge_in
+    ["pickups.ultra2_bridge_j.bridge.hot", "controls.blend.bridge_in"],
+    ["pickups.ultra2_bridge_j.bridge.cold", "GND"],
 
-    # Preamp & Volume
+    # Blend wiper to Global Passive Tone
+    ["controls.blend.wiper", "controls.tone.in"],
+    ["controls.tone.gnd", "GND"],
+
+    # Blend wiper to Preamp input
     ["controls.blend.wiper", "preamp.in"],
+
+    # Preamp output to Master Volume and output jack
     ["preamp.out", "controls.vol.in"],
     ["controls.vol.wiper", "out"],
     ["controls.vol.gnd", "GND"],
@@ -157,17 +190,42 @@ taper = "audio_15"
 resistance = 25000.0
 default = 1.0
 
+[harnesses.active.controls.tone]
+name = "Passive Tone"
+type = "pot"
+taper = "audio_15"
+resistance = 250000.0
+cap = 4.7e-8
+default = 1.0
+
 [harnesses.active.controls.bass]
-name = "Bass Boost"
+name = "Bass Boost/Cut"
 type = "preamp_band"
 band = "bass"
 default = 0.5
 
+[harnesses.active.controls.mid]
+name = "Mid Boost/Cut"
+type = "preamp_band"
+band = "mid"
+default = 0.5
+
 [harnesses.active.controls.treble]
-name = "Treble Boost"
+name = "Treble Boost/Cut"
 type = "preamp_band"
 band = "treble"
 default = 0.5
+
+[harnesses.active.switches.mid_freq]
+name = "Mid Frequency Selector"
+type = "toggle"
+default = "325hz"
+
+[harnesses.active.switches.mid_freq.positions.325hz]
+components = { "preamp.mid.freq_hz" = 325.0 }
+
+[harnesses.active.switches.mid_freq.positions.750hz]
+components = { "preamp.mid.freq_hz" = 750.0 }
 
 # ------------------------------------------------------------------------------
 # 3. NATIVE INSTRUMENT VOICINGS
@@ -182,17 +240,19 @@ controls = { p_vol = 1.0, j_vol = 1.0, tone = 1.0 }
 
 [voicings.neck_active]
 version = 1
-name = "Modern Ceramic Split-Coil (Neck Active)"
-tone_name = "PJ Neck Active"
+name = "American Ultra II Precision Active (Solo P)"
+tone_name = "Precision Active"
 harness = "active"
-controls = { vol = 1.0, blend = 0.0, bass = 0.5, treble = 0.5 }
+controls = { vol = 1.0, blend = 0.0, tone = 1.0, bass = 0.5, mid = 0.5, treble = 0.5 }
+switches = { mid_freq = "325hz" }
 
 [voicings.pair_active]
 version = 1
-name = "Modern Sadowsky Active P/J Pair"
+name = "American Ultra II Active P/J Pair"
 tone_name = "PJ Active"
 harness = "active"
-controls = { vol = 1.0, blend = 0.5, bass = 0.5, treble = 0.5 }
+controls = { vol = 1.0, blend = 0.5, tone = 1.0, bass = 0.5, mid = 0.5, treble = 0.5 }
+switches = { mid_freq = "325hz" }
 
 [voicings.p_warm]
 version = 1
@@ -207,3 +267,4 @@ name = "Vintage 60s Bridge J Growl"
 tone_name = "PJ Bridge Growl"
 harness = "passive"
 controls = { p_vol = 0.0, j_vol = 1.0, tone = 1.0 }
+

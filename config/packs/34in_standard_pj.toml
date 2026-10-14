@@ -117,7 +117,7 @@ Acoustic upright double bass: transforms your electric bass into a woody, resona
 Precision Bass & Tone Shaper Family
 
 17. Precision Active [Neck]
-Modern active ceramic split-coil P-bass tone with 2-band preamp. Punchy, articulate, and wideband with authoritative low-end weight and bright transient clarity—built for modern rock, gospel, and mix cutting authority.
+Fender American Ultra II active split-coil P-bass tone with 18V 3-band active preamp. Punchy, articulate, and wideband with authoritative low-end weight and bright transient clarity—built for modern rock, gospel, and mix cutting authority.
 
 18. Precision Mids [Neck]
 Vintage P-bass with a modern vocal low-mid punch. Cuts finger clatter and high-end sizzle while keeping a muscular, forward presence in a busy mix.
@@ -132,7 +132,7 @@ Ultra-deep vintage '50s dub spec. Pure, earth-shaking sub-bass thump with zero t
 P/J Bass Family
 
 21. PJ Active [Parallel]
-Modern active P/J punch (Sadowsky/Spector style). Combines thick split-coil body with bridge single-coil cut, boosted by a powerful active 2-band EQ.
+Modern active P/J punch (Fender American Ultra II style). Combines Ultra II Noiseless split-coil body with Noiseless bridge single-coil cut, boosted by the 18V 3-band active preamp.
 """
 
 [[bundles]]
@@ -141,7 +141,7 @@ source = "34in_standard_pj:p_warm"
 targets = [
     "30in_gibson_eb0:neck_deep",
     "41in_upright_bass:bridge_piezo",
-    "34in_standard_p:modern_active",
+    "34in_standard_pj:neck_active",
     "34in_standard_p:vintage_mids",
     "34in_standard_p:vintage_warm",
     "34in_standard_p:slab_dub",

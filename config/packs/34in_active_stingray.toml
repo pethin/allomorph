@@ -53,7 +53,7 @@ Precision Bass & Tone Shaper Family
 The gold standard: a vintage 1962 Precision Bass with tone wide open. Warm, woody low-mids, open harmonic bloom, and organic touch sensitivity that sits perfectly in any mix.
 
 02. Precision Active
-Modern active ceramic split-coil P-bass tone with 2-band preamp. Punchy, articulate, and wideband with authoritative low-end weight and bright transient clarity—built for modern rock, gospel, and mix cutting authority.
+Fender American Ultra II active split-coil P-bass tone with 18V 3-band active preamp. Punchy, articulate, and wideband with authoritative low-end weight and bright transient clarity—built for modern rock, gospel, and mix cutting authority.
 
 03. Precision Mids
 Vintage P-bass with a modern vocal low-mid punch. Cuts finger clatter and high-end sizzle while keeping a muscular, forward presence in a busy mix.
@@ -142,7 +142,7 @@ name = "bridge"
 source = "34in_active_stingray:parallel_classic"
 targets = [
     "34in_standard_p:vintage_open",
-    "34in_standard_p:modern_active",
+    "34in_standard_pj:neck_active",
     "34in_standard_p:vintage_mids",
     "34in_standard_p:vintage_warm",
     "34in_standard_p:slab_dub",

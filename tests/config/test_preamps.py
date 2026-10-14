@@ -23,6 +23,7 @@ def test_preamps_catalog_loading():
         "stingray_2band",
         "aguilar_3band",
         "dingwall_active",
+        "fender_ultra2_3band",
     ]
     for pid in expected_presets:
         assert pid in PREAMPS, f"Missing preamp preset '{pid}'"
@@ -117,3 +118,32 @@ def test_get_preamp_edge_cases_and_errors(monkeypatch: pytest.MonkeyPatch) -> No
     assert fallback.id == "flat_buffer"
     assert fallback.name == "Flat Active Buffer"
     assert fallback.input_impedance_meg == 1.0
+
+
+def test_fender_ultra2_3band_configuration():
+    """Verify Fender American Ultra II 3-band preamp catalog model."""
+    assert "fender_ultra2_3band" in PREAMPS
+    pre = PREAMPS["fender_ultra2_3band"]
+    assert pre.name == "Fender American Ultra II 3-Band Active Preamp"
+    assert pre.input_impedance_meg == 1.0
+    assert pre.input_capacitance_pf == 100.0
+    assert pre.output_impedance_ohm == 100.0
+    assert len(pre.bands) == 3
+
+    bass, mid, treble = pre.bands
+    assert bass.id == "bass"
+    assert bass.type == "low_shelf"
+    assert bass.freq_hz == 40.0
+    assert bass.gain_db == 0.0
+
+    assert mid.id == "mid"
+    assert mid.type == "bell"
+    assert mid.freq_hz == 325.0
+    assert mid.gain_db == 0.0
+    assert mid.q == 1.0
+
+    assert treble.id == "treble"
+    assert treble.type == "high_shelf"
+    assert treble.freq_hz == 8000.0
+    assert treble.gain_db == 0.0
+

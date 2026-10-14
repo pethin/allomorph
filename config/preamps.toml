@@ -128,3 +128,25 @@ bands = [
     { type = "high_shelf", freq_hz = 4000.0, gain_db = 2.0 }
 ]
 
+# ------------------------------------------------------------------------------
+# 8. Fender American Ultra II 3-Band Active Preamp
+# ------------------------------------------------------------------------------
+# High-headroom 18V active preamp engineered for the Fender American Ultra II Precision and Jazz basses.
+# Features a wideband low-noise FET input buffer (1.0 MΩ, 100 pF),
+# +/-12 dB @ 40 Hz bass shelf, +/-10 dB switchable midrange bell (325 Hz lower-mids / 750 Hz upper-mids, Q=1.0),
+# and +/-10 dB @ 8.0 kHz treble shelf with transparent detent response.
+[preamps.fender_ultra2_3band]
+id = "fender_ultra2_3band"
+name = "Fender American Ultra II 3-Band Active Preamp"
+description = "Fender 18V 3-band active preamp with 40 Hz bass shelf, 325/750 Hz switchable midrange, and 8.0 kHz treble shelf"
+input_impedance_meg = 1.0
+input_capacitance_pf = 100.0
+output_impedance_ohm = 100.0
+gain_db = 0.0
+bands = [
+    { id = "bass", type = "low_shelf", freq_hz = 40.0, gain_db = 0.0 },
+    { id = "mid", type = "bell", freq_hz = 325.0, gain_db = 0.0, q = 1.0 },
+    { id = "treble", type = "high_shelf", freq_hz = 8000.0, gain_db = 0.0 }
+]
+
+

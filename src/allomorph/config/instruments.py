@@ -161,7 +161,7 @@ STANDARD_CATALOG_TARGETS: list[tuple[str, str]] = [
     ("34in_standard_p", "vintage_open"),
     ("34in_standard_p", "vintage_mids"),
     ("34in_standard_p", "vintage_warm"),
-    ("34in_standard_p", "modern_active"),
+    ("34in_standard_pj", "neck_active"),
     ("34in_standard_p", "slab_dub"),
     ("34in_standard_jazz", "pair_open"),
     ("34in_standard_jazz", "pair_mids"),

@@ -47,7 +47,7 @@
     },
     {
       "filename": "Precision Active [Neck] v7.1.1.wav",
-      "target": "34in_standard_p:modern_active",
+      "target": "34in_standard_pj:neck_active",
       "target_instrument_version": 1,
       "target_voicing_version": 1,
       "version": "v7.1.1",

@@ -73,12 +73,12 @@ This catalog details the physical parameters, equivalent RLC circuit values, aco
 * **Acoustic Character:** Focused harmonic bite centered in the $800\text{ Hz}\text{--}1.6\text{ kHz}$ range with solid, articulate low-end punch. Accentuates fingerstyle definition and classic Jaco growl.
 * **32" Bass Setting:** ABCX Blend **100% Bridge** (MMTWX in Single-Coil Mode - Push/Pull Down).
 
-### 04. `precision_active` (Modern Active Split-Coil Ceramic)
-* **Archetype:** Modern Active Ceramic Split-Coil P with Sadowsky 2-Band Preamp
-* **Coil Model:** Ceramic split-coil ($w = 1.00''$, E/A at $139.0\text{ mm}$, D/G at $111.0\text{ mm}$)
-* **Control Harness:** Active buffer isolating coils ($R_{\text{in}} = 1\text{ M}\Omega$), Sadowsky 2-band boost circuit, $500\text{k}\Omega$ master volume.
-* **Electrical Parameters:** $L = 4.80\text{ H}$, $R_{\text{dc}} = 9.50\text{ k}\Omega$, $R_{\text{eddy}} = 110\text{ k}\Omega$, $C_{\text{coil}} = 80\text{ pF}$, $V_{\text{sat}} = 0.40\text{ V}$. Loaded $f_r = 4.8\text{ kHz}$.
-* **Acoustic Character:** Hi-fi punch and immediate pick attack with transparent low-mids ($300\text{--}800\text{ Hz}$) and extended high-frequency clarity. The active buffer eliminates cable capacitive loading, producing crisp ceramic definition without passive treble roll-off.
+### 04. `precision_active` (Fender American Ultra II Precision Active)
+* **Archetype:** Fender American Ultra II Precision Bass (Active Solo P with 18V 3-Band Preamp)
+* **Coil Model:** Ultra II Noiseless Vintage P split-coil ($w = 1.00''$, E/A at $139.0\text{ mm}$, D/G at $111.0\text{ mm}$, Alnico V stacked hum-cancelling)
+* **Control Harness:** Fender American Ultra II active harness: 250k MN pan pot (P soloed), global 250k passive tone pot with 47nF capacitor loading high-Z pickup before FET input buffer ($R_{\text{in}} = 1\text{ M}\Omega$, $C_{\text{in}} = 100\text{ pF}$, $R_{\text{out}} = 100\,\Omega$), 18V 3-band active EQ with 2-way mini-toggle midrange frequency selector ($325\text{ Hz}$ / $750\text{ Hz}$), 25k audio master volume.
+* **Electrical Parameters:** $L = 4.20\text{ H}$, $R_{\text{dc}} = 11.20\text{ k}\Omega$, $R_{\text{eddy}} = 140\text{ k}\Omega$, $C_{\text{coil}} = 75\text{ pF}$, $V_{\text{sat}} = 0.45\text{ V}$. Preamp provides $\pm 12\text{ dB} @ 40\text{ Hz}$ bass shelf, $\pm 10\text{ dB} @ 325/750\text{ Hz}$ bell, $\pm 10\text{ dB} @ 8\text{ kHz}$ treble shelf (voicing set to center detents / flat). Loaded $f_r = 4.5\text{ kHz}$.
+* **Acoustic Character:** Wide dynamic headroom and studio-grade clarity powered by 18V rails. The Ultra II Noiseless split-coil retains authentic vintage Alnico V woody bloom while the high-input-impedance FET buffer eliminates cable capacitance loss. The global passive tone control allows organic top-end contouring before the active EQ stage.
 * **32" Bass Setting:** ABCX Blend **100% Neck (PX/PCSX)**.
 
 ### 05. `precision_vintage` (Vintage '62 Split-Coil Alnico V - Tone Open)

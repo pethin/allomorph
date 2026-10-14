@@ -355,3 +355,56 @@ def test_load_all_tone_packs():
         for b in bundles.values():
             assert len(b.targets) >= 1
 
+
+def test_ultra2_pj_and_pure_passive_p_configurations():
+    """Verify Fender Ultra II PJ active harness, voicings, and pure passive P bass."""
+    from allomorph.config.instruments import resolve_target_voicing
+
+    # 1. 34in_standard_p is strictly passive
+    inst_p = load_instrument("34in_standard_p")
+    assert "active" not in inst_p.harnesses
+    assert "passive" in inst_p.harnesses
+    assert "modern_active" not in inst_p.voicings
+    assert set(inst_p.voicings.keys()) == {
+        "vintage_open",
+        "vintage_mids",
+        "vintage_warm",
+        "slab_dub",
+    }
+
+    # 2. 34in_standard_pj has Ultra II pickups and active harness
+    inst_pj = load_instrument("34in_standard_pj")
+    assert "ultra2_split_p" in inst_pj.pickups
+    assert "ultra2_bridge_j" in inst_pj.pickups
+    assert "active" in inst_pj.harnesses
+
+    h_active = inst_pj.harnesses["active"]
+    assert h_active.preamp == "fender_ultra2_3band"
+    assert "blend" in h_active.controls
+    assert "tone" in h_active.controls
+    assert "vol" in h_active.controls
+    assert "mid_freq" in h_active.switches
+    assert h_active.switches["mid_freq"].default == "325hz"
+
+    # Active voicings
+    assert "neck_active" in inst_pj.voicings
+    v_neck = inst_pj.voicings["neck_active"]
+    assert v_neck.tone_name == "Precision Active"
+    assert v_neck.controls.get("blend") == 0.0
+
+    assert "pair_active" in inst_pj.voicings
+    v_pair = inst_pj.voicings["pair_active"]
+    assert v_pair.tone_name == "PJ Active"
+    assert v_pair.controls.get("blend") == 0.5
+
+    # 3. Target resolution
+    resolved_inst, resolved_v = resolve_target_voicing("34in_standard_pj:neck_active")
+    assert resolved_inst.id == "34in_standard_pj"
+    assert resolved_v.id == "neck_active"
+    assert resolved_v.tone_name == "Precision Active"
+
+    # 4. Old modern_active cleanly removed (no backward compat)
+    with pytest.raises(KeyError):
+        resolve_target_voicing("34in_standard_p:modern_active")
+
+

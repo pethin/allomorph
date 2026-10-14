@@ -62,15 +62,15 @@ def test_resolve_voice_pickups():
     assert p_jazz[1].fr == 2905.0
     assert p_jazz[1].Q == 0.91
 
-    # 3. Multi-pickup: pj_active
+    # 3. Multi-pickup: pj_active (Ultra II 3-band flat buffer: fr and Q are None)
     p_pj_act = resolve_voice_pickups(VOICES["pj_active"])
     assert len(p_pj_act) == 2
-    assert p_pj_act[0].fr == 6870.0
-    assert p_pj_act[0].Q == 0.64
+    assert p_pj_act[0].fr is None
+    assert p_pj_act[0].Q is None
     assert p_pj_act[0].weight == 0.5
     assert len(p_pj_act[0].coils) == 2  # P-split E/A + D/G
-    assert p_pj_act[1].fr == 7448.2
-    assert p_pj_act[1].Q == 0.68
+    assert p_pj_act[1].fr == 5167.1
+    assert p_pj_act[1].Q == 0.96
     assert p_pj_act[1].weight == 0.5
     assert len(p_pj_act[1].coils) == 1  # J-bridge
 
@@ -97,11 +97,11 @@ def test_resolve_voice_pickups():
     assert p_pmm_act[1].fr == 5566.0
     assert p_pmm_act[1].Q == 1.00
 
-    # 6. Single-pickup voice auto-wrapping: precision_active
+    # 6. Single-pickup voice auto-wrapping: precision_active (Ultra II flat buffer: fr and Q are None)
     p_p = resolve_voice_pickups(VOICES["precision_active"])
     assert len(p_p) == 1
-    assert p_p[0].fr == 6067.7
-    assert p_p[0].Q == 0.80
+    assert p_p[0].fr is None
+    assert p_p[0].Q is None
     assert p_p[0].weight == 1.0
     assert len(p_p[0].coils) == 2
 

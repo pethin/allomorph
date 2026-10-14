@@ -1123,3 +1123,62 @@ def test_catalog_wide_active_voicings_transmission_integrity():
                     f"Active pickup '{p_id}' in {inst_id}:{v_id} experienced abnormal transmission collapse: "
                     f"{max_db:.2f} dB (expected >= -25.0 dB)"
                 )
+
+
+def test_fender_ultra2_mna_simulation():
+    """Verify MNA simulation of the Fender American Ultra II active harness with global tone and mid toggle."""
+    from allomorph.config.instruments import load_instrument
+    from allomorph.config.preamps import PREAMPS
+
+    inst = load_instrument("34in_standard_pj")
+    h_active = inst.harnesses["active"]
+
+    freq_arr = np.asarray(FREQS)
+
+    # 1. neck_active (Solo P, flat detents)
+    v_neck = inst.voicings["neck_active"]
+    curves_neck = solve_mna_harness(inst, h_active, v_neck, freqs=FREQS, preamps=PREAMPS)
+    assert "ultra2_split_p" in curves_neck
+    mag_p = np.abs(curves_neck["ultra2_split_p"])
+    # Passband transmission should be healthy near unity
+    mid_idx = int(np.argmin(np.abs(freq_arr - 500.0)))
+    assert 0.70 < mag_p[mid_idx] < 1.30
+
+    # 2. pair_active (P + J parallel)
+    v_pair = inst.voicings["pair_active"]
+    curves_pair = solve_mna_harness(inst, h_active, v_pair, freqs=FREQS, preamps=PREAMPS)
+    assert "ultra2_split_p" in curves_pair
+    assert "ultra2_bridge_j" in curves_pair
+    mag_p_pair = np.abs(curves_pair["ultra2_split_p"])
+    mag_j_pair = np.abs(curves_pair["ultra2_bridge_j"])
+    assert mag_p_pair[mid_idx] > 0.40
+    assert mag_j_pair[mid_idx] > 0.40
+
+    # 3. Global passive tone rolloff on active harness
+    v_tone_rolled = v_neck.model_copy(deep=True)
+    v_tone_rolled.controls["tone"] = 0.0
+    curves_toned = solve_mna_harness(inst, h_active, v_tone_rolled, freqs=FREQS, preamps=PREAMPS)
+    mag_toned = np.abs(curves_toned["ultra2_split_p"])
+    hf_idx = int(np.argmin(np.abs(freq_arr - 8000.0)))
+    assert mag_toned[hf_idx] < mag_p[hf_idx] * 0.30  # > 10 dB rolloff
+
+    # 4. Dynamic mid_freq switch (325 Hz vs 750 Hz)
+    v_boost_325 = v_neck.model_copy(deep=True)
+    v_boost_325.controls["mid"] = 1.0  # boost mid band
+    v_boost_325.switches["mid_freq"] = "325hz"
+    curves_325 = solve_mna_harness(inst, h_active, v_boost_325, freqs=FREQS, preamps=PREAMPS)
+    mag_325 = np.abs(curves_325["ultra2_split_p"])
+
+    v_boost_750 = v_neck.model_copy(deep=True)
+    v_boost_750.controls["mid"] = 1.0
+    v_boost_750.switches["mid_freq"] = "750hz"
+    curves_750 = solve_mna_harness(inst, h_active, v_boost_750, freqs=FREQS, preamps=PREAMPS)
+    mag_750 = np.abs(curves_750["ultra2_split_p"])
+
+    idx_325 = int(np.argmin(np.abs(freq_arr - 325.0)))
+    idx_750 = int(np.argmin(np.abs(freq_arr - 750.0)))
+    # 325 Hz boost should be higher at 325 Hz than 750 Hz curve
+    assert mag_325[idx_325] > mag_750[idx_325]
+    # 750 Hz boost should be higher at 750 Hz than 325 Hz curve
+    assert mag_750[idx_750] > mag_325[idx_750]
+

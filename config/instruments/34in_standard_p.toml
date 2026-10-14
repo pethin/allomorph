@@ -51,7 +51,7 @@ coils = [
 ]
 
 # ------------------------------------------------------------------------------
-# 2. CONTROL HARNESSES (Multi-Harness: Passive 1V/1T and Active 2-Band Preamp)
+# 2. CONTROL HARNESS (Standard Passive 1V/1T)
 # ------------------------------------------------------------------------------
 
 [harnesses.passive]
@@ -83,40 +83,6 @@ taper = "audio_15"
 resistance = 250000.0
 cap = 4.7e-8
 default = 1.0
-
-[harnesses.active]
-name = "Sadowsky 2-Band Active Preamp"
-type = "active_preamp"
-preamp = "sadowsky_2band"
-load_resistance = 1000000.0
-cable_pf = 30.0
-wiring = [
-    ["pickups.split_p.forward.cold", "pickups.split_p.rearward.hot"],
-    ["pickups.split_p.rearward.cold", "GND"],
-    ["pickups.split_p.forward.hot", "preamp.in"],
-    ["preamp.out", "controls.vol.in"],
-    ["controls.vol.wiper", "out"],
-    ["controls.vol.gnd", "GND"],
-]
-
-[harnesses.active.controls.vol]
-name = "Master Volume"
-type = "pot"
-taper = "audio_15"
-resistance = 25000.0
-default = 1.0
-
-[harnesses.active.controls.bass]
-name = "Bass Boost"
-type = "preamp_band"
-band = "bass"
-default = 0.5
-
-[harnesses.active.controls.treble]
-name = "Treble Boost"
-type = "preamp_band"
-band = "treble"
-default = 0.5
 
 # ------------------------------------------------------------------------------
 # 3. NATIVE INSTRUMENT VOICINGS
@@ -157,9 +123,3 @@ controls = { vol = 1.0, tone = 0.0 }
 components = { "controls.tone.cap" = 1.0e-7 }
 string_preset_override = "flatwound_vintage_heavy"
 
-[voicings.modern_active]
-version = 1
-name = "Modern Sadowsky Active P-Bass"
-tone_name = "Precision Active"
-harness = "active"
-controls = { vol = 1.0, bass = 0.5, treble = 0.5 }
