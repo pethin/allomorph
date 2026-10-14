@@ -12,9 +12,10 @@ from allomorph.config.instruments import (
     load_instrument,
     load_tone_pack,
 )
-from allomorph.dsp import write_wav_24bit
+from allomorph.dsp import read_wav, write_wav_24bit
 from allomorph.pipeline.pack import (
     _sha256_file,
+    check_pack_needs_repacking,
     export_tone_pack,
 )
 
@@ -69,7 +70,6 @@ def test_export_tone_pack_minimal(tmp_path: Path, mini_dry_audio: Path):
         input_wav=mini_dry_audio,
         max_samples=2400,
         catalog_targets=targets,
-        overwrite=True,
     )
 
     assert pack_dir == out_dir
@@ -93,7 +93,7 @@ def test_export_tone_pack_minimal(tmp_path: Path, mini_dry_audio: Path):
 
 
 def test_export_tone_pack_existing_skip_and_repack(tmp_path: Path, mini_dry_audio: Path):
-    """Verify existing pack returns early when overwrite=False, and repacks when overwrite=True."""
+    """Verify existing pack returns early when fresh, and resyncs when a stem is missing."""
     inst = load_instrument("34in_standard_p")
     out_dir = tmp_path / "test_pack_repack"
     targets = [("34in_standard_jazz", "bridge_growl")]
@@ -105,33 +105,32 @@ def test_export_tone_pack_existing_skip_and_repack(tmp_path: Path, mini_dry_audi
         input_wav=mini_dry_audio,
         max_samples=2400,
         catalog_targets=targets,
-        overwrite=False,
     )
     manifest_p = out_dir / "manifest.json"
     mtime1 = manifest_p.stat().st_mtime_ns
 
-    # Call again with overwrite=False -> early return, mtime untouched
+    # Call again when fresh -> early return, mtime untouched
     export_tone_pack(
         instrument=inst,
         output_dir=out_dir,
         input_wav=mini_dry_audio,
         max_samples=2400,
         catalog_targets=targets,
-        overwrite=False,
     )
     mtime2 = manifest_p.stat().st_mtime_ns
     assert mtime1 == mtime2
 
-    # Call with overwrite=True -> forces repack
+    # Invalidate by unlinking a bundle stem -> resyncs automatically
+    stem_wav = next((out_dir / "bundles" / "split").glob("*.wav"))
+    stem_wav.unlink()
     export_tone_pack(
         instrument=inst,
         output_dir=out_dir,
         input_wav=mini_dry_audio,
         max_samples=2400,
         catalog_targets=targets,
-        overwrite=True,
     )
-    assert (out_dir / "manifest.json").exists()
+    assert stem_wav.exists()
 
 
 def test_storefront_description_passive_multi_pickup():
@@ -201,7 +200,6 @@ def test_export_tone_pack_parallel_bundles_and_cached_stems(
         max_samples=None,
         jobs=2,
         catalog_targets=targets,
-        overwrite=True,
     )
 
     assert (pack_dir / "manifest.json").exists()
@@ -230,7 +228,6 @@ def test_train_tone_pack_flat_structure_mocked(
         input_wav=mini_dry_audio,
         max_samples=2400,
         catalog_targets=targets,
-        overwrite=True,
     )
 
     mock_train_calls: list[dict[str, Any]] = []
@@ -388,7 +385,6 @@ def test_train_tone_pack_legacy_removal_and_manifest_population(
         input_wav=mini_dry_audio,
         max_samples=1200,
         catalog_targets=targets,
-        overwrite=True,
     )
 
     # Create a legacy single-tier or invalid model in nam/
@@ -461,7 +457,6 @@ def test_export_tone_pack_artwork_candidates(
             input_wav=mini_dry_audio,
             max_samples=1200,
             catalog_targets=[("34in_standard_jazz", "bridge_growl")],
-            overwrite=True,
             train=True,
         )
         assert (out_d / "manifest.json").exists()
@@ -486,7 +481,6 @@ def test_export_tone_pack_prunes_stale_bundles(tmp_path: Path, mini_dry_audio: P
         input_wav=mini_dry_audio,
         max_samples=1200,
         catalog_targets=targets,
-        overwrite=True,
     )
 
     bundles_dir = out_dir / "bundles"
@@ -508,3 +502,263 @@ def test_export_tone_pack_unconfigured_no_dir_leak(tmp_path: Path, mini_dry_audi
         )
 
     assert not out_dir.exists()
+
+
+def test_pack_copies_newer_stems_by_digest(
+    tmp_path: Path, mini_dry_audio: Path, monkeypatch: pytest.MonkeyPatch
+):
+    """Verify pack sync copies newer stems from audio/wet based strictly on cryptographic digests."""
+    from allomorph.version import (
+        DSP_GENERATION,
+        compute_recipe_token,
+        resolve_tri_part_version,
+        write_manifest,
+    )
+
+    wet_dir = tmp_path / "wet"
+    monkeypatch.setattr("allomorph.pipeline.pack.WET_AUDIO_DIR", wet_dir)
+
+    def _mock_sim_voicing(
+        *args: Any,
+        instrument: Any = None,
+        voicing: Any = None,
+        output_wav: Path | str | None = None,
+        **kwargs: Any,
+    ) -> None:
+        if output_wav is not None:
+            p = Path(output_wav)
+            p.parent.mkdir(parents=True, exist_ok=True)
+            is_dry = (
+                "dry" in p.name
+                or "34in_standard_p" in str(p)
+                or getattr(voicing, "id", str(voicing)) in ("split_vintage",)
+            )
+            val = 0.35 if is_dry else 0.85
+            samples = np.array([0.0, val, -val], dtype=np.float32)
+            write_wav_24bit(p, samples, sample_rate=48000)
+            recipe_tok = compute_recipe_token(
+                instrument=instrument,
+                voicing=voicing,
+                base_dry_path=mini_dry_audio,
+            )
+            v_tag = resolve_tri_part_version(DSP_GENERATION, instrument.version, voicing.version)
+            write_manifest(
+                p.parent,
+                "sim",
+                [p],
+                version_tag=v_tag,
+                base_dry_file=mini_dry_audio.name,
+                recipe_token=recipe_tok,
+            )
+
+    monkeypatch.setattr("allomorph.pipeline.pack.simulate_instrument_voicing", _mock_sim_voicing)
+
+    inst = load_instrument("34in_standard_p")
+    out_dir = tmp_path / "test_digest_sync_pack"
+    targets = [("34in_standard_jazz", "bridge_growl")]
+
+    # 1. Initial export
+    export_tone_pack(
+        instrument=inst,
+        output_dir=out_dir,
+        input_wav=mini_dry_audio,
+        max_samples=None,
+        catalog_targets=targets,
+    )
+
+    # Pack should be fresh
+    assert not check_pack_needs_repacking(
+        inst,
+        output_dir=out_dir,
+        input_wav=mini_dry_audio,
+        catalog_targets=targets,
+    )
+
+    # Find the copied wet stem in bundle
+    bundle_stem = next(
+        p for p in (out_dir / "bundles" / "split").glob("*.wav") if not p.name.startswith("dry")
+    )
+    initial_audio, _ = read_wav(bundle_stem)
+    assert np.allclose(initial_audio, np.array([0.0, 0.85, -0.85], dtype=np.float32))
+
+    # 2. Update master wet stem in wet_dir with new audio (different digest)
+    master_stem = wet_dir / "34in_standard_jazz" / "jazz_bridge_growl.wav"
+    assert master_stem.exists()
+    updated_samples = np.array([0.0, 0.55, -0.55, 0.1], dtype=np.float32)
+    write_wav_24bit(master_stem, updated_samples, sample_rate=48000)
+    tgt_jazz = load_instrument("34in_standard_jazz")
+    tgt_recipe = compute_recipe_token(
+        instrument=tgt_jazz,
+        voicing=tgt_jazz.voicings["bridge_growl"],
+        base_dry_path=mini_dry_audio,
+    )
+    tgt_v_tag = resolve_tri_part_version(
+        DSP_GENERATION, tgt_jazz.version, tgt_jazz.voicings["bridge_growl"].version
+    )
+    write_manifest(
+        master_stem.parent,
+        "sim",
+        [master_stem],
+        version_tag=tgt_v_tag,
+        base_dry_file=mini_dry_audio.name,
+        recipe_token=tgt_recipe,
+    )
+
+    # Pack should now detect digest mismatch and need repacking
+    assert check_pack_needs_repacking(
+        inst,
+        output_dir=out_dir,
+        input_wav=mini_dry_audio,
+        catalog_targets=targets,
+    )
+
+    # 3. Re-export without force
+    export_tone_pack(
+        instrument=inst,
+        output_dir=out_dir,
+        input_wav=mini_dry_audio,
+        max_samples=None,
+        catalog_targets=targets,
+    )
+
+    # Bundle stem should now contain updated audio
+    updated_audio, _ = read_wav(bundle_stem)
+    assert np.allclose(updated_audio, updated_samples)
+    assert not check_pack_needs_repacking(
+        inst,
+        output_dir=out_dir,
+        input_wav=mini_dry_audio,
+        catalog_targets=targets,
+    )
+
+    # 4. Extraneous file pruning test
+    extraneous_wav = out_dir / "bundles" / "split" / "extraneous_stale.wav"
+    write_wav_24bit(extraneous_wav, updated_samples, sample_rate=48000)
+    assert extraneous_wav.exists()
+
+    # Extraneous wav must trigger repacking
+    assert check_pack_needs_repacking(
+        inst,
+        output_dir=out_dir,
+        input_wav=mini_dry_audio,
+        catalog_targets=targets,
+    )
+
+    # Re-export must prune extraneous wav
+    export_tone_pack(
+        instrument=inst,
+        output_dir=out_dir,
+        input_wav=mini_dry_audio,
+        max_samples=None,
+        catalog_targets=targets,
+    )
+    assert not extraneous_wav.exists()
+    assert not check_pack_needs_repacking(
+        inst,
+        output_dir=out_dir,
+        input_wav=mini_dry_audio,
+        catalog_targets=targets,
+    )
+
+
+def test_pack_preserves_nam_tokens_on_digest_mismatch(tmp_path: Path, mini_dry_audio: Path):
+    """Verify export_tone_pack preserves recorded model tokens when stem digests mismatch."""
+    import json
+
+    inst = load_instrument("34in_standard_p")
+    out_dir = tmp_path / "test_model_digest_pack"
+    targets = [("34in_standard_jazz", "bridge_growl")]
+
+    # 1. Initial export
+    export_tone_pack(
+        instrument=inst,
+        output_dir=out_dir,
+        input_wav=mini_dry_audio,
+        max_samples=2400,
+        catalog_targets=targets,
+    )
+
+    # 2. Inject an existing trained model with recorded tokens
+    manifest_p = out_dir / "manifest.json"
+    with open(manifest_p, "r", encoding="utf-8") as f:
+        manifest_data = json.load(f)
+
+    model_key = "test_model.nam"
+    manifest_data["models"] = {
+        model_key: {
+            "filename": model_key,
+            "bundle": "split",
+            "target": "34in_standard_jazz:bridge_growl",
+            "tone_name": "Jazz Bridge Growl",
+            "dry_file": "dry v6.1.1.wav",
+            "wet_file": "old_stem_name.wav",
+            "dry_digest_token": "alo_stem_RECORDED_OLD_DRY",
+            "wet_digest_token": "alo_stem_RECORDED_OLD_WET",
+            "dry_recipe_token": "alo_OLD_DRY_RECIPE",
+            "wet_recipe_token": "alo_rec_OLD_WET_RECIPE",
+            "version": "v1.0.0",
+        }
+    }
+    with open(manifest_p, "w", encoding="utf-8") as f:
+        json.dump(manifest_data, f, indent=2)
+
+    # 3. Invalidate bundle stem to force repacking
+    bundle_stem = next(
+        p for p in (out_dir / "bundles" / "split").glob("*.wav") if not p.name.startswith("dry")
+    )
+    bundle_stem.unlink()
+
+    # Re-export pack
+    export_tone_pack(
+        instrument=inst,
+        output_dir=out_dir,
+        input_wav=mini_dry_audio,
+        max_samples=2400,
+        catalog_targets=targets,
+    )
+
+    # 4. Assert recorded tokens and filenames remain untouched because digests mismatched
+    with open(manifest_p, "r", encoding="utf-8") as f:
+        repacked_manifest = json.load(f)
+
+    entry = repacked_manifest["models"][model_key]
+    assert entry["dry_digest_token"] == "alo_stem_RECORDED_OLD_DRY"
+    assert entry["wet_digest_token"] == "alo_stem_RECORDED_OLD_WET"
+    assert entry["dry_recipe_token"] == "alo_OLD_DRY_RECIPE"
+    assert entry["wet_recipe_token"] == "alo_rec_OLD_WET_RECIPE"
+    assert entry["wet_file"] == "old_stem_name.wav"
+    assert entry["version"] == "v1.0.0"
+
+    # 5. Now update recorded tokens to match current bundle digests
+    b_man_p = out_dir / "bundles" / "split" / "manifest.json"
+    with open(b_man_p, "r", encoding="utf-8") as bf:
+        b_man = json.load(bf)
+
+    matching_stem = next(
+        s for s in b_man["stems"] if s["target"] == "34in_standard_jazz:bridge_growl"
+    )
+    entry["dry_digest_token"] = b_man["dry_digest_token"]
+    entry["wet_digest_token"] = matching_stem["digest_token"]
+    repacked_manifest["models"][model_key] = entry
+    with open(manifest_p, "w", encoding="utf-8") as f:
+        json.dump(repacked_manifest, f, indent=2)
+
+    # Invalidate again to trigger repack
+    bundle_stem.unlink()
+    export_tone_pack(
+        instrument=inst,
+        output_dir=out_dir,
+        input_wav=mini_dry_audio,
+        max_samples=2400,
+        catalog_targets=targets,
+    )
+
+    # 6. Because digests matched, metadata and filenames should be migrated
+    with open(manifest_p, "r", encoding="utf-8") as f:
+        matched_manifest = json.load(f)
+
+    updated_entry = matched_manifest["models"][model_key]
+    assert updated_entry["wet_file"] == matching_stem["filename"]
+    assert updated_entry["wet_recipe_token"] == matching_stem["recipe_token"]
+    assert updated_entry["version"] == matching_stem["version"]
+

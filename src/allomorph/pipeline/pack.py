@@ -97,6 +97,26 @@ def check_pack_needs_repacking(
             existing_pack_data = json.load(mf)
         recorded_pack_token = existing_pack_data.get("recipe_token")
 
+        if existing_pack_data.get("dsp_generation") != DSP_GENERATION:
+            return True
+        if existing_pack_data.get("instrument_version") != inst.version:
+            return True
+        if not (pack_dir / "storefront_description.txt").exists():
+            return True
+
+        artwork_candidates = [
+            ASSETS_DIR / f"allomorph_{inst.id}.jpg",
+            ASSETS_DIR
+            / f"allomorph_{inst.id.replace('34in_', '').replace('30in_', '').replace('32in_', '')}.jpg",
+            ASSETS_DIR / f"{inst.id}.jpg",
+        ]
+        if any(c.exists() for c in artwork_candidates) and not (pack_dir / "artwork.jpg").exists():
+            return True
+
+        existing_bundles = existing_pack_data.get("bundles", {})
+        if set(existing_bundles.keys()) != set(bundles.keys()):
+            return True
+
         expected_bundle_tokens: dict[str, str] = {}
         for b_name, b_bundle in bundles.items():
             b_dir = bundles_dir / b_name
@@ -110,15 +130,21 @@ def check_pack_needs_repacking(
             if not dry_f or not (b_dir / dry_f).exists():
                 return True
 
-            b_dry_digest = b_man.get("dry_digest_token")
-            if not b_dry_digest:
-                b_src_path = WET_AUDIO_DIR / inst.id / f"{b_bundle.source_voicing}.wav"
-                if b_src_path.exists():
-                    b_dry_digest = compute_stem_digest_token(b_src_path)
-                else:
-                    return True
+            b_src_path = WET_AUDIO_DIR / inst.id / f"{b_bundle.source_voicing}.wav"
+            if not b_src_path.exists():
+                return True
+            master_dry_digest = compute_stem_digest_token(b_src_path)
+            if b_man.get("dry_digest_token") != master_dry_digest:
+                return True
 
             b_descs = resolve_bundle_target_file_descriptors(b_bundle, is_multi_pickup)
+
+            # Check for extraneous .wav files in the bundle directory
+            expected_wav_names = {dry_f} | {desc["stem_filename"] for desc in b_descs}
+            actual_wav_names = {p.name for p in b_dir.glob("*.wav")}
+            if actual_wav_names != expected_wav_names:
+                return True
+
             b_stem_toks = []
             stems_by_tgt = {s["target"]: s for s in b_man.get("stems", []) if "target" in s}
             stems_by_tone = {s["tone_name"]: s for s in b_man.get("stems", []) if "tone_name" in s}
@@ -131,19 +157,29 @@ def check_pack_needs_repacking(
                 s_fn = s_info.get("filename", desc["stem_filename"])
                 if not (b_dir / s_fn).exists():
                     return True
-                s_digest = s_info.get("digest_token")
-                if not s_digest:
-                    t_stem_path = WET_AUDIO_DIR / t_ref.instrument_id / f"{desc['target_slug']}.wav"
-                    if t_stem_path.exists():
-                        s_digest = compute_stem_digest_token(t_stem_path)
-                    else:
-                        return True
-                b_stem_toks.append((s_fn, s_digest))
+
+                t_stem_path = WET_AUDIO_DIR / t_ref.instrument_id / f"{desc['target_slug']}.wav"
+                if not t_stem_path.exists():
+                    return True
+
+                master_wet_digest = compute_stem_digest_token(t_stem_path)
+                if s_info.get("digest_token") != master_wet_digest:
+                    return True
+
+                if s_info.get("version") != desc["target_v_tag"]:
+                    return True
+                if s_info.get("filename") != desc["stem_filename"]:
+                    return True
+
+                b_stem_toks.append((desc["stem_filename"], master_wet_digest))
 
             expected_bundle_tokens[b_name] = compute_bundle_recipe_token(
-                dry_digest_token=b_dry_digest,
+                dry_digest_token=master_dry_digest,
                 stem_tokens=b_stem_toks,
             )
+            if b_man.get("recipe_token") != expected_bundle_tokens[b_name]:
+                return True
+
         expected_pack_token = compute_pack_recipe_token(
             inst.id, expected_bundle_tokens, dsp_generation=DSP_GENERATION
         )
@@ -166,7 +202,6 @@ def export_tone_pack(
     catalog_targets: Sequence[tuple[str, str]] | None = None,
     jobs: int | None = None,
     train: bool = False,
-    overwrite: bool = False,
 ) -> Path:
     """
     Exports a complete Tone3000 upload pack for an instrument partitioned into
@@ -181,11 +216,11 @@ def export_tone_pack(
     bundles_dir = pack_dir / "bundles"
     nam_dir = pack_dir / "nam"
 
-    if not overwrite and not check_pack_needs_repacking(
+    if not check_pack_needs_repacking(
         inst, output_dir=pack_dir, input_wav=input_wav, catalog_targets=catalog_targets
     ):
         print(
-            f"\n[Tone Pack Exporter] Tone Pack already exists and is fresh at '{pack_dir}'. Pass overwrite=True (or --force) to force repack."
+            f"\n[Tone Pack Exporter] Tone Pack already exists and is fresh at '{pack_dir}'."
         )
         return pack_dir
 
@@ -296,7 +331,7 @@ def export_tone_pack(
         stem_filenames: list[str] = []
         descriptors = resolve_bundle_target_file_descriptors(bundle, is_multi_pickup)
 
-        temp_stems: list[tuple[dict[str, Any], Path, Path]] = []
+        temp_stems: list[tuple[dict[str, Any], Path, Path, dict[str, Any] | None]] = []
         for desc in descriptors:
             target_ref = desc["target_ref"]
             tone_name = desc["tone_name"]
@@ -364,7 +399,7 @@ def export_tone_pack(
                 "digest_token": target_digest_token,
             }
             bundle_stems.append(s_entry)
-            temp_stems.append((s_entry, stem_path, target_wet_path))
+            temp_stems.append((s_entry, stem_path, target_wet_path, old_s))
 
         # Clean up any extraneous or stale wav files in bundle directory
         needed_wavs = {dry_filename} | set(stem_filenames)
@@ -374,7 +409,11 @@ def export_tone_pack(
 
         # Copy dry file
         if max_samples is None:
-            if not dry_dest.exists():
+            if (
+                not dry_dest.exists()
+                or not existing_b_man
+                or existing_b_man.get("dry_digest_token") != source_digest_token
+            ):
                 shutil.copyfile(source_wet_path, dry_dest)
         else:
             simulate_instrument_voicing(
@@ -387,9 +426,13 @@ def export_tone_pack(
             )
 
         # Copy wet stems
-        for s_dict, s_path, s_wet_p in temp_stems:
+        for s_dict, s_path, s_wet_p, stem_old_s in temp_stems:
             if max_samples is None:
-                if not s_path.exists():
+                if (
+                    not s_path.exists()
+                    or not stem_old_s
+                    or stem_old_s.get("digest_token") != s_dict["digest_token"]
+                ):
                     shutil.copyfile(s_wet_p, s_path)
             else:
                 tgt_desc = next(
@@ -577,18 +620,40 @@ def export_tone_pack(
                     )
                     if lookup_hit:
                         b_info, s_info = lookup_hit
-                        if "filename" in s_info:
-                            entry["wet_file"] = s_info["filename"]
-                        if "dry_file" in b_info:
-                            entry["dry_file"] = b_info["dry_file"]
-                        if "dry_recipe_token" in b_info:
-                            entry["dry_recipe_token"] = b_info["dry_recipe_token"]
-                        if "dry_digest_token" in b_info:
-                            entry["dry_digest_token"] = b_info["dry_digest_token"]
-                        if "recipe_token" in s_info:
-                            entry["wet_recipe_token"] = s_info["recipe_token"]
-                        if "digest_token" in s_info:
-                            entry["wet_digest_token"] = s_info["digest_token"]
+                        m_dry_digest = entry.get("dry_digest_token")
+                        m_wet_digest = entry.get("wet_digest_token")
+                        curr_dry_digest = b_info.get("dry_digest_token")
+                        curr_wet_digest = s_info.get("digest_token")
+
+                        digests_match = (
+                            bool(m_dry_digest)
+                            and bool(m_wet_digest)
+                            and m_dry_digest == curr_dry_digest
+                            and m_wet_digest == curr_wet_digest
+                        )
+
+                        if digests_match:
+                            if "filename" in s_info:
+                                entry["wet_file"] = s_info["filename"]
+                            if "dry_file" in b_info:
+                                entry["dry_file"] = b_info["dry_file"]
+                            if "dry_recipe_token" in b_info:
+                                entry["dry_recipe_token"] = b_info["dry_recipe_token"]
+                            if "recipe_token" in s_info:
+                                entry["wet_recipe_token"] = s_info["recipe_token"]
+                            if "version" in s_info:
+                                entry["version"] = s_info["version"]
+                            if "target_instrument_version" in s_info:
+                                entry["target_instrument_version"] = s_info["target_instrument_version"]
+                            if "target_voicing_version" in s_info:
+                                entry["target_voicing_version"] = s_info["target_voicing_version"]
+
+                        if "target" in s_info and not entry.get("target"):
+                            entry["target"] = s_info["target"]
+                        if "tone_name" in s_info and not entry.get("tone_name"):
+                            entry["tone_name"] = s_info["tone_name"]
+                        if not entry.get("bundle") and b_name:
+                            entry["bundle"] = b_name
                     updated_models[m_name] = entry
                 manifest_entries["models"] = updated_models
         except (json.JSONDecodeError, OSError):
@@ -605,7 +670,6 @@ def export_tone_pack(
     if train:
         train_tone_pack(
             pack=inst,
-            overwrite=overwrite,
         )
 
     return pack_dir
@@ -764,7 +828,7 @@ def train_tone_pack(
         print(
             f"[Tone Pack Trainer] Manifest missing for '{inst.name}' at '{pack_dir}'. Auto-exporting pack..."
         )
-        export_tone_pack(inst, output_dir=pack_dir, overwrite=overwrite)
+        export_tone_pack(inst, output_dir=pack_dir)
 
     with open(manifest_path, "r", encoding="utf-8") as f:
         manifest_data = json.load(f)
@@ -804,7 +868,7 @@ def train_tone_pack(
         print(
             f"[Tone Pack Trainer] Pack bundles missing or incomplete in '{pack_dir}'. Auto-exporting..."
         )
-        export_tone_pack(inst, output_dir=pack_dir, overwrite=True)
+        export_tone_pack(inst, output_dir=pack_dir)
         with open(manifest_path, "r", encoding="utf-8") as f:
             manifest_data = json.load(f)
 

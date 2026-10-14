@@ -18,7 +18,6 @@ def pack(
     output_dir: Path | None = None,
     input_wav: Path | None = None,
     max_samples: int | None = None,
-    force: bool = False,
 ) -> None:
     """Packages Tone3000 upload bundles respecting the '1 Dry + Multiple Wet Stems' constraint."""
     resolved = resolve_targets(targets, default="packs", allow_shorthand=True)
@@ -26,7 +25,7 @@ def pack(
         log_warning("No targets matched for tone packing.")
         return
 
-    log_step("PACK", f"Packaging tone pack(s) for {len(resolved)} target(s) (force={force})...")
+    log_step("PACK", f"Packaging tone pack(s) for {len(resolved)} target(s)...")
 
     # Deduplicate instrument IDs
     target_inst_ids: list[str] = []
@@ -41,12 +40,12 @@ def pack(
         log_step("PACK", f"[{idx}/{len(target_inst_ids)}] Exporting tone pack for '{inst_id}'...")
         try:
             inst = load_instrument(inst_id)
-            if not force and not check_pack_needs_repacking(
+            if not check_pack_needs_repacking(
                 inst, output_dir=output_dir, input_wav=input_wav
             ):
                 log_step(
                     "SKIP",
-                    f"[{idx}/{len(target_inst_ids)}] Pack '{inst_id}' already fresh. Use --force to repack.",
+                    f"[{idx}/{len(target_inst_ids)}] Pack '{inst_id}' already fresh.",
                 )
                 packed_count += 1
                 continue
@@ -56,7 +55,6 @@ def pack(
                 output_dir=output_dir,
                 input_wav=input_wav,
                 max_samples=max_samples,
-                overwrite=force,
             )
             log_info(f"Pack ready at: [bold]{pack_out}[/bold]")
             packed_count += 1

@@ -306,13 +306,16 @@ def test_cli_pack_export(monkeypatch: pytest.MonkeyPatch) -> None:
         calls.append((instrument, kwargs))
         return Path("tone3000/packs/34in_standard_p")
 
-    monkeypatch.setattr("allomorph.cli.pack_cmd.export_tone_pack", _mock_export)
+    def _mock_needs_repack(*args: Any, **kwargs: Any) -> bool:
+        return True
 
-    code = main(["pack", "pack:34in_standard_p", "--force"])
+    monkeypatch.setattr("allomorph.cli.pack_cmd.export_tone_pack", _mock_export)
+    monkeypatch.setattr("allomorph.cli.pack_cmd.check_pack_needs_repacking", _mock_needs_repack)
+
+    code = main(["pack", "pack:34in_standard_p"])
     assert code == 0
     assert len(calls) == 1
     assert calls[0][0].id == "34in_standard_p"
-    assert calls[0][1]["overwrite"] is True
 
 
 def test_cli_audit(monkeypatch: pytest.MonkeyPatch) -> None:
