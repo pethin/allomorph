@@ -23,8 +23,8 @@ This catalog details the physical parameters, equivalent RLC circuit values, aco
 | **09** | `stingray_parallel` | MM Humbucker Active | Active 2-Band | Music Man 2-Band Preamp ($R_{\text{in}}=1\text{M}\Omega, R_{\text{out}}=100\,\Omega$) | $1.20\text{ H}$ (isolated) | $2.20\text{ k}\Omega$ | $8.5\text{ kHz}$ | Dual-coil parallel humbucker with authentic active MM preamp buffer isolating coils from cable loading; comb notch at $2.5\text{ kHz}$ and clank peak at $8.5\text{ kHz}$. |
 | **09b**| `stingray_series` | MM Series Humbucker Active | Active 2-Band | Music Man 2-Band Preamp ($R_{\text{in}}=1\text{M}\Omega, R_{\text{out}}=100\,\Omega$) | $4.80\text{ H}$ (isolated) | $8.80\text{ k}\Omega$ | $4.1\text{ kHz}$ | Dual-coil series humbucker with active 2-band buffer; physical $4:1$ impedance scaling ($L_{\text{ser}}=4 L_{\text{par}}$), $+5.6\text{ dB}$ open-circuit EMF surge, and focused $4.1\text{ kHz}$ active series resonance (StingRay 5 / Sterling series switch). |
 | **10** | `rickenbacker_clank` | 4003 Bridge HPF | Series HPF | Factory Rickenbacker $330\text{k}\Omega$ Vol, $330\text{k}\Omega$ Tone, $4.7\text{nF}$ Series HPF | $3.80\text{ H}$ | $8.40\text{ k}\Omega$ | $2.2\text{ kHz}$ | High-output single-coil with vintage $4.7\text{ nF}$ series HPF; removes low-end mud below $150\text{ Hz}$, delivering aggressive pick grit and clang. |
-| **11** | `p_mm_parallel` | Modern Active P/MM | Active Buffer | Studio Active Buffer ($R_{\text{in}}=1\text{M}\Omega, R_{\text{out}}=100\,\Omega$) | $0.96\text{ H}$ (isolated) | $1.79\text{ k}\Omega$ | $3.4\text{ kHz}$ | Authentic active parallel P/MM (Sandberg California VM / Lakland 44-02); Split-P neck and MM parallel bridge into high-Z buffer with zero cable drag; articulate punch and modern slap growl. |
-| **11b**| `p_mm_series` | Modern Active P/MM (Series)| Active Buffer | Studio Active Buffer ($R_{\text{in}}=1\text{M}\Omega, R_{\text{out}}=100\,\Omega$) | $8.40\text{ H}$ (isolated) | $16.90\text{ k}\Omega$ | $3.2\text{ kHz}$ | Split P and MM parallel humbucker wired in series before active buffer; $+5.8\text{ dB}$ inductive boost with punchy authority and zero cable drag. |
+| **11** | `p_mm_parallel` | Modern Active P/MM | Active 3-Band | Lakland LH-3 Preamp ($R_{\text{in}}=1\text{M}\Omega, C_{\text{in}}=470\text{pF}, R_{\text{out}}=100\,\Omega$) | $1.44\text{ H}$ (bridge) | $2.20\text{ k}\Omega$ | $5.5\text{ kHz}$ | Authentic Lakland 44-02 / Sandberg California VM active P/MM; Split-P neck and MM bridge in parallel mode into LH-3 3-band preamp; articulate punch and modern slap growl. |
+| **11b**| `p_mm_series` | Modern Active P/MM (Series)| Active 3-Band | Lakland LH-3 Preamp ($R_{\text{in}}=1\text{M}\Omega, C_{\text{in}}=470\text{pF}, R_{\text{out}}=100\,\Omega$) | $5.76\text{ H}$ (bridge) | $8.80\text{ k}\Omega$ | $4.1\text{ kHz}$ | Lakland 44-02 / Sandberg VM bridge humbucker switched to series coils into LH-3 3-band preamp; hot mid-forward humbucker bite and muscular authority. |
 | **12** | `mudbucker_deep` | Overwound Series| Ultra Series | Gibson $500\text{k}\Omega$ Vol, $500\text{k}\Omega$ Tone, $22\text{nF}$ Cap | $14.40\text{ H}$| $27.90\text{ k}\Omega$ | $1.2\text{ kHz}$ | Extreme dual-coil series network; subterranean low-end focus, steep natural top-end rolloff. |
 | **13** | `dingwall_bridge` | Multi-Scale MM | Angled Parallel | Dingwall Active Onboard Buffer ($1\text{ M}\Omega \parallel 25\text{ pF}$, low-Z out) | $2.30\text{ H}$ (isolated)| $4.40\text{ k}\Omega$ | $7.3\text{ kHz}$ | 34"-37" fanned-fret bridge position ($48.0\text{ mm}$) with high-tension wave speeds and active buffered FD3n neodymium reverse split-P sparkle. |
 | **14** | `upright_piezo` | Upright Bridge Piezo | Transducer | High-Z Piezo Buffer ($R_{\text{in}}=100\text{ M}\Omega$) | $0.00\text{ H}$ | $100.0\text{ M}\Omega$ | Woody Acoustic | Authentic double bass bridge-wing piezo sensor; captures bridge rocking resonance, Spirocore string damping, and pizzicato attack bite. |
@@ -160,23 +160,23 @@ This catalog details the physical parameters, equivalent RLC circuit values, aco
 * **32" Bass Setting:** ABCX Blend **100% Bridge** (MMTWX in Single-Coil Mode - Push/Pull Down).
 
 ### 11. `p_mm_parallel` (Modern Active P/MM Bass)
-* **Archetype:** Sandberg California VM4/VM5 / Lakland 44-02 Style Active Parallel P/MM
-* **Pickup Architecture:** Dual parallel pickups:
-  * **Precision Neck:** Split-coil Bartolini 8CBP ($L = 4.80\text{ H}, R_{\text{dc}} = 9.50\text{ k}\Omega$)
-  * **Music Man Bridge:** Dual-coil parallel humbucker ($L = 1.20\text{ H}, R_{\text{dc}} = 2.20\text{ k}\Omega$)
-* **Control Harness:** Onboard active buffer stage ($R_{\text{in}} = 1\text{ M}\Omega, C_{\text{in}} = 25\text{ pF}$, low-Z output driver $R_{\text{out}} = 100\,\Omega$).
-* **Electrical Parameters:** Active parallel summation: $L_{\text{par}} = 0.96\text{ H}$, $R_{\text{dc,par}} = 1.79\text{ k}\Omega$. Loaded $f_r = 3.4\text{ kHz}$.
-* **Acoustic Character:** Zero cable capacitive loss on the coils. Delivers woody Split-P low-end authority combined with the laser-focused attack, wideband punch, and metallic growl of the Music Man sweet spot. The quintessential modern active slap and fingerstyle tone.
+* **Archetype:** Lakland 44-02 / Sandberg California VM4 Style Active P/MM (Parallel Bridge Mode)
+* **Pickup Architecture:** Dual pickups with Bridge MM in Parallel:
+  * **Precision Neck:** Split-coil Alnico V ($L = 4.80\text{ H}, R_{\text{dc}} = 9.50\text{ k}\Omega$) @ $125.0\text{ mm}$
+  * **Music Man Bridge:** Dual-coil parallel humbucker ($L = 1.44\text{ H}, R_{\text{dc}} = 2.20\text{ k}\Omega$) @ $66.0\text{ mm}$
+* **Control Harness:** Lakland LH-3 Active 3-Band Preamp ($R_{\text{in}} = 1\text{ M}\Omega, C_{\text{in}} = 470\text{ pF}$, sweet-spot active contour with $+1.5\text{ dB}$ @ $50\text{ Hz}$ bass, $+1.0\text{ dB}$ @ $600\text{ Hz}$ mid, $+2.0\text{ dB}$ @ $7\text{ kHz}$ treble).
+* **Electrical Parameters:** Loaded resonant peak $f_r = 5.5\text{ kHz}$ ($Q = 0.99$).
+* **Acoustic Character:** Woody Split-P low-end body combined with the laser-focused attack, scooped mid-bark, and sparkling slap snap of the Music Man sweet spot. The quintessential modern session active slap and fingerstyle tone.
 * **32" Bass Setting:** ABCX Blend at **Center Detent (50/50)** (MMTWX in Dual-Coil Mode - Push/Pull Up).
 
 ### 11b. `p_mm_series` (Modern Active P/MM Bass - Series)
-* **Archetype:** Modern Active P/MM in Series Mode (Lakland 44-02 / Sandberg California VM Series Switch)
-* **Pickup Architecture:** Dual series pickups:
-  * **Precision Neck:** Split-coil Bartolini 8CBP ($L = 4.80\text{ H}, R_{\text{dc}} = 9.50\text{ k}\Omega$)
-  * **Music Man Bridge:** Dual-coil parallel humbucker ($L = 3.60\text{ H}, R_{\text{dc}} = 7.40\text{ k}\Omega$)
-* **Control Harness:** Onboard active buffer stage ($R_{\text{in}} = 1\text{ M}\Omega, C_{\text{in}} = 25\text{ pF}$, low-Z output driver $R_{\text{out}} = 100\,\Omega$).
-* **Electrical Parameters:** Active series summation: $L_{\text{ser}} = 8.40\text{ H}$, $R_{\text{dc}} = 16.90\text{ k}\Omega$. Buffered $f_r \approx 3.2\text{ kHz}$.
-* **Acoustic Character:** Series wiring before active buffer delivers massive $+5.8\text{ dB}$ signal surge with commanding low-mid authority while preserving crisp transient attack through zero cable loading.
+* **Archetype:** Lakland 44-02 / Sandberg California VM4 Style Active P/MM (Series Bridge Mode)
+* **Pickup Architecture:** Dual pickups with Bridge MM in Series:
+  * **Precision Neck:** Split-coil Alnico V ($L = 4.80\text{ H}, R_{\text{dc}} = 9.50\text{ k}\Omega$) @ $125.0\text{ mm}$
+  * **Music Man Bridge:** Dual-coil series humbucker ($L = 5.76\text{ H}, R_{\text{dc}} = 8.80\text{ k}\Omega$) @ $66.0\text{ mm}$
+* **Control Harness:** Lakland LH-3 Active 3-Band Preamp ($R_{\text{in}} = 1\text{ M}\Omega, C_{\text{in}} = 470\text{ pF}$, sweet-spot active contour with $+1.5\text{ dB}$ @ $50\text{ Hz}$ bass, $+1.0\text{ dB}$ @ $600\text{ Hz}$ mid, $+2.0\text{ dB}$ @ $7\text{ kHz}$ treble).
+* **Electrical Parameters:** Loaded resonant peak $f_r = 4.1\text{ kHz}$ ($Q = 1.22$).
+* **Acoustic Character:** Flipping the bridge coil mode switch to series delivers a muscular mid-forward punch with $+2.2\text{ dB}$ in the 2–4 kHz range and a focused top end, providing massive rock authority in dense mixes.
 * **32" Bass Setting:** ABCX Blend at **Center Detent (50/50)** (MMTWX in Dual-Coil Mode - Push/Pull Up).
 
 ### 12. `mudbucker_deep` (Ultra-High Inductance Overwound Series)

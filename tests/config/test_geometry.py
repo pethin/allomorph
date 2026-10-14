@@ -85,16 +85,17 @@ def test_resolve_voice_pickups():
     # 5. Multi-pickup: p_mm_series & p_mm_parallel
     p_pmm = resolve_voice_pickups(VOICES["p_mm_series"])
     assert len(p_pmm) == 2
-    assert p_pmm[0].fr is None
-    assert p_pmm[1].fr == 5408.7
-    assert p_pmm[1].Q == 0.99
+    assert p_pmm[0].fr == 4008.8
+    assert p_pmm[0].Q == 1.18
+    assert p_pmm[1].fr == 4079.9
+    assert p_pmm[1].Q == 1.24
 
     p_pmm_act = resolve_voice_pickups(VOICES["p_mm_parallel"])
     assert len(p_pmm_act) == 2
-    assert p_pmm_act[0].fr == 6520.0
-    assert p_pmm_act[0].Q == 0.89
-    assert p_pmm_act[1].fr == 7648.3
-    assert p_pmm_act[1].Q == 1.13
+    assert p_pmm_act[0].fr == 5387.4
+    assert p_pmm_act[0].Q == 0.91
+    assert p_pmm_act[1].fr == 5566.0
+    assert p_pmm_act[1].Q == 1.00
 
     # 6. Single-pickup voice auto-wrapping: precision_active
     p_p = resolve_voice_pickups(VOICES["precision_active"])

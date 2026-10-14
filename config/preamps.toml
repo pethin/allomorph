@@ -90,3 +90,41 @@ bands = [
     { type = "bell", freq_hz = 2800.0, gain_db = 0.0, q = 1.0 }
 ]
 
+# ------------------------------------------------------------------------------
+# 6. Lakland LH-3 Active 3-Band Preamp
+# ------------------------------------------------------------------------------
+# Iconic modern active preamp found in Lakland 44-02 and 55-02 session basses.
+# Features a wideband low-noise input buffer loaded with 470 pF RF bypass capacitance,
+# +1.5 dB @ 50 Hz bass shelf, +1.0 dB @ 600 Hz vocal midrange bell, and +2.0 dB @ 7.0 kHz treble sparkle.
+[preamps.lakland_lh3]
+id = "lakland_lh3"
+name = "Lakland LH-3 Active 3-Band Preamp"
+description = "Lakland 3-band active preamp with 50 Hz bass, 600 Hz mid contour, and 7 kHz treble sparkle"
+input_impedance_meg = 1.0
+input_capacitance_pf = 470.0
+output_impedance_ohm = 100.0
+gain_db = 0.0
+bands = [
+    { type = "low_shelf", freq_hz = 50.0, gain_db = 1.5 },
+    { type = "bell", freq_hz = 600.0, gain_db = 1.0, q = 1.0 },
+    { type = "high_shelf", freq_hz = 7000.0, gain_db = 2.0 }
+]
+
+# ------------------------------------------------------------------------------
+# 7. Glockenklang 2-Band Active Preamp (Sandberg California)
+# ------------------------------------------------------------------------------
+# High-headroom German active preamp engineered by Glockenklang for Sandberg California basses.
+# Features a transparent high-Z input buffer (470 pF), +2.0 dB @ 40 Hz sub-bass shelf, and +2.0 dB @ 4.0 kHz treble bite.
+[preamps.glockenklang_2band]
+id = "glockenklang_2band"
+name = "Glockenklang 2-Band Active Preamp"
+description = "Glockenklang 2-band active preamp with 40 Hz sub-bass and 4.0 kHz treble bite"
+input_impedance_meg = 1.0
+input_capacitance_pf = 470.0
+output_impedance_ohm = 100.0
+gain_db = 0.0
+bands = [
+    { type = "low_shelf", freq_hz = 40.0, gain_db = 2.0 },
+    { type = "high_shelf", freq_hz = 4000.0, gain_db = 2.0 }
+]
+

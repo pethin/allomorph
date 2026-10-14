@@ -13,8 +13,9 @@
 #       - Rearward bridge coil: 54.9mm from bridge (376.9mm from 12th fret) (coil spacing 0.875" / 22.225mm)
 #       - Aperture width: 1.25" (31.75mm) dual-coil housing
 # Electronics:
-#   - Active high-impedance buffer stage (Rin = 1.0 MOhm, Cin = 25 pF, low-Z Rout = 100 Ohm)
-#     isolating high-impedance coils from cable capacitance drag.
+#   - Lakland LH-3 Active 3-Band Preamp (Rin = 1.0 MOhm, Cin = 470 pF, low-Z Rout = 100 Ohm)
+#     with 50 Hz bass, 600 Hz mid, and 7 kHz treble active sweet-spot contour.
+#   - 3-Way Bridge MM Coil Mode Switch (Parallel / Series / Rear Single Coil) + 250k MN Blend.
 
 id = "34in_active_pmm"
 name = "34\" Modern Active P/MM Bass"
@@ -52,27 +53,27 @@ coils = [
 ]
 
 [pickups.mm]
-name = "Music Man Dual-Coil Parallel (Bridge)"
+name = "Music Man Dual-Coil Humbucker (Bridge)"
 position_name = "Bridge"
 position_from_bridge_m = 0.0660
 aperture_width_in = 1.25
 coil_spacing_in = 0.875
-type = "dual_coil_parallel"
+type = "dual_coil"
 magnet_type = "alnico_v"
 coils = [
-    { id = "forward", strings = ["all"], position_from_bridge_m = 0.0771, aperture_width_in = 0.45, pole_type = "rod", L = 7.2, Rdc = 14800.0, Reddy = 250000.0, Ccoil = 5.5e-11, weight = 0.5 },
-    { id = "rearward", strings = ["all"], position_from_bridge_m = 0.0549, aperture_width_in = 0.45, pole_type = "rod", L = 7.2, Rdc = 14800.0, Reddy = 250000.0, Ccoil = 5.5e-11, weight = 0.5 },
+    { id = "forward", strings = ["all"], position_from_bridge_m = 0.0771, aperture_width_in = 0.45, pole_type = "rod", L = 2.4, Rdc = 4400.0, Reddy = 75000.0, Ccoil = 1.8e-10, weight = 0.5 },
+    { id = "rearward", strings = ["all"], position_from_bridge_m = 0.0549, aperture_width_in = 0.45, pole_type = "rod", L = 2.4, Rdc = 4400.0, Reddy = 75000.0, Ccoil = 1.8e-10, weight = 0.5 },
 ]
 
 # ------------------------------------------------------------------------------
-# 2. CONTROL HARNESS (Active P/MM Buffer & Blend Harness with Series/Parallel Switch)
+# 2. CONTROL HARNESS (Active P/MM Blend Harness with Lakland LH-3 Preamp)
 # ------------------------------------------------------------------------------
 
 [harnesses.active]
-name = "Active P/MM Buffer & Blend Harness"
+name = "Active P/MM Blend Harness with Lakland LH-3 Preamp"
 type = "active_preamp"
-preamp = "flat_buffer"
-preamp_gain = 1.5
+preamp = "lakland_lh3"
+preamp_gain = 1.0
 load_resistance = 1000000.0
 cable_pf = 30.0
 
@@ -102,12 +103,12 @@ taper = "audio_15"
 resistance = 25000.0
 default = 1.0
 
-[harnesses.active.switches.routing]
-name = "P/MM Summing Routing"
+[harnesses.active.switches.coil_mode]
+name = "Bridge MM Coil Mode Switch"
 type = "toggle"
 default = "parallel"
 
-[harnesses.active.switches.routing.positions.parallel]
+[harnesses.active.switches.coil_mode.positions.parallel]
 connect = [
     ["pickups.split_p.forward.hot", "controls.blend.neck_in"],
     ["pickups.mm.forward.cold", "GND"],
@@ -115,14 +116,25 @@ connect = [
     ["pickups.mm.forward.hot", "controls.blend.bridge_in"],
     ["pickups.mm.rearward.hot", "controls.blend.bridge_in"],
 ]
+k_mutual = 0.20
 
-[harnesses.active.switches.routing.positions.series]
+[harnesses.active.switches.coil_mode.positions.series]
 connect = [
-    ["pickups.split_p.forward.hot", "pickups.mm.forward.cold"],
-    ["pickups.split_p.forward.hot", "pickups.mm.rearward.cold"],
-    ["pickups.mm.forward.hot", "controls.blend.neck_in"],
-    ["pickups.mm.rearward.hot", "controls.blend.neck_in"],
+    ["pickups.split_p.forward.hot", "controls.blend.neck_in"],
+    ["pickups.mm.forward.hot", "controls.blend.bridge_in"],
+    ["pickups.mm.forward.cold", "pickups.mm.rearward.hot"],
+    ["pickups.mm.rearward.cold", "GND"],
 ]
+k_mutual = 0.20
+
+[harnesses.active.switches.coil_mode.positions.single]
+connect = [
+    ["pickups.split_p.forward.hot", "controls.blend.neck_in"],
+    ["pickups.mm.rearward.hot", "controls.blend.bridge_in"],
+    ["pickups.mm.rearward.cold", "GND"],
+    ["pickups.mm.forward.cold", "GND"],
+]
+k_mutual = 0.0
 
 # ------------------------------------------------------------------------------
 # 3. NATIVE INSTRUMENT VOICINGS
@@ -133,15 +145,23 @@ version = 1
 name = "Modern Active P/MM Bass (Parallel)"
 tone_name = "P∕MM Parallel"
 harness = "active"
-switches = { routing = "parallel" }
+switches = { coil_mode = "parallel" }
 controls = { vol = 1.0, blend = 0.5 }
 
 [voicings.pmm_series]
 version = 1
-name = "P/MM Hybrid Series Bass"
+name = "Modern Active P/MM Bass (Series)"
 tone_name = "P∕MM Series"
 harness = "active"
-switches = { routing = "series" }
+switches = { coil_mode = "series" }
+controls = { vol = 1.0, blend = 0.5 }
+
+[voicings.pmm_single]
+version = 1
+name = "Modern Active P/MM Bass (P/J Single)"
+tone_name = "P∕MM Single"
+harness = "active"
+switches = { coil_mode = "single" }
 controls = { vol = 1.0, blend = 0.5 }
 
 [voicings.p_solo]
@@ -149,7 +169,7 @@ version = 1
 name = "Solo Active Split-P Neck"
 tone_name = "P∕MM P Solo"
 harness = "active"
-switches = { routing = "parallel" }
+switches = { coil_mode = "parallel" }
 controls = { vol = 1.0, blend = 0.0 }
 
 [voicings.mm_solo]
@@ -157,5 +177,21 @@ version = 1
 name = "Solo MM Bridge Parallel Humbucker"
 tone_name = "P∕MM Bridge"
 harness = "active"
-switches = { routing = "parallel" }
+switches = { coil_mode = "parallel" }
+controls = { vol = 1.0, blend = 1.0 }
+
+[voicings.mm_series_solo]
+version = 1
+name = "Solo MM Bridge Series Humbucker"
+tone_name = "P∕MM Bridge Series"
+harness = "active"
+switches = { coil_mode = "series" }
+controls = { vol = 1.0, blend = 1.0 }
+
+[voicings.mm_single_solo]
+version = 1
+name = "Solo MM Bridge Rear Single Coil"
+tone_name = "P∕MM Bridge Single"
+harness = "active"
+switches = { coil_mode = "single" }
 controls = { vol = 1.0, blend = 1.0 }

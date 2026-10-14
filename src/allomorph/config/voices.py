@@ -235,6 +235,12 @@ def voicing_to_voice_config(
     )
     if voicing.sensor_type == "direct":
         fr, Q = None, None
+    elif len(active_pickup_keys) >= 2 and any(k in curves_dict for k in active_pickup_keys):
+        active_curves = [curves_dict[k] for k in active_pickup_keys if k in curves_dict]
+        compound_curve: np.ndarray = np.sum(active_curves, axis=0)
+        fr, Q = determine_pickup_resonance_and_q(compound_curve, FREQS)
+        if fr is None and primary_key_val in curves_dict:
+            fr, Q = determine_pickup_resonance_and_q(curves_dict[primary_key_val], FREQS)
     elif primary_key_val in curves_dict:
         fr, Q = determine_pickup_resonance_and_q(curves_dict[primary_key_val], FREQS)
     else:
