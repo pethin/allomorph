@@ -35,7 +35,8 @@ In physical multi-pickup bass systems (e.g. Jazz Bass neck + bridge, PJ, P/MM, D
 │      Steinmetz loss, back-EMF, 2f0 orbit, slew limit)  │
 │    • Exact 1/m polyphase decimation with C^inf mask    │
 │    • Block 2: Active pickup internal op-amp dynamics   │
-│      (x_series 2.40V vs classic 0.50V)                 │
+│      (x_series 2.40V vs classic 0.50V) with order-8    │
+│      branchless fsqrt rail limiter                     │
 │    • Bit-exact linear bypass for small signals <= 0.10 │
 └────────────────────────────────────────────────────────┘
           │ (Saturated branch signals)
@@ -54,7 +55,6 @@ In physical multi-pickup bass systems (e.g. Jazz Bass neck + bridge, PJ, P/MM, D
 │    • Active onboard preamp EQ (flat DC H(0) >= 1.0)    │
 │    • Viscoelastic string wrap damping (H_wrap)         │
 │    • Sub-audible 8.0 Hz DC-blocking filter             │
-│    • Order-8 branchless fsqrt rail limiter (0.985)     │
 │    • -108 dBFS RLC-shaped Johnson thermal noise dither │
 └────────────────────────────────────────────────────────┘
           │
@@ -100,9 +100,9 @@ Directly saturating raw pickup velocity signals generates unnatural intermodulat
 ### 3.2 Multi-Rate Anti-Aliasing Oversampling (2x / 4x) & Exact $1/m$ Decimation
 Non-linear polynomial and rational mappings generate upper harmonics. To prevent digital alias foldback:
 1. **Zero-Padded FFT Upsampling:** Signals are upsampled to $96\text{ kHz}$ ($2\times$) or $192\text{ kHz}$ ($4\times$).
-2. **$C^\infty$ Real-Analytic Decimation Mask:** Before downsampling back to $48\text{ kHz}$, ultrasonic content across $[18\text{ kHz}, 24\text{ kHz}]$ is attenuated via the canonical real-analytic mollifier (`cinf_smoothstep`):
-   $$M_{\text{aa}}(f) = 1.0 - S_\infty\left(\frac{f - 18000\text{ Hz}}{6000\text{ Hz}}\right)$$
-   Because all derivatives of $S_\infty$ vanish identically at $18\text{ kHz}$ and Nyquist ($24\text{ kHz}$), algebraic $O(1/n^2)$ boundary truncation leakage is eliminated ($>100\text{ dB}$ alias rejection with zero time-domain pre-ringing).
+2. **$C^\infty$ Real-Analytic Decimation Mask:** Before downsampling back to $48\text{ kHz}$, ultrasonic content across $[22\text{ kHz}, 24\text{ kHz}]$ is attenuated via the canonical real-analytic mollifier (`cinf_smoothstep`):
+   $$M_{\text{aa}}(f) = 1.0 - S_\infty\left(\frac{f - 22000\text{ Hz}}{2000\text{ Hz}}\right)$$
+   Because all derivatives of $S_\infty$ vanish identically at $22\text{ kHz}$ and Nyquist ($24\text{ kHz}$), the audible passband through $20\text{ kHz}$ remains $100\%$ flat while algebraic $O(1/n^2)$ boundary truncation leakage is eliminated ($>100\text{ dB}$ alias rejection with zero time-domain pre-ringing).
 3. **Exact $1/m$ Polyphase Decimation Scaling:** Inverse real FFT decimation normalizes by the oversampling factor (`out = np.fft.irfft(Y_down, n_sig) / float(m)`), guaranteeing $0.00\text{ dB}$ gain parity across `oversample = 1, 2, 4`.
 
 ---

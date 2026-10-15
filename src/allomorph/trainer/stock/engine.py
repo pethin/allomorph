@@ -290,48 +290,29 @@ def train_voice_stock(
         src_vcfg = None
 
     if src_vcfg is not None:
-        src_coils = resolve_voicing_electroacoustics(inst_cfg, src_vcfg).coils
-        src_eff_pos_m = compute_effective_position(src_coils) if src_coils else 0.0
-        src_eff_pos_mm = src_eff_pos_m * 1000.0
+        src_ea = resolve_voicing_electroacoustics(inst_cfg, src_vcfg)
+        src_coils = src_ea.coils
+        src_eff_pos_m = round(compute_effective_position(src_coils), 4) if src_coils else 0.0
         src_voicing_name = src_vcfg.name
-        src_tone_name = src_vcfg.tone_name
-        src_harness = src_vcfg.harness
-        src_controls: dict[str, float] = dict(src_vcfg.controls)
-        src_switches: dict[str, str] = dict(src_vcfg.switches)
-        src_aperture = src_coils[0].aperture_width_in if src_coils else 0.75
-        src_coil_spacing = (
-            abs(src_coils[1].position_from_bridge_m - src_coils[0].position_from_bridge_m) / 0.0254
-            if len(src_coils) >= 2
-            else 0.0
+        src_voicing_meta = NamSourceVoicingMeta(
+            id=src_voicing_id,
+            name=src_voicing_name,
+            tone_name=src_vcfg.tone_name,
+            sensor_type=src_vcfg.sensor_type,
+            magnet_type=src_ea.magnet_type,
+            resonant_frequency_hz=src_ea.fr,
+            q_factor=src_ea.q,
+            effective_position_m=src_eff_pos_m,
+            alpha=round(float(src_ea.alpha), 3),
+            vsat=round(float(src_ea.vsat), 3),
         )
-        src_type = "dual_coil" if len(src_coils) >= 2 else "single_coil"
     else:
         src_eff_pos_m = 0.0
-        src_eff_pos_mm = 0.0
         src_voicing_name = "Default Voicing"
-        src_tone_name = None
-        src_harness = ""
-        src_controls = {}
-        src_switches = {}
-        src_aperture = 0.75
-        src_coil_spacing = 0.0
-        src_type = "single_coil"
-
-    src_voicing_meta = NamSourceVoicingMeta(
-        id=src_voicing_id,
-        name=src_voicing_name,
-        tone_name=src_tone_name,
-        harness=src_harness,
-        position_from_bridge_m=src_eff_pos_m,
-        position_from_bridge_mm=src_eff_pos_mm,
-        effective_position_m=src_eff_pos_m,
-        effective_position_mm=src_eff_pos_mm,
-        aperture_width_in=src_aperture,
-        coil_spacing_in=src_coil_spacing,
-        type=src_type,
-        controls=src_controls,
-        switches=src_switches,
-    )
+        src_voicing_meta = NamSourceVoicingMeta(
+            id=src_voicing_id,
+            name=src_voicing_name,
+        )
 
     models_path = Path(models_dir)
     if models_path.name == "nam" or (
@@ -468,7 +449,7 @@ def train_voice_stock(
     print("\n========================================")
     print("  ALLOMORPH NAM LOCAL A2 TRAINER (Stock Lightning)")
     print(f'  Source Bass: {inst_name} ({inst_id}, {scale_length_in}")')
-    print(f"  Source Voicing: {src_voicing_name} (pos={src_eff_pos_mm:.1f}mm)")
+    print(f"  Source Voicing: {src_voicing_name} (pos={src_eff_pos_m * 1000.0:.1f}mm)")
     print(f"  Target Voice:{voice} ({voice_name})")
     arch_display = "Architecture 2 Slimmable (channels_3 + channels_8)"
     print(f"  Model Tier:  {arch_display}")
@@ -574,8 +555,7 @@ def train_voice_stock(
 
     tgt_ea = resolve_voicing_electroacoustics(tgt_inst, tgt_v)
     target_coils = tgt_ea.coils
-    target_eff_pos_m = compute_effective_position(target_coils) if target_coils else 0.0
-    target_eff_pos_mm = target_eff_pos_m * 1000.0
+    target_eff_pos_m = round(compute_effective_position(target_coils), 4) if target_coils else 0.0
 
     print("\nExporting Architecture 2 (.nam) model container with full instrument metadata...")
     nam_meta = NamExportMetadata(
@@ -602,12 +582,13 @@ def train_voice_stock(
             id=tgt_voicing_id,
             name=voice_name,
             tone_name=tgt_v.tone_name,
-            sensor_type="magnetic",
+            sensor_type=tgt_v.sensor_type,
+            magnet_type=tgt_ea.magnet_type,
             resonant_frequency_hz=tgt_ea.fr,
             q_factor=tgt_ea.q,
             effective_position_m=target_eff_pos_m,
-            effective_position_mm=target_eff_pos_mm,
-            coils=target_coils,
+            alpha=round(float(tgt_ea.alpha), 3),
+            vsat=round(float(tgt_ea.vsat), 3),
         ),
     )
     meta_dump = nam_meta.model_dump()
@@ -652,7 +633,7 @@ def train_voice_stock(
         print(f"  Model Path:    {target_nam} ({size_kb:.1f} KB)")
         print(f"  Model Title:   {model_title}")
         print(f"  Source Bass:   {inst_name}")
-        print(f"  Source Voicing: {src_voicing_name} ({src_eff_pos_mm:.1f}mm)")
+        print(f"  Source Voicing: {src_voicing_name} ({src_eff_pos_m * 1000.0:.1f}mm)")
         if best_studio_spec is not None:
             lite_disp = (
                 f" | {best_lite_spec:.5f} (A2 Lite Ch3)" if best_lite_spec is not None else ""

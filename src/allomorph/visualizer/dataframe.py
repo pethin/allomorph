@@ -189,8 +189,8 @@ def build_voicings_comparison_data(
                 "description": f"{voicing_cfg.name} ({inst_name})",
                 "fr": float(electro.fr) if electro.fr is not None else None,
                 "q": float(electro.q) if electro.q is not None else None,
-                "alpha": float(electro.alpha),
-                "vsat": float(electro.vsat),
+                "alpha": round(float(electro.alpha), 3),
+                "vsat": round(float(electro.vsat), 3),
                 "magnitude_db": np.round(db_tgt, 2).tolist(),
                 "rms_db": round(rms_db, 2),
             }

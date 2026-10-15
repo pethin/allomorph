@@ -172,11 +172,11 @@ def simulate_pickup_transducer_branch(
             magnet_drag=True,
         ).astype(np.float64)
     elif apply_saturation and sensor_type == "bridge_force":
-        p_vsat = float(pickup.vsat) if (pickup is not None and pickup.vsat is not None) else 0.42
+        p_vsat = float(pickup.vsat) if (pickup is not None and pickup.vsat is not None) else 2.00
         max_in = float(np.max(np.abs(v_ac))) if len(v_ac) > 0 else 0.0
         if max_in > 0.10 and p_vsat > 0.0:
             alpha_p = (
-                float(pickup.alpha) if (pickup is not None and pickup.alpha is not None) else 0.15
+                float(pickup.alpha) if (pickup is not None and pickup.alpha is not None) else 0.08
             )
             v_piezo = v_ac * (1.0 + alpha_p * np.tanh(v_ac / p_vsat))
             emf = (p_vsat * np.tanh(v_piezo / p_vsat)).astype(np.float64)
@@ -448,7 +448,7 @@ def simulate_voicing_dsp(
 
     H_downstream = np.maximum(h_preamp * h_wrap, 1e-6)
     fused_downstream = False
-    default_magnet = "active" if getattr(inst, "electronics", "") == "active" else "alnico_v"
+    default_magnet = "alnico_v"
 
     if voicing_cfg.sensor_type == "bridge_force":
         f_rock = 800.0

@@ -612,12 +612,14 @@ def build_voicings_html(
 
       document.getElementById('src-spec-title').textContent = src.name;
       document.getElementById('src-spec-topo').textContent = (src.sensor_type || 'magnetic').toUpperCase();
-      const srcDesc = src.fr != null ? `${{src.description}} (fr: ${{src.fr.toFixed(0)}} Hz, Q: ${{src.q.toFixed(2)}})` : `${{src.description}} (Flat / Wideband)`;
+      const srcSat = src.vsat != null ? `, Vsat: ${{src.vsat.toFixed(2)}}V, α: ${{src.alpha.toFixed(2)}}` : '';
+      const srcDesc = src.fr != null ? `${{src.description}} (fr: ${{src.fr.toFixed(0)}} Hz, Q: ${{src.q.toFixed(2)}}${{srcSat}})` : `${{src.description}} (Flat / Wideband${{srcSat}})`;
       document.getElementById('src-spec-desc').textContent = srcDesc;
 
       document.getElementById('tgt-spec-title').textContent = tgt.name;
       document.getElementById('tgt-spec-topo').textContent = (tgt.sensor_type || 'magnetic').toUpperCase();
-      const tgtDesc = tgt.fr != null ? `${{tgt.description}} (fr: ${{tgt.fr.toFixed(0)}} Hz, Q: ${{tgt.q.toFixed(2)}})` : `${{tgt.description}} (Flat / Wideband)`;
+      const tgtSat = tgt.vsat != null ? `, Vsat: ${{tgt.vsat.toFixed(2)}}V, α: ${{tgt.alpha.toFixed(2)}}` : '';
+      const tgtDesc = tgt.fr != null ? `${{tgt.description}} (fr: ${{tgt.fr.toFixed(0)}} Hz, Q: ${{tgt.q.toFixed(2)}}${{tgtSat}})` : `${{tgt.description}} (Flat / Wideband${{tgtSat}})`;
       document.getElementById('tgt-spec-desc').textContent = tgtDesc;
 
       const traceSource = {{

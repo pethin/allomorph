@@ -4,6 +4,7 @@ and magnetic pole piece geometry inference.
 """
 
 from collections.abc import Sequence
+from typing import Literal
 
 from allomorph.config.schema import (
     CoilConfig,
@@ -15,27 +16,15 @@ from allomorph.config.schema import (
 def _infer_pole_type(
     pickup: PickupConfig | None = None,
     coil: CoilConfig | None = None,
-) -> str:
+) -> Literal["rod", "blade"]:
     """
-    Infers magnetic pole geometry: 'rod' (cylindrical Alnico rod, Airy/Bessel spatial window)
+    Resolves magnetic pole geometry: 'rod' (cylindrical Alnico rod, Airy/Bessel spatial window)
     or 'blade' (continuous steel/ceramic bar blade, 1D rectangular slit).
     """
     if coil and coil.pole_type:
-        return str(coil.pole_type).lower()
-    if pickup is not None:
-        if pickup.pole_type:
-            return str(pickup.pole_type).lower()
-        mag = str(pickup.magnet_type or "").lower()
-        p_type = str(pickup.type).lower()
-        p_name = str(pickup.name).lower()
-        if "blade" in p_name or "blade" in p_type or "bar" in p_name:
-            return "blade"
-        if "emg" in p_name or "emg" in p_type:
-            return "blade"
-        if "active" in mag:
-            return "blade"
-        if "alnico" in mag or "single_coil" in p_type or "split" in p_type:
-            return "rod"
+        return coil.pole_type
+    if pickup is not None and pickup.pole_type:
+        return pickup.pole_type
     return "rod"
 
 
@@ -57,7 +46,7 @@ def compute_coil_offset_from_spacing(
 
 def assign_string_registers_to_coils(
     coils: Sequence[CoilConfig],
-    pole_type: str = "rod",
+    pole_type: Literal["rod", "blade"] = "rod",
     coil_geometry: str = "parallel",
 ) -> list[CoilConfig]:
     """Assigns string register coverage across a list of coils, ensuring full coverage without gaps."""

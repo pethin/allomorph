@@ -19,7 +19,6 @@ from allomorph.circuit.mna import (
     compute_core_impedance,
     compute_core_impedance_jacobians,
     evaluate_analog_band,
-    smooth_soft_knee_db,
     solve_mna_linear_system,
 )
 from allomorph.circuit.parser import MAGNET_PROPERTIES, eval_pot_taper
@@ -41,7 +40,6 @@ __all__ = [
     "compute_core_impedance",
     "compute_core_impedance_jacobians",
     "evaluate_analog_band",
-    "smooth_soft_knee_db",
     "solve_mna_harness",
     "solve_mna_linear_system",
 ]
@@ -222,7 +220,7 @@ def solve_mna_harness(
                     r_rheo = float(active_components["Rtone"])
                 alpha_tone = 0.988
                 w0 = 2.0 * np.pi * 1000.0
-                s_ratio = np.where(w > 0.0, w / w0, 0.0)
+                s_ratio = np.maximum(w / w0, 0.0)
                 kappa_tone = (
                     1j * (w0 * float(c_tone)) * np.exp(1j * (alpha_tone - 1.0) * (np.pi / 2.0))
                 )
@@ -354,7 +352,7 @@ def solve_mna_harness(
     c_anagram = 100e-12
     alpha_cable = 0.994
     w0 = 2.0 * np.pi * 1000.0
-    s_ratio = np.where(w > 0.0, w / w0, 0.0)
+    s_ratio = np.maximum(w / w0, 0.0)
     kappa_cable = 1j * (w0 * c_cable) * np.exp(1j * (alpha_cable - 1.0) * (np.pi / 2.0))
     y_cable = kappa_cable * (s_ratio**alpha_cable)
     y_load_out = (1.0 / r_load) + y_cable + s * c_anagram
@@ -445,14 +443,25 @@ def solve_mna_harness(
                 else (float(c.Ccoil) if c.Ccoil is not None else 80e-12)
             )
 
-            mag_type = p_cfg.magnet_type or "alnico_v"
-            props = MAGNET_PROPERTIES.get(mag_type, MAGNET_PROPERTIES["alnico_v"])
-            L_core = props.k_core * L if props.k_core > 0.0 else 0.0
-            f_core = props.f_core
-            R_core = 2.0 * math.pi * f_core * L_core if f_core > 0.0 else 0.0
-            chi_mu = props.chi_mu
-            k_skin = props.k_skin
-            f_skin = props.f_skin
+            if p_cfg.type == "piezo_bridge" or voicing.sensor_type == "bridge_force":
+                L_core = 0.0
+                R_core = 0.0
+                chi_mu = 0.0
+                k_skin = 0.0
+                f_skin = 0.0
+                k_dist = 0.0
+            else:
+                mag_type = p_cfg.magnet_type or "alnico_v"
+                if mag_type not in MAGNET_PROPERTIES:
+                    raise KeyError(f"Unrecognized magnet type: '{mag_type}'")
+                props = MAGNET_PROPERTIES[mag_type]
+                L_core = props.k_core * L if props.k_core > 0.0 else 0.0
+                f_core = props.f_core
+                R_core = 2.0 * math.pi * f_core * L_core if f_core > 0.0 else 0.0
+                chi_mu = props.chi_mu
+                k_skin = props.k_skin
+                f_skin = props.f_skin
+                k_dist = float(props.k_dist)
 
             Z_L = compute_core_impedance(
                 s,
@@ -469,7 +478,6 @@ def solve_mna_harness(
             Z_br = 1.0 / Y_br
 
             h_int: np.ndarray | None = None
-            k_dist = float(getattr(props, "k_dist", 0.0) or 0.0)
             if p_cfg.has_internal_buffer:
                 # Active internal buffer: op-amp input senses internal coil RLC tank voltage
                 if k_dist > 0.0 and Ccoil > 0.0:

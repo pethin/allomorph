@@ -311,25 +311,22 @@ def test_higher_order_dipole_expansion_and_sag():
         "alnico_ii",
         "alnico_iii",
         "ceramic",
-        "hybrid",
+        "ceramic_steel",
+        "ceramic_alnico_hybrid",
         "neodymium",
-        "piezo",
-        "ideal",
     ]:
         assert mag_type in MAGNET_PROPERTIES
         props = MAGNET_PROPERTIES[mag_type]
         assert hasattr(props, "alpha3")
         assert hasattr(props, "k_sag")
-        assert 0.0 <= props.alpha3 <= 0.20
-        assert 0.0 <= props.k_sag <= 0.20
+        assert 0.0 < props.alpha3 <= 0.20
+        assert 0.0 < props.k_sag <= 0.20
 
-    # Alnico II has highest sag and proximity stiffening; Piezo and Ideal have 0.0
+    # Alnico II has highest sag and proximity stiffening; Neodymium has lowest
     assert MAGNET_PROPERTIES["alnico_ii"].alpha3 > MAGNET_PROPERTIES["ceramic"].alpha3
     assert MAGNET_PROPERTIES["alnico_ii"].k_sag > MAGNET_PROPERTIES["ceramic"].k_sag
-    assert MAGNET_PROPERTIES["piezo"].alpha3 == 0.0
-    assert MAGNET_PROPERTIES["piezo"].k_sag == 0.0
-    assert MAGNET_PROPERTIES["ideal"].alpha3 == 0.0
-    assert MAGNET_PROPERTIES["ideal"].k_sag == 0.0
+    assert MAGNET_PROPERTIES["ceramic"].alpha3 > MAGNET_PROPERTIES["neodymium"].alpha3
+    assert MAGNET_PROPERTIES["ceramic"].k_sag > MAGNET_PROPERTIES["neodymium"].k_sag
 
     # 2. Cubic expansion generating 3rd harmonic
     sr = 48000

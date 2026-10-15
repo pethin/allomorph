@@ -21,17 +21,21 @@ from hypothesis import given
 from hypothesis import strategies as st
 
 from allomorph.circuit.saturation import (
+    apply_active_pickup_dynamics,
     apply_algebraic_rail_limiter,
     apply_oversampled_saturation,
 )
-from allomorph.circuit.solver import compute_active_preamp_eq, smooth_soft_knee_db
+from allomorph.circuit.solver import compute_active_preamp_eq
 from allomorph.cli.targets import resolve_targets
 from allomorph.config.instruments import (
     load_all_instruments,
     load_instrument,
 )
 from allomorph.naming import get_t3k_basename
-from allomorph.physics.aperture import soft_clamp_displacement_ratio
+from allomorph.physics.aperture import (
+    compute_pickup_isolation_leveling,
+    soft_clamp_displacement_ratio,
+)
 from allomorph.physics.strings import (
     INHARMONICITY_ANCHORS_BS,
     INHARMONICITY_ANCHORS_F0,
@@ -104,7 +108,7 @@ def test_guardrail_5_1_inharmonicity_rbf_calibration_and_monotonicity():
 
 def test_guardrail_5_2_algebraic_rail_limiter_order_8():
     """Guardrail 5.2.1: Order-8 algebraic rail limiter f(x) = x / (1 + (|x|/vsat)^8)^(1/8)
-    guarantees strict peak bounding (|f(x)| < vsat) and passband linearity (< 0.005 dB deviation for peak <= 0.5*vsat)."""
+    guarantees strict peak bounding (|f(x)| <= vsat) and passband linearity (< 0.005 dB deviation for peak <= 0.3*vsat)."""
     vsat = 0.9900
     # Small signal linearity
     x_small = 0.3 * vsat
@@ -116,6 +120,12 @@ def test_guardrail_5_2_algebraic_rail_limiter_order_8():
     for val in [-1e6, -100.0, -1.5, 0.0, 1.5, 100.0, 1e6]:
         out = float(apply_algebraic_rail_limiter(val, vsat=vsat))
         assert abs(out) <= vsat, f"Limiter allowed signal {out} to exceed ceiling {vsat}"
+
+    # Verify active pickup op-amp output is also strictly bounded by vsat via CL-13
+    t = np.linspace(0, 0.02, 960, endpoint=False)
+    hot_sig = (2.5 * np.sin(2.0 * np.pi * 120.0 * t)).astype(np.float32)
+    act_out = apply_active_pickup_dynamics(hot_sig, vsat=0.50, k_level=0.25)
+    assert float(np.max(np.abs(act_out))) <= 0.50 + 1e-6
 
 
 @given(
@@ -134,42 +144,49 @@ def test_guardrail_5_2_algebraic_rail_limiter_order_8_property(x: float, vsat: f
 
 
 def test_guardrail_5_2_smooth_soft_knee_c_inf():
-    """Guardrail 5.2.1: Thresholded soft-knee saturation must be strictly C^inf without piecewise derivative kinks."""
-    thresh = 6.0
-    w = 3.0
-    ceiling = thresh + w
-    x_grid = np.linspace(0.0, 20.0, 500)
-    y_grid = smooth_soft_knee_db(x_grid, thresh=thresh, ceiling=ceiling)
+    """Guardrail 5.2.1: Shifted-softplus luthier isolation leveling (CL-26) must be strictly C^inf without derivative kinks."""
+    pos_grid = np.linspace(0.02, 0.25, 500)
+    gains_db = np.array(
+        [
+            20.0
+            * math.log10(
+                compute_pickup_isolation_leveling(float(x), scale_m=0.8636, ref_pos_m=0.15)
+            )
+            for x in pos_grid
+        ]
+    )
 
-    # 1. Identity far below threshold
-    assert math.isclose(smooth_soft_knee_db(0.0, thresh=thresh, ceiling=ceiling), 0.0, abs_tol=1e-3)
+    # 1. Exact 0.0 dB (gain 1.0) at reference position
+    assert math.isclose(
+        compute_pickup_isolation_leveling(0.15, scale_m=0.8636, ref_pos_m=0.15), 1.0, abs_tol=1e-9
+    )
 
-    # 2. Continuous first and second derivatives (no NaN or kinks)
-    dy = np.diff(y_grid) / np.diff(x_grid)
-    d2y = np.diff(dy)
+    # 2. Continuous first and second derivatives across active bridge-ward region (pos < ref_pos)
+    active_mask = pos_grid < 0.15
+    x_act = pos_grid[active_mask]
+    y_act = gains_db[active_mask]
+    dy = np.diff(y_act) / np.diff(x_act)
+    d2y = np.diff(dy) / np.diff(x_act[:-1])
     assert np.all(np.isfinite(dy))
     assert np.all(np.isfinite(d2y))
-    # Monotonically non-decreasing
-    assert np.all(dy >= 0.0)
+    # Monotonically decreasing with distance from bridge (closer to bridge -> higher compensation)
+    assert np.all(dy <= 0.0)
 
 
 @given(
-    st.floats(min_value=-50.0, max_value=50.0, allow_nan=False, allow_infinity=False),
-    st.floats(min_value=1.0, max_value=20.0, allow_nan=False, allow_infinity=False),
-    st.floats(min_value=0.5, max_value=10.0, allow_nan=False, allow_infinity=False),
+    st.floats(min_value=0.01, max_value=0.30, allow_nan=False, allow_infinity=False),
+    st.floats(min_value=0.70, max_value=1.10, allow_nan=False, allow_infinity=False),
+    st.floats(min_value=0.05, max_value=0.25, allow_nan=False, allow_infinity=False),
 )
-def test_guardrail_5_2_smooth_soft_knee_property(x: float, thresh: float, w: float) -> None:
-    """Guardrail 5.2.1 property: Thresholded soft-knee saturation is bounded by ceiling, compressive (y <= x),
-    and strictly transparent far below threshold."""
-    ceiling = thresh + w
-    y = float(smooth_soft_knee_db(x, thresh=thresh, ceiling=ceiling))
-    # 1. Strictly bounded by ceiling
-    assert y <= ceiling + 1e-9
-    # 2. Compressive: saturation never expands gain beyond input
-    assert y <= x + 1e-9
-    # 3. Transparent far below threshold
-    if x <= thresh - 5.0:
-        assert abs(y - x) < 0.05
+def test_guardrail_5_2_smooth_soft_knee_property(
+    pos_m: float, scale_m: float, ref_pos_m: float
+) -> None:
+    """Guardrail 5.2.1 property: Luthier isolation leveling (CL-26) is bounded in [0.0, +6.0] dB
+    and is exact unity (1.0) when pos_m >= ref_pos_m."""
+    k_iso = compute_pickup_isolation_leveling(pos_m, scale_m=scale_m, ref_pos_m=ref_pos_m)
+    assert 1.0 <= k_iso <= 10.0 ** (6.0 / 20.0) + 1e-9
+    if pos_m >= ref_pos_m:
+        assert math.isclose(k_iso, 1.0, abs_tol=1e-12)
 
 
 def test_guardrail_5_3_active_preamp_dc_transmission():
@@ -236,6 +253,13 @@ def test_guardrail_5_4_small_signal_linearity():
         out_alnico,
         small_sig,
         err_msg="Small signals must pass through saturation stage with bit-exact linearity",
+    )
+
+    out_active = apply_active_pickup_dynamics(small_sig, vsat=0.50, k_level=0.25)
+    np.testing.assert_array_equal(
+        out_active,
+        small_sig,
+        err_msg="Small signals must pass through active pickup dynamics with bit-exact linearity",
     )
 
 
@@ -384,3 +408,49 @@ def test_guardrail_documentation_markdown_links_valid() -> None:
                 )
 
     assert not broken_links, "Broken markdown links found:\n" + "\n".join(broken_links)
+
+
+def test_guardrail_clamp_and_limit_registry_integrity() -> None:
+    """Guardrail 5.2.3: Every CL-XX row in docs/clamp_and_limit_registry.md must reference
+    existing Python modules under src/allomorph/ and valid line numbers."""
+    repo_root = Path(__file__).resolve().parent.parent
+    registry_path = repo_root / "docs" / "clamp_and_limit_registry.md"
+    assert registry_path.is_file(), "docs/clamp_and_limit_registry.md is missing"
+
+    src_root = repo_root / "src" / "allomorph"
+    text = registry_path.read_text(encoding="utf-8")
+
+    row_re = re.compile(r"^\|\s*\*\*(CL-\d+)\*\*\s*\|\s*([^|]+)\|\s*([^|]+)\|", re.MULTILINE)
+    code_span_re = re.compile(r"`([^`]+)`")
+
+    matches = list(row_re.finditer(text))
+    assert len(matches) >= 18, f"Expected >= 18 CL-XX rows in registry, found {len(matches)}"
+
+    for m in matches:
+        cl_id = m.group(1)
+        loc_cell = m.group(3).strip()
+        spans = code_span_re.findall(loc_cell)
+        assert spans, f"{cl_id} has no code span locations in '{loc_cell}'"
+
+        for span in spans:
+            if ":" in span:
+                file_part, lines_part = span.split(":", 1)
+            else:
+                file_part, lines_part = span, ""
+
+            file_part = file_part.strip()
+            candidate = src_root / file_part
+            if not candidate.is_file():
+                found = list(src_root.rglob(file_part))
+                assert len(found) == 1, (
+                    f"{cl_id} location '{file_part}' did not resolve uniquely under src/allomorph/ (found {found})"
+                )
+                candidate = found[0]
+
+            total_lines = len(candidate.read_text(encoding="utf-8").splitlines())
+            if lines_part.strip():
+                for line_tok in lines_part.split(","):
+                    line_no = int(line_tok.strip())
+                    assert 1 <= line_no <= total_lines, (
+                        f"{cl_id} line {line_no} in {file_part} out of range [1, {total_lines}]"
+                    )

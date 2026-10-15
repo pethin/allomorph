@@ -74,14 +74,30 @@ def test_nam_export_metadata_validation():
             scale_length_in=30.0,
             scale_length_m=0.762,
             string_wave_speeds=[58.0, 75.0, 99.0, 130.0],
-            voicing=NamSourceVoicingMeta(name="EMG MMTWX", position_from_bridge_m=0.0775),
+            voicing=NamSourceVoicingMeta(
+                id="dual_mode",
+                name="EMG MMTWX",
+                tone_name="EMG MMTWX Dual",
+                sensor_type="magnetic",
+                magnet_type="ceramic_steel",
+                resonant_frequency_hz=4500.0,
+                q_factor=1.2,
+                effective_position_m=0.0775,
+                alpha=0.15,
+                vsat=1.28,
+            ),
         ),
         target_voicing=NamTargetVoicingMeta(
             id="vintage_open",
             name="'62 Precision Bass (Alnico V)",
+            tone_name="Precision Vintage",
             sensor_type="magnetic",
+            magnet_type="alnico_v",
             resonant_frequency_hz=3200.0,
             q_factor=1.8,
+            effective_position_m=0.125,
+            alpha=0.26,
+            vsat=1.00,
         ),
     )
     assert meta.source_instrument.id == "30in_emg_mmtw"
@@ -95,6 +111,9 @@ def test_nam_export_metadata_validation():
     assert meta.training.epochs_trained == 85
     assert meta.training.stop_reason == "Dual-Gate Loss Met"
     assert meta.source_instrument.voicing.name == "EMG MMTWX"
+    assert set(NamSourceVoicingMeta.model_fields.keys()) == set(
+        NamTargetVoicingMeta.model_fields.keys()
+    )
 
     # Rejection of missing required fields
     with pytest.raises(ValidationError):

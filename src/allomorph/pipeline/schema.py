@@ -11,7 +11,6 @@ from pydantic import ConfigDict, Field
 
 from allomorph.base import AllomorphBaseModel
 from allomorph.config.schema import (
-    CoilConfig,
     PackBundleConfig,
     TonePackConfig,
 )
@@ -39,22 +38,18 @@ class Tone3000PackListing(AllomorphBaseModel):
 
 
 class NamSourceVoicingMeta(AllomorphBaseModel):
-    """Source voicing configuration, harness, and physical sensing geometry metadata."""
+    """Minimal electroacoustic voicing metadata embedded in Architecture 2 (.nam) models."""
 
     id: str = ""
     name: str
     tone_name: str | None = None
-    harness: str = ""
-    position_name: str | None = None
-    position_from_bridge_m: float = 0.0
-    position_from_bridge_mm: float = 0.0
+    sensor_type: str = "magnetic"
+    magnet_type: str | None = None
+    resonant_frequency_hz: float | None = None
+    q_factor: float | None = None
     effective_position_m: float = 0.0
-    effective_position_mm: float = 0.0
-    aperture_width_in: float = 0.75
-    coil_spacing_in: float = 0.0
-    type: str = "single_coil"
-    controls: dict[str, float] = Field(default_factory=dict)
-    switches: dict[str, str] = Field(default_factory=dict)
+    alpha: float | None = None
+    vsat: float | None = None
 
 
 class NamTrainingMetadata(AllomorphBaseModel):
@@ -93,18 +88,10 @@ class NamSourceInstrumentMeta(AllomorphBaseModel):
     voicing: NamSourceVoicingMeta
 
 
-class NamTargetVoicingMeta(AllomorphBaseModel):
+class NamTargetVoicingMeta(NamSourceVoicingMeta):
     """Metadata describing the target acoustic voicing and circuit embedded in Architecture 2 models."""
 
     id: str
-    name: str
-    tone_name: str | None = None
-    sensor_type: str = "magnetic"
-    resonant_frequency_hz: float | None = None
-    q_factor: float | None = None
-    effective_position_m: float = 0.0
-    effective_position_mm: float = 0.0
-    coils: list[CoilConfig] = Field(default_factory=list)
 
 
 class NamExportMetadata(AllomorphBaseModel):

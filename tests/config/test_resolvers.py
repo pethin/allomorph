@@ -104,8 +104,46 @@ def test_find_voicing_by_slug_or_id():
 
 
 def test_resolve_voicing_electroacoustics():
-    inst = load_instrument("34in_standard_p")
-    ea = resolve_voicing_electroacoustics(inst, inst.voicings["vintage_open"])
-    assert len(ea.coils) == 2
-    assert ea.fr is None or ea.fr > 0.0
-    assert ea.magnet_type == "alnico_v"
+    import pytest
+
+    # 1. Passive Alnico V Split-P: alpha=0.26, vsat=1.00
+    inst_p = load_instrument("34in_standard_p")
+    ea_p = resolve_voicing_electroacoustics(inst_p, inst_p.voicings["vintage_open"])
+    assert len(ea_p.coils) == 2
+    assert ea_p.fr is None or ea_p.fr > 0.0
+    assert ea_p.magnet_type == "alnico_v"
+    assert ea_p.alpha == pytest.approx(0.26)
+    assert ea_p.vsat == pytest.approx(1.00)
+
+    # 2. Active EMG Classic 9V vs X-Series 18V op-amp bounding: min(mag_vsat, opamp_vsat)
+    inst_emg = load_instrument("34in_active_emg")
+    ea_classic = resolve_voicing_electroacoustics(inst_emg, inst_emg.voicings["bridge_solo"])
+    assert ea_classic.magnet_type == "ceramic"
+    assert ea_classic.alpha == pytest.approx(0.12)
+    assert ea_classic.vsat == pytest.approx(0.50)
+
+    inst_mmtw = load_instrument("30in_emg_mmtw")
+    ea_x = resolve_voicing_electroacoustics(inst_mmtw, inst_mmtw.voicings["dual_mode"])
+    assert ea_x.magnet_type == "ceramic_steel"
+    assert ea_x.alpha == pytest.approx(0.15)
+    assert ea_x.vsat == pytest.approx(1.28)  # min(1.28, 2.40) == 1.28
+
+    # 3. Multi-pickup heterogeneous blend (Alnico V Split-P + Ceramic MM): transmission-weighted mean
+    inst_pmm = load_instrument("34in_active_pmm").model_copy(deep=True)
+    object.__setattr__(inst_pmm.pickups["mm"], "magnet_type", "ceramic")
+    ea_pmm = resolve_voicing_electroacoustics(inst_pmm, inst_pmm.voicings["pmm_parallel"])
+    assert 0.12 < ea_pmm.alpha < 0.26
+    assert 1.00 < ea_pmm.vsat < 1.35
+
+    # 4. Non-magnetic piezo bridge force sensor: magnet_type is None, vsat=2.00, alpha=0.08
+    inst_up = load_instrument("41in_upright_bass")
+    ea_up = resolve_voicing_electroacoustics(inst_up, inst_up.voicings["bridge_piezo"])
+    assert ea_up.magnet_type is None
+    assert ea_up.vsat == pytest.approx(2.00)
+    assert ea_up.alpha == pytest.approx(0.08)
+
+    # 5. Fail-fast KeyError on unrecognized magnet_type
+    inst_bad = inst_p.model_copy(deep=True)
+    object.__setattr__(inst_bad.pickups["split_p"], "magnet_type", "unobtainium")
+    with pytest.raises(KeyError, match="Unrecognized magnet type"):
+        resolve_voicing_electroacoustics(inst_bad, inst_bad.voicings["vintage_open"])

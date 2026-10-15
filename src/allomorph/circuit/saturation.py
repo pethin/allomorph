@@ -190,17 +190,14 @@ def _active_preamp_leveling_core(
     for i in range(n):
         val = x_arr[i]
         e = env[i]
-        if e > vsat * 0.75:
-            u = e - vsat
-            if u * 16.0 > 20.0:
-                excess = u
-            elif u * 16.0 < -40.0:
-                excess = 0.0
-            else:
-                excess = (1.0 / 16.0) * math.log1p(math.exp(16.0 * u))
-            g = 1.0 / (1.0 + k_level * math.tanh(excess / vsat))
+        u = e - vsat
+        if u * 16.0 > 20.0:
+            excess = u
+        elif u * 16.0 < -40.0:
+            excess = 0.0
         else:
-            g = 1.0
+            excess = (1.0 / 16.0) * math.log1p(math.exp(16.0 * u))
+        g = 1.0 / (1.0 + k_level * math.tanh(excess / vsat))
         out[i] = val * g
     return out
 
@@ -628,7 +625,7 @@ def apply_active_pickup_dynamics(
     X-Series pickups (k_level = 0.0, vsat = 2.40) evaluate with 100% linear dynamics.
     """
     max_in = float(np.max(np.abs(audio))) if len(audio) > 0 else 0.0
-    if max_in <= 0.10 or (k_level <= 0.0 and max_in < vsat * 0.75):
+    if max_in <= 0.10:
         return audio.copy().astype(np.float32)
 
     x = audio.astype(np.float64)
@@ -638,8 +635,8 @@ def apply_active_pickup_dynamics(
         env = _lenz_envelope_core(x, alpha_att, alpha_rel)
         x = _active_preamp_leveling_core(x, env, vsat, k_level)
 
-    if vsat > 0.0 and max_in > vsat * 0.75:
-        x = vsat * np.tanh(x / vsat)
+    if vsat > 0.0:
+        x = apply_algebraic_rail_limiter(x, vsat=vsat)
 
     return x.astype(np.float32)
 

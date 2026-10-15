@@ -924,51 +924,30 @@ def train_voice_native(
 
     # 16. Export Compliant A2 .nam Model with Full Provenance Metadata
     if src_vcfg is not None:
-        src_coils = resolve_voicing_electroacoustics(inst_cfg, src_vcfg).coils
-        src_eff_pos_m = compute_effective_position(src_coils) if src_coils else 0.0
-        src_eff_pos_mm = src_eff_pos_m * 1000.0
-        src_tone_name = src_vcfg.tone_name
-        src_harness = src_vcfg.harness
-        src_controls: dict[str, float] = dict(src_vcfg.controls)
-        src_switches: dict[str, str] = dict(src_vcfg.switches)
-        src_aperture = src_coils[0].aperture_width_in if src_coils else 0.75
-        src_coil_spacing = (
-            abs(src_coils[1].position_from_bridge_m - src_coils[0].position_from_bridge_m) / 0.0254
-            if len(src_coils) >= 2
-            else 0.0
+        src_ea = resolve_voicing_electroacoustics(inst_cfg, src_vcfg)
+        src_coils = src_ea.coils
+        src_eff_pos_m = round(compute_effective_position(src_coils), 4) if src_coils else 0.0
+        src_voicing_meta = NamSourceVoicingMeta(
+            id=src_voicing_id,
+            name=src_voicing_name,
+            tone_name=src_vcfg.tone_name,
+            sensor_type=src_vcfg.sensor_type,
+            magnet_type=src_ea.magnet_type,
+            resonant_frequency_hz=src_ea.fr,
+            q_factor=src_ea.q,
+            effective_position_m=src_eff_pos_m,
+            alpha=round(float(src_ea.alpha), 3),
+            vsat=round(float(src_ea.vsat), 3),
         )
-        src_type = "dual_coil" if len(src_coils) >= 2 else "single_coil"
     else:
-        src_eff_pos_m = 0.0
-        src_eff_pos_mm = 0.0
-        src_tone_name = None
-        src_harness = ""
-        src_controls = {}
-        src_switches = {}
-        src_aperture = 0.75
-        src_coil_spacing = 0.0
-        src_type = "single_coil"
-
-    src_voicing_meta = NamSourceVoicingMeta(
-        id=src_voicing_id,
-        name=src_voicing_name,
-        tone_name=src_tone_name,
-        harness=src_harness,
-        position_from_bridge_m=src_eff_pos_m,
-        position_from_bridge_mm=src_eff_pos_mm,
-        effective_position_m=src_eff_pos_m,
-        effective_position_mm=src_eff_pos_mm,
-        aperture_width_in=src_aperture,
-        coil_spacing_in=src_coil_spacing,
-        type=src_type,
-        controls=src_controls,
-        switches=src_switches,
-    )
+        src_voicing_meta = NamSourceVoicingMeta(
+            id=src_voicing_id,
+            name=src_voicing_name,
+        )
 
     tgt_ea = resolve_voicing_electroacoustics(tgt_inst, tgt_v)
     target_coils = tgt_ea.coils
-    target_eff_pos_m = compute_effective_position(target_coils) if target_coils else 0.0
-    target_eff_pos_mm = target_eff_pos_m * 1000.0
+    target_eff_pos_m = round(compute_effective_position(target_coils), 4) if target_coils else 0.0
 
     epochs_trained_val = int(best_epoch if best_epoch > 0 else epoch)
     raw_training_meta: dict[str, Any] = {
@@ -1018,12 +997,13 @@ def train_voice_native(
             id=tgt_voicing_id,
             name=voice_name,
             tone_name=tgt_v.tone_name,
-            sensor_type="magnetic",
+            sensor_type=tgt_v.sensor_type,
+            magnet_type=tgt_ea.magnet_type,
             resonant_frequency_hz=tgt_ea.fr,
             q_factor=tgt_ea.q,
             effective_position_m=target_eff_pos_m,
-            effective_position_mm=target_eff_pos_mm,
-            coils=target_coils,
+            alpha=round(float(tgt_ea.alpha), 3),
+            vsat=round(float(tgt_ea.vsat), 3),
         ),
     )
 

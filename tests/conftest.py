@@ -475,7 +475,6 @@ def generic_piezo_instrument() -> InstrumentConfig:
                 name="Bridge Piezo",
                 position_from_bridge_m=0.01,
                 type="piezo_bridge",
-                magnet_type="piezo",
                 coils=[
                     CoilConfig(
                         id="piezo_c",

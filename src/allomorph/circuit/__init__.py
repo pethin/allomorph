@@ -50,7 +50,6 @@ from allomorph.circuit.solver import (
     DisjointSet,
     compute_active_preamp_eq,
     compute_core_impedance,
-    smooth_soft_knee_db,
     solve_mna_harness,
 )
 from allomorph.circuit.sweeps import (
@@ -111,7 +110,6 @@ __all__ = [
     "simulate_instrument_voicing",
     "simulate_pickup_transducer_branch",
     "simulate_voicing_dsp",
-    "smooth_soft_knee_db",
     "solve_mna_harness",
     "synthesize_multi_pickup_spatial_blend",
 ]

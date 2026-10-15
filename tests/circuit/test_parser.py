@@ -72,25 +72,18 @@ def test_sweep_audio_auto_detection(generic_instrument_config: InstrumentConfig)
 
 
 def test_magnet_properties_configuration():
-    """Verify MAGNET_PROPERTIES defines strongly typed MagnetPropertiesConfig for all magnet types."""
-    required_types = [
+    """Verify MAGNET_PROPERTIES defines strongly typed MagnetPropertiesConfig for the 7 physical magnet metallurgies."""
+    required_types = {
         "alnico_v",
         "alnico_ii",
         "alnico_iii",
         "ceramic",
         "ceramic_steel",
-        "ceramic_and_steel",
         "ceramic_alnico_hybrid",
-        "hybrid",
         "neodymium",
-        "piezo",
-        "active",
-        "ideal",
-        "ideal_passive",
-        "linear",
-    ]
+    }
+    assert set(MAGNET_PROPERTIES.keys()) == required_types
     for mag in required_types:
-        assert mag in MAGNET_PROPERTIES
         props = MAGNET_PROPERTIES[mag]
         assert isinstance(props, MagnetPropertiesConfig)
 
@@ -109,17 +102,6 @@ def test_magnet_properties_configuration():
     neo = MAGNET_PROPERTIES["neodymium"]
     assert neo.k_body == pytest.approx(0.02)
     assert neo.vsat == pytest.approx(1.80)
-
-    act = MAGNET_PROPERTIES["active"]
-    assert act.k_body == 0.0
-
-    ideal = MAGNET_PROPERTIES["ideal"]
-    assert ideal.alpha == 0.0
-    assert ideal.alpha3 == 0.0
-    assert ideal.k_sag == 0.0
-    assert ideal.k_eddy == 0.0
-    assert ideal.k_core == 0.0
-    assert ideal.vsat == 20.0
 
 
 def test_eval_pot_taper_pot_curves():

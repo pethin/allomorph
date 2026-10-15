@@ -28,7 +28,7 @@ class VoicingElectroacoustics:
     coils: list[CoilConfig]
     fr: float | None
     q: float | None
-    magnet_type: str
+    magnet_type: str | None
     alpha: float
     vsat: float
 
@@ -251,6 +251,41 @@ def build_voice_coils_for_pickup(
     ]
 
 
+def _resolve_pickup_alpha_and_vsat(
+    pickup: PickupConfig,
+    voicing: VoicingConfig,
+) -> tuple[float, float]:
+    """Resolves effective (alpha, vsat) for a single pickup in a voicing.
+
+    - For bridge_force piezo transducers, defaults to vsat = 2.00 V, alpha = 0.08.
+    - For magnetic pickups, resolves (alpha, vsat) from MAGNET_PROPERTIES[magnet_type]
+      (or explicit pickup overrides) and bounds vsat by the internal op-amp rail
+      when pickup.active_variant is set ('classic' = 0.50 V, 'x_series' = 2.40 V).
+    """
+    from allomorph.circuit.parser import MAGNET_PROPERTIES
+
+    if voicing.sensor_type == "bridge_force" or pickup.type == "piezo_bridge":
+        p_alpha = float(pickup.alpha) if pickup.alpha is not None else 0.08
+        p_vsat = float(pickup.vsat) if pickup.vsat is not None else 2.00
+        return p_alpha, p_vsat
+
+    sp_mag = pickup.magnet_type or "alnico_v"
+    if sp_mag not in MAGNET_PROPERTIES:
+        raise KeyError(f"Unrecognized magnet type: '{sp_mag}'")
+    sp_props = MAGNET_PROPERTIES[sp_mag]
+    mag_alpha = float(pickup.alpha) if pickup.alpha is not None else float(sp_props.alpha)
+    mag_vsat = float(pickup.vsat) if pickup.vsat is not None else float(sp_props.vsat)
+
+    if pickup.active_variant is not None:
+        default_opamp_vsat = 0.50 if pickup.active_variant == "classic" else 2.40
+        opamp_vsat = float(pickup.vsat) if pickup.vsat is not None else default_opamp_vsat
+        eff_vsat = min(mag_vsat, opamp_vsat)
+    else:
+        eff_vsat = mag_vsat
+
+    return mag_alpha, eff_vsat
+
+
 def resolve_voicing_electroacoustics(
     instrument: InstrumentConfig,
     voicing: VoicingConfig,
@@ -258,6 +293,8 @@ def resolve_voicing_electroacoustics(
     """Resolves active physical coils, electrical resonance (fr, Q), and magnetic saturation
     parameters directly from an InstrumentConfig and VoicingConfig.
     """
+    from allomorph.circuit.parser import MAGNET_PROPERTIES
+
     active_pickup_keys = resolve_voicing_active_pickups(instrument, voicing)
 
     for k in active_pickup_keys:
@@ -280,6 +317,8 @@ def resolve_voicing_electroacoustics(
 
     coils: list[CoilConfig] = []
     active_mags: list[str] = []
+    is_piezo = voicing.sensor_type == "bridge_force"
+
     if len(active_pickup_keys) >= 2:
         idx_100 = int(np.argmin(np.abs(np.asarray(FREQS, dtype=float) - 100.0)))
         raw_weights = [
@@ -295,14 +334,22 @@ def resolve_voicing_electroacoustics(
             else [1.0 / len(active_pickup_keys)] * len(active_pickup_keys)
         )
 
+        alpha_acc = 0.0
+        vsat_acc = 0.0
         for idx, p_key in enumerate(active_pickup_keys):
             p = instrument.pickups[p_key]
-            m_type = p.magnet_type or "alnico_v"
-            if m_type not in active_mags:
-                active_mags.append(m_type)
+            if not is_piezo and p.type != "piezo_bridge":
+                m_type = p.magnet_type or "alnico_v"
+                if m_type not in MAGNET_PROPERTIES:
+                    raise KeyError(f"Unrecognized magnet type: '{m_type}'")
+                if m_type not in active_mags:
+                    active_mags.append(m_type)
             active_c_ids = resolve_voicing_active_coils(instrument, voicing, p_key)
             sub_coils = build_voice_coils_for_pickup(p, active_c_ids, instrument=instrument)
             p_w = norm_weights[idx]
+            p_alpha, p_vsat = _resolve_pickup_alpha_and_vsat(p, voicing)
+            alpha_acc += p_w * p_alpha
+            vsat_acc += p_w * p_vsat
             for c in sub_coils:
                 coils.append(
                     CoilConfig(
@@ -319,56 +366,44 @@ def resolve_voicing_electroacoustics(
                         Ccoil=c.Ccoil,
                     )
                 )
+        alpha = float(alpha_acc)
+        vsat = float(vsat_acc)
     else:
         primary_key = (
             active_pickup_keys[0] if active_pickup_keys else next(iter(instrument.pickups.keys()))
         )
         pickup = instrument.pickups[primary_key]
+        if not is_piezo and pickup.type != "piezo_bridge":
+            m_type = pickup.magnet_type or "alnico_v"
+            if m_type not in MAGNET_PROPERTIES:
+                raise KeyError(f"Unrecognized magnet type: '{m_type}'")
+            active_mags.append(m_type)
         active_c_ids = resolve_voicing_active_coils(instrument, voicing, primary_key)
         coils = build_voice_coils_for_pickup(pickup, active_c_ids, instrument=instrument)
+        alpha, vsat = _resolve_pickup_alpha_and_vsat(pickup, voicing)
 
-    primary_key_val = ""
-    target_text = f"{voicing.id or ''} {voicing.tone_name or ''} {voicing.name or ''}".lower()
-    for cand in ("bridge", "neck", "middle"):
-        if cand in target_text:
-            matched = next((k for k in active_pickup_keys if cand in k.lower()), None)
-            if matched:
-                primary_key_val = matched
-                break
-    if not primary_key_val:
-        primary_key_val = (
-            active_pickup_keys[0] if active_pickup_keys else next(iter(instrument.pickups.keys()))
-        )
-
-    primary_pickup = (
-        instrument.pickups[primary_key_val]
-        if primary_key_val in instrument.pickups
-        else next(iter(instrument.pickups.values()))
+    primary_key_val = (
+        active_pickup_keys[0] if active_pickup_keys else next(iter(instrument.pickups.keys()))
     )
 
-    if voicing.sensor_type == "bridge_force":
+    if is_piezo:
         fr: float | None = 800.0
         q: float | None = 1.8
     elif len(active_pickup_keys) >= 2 and any(k in curves_dict for k in active_pickup_keys):
         active_curves = [curves_dict[k] for k in active_pickup_keys if k in curves_dict]
         compound_curve: np.ndarray = np.sum(active_curves, axis=0)
         fr, q = determine_pickup_resonance_and_q(compound_curve, FREQS)
-        if fr is None and primary_key_val in curves_dict:
-            fr, q = determine_pickup_resonance_and_q(curves_dict[primary_key_val], FREQS)
     elif primary_key_val in curves_dict:
         fr, q = determine_pickup_resonance_and_q(curves_dict[primary_key_val], FREQS)
     else:
         fr, q = None, None
 
-    if len(active_mags) == 1:
+    if is_piezo or not active_mags:
+        magnet_type: str | None = None
+    elif len(active_mags) == 1:
         magnet_type = active_mags[0]
-    elif len(active_mags) > 1:
-        magnet_type = " / ".join(active_mags)
     else:
-        magnet_type = primary_pickup.magnet_type or "alnico_v"
-
-    alpha = float(primary_pickup.alpha or 0.25)
-    vsat = float(primary_pickup.vsat or 1.0)
+        magnet_type = " / ".join(active_mags)
 
     return VoicingElectroacoustics(
         coils=coils,

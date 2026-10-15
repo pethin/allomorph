@@ -169,11 +169,11 @@ Unlike magnetic pickups whose output is induced via Faraday's Law across an indu
 3. **Sub-Audible DC Blocking Filter ($8\text{ Hz}$):**
    * Handled in the time domain via an 8 Hz IIR highpass filter, maintaining exact passband transmission above $20\text{ Hz}$ without Gibbs frequency-domain truncation ripples.
 4. **Mechanical Bridge Rocking Transfer ($H_{\text{bridge}}$):**
-   * Formulates in-plane maple bridge rocking resonance ($f_{\text{rock}} = 800\text{ Hz}$, $Q = 1.8$, peak gain $+2.5\text{ dB}$) and bridge wood mass roll-off above $3.8\text{ kHz}$.
+   * Formulates in-plane maple bridge rocking resonance ($f_{\text{rock}} = 800\text{ Hz}$, $Q = 1.8$, peak gain $+2.5\text{ dB}$) and bridge wood mass roll-off above $3.2\text{ kHz}$ ($f_{\text{damp}} = 3200\text{ Hz}$).
 5. **Dynamic Piezo Strain Compliance:**
-   * Non-linear compressive strain saturation under pizzicato finger plucks modeled via:
-     $$V_{\text{dyn}}(t) = V_{\text{sat}} \cdot \tanh\left(\frac{V(t)}{V_{\text{sat}}}\right)$$
-     with $V_{\text{sat}} = 0.42\text{ V}$, $\alpha_p = 0.15$, and small-signal linear bypass ($\le 0.10$).
+   * Non-linear compressive strain saturation of a PZT crystal under pizzicato finger plucks modeled via:
+     $$V_{\text{piezo}}(t) = V_{\text{ac}}(t)\left(1 + \alpha_p \tanh\left(\frac{V_{\text{ac}}(t)}{V_{\text{sat}}}\right)\right), \quad V_{\text{dyn}}(t) = V_{\text{sat}} \cdot \tanh\left(\frac{V_{\text{piezo}}(t)}{V_{\text{sat}}}\right)$$
+     with $V_{\text{sat}} = 2.00\text{ V}$, $\alpha_p = 0.08$, and small-signal linear bypass ($\le 0.10$).
 6. **Acoustic Body & Soundboard Radiation (3 Sigma AST IRs):**
    * The bridge transducer model synthesizes the raw mechanical shear stress and force at the saddle. To radiate this bridge force through a resonant double-bass spruce soundboard and cavity, the model is designed and **recommended to be paired with 3 Sigma Audio Upright Bass AST (Acoustic Sound Technology) IRs** downstream in Block 3 (or DAW IR host). Specifically, use the **`Acoustic Upright Standard`** folder (identified by the **`AST`** file tag), which 3 Sigma designed specifically for acoustic upright basses with standard piezo bridge pickups.
 

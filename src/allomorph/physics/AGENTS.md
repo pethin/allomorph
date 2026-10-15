@@ -11,7 +11,7 @@ Covers spatial pickup aperture integration, multi-scale string continuum mechani
 Before modifying equations, spatial coordinates, or continuum routing in this directory, read:
 1. [`docs/aperture_math.md`](../../../docs/aperture_math.md) — Canonical derivations for aperture kernels, wave-speed continuum, multi-pickup delays, saddle stiffness, and upright bridge force sensors.
 2. [`docs/architectural_guardrails.md`](../../../docs/architectural_guardrails.md) — Cross-cutting $C^\infty$ smoothness primitives (`cinf_smoothstep`, `alg4`) and Guardrail 5.1 contracts.
-3. [`docs/clamp_and_limit_registry.md`](../../../docs/clamp_and_limit_registry.md) — Registered bounds (`CL-04`, `CL-19`, `CL-20`, `CL-26`).
+3. [`docs/clamp_and_limit_registry.md`](../../../docs/clamp_and_limit_registry.md) — Registered bounds (`CL-04`, `CL-19`, `CL-20`, `CL-26`, `CL-32`).
 
 ## Verification
 ```bash

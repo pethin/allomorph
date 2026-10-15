@@ -82,29 +82,28 @@ def test_resolve_voicing_electroacoustics_pickups_and_coils():
 
 
 def test_infer_pole_type_and_geometry_branches():
+    import pytest
+    from pydantic import ValidationError
+
     # 1. From coil pole_type
     c_rod = CoilConfig(position_from_bridge_m=0.08, pole_type="rod")
     assert _infer_pole_type(coil=c_rod) == "rod"
+    c_blade = CoilConfig(position_from_bridge_m=0.08, pole_type="blade")
+    assert _infer_pole_type(coil=c_blade) == "blade"
 
-    # 2. From pickup pole_type
+    # 2. From pickup pole_type when coil.pole_type is None
     p_blade = PickupConfig(name="Blade Pickup", type="single", pole_type="blade")
     assert _infer_pole_type(p_blade) == "blade"
 
-    # 3. From name/type containing 'blade' or 'bar'
-    p_bar = PickupConfig(name="Bar Magnet Pickup", type="single")
-    assert _infer_pole_type(p_bar) == "blade"
+    # 3. Default to "rod" when neither coil nor pickup specifies pole_type (no name substring heuristics)
+    p_default = PickupConfig(name="Bar Magnet EMG-40HZ", type="humbucker")
+    assert _infer_pole_type(p_default) == "rod"
 
-    # 4. From EMG in name or type
-    p_emg = PickupConfig(name="EMG-40HZ", type="humbucker")
-    assert _infer_pole_type(p_emg) == "blade"
-
-    # 5. From active in magnet_type
-    p_act = PickupConfig(name="Active Sensor", type="single", magnet_type="active")
-    assert _infer_pole_type(p_act) == "blade"
-
-    # 6. From alnico or single_coil
-    p_aln = PickupConfig(name="Vintage Single", type="single_coil", magnet_type="alnico_v")
-    assert _infer_pole_type(p_aln) == "rod"
+    # 4. Invalid pole_type or magnet_type is rejected fail-fast by Pydantic Literal validation
+    with pytest.raises(ValidationError):
+        PickupConfig.model_validate({"name": "Bad Pole", "pole_type": "hex_screw"})
+    with pytest.raises(ValidationError):
+        PickupConfig.model_validate({"name": "Bad Magnet", "magnet_type": "piezo"})
 
 
 def test_resolve_pickup_coils_explicit_and_single_fallback():

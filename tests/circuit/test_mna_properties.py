@@ -15,10 +15,10 @@ from hypothesis import strategies as st
 from allomorph.circuit.mna import (
     compute_active_preamp_biquads,
     compute_core_impedance,
-    smooth_soft_knee_db,
     solve_mna_linear_system,
 )
 from allomorph.config.schema import PreampBandConfig
+from allomorph.physics.aperture import compute_pickup_isolation_leveling
 from tests.strategies import st_frequency_arrays
 
 
@@ -59,28 +59,25 @@ def test_mna_linear_system_solver_consistency_and_inversion(n_nodes: int, n_freq
 
 
 @given(
-    st.floats(min_value=-50.0, max_value=50.0, allow_nan=False, allow_infinity=False),
-    st.floats(min_value=2.0, max_value=12.0, allow_nan=False, allow_infinity=False),
-    st.floats(min_value=1.0, max_value=6.0, allow_nan=False, allow_infinity=False),
+    st.floats(min_value=0.01, max_value=0.30, allow_nan=False, allow_infinity=False),
+    st.floats(min_value=0.70, max_value=1.10, allow_nan=False, allow_infinity=False),
+    st.floats(min_value=0.05, max_value=0.25, allow_nan=False, allow_infinity=False),
 )
-def test_smooth_soft_knee_db_invariants(x_db: float, thresh: float, headroom: float) -> None:
-    """Soft knee saturation must be strictly bounded below ceiling, linear below thresh, and monotonic."""
-    ceiling = thresh + headroom
-    y = float(smooth_soft_knee_db(x_db, thresh=thresh, ceiling=ceiling, alpha=2.0))
+def test_pickup_isolation_leveling_invariants(
+    pos_m: float, scale_m: float, ref_pos_m: float
+) -> None:
+    """Shifted-softplus luthier isolation leveling (CL-26) must be bounded, monotonic, and exact unity at >= ref_pos_m."""
+    k_iso = compute_pickup_isolation_leveling(pos_m, scale_m=scale_m, ref_pos_m=ref_pos_m)
+    assert math.isfinite(k_iso)
+    assert 1.0 <= k_iso <= 10.0 ** (6.0 / 20.0) + 1e-9
 
-    assert math.isfinite(y)
-    assert y < ceiling + 1e-6
-
-    # Linear passband transparency for inputs well below threshold
-    if x_db < thresh - 10.0:
-        assert math.isclose(y, x_db, rel_tol=1e-4, abs_tol=1e-4)
-
-    # Monotonicity: non-decreasing everywhere, strictly increasing below asymptotic saturation
-    eps = 0.01
-    y_next = float(smooth_soft_knee_db(x_db + eps, thresh=thresh, ceiling=ceiling, alpha=2.0))
-    assert y_next >= y - 1e-12
-    if x_db < ceiling + 2.0:
-        assert y_next > y
+    if pos_m >= ref_pos_m:
+        assert math.isclose(k_iso, 1.0, abs_tol=1e-12)
+    else:
+        k_closer = compute_pickup_isolation_leveling(
+            max(pos_m * 0.9, 1e-3), scale_m=scale_m, ref_pos_m=ref_pos_m
+        )
+        assert k_closer >= k_iso - 1e-12
 
 
 @given(

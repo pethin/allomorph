@@ -12,7 +12,7 @@ Covers declarative Modified Nodal Analysis (MNA) circuit solving, complex impeda
 Before modifying circuit equations, metallurgy parameters, or saturation kernels in this directory, read:
 1. [`docs/circuit_theory.md`](../../../docs/circuit_theory.md) — Canonical MNA circuit equations, active preamp topologies, impedance dispersion, and 15-parameter non-linear magnetic physics.
 2. [`docs/dsp_simulation_engine.md`](../../../docs/dsp_simulation_engine.md) — SIMD execution pipeline, frequency-domain stage fusion, 2x/4x passband-constrained oversampling, and `allomorph-sim` CLI reference.
-3. [`docs/architectural_guardrails.md`](../../../docs/architectural_guardrails.md) & [`docs/clamp_and_limit_registry.md`](../../../docs/clamp_and_limit_registry.md) — Cross-cutting $C^\infty$ primitives and active clamp registry (`CL-10`, `CL-13`, `CL-14`, `CL-21`, `CL-22`, `CL-29`).
+3. [`docs/architectural_guardrails.md`](../../../docs/architectural_guardrails.md) & [`docs/clamp_and_limit_registry.md`](../../../docs/clamp_and_limit_registry.md) — Cross-cutting $C^\infty$ primitives and active clamp registry (`CL-10`, `CL-13`, `CL-14`, `CL-18`, `CL-21`, `CL-22`, `CL-29`).
 
 ## Verification
 ```bash

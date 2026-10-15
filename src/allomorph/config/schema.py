@@ -207,7 +207,7 @@ class CoilConfig(AllomorphBaseModel):
     weight: float = Field(1.0, gt=0.0)
     polarity: float = 1.0
     strings: list[int | str] = Field(default_factory=lambda: ["all"])
-    pole_type: str | None = None
+    pole_type: Literal["rod", "blade"] | None = None
     L: float | None = Field(None, gt=0.0, description="Coil self-inductance in Henries")
     Rdc: float | None = Field(None, gt=0.0, description="Coil DC resistance in Ohms")
     Reddy: float | None = Field(None, gt=0.0, description="Core eddy damping resistance in Ohms")
@@ -224,8 +224,19 @@ class PickupConfig(AllomorphBaseModel):
     aperture_width_in: float = 0.75
     coil_spacing_in: float = 0.0
     type: str = "single_coil"
-    magnet_type: str | None = None
-    pole_type: str | None = None
+    magnet_type: (
+        Literal[
+            "alnico_v",
+            "alnico_ii",
+            "alnico_iii",
+            "ceramic",
+            "ceramic_steel",
+            "ceramic_alnico_hybrid",
+            "neodymium",
+        ]
+        | None
+    ) = None
+    pole_type: Literal["rod", "blade"] | None = None
     alpha: float | None = None
     vsat: float | None = None
     has_internal_buffer: bool = False

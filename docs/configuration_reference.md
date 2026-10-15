@@ -70,7 +70,7 @@ Each entry in `[pickups.<id>]` represents a physical transducer mounted on the i
 | `position_from_bridge_m` | `float` | Meters | `None` | Centerline distance from bridge saddle ($x = \text{datum}_{\text{mm}} / 1000$). |
 | `aperture_width_in` | `float` | Inches | `1.0` | Total magnetic sensing aperture width ($w$). |
 | `pole_type` | `string` | — | `"rod"` | Spatial pole geometry: `"rod"` (2D cylindrical pole disc) or `"blade"` (1D bar slit). |
-| `magnet_type` | `string` | — | `None` | Core metallurgy key in `MAGNET_PROPERTIES`: `"alnico_v"`, `"alnico_ii"`, `"alnico_iii"`, `"ceramic"`, `"ceramic_steel"`, `"neodymium"`, `"piezo"`, `"active"`, or `"ideal"`. Validated fail-fast at load time. |
+| `magnet_type` | `string` | — | `None` | Physical core metallurgy key in `MAGNET_PROPERTIES`: `"alnico_v"`, `"alnico_ii"`, `"alnico_iii"`, `"ceramic"`, `"ceramic_steel"`, `"ceramic_alnico_hybrid"`, or `"neodymium"` (omitted / `None` for non-magnetic `"piezo_bridge"` transducers). Validated fail-fast by Pydantic `Literal` at load time. |
 | `alpha` | `float` | — | `None` | Optional non-linear asymmetric flux quadratic coefficient override. |
 | `has_internal_buffer` | `bool` | — | `false` | Set `true` for active pickups with an internal differential op-amp buffer (e.g., EMG X-series / DC series). Isolates internal coil RLC resonance from external cable/pot loading and divides coil EMF by $N_{\text{coils}}$ before summing. |
 | `buffer_topology` | `string` | — | `"x_series"` | Internal active op-amp headroom architecture: `"x_series"` (18V high-headroom) or `"classic"` (9V standard). |
