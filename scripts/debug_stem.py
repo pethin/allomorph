@@ -14,7 +14,7 @@ if str(REPO_ROOT / "src") not in sys.path:
     sys.path.insert(0, str(REPO_ROOT / "src"))
 
 from allomorph.circuit.stem_debug import debug_voicing_stem, format_stem_report_table
-from allomorph.config.voices import VOICES
+from allomorph.config.instruments import INSTRUMENTS, resolve_target_voicing
 
 
 def main() -> None:
@@ -26,21 +26,21 @@ def main() -> None:
         "voices",
         nargs="*",
         default=None,
-        help="Optional positional voice ID(s) to debug (e.g. precision_vintage jazz_bridge_open)",
+        help="Optional positional voice ID(s) to debug (e.g. 34in_standard_p:vintage_open)",
     )
     parser.add_argument(
         "--voice",
         "-v",
         type=str,
         default=None,
-        help="Voice ID to debug (e.g. precision_vintage, jazz_bridge_open, stingray_parallel)",
+        help="Voice ID to debug (e.g. 34in_standard_p:vintage_open)",
     )
     parser.add_argument(
         "--instrument",
         "-i",
         type=str,
         default=None,
-        help="Optional source instrument ID (e.g. 30in, 34in_standard_p, 34in_standard_jazz)",
+        help="Optional source instrument ID (e.g. 34in_standard_p, 34in_standard_jazz)",
     )
     parser.add_argument(
         "--drive-dbfs",
@@ -56,12 +56,12 @@ def main() -> None:
     parser.add_argument(
         "--all",
         action="store_true",
-        help="Run diagnostics across all standard catalog target voices",
+        help="Run diagnostics across all catalog instrument voicings",
     )
     parser.add_argument(
         "--all-instruments",
         action="store_true",
-        help="Run diagnostics across all 56 native voicings defined across all 16 catalog instruments",
+        help="Run diagnostics across all native voicings defined across all catalog instruments",
     )
     parser.add_argument(
         "--output-dir",
@@ -74,9 +74,7 @@ def main() -> None:
     args = parser.parse_args()
     gate_taps = None if args.no_gate else 4096
 
-    if args.all_instruments:
-        from allomorph.config.instruments import INSTRUMENTS
-
+    if args.all_instruments or args.all:
         pass_count = 0
         total_count = 0
         for _inst_id, inst in sorted(INSTRUMENTS.items()):
@@ -98,17 +96,13 @@ def main() -> None:
         )
         return
 
-    from allomorph.config.instruments import resolve_target_voicing
-
     target_voices: list[str] = []
-    if args.all:
-        target_voices = sorted(VOICES.keys())
-    elif args.voices:
+    if args.voices:
         target_voices = list(args.voices)
     elif args.voice:
         target_voices = [args.voice]
     else:
-        target_voices = ["precision_vintage"]
+        target_voices = ["34in_standard_p:vintage_open"]
 
     pass_count = 0
     for vid in target_voices:

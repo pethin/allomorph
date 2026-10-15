@@ -14,8 +14,8 @@ The Darkglass Anagram allows up to 24 simultaneous blocks in series or parallel 
           ▼
 ┌────────────────────────────────────────────────────────┐
 │ Block 1: Allomorph Digital Twin (NAM Preamp)           │  ◄── NAM Preamp Block (1 of 9 slots used)
-│   └── "[Tone Name] [Position] v6.1.1.nam"              │      Captures target voicing, RLC resonance,
-│   • End-to-end differential acoustic/circuit transform │      eddy currents, and non-linear magnetic feel
+│   └── "[Tone Name] [Position] v7.1.1.nam"              │      Captures target voicing, RLC resonance,
+│   • End-to-end Forward Digital Twin transformation     │      eddy currents, and non-linear magnetic feel
 │   • Dynamic Lenz sag, back-EMF, & core hysteresis      │
 │   • Calibrated RMS loudness matching                   │
 └────────────────────────────────────────────────────────┘
@@ -45,11 +45,11 @@ The Darkglass Anagram allows up to 24 simultaneous blocks in series or parallel 
 
 > [!IMPORTANT]
 > **The Golden Rule: Physical Knobs at 100% Wide Open**
-> For Block 1 to perform an exact physical deconvolution ($0.00\text{ dB}$ flat identity baseline), keep your physical bass's volume and tone knobs completely wide open ($100\%$). Tone shaping (e.g. 22nF, 47nF Motown, 100nF Dub, Active preamp curves) is modeled authentically within the target digital twin.
+> For Block 1 to match the calibrated Source Digital Twin baseline ($0.00\text{ dB}$ identity reference), keep your physical bass's volume and tone knobs completely wide open ($100\%$, or active EQ at center detents). Tone shaping (e.g. 22nF, 47nF Motown, 100nF Dub, Active preamp curves) is modeled authentically within the target digital twin.
 
 > [!NOTE]
 > **Single Neural Slot Economy:**
-> By combining acoustic de-combing, RLC network transfer, and non-linear magnetic feel into a single slimmable A2 model (Full or Lite) in Block 1, Allomorph uses only 1 of the Anagram's 9 neural slots. This leaves 8 neural slots completely free for drive engines, amplifier captures, and synths.
+> By combining spatial aperture transformation, RLC network transfer, and non-linear magnetic feel into a single slimmable A2 model (Full or Lite) in Block 1, Allomorph uses only 1 of the Anagram's 9 neural slots. This leaves 8 neural slots completely free for drive engines, amplifier captures, and synths.
 > For the complete table of training audio pairings, mathematical proofs, and CLI workflows, see [`docs/trainer/README.md`](trainer/README.md).
 
 ---
@@ -79,27 +79,27 @@ Passive and active multi-coil instruments often present notable level disparitie
 
 Allomorph models are calibrated with RMS loudness matching, bounded by a $-0.09\text{ dBFS}$ true-peak safety ceiling. On the pedalboard, you can fine-tune output level trim in Block 1:
 
-| Voice Slug | Tone Name | Raw Offset | Recommended Block 1 Trim |
+| Target (`<inst_id>:<voicing_id>`) | Tone Name | Raw Offset | Recommended Block 1 Trim |
 | :--- | :--- | :--- | :--- |
-| **`jazz_pair_active`** | Jazz Pair Active | $+2.0\text{ dB}$ | $-2.0\text{ dB}$ (Controls active boost) |
-| **`jazz_pair_open`** | Jazz Pair Open | $-0.5\text{ dB}$ | $+0.5\text{ dB}$ |
-| **`jazz_pair_mids`** | Jazz Pair Mids | $-0.5\text{ dB}$ | $+0.5\text{ dB}$ |
-| **`jazz_bridge_growl`**| Jazz Bridge Growl | $-1.2\text{ dB}$ | $+1.2\text{ dB}$ (Compensates pot decoupling) |
-| **`jazz_bridge_open`** | Jazz Bridge Open | $-2.5\text{ dB}$ | $+2.5\text{ dB}$ (Compensates single-coil drop) |
-| **`precision_active`** | Precision Active | $+1.5\text{ dB}$ | $-1.5\text{ dB}$ (Controls active preamp boost) |
-| **`precision_vintage`**| Precision Vintage | $+0.5\text{ dB}$ | $+1.0\text{ dB}$ |
-| **`precision_mids`** | Precision Mids | $+0.0\text{ dB}$ | $+1.0\text{ dB}$ |
-| **`precision_warm`** | Precision Warm | $-1.0\text{ dB}$ | $+1.0\text{ dB}$ |
-| **`precision_dub`** | Precision Dub | $-1.5\text{ dB}$ | $+1.5\text{ dB}$ |
-| **`pj_active`** | PJ Active | $+2.0\text{ dB}$ | $-2.0\text{ dB}$ (Controls active boost) |
-| **`pj_passive`** | PJ Passive | $+0.5\text{ dB}$ | $+0.5\text{ dB}$ |
-| **`stingray_parallel`**| StingRay Parallel | $+2.5\text{ dB}$ | $-1.5\text{ dB}$ (Controls active boost) |
-| **`stingray_series`** | StingRay Series | $+4.8\text{ dB}$ | $-3.5\text{ dB}$ (Controls series boost surge) |
-| **`rickenbacker_clank`**| Rickenbacker Clank | $-1.5\text{ dB}$ | $+2.0\text{ dB}$ (Compensates series HPF cut) |
-| **`p_mm_series`** | P∕MM Series | $+5.8\text{ dB}$ | $-4.0\text{ dB}$ (Prevents clipping downstream drives)|
-| **`mudbucker_deep`** | Mudbucker Deep | $+6.2\text{ dB}$ | $-4.5\text{ dB}$ (Controls high-inductance surge) |
-| **`dingwall_bridge`** | Dingwall Bridge | $+1.0\text{ dB}$ | $+0.5\text{ dB}$ |
-| **`upright_piezo`** | Upright Piezo | $0.0\text{ dB}$ | $0.0\text{ dB}$ (Unity transducer baseline; pair with 3 Sigma AST IRs) |
+| **`34in_standard_jazz:pair_active`** | Jazz Pair Active | $+2.0\text{ dB}$ | $-2.0\text{ dB}$ (Controls active boost) |
+| **`34in_standard_jazz:pair_open`** | Jazz Pair Open | $-0.5\text{ dB}$ | $+0.5\text{ dB}$ |
+| **`34in_standard_jazz:pair_mids`** | Jazz Pair Mids | $-0.5\text{ dB}$ | $+0.5\text{ dB}$ |
+| **`34in_standard_jazz:bridge_growl`**| Jazz Bridge Growl | $-1.2\text{ dB}$ | $+1.2\text{ dB}$ (Compensates pot decoupling) |
+| **`34in_standard_jazz:bridge_open`** | Jazz Bridge Open | $-2.5\text{ dB}$ | $+2.5\text{ dB}$ (Compensates single-coil drop) |
+| **`34in_standard_pj:neck_active`** | Precision Active | $+1.5\text{ dB}$ | $-1.5\text{ dB}$ (Controls active preamp boost) |
+| **`34in_standard_p:vintage_open`**| Precision Vintage | $+0.5\text{ dB}$ | $+1.0\text{ dB}$ |
+| **`34in_standard_p:vintage_mids`** | Precision Mids | $+0.0\text{ dB}$ | $+1.0\text{ dB}$ |
+| **`34in_standard_p:vintage_warm`** | Precision Warm | $-1.0\text{ dB}$ | $+1.0\text{ dB}$ |
+| **`34in_standard_p:slab_dub`** | Precision Dub | $-1.5\text{ dB}$ | $+1.5\text{ dB}$ |
+| **`34in_standard_pj:pj_active`** | PJ Active | $+2.0\text{ dB}$ | $-2.0\text{ dB}$ (Controls active boost) |
+| **`34in_standard_pj:pj_blend`** | PJ Passive | $+0.5\text{ dB}$ | $+0.5\text{ dB}$ |
+| **`34in_active_stingray:parallel_2band`**| StingRay Parallel | $+2.5\text{ dB}$ | $-1.5\text{ dB}$ (Controls active boost) |
+| **`34in_active_stingray:series_2band`** | StingRay Series | $+4.8\text{ dB}$ | $-3.5\text{ dB}$ (Controls series boost surge) |
+| **`33in_rickenbacker_4003:bridge_vintage`**| Rickenbacker Clank | $-1.5\text{ dB}$ | $+2.0\text{ dB}$ (Compensates series HPF cut) |
+| **`34in_active_pmm:pmm_lh3_series`** | P∕MM Series | $+5.8\text{ dB}$ | $-4.0\text{ dB}$ (Prevents clipping downstream drives)|
+| **`30in_gibson_eb0:mudbucker_series`** | Mudbucker Deep | $+6.2\text{ dB}$ | $-4.5\text{ dB}$ (Controls high-inductance surge) |
+| **`37in_multiscale_dingwall:bridge_solo`** | Dingwall Bridge | $+1.0\text{ dB}$ | $+0.5\text{ dB}$ |
+| **`41in_upright_bass:bridge_piezo`** | Upright Piezo | $0.0\text{ dB}$ | $0.0\text{ dB}$ (Unity transducer baseline; pair with 3 Sigma AST IRs) |
 
 ---
 
@@ -108,52 +108,52 @@ Allomorph models are calibrated with RMS loudness matching, bounded by a $-0.09\
 Group the pickup profiles into dedicated 3-button banks on the Anagram hardware:
 
 ### Bank 1: Modern & Vintage Jazz Foundations
-* **Footswitch A:** `Jazz Pair Active [Parallel] v6.1.1.nam` (Modern Active Jazz - 2-Band Slap Scoop)
-* **Footswitch B:** `Jazz Pair Open [Parallel] v6.1.1.nam` (Vintage 60s Jazz Bass Pair)
-* **Footswitch C:** `Jazz Bridge Open [Bridge] v6.1.1.nam` (60s Jazz Bridge Single-Coil)
+* **Footswitch A:** `Jazz Pair Active [Parallel] v7.1.1.nam` (Modern Active Jazz - 2-Band Slap Scoop)
+* **Footswitch B:** `Jazz Pair Open [Parallel] v7.1.1.nam` (Vintage 60s Jazz Bass Pair)
+* **Footswitch C:** `Jazz Bridge Open [Bridge] v7.1.1.nam` (60s Jazz Bridge Single-Coil)
 
 ### Bank 2: Precision Bass Foundations
-* **Footswitch A:** `Precision Active [Split] v6.1.1.nam` (Modern Ceramic Split-P - Active 2-Band Preamp)
-* **Footswitch B:** `Precision Vintage [Split] v6.1.1.nam` (Vintage '62 Alnico V Split-P - Tone Open)
-* **Footswitch C:** `Precision Warm [Split] v6.1.1.nam` (P-Bass 47nF Motown Flatwound Warmth)
+* **Footswitch A:** `Precision Active [Split] v7.1.1.nam` (Modern Ceramic Split-P - Active 2-Band Preamp)
+* **Footswitch B:** `Precision Vintage [Split] v7.1.1.nam` (Vintage '62 Alnico V Split-P - Tone Open)
+* **Footswitch C:** `Precision Warm [Split] v7.1.1.nam` (P-Bass 47nF Motown Flatwound Warmth)
 
 ### Bank 3: P/J Hybrid & Music Man Active
-* **Footswitch A:** `PJ Active [Parallel] v6.1.1.nam` (Modern Active P/J)
-* **Footswitch B:** `PJ Passive [Parallel] v6.1.1.nam` (Vintage Passive P/J)
-* **Footswitch C:** `StingRay Parallel [Bridge] v6.1.1.nam` (Music Man Active 2-Band Humbucker Parallel)
+* **Footswitch A:** `PJ Active [Parallel] v7.1.1.nam` (Modern Active P/J)
+* **Footswitch B:** `PJ Passive [Parallel] v7.1.1.nam` (Vintage Passive P/J)
+* **Footswitch C:** `StingRay Parallel [Bridge] v7.1.1.nam` (Music Man Active 2-Band Humbucker Parallel)
 
 ### Bank 4: Series Punch & Maximum Inductance
-* **Footswitch A:** `StingRay Series [Bridge] v6.1.1.nam` (Music Man Series Humbucker Mid-Punch)
+* **Footswitch A:** `StingRay Series [Bridge] v7.1.1.nam` (Music Man Series Humbucker Mid-Punch)
 * **Footswitch B:** `P∕MM Series [Parallel] v7.1.1.nam` (P/MM Bridge MM Series Coils)
-* **Footswitch C:** `Mudbucker Deep [Neck] v6.1.1.nam` (Gibson Mudbucker Series)
+* **Footswitch C:** `Mudbucker Deep [Neck] v7.1.1.nam` (Gibson Mudbucker Series)
 
 ### Bank 5: Multi-Scale, Acoustic & Vintage Filtered
-* **Footswitch A:** `Rickenbacker Clank [Bridge] v6.1.1.nam` (Rickenbacker 4003 Bridge with HPF Clank)
-* **Footswitch B:** `Dingwall Bridge [Bridge] v6.1.1.nam` (Dingwall Multi-Scale Bridge)
-* **Footswitch C:** `Upright Piezo v6.1.1.nam` (Upright Piezo Bridge Saddle Transducer)
+* **Footswitch A:** `Rickenbacker Clank [Bridge] v7.1.1.nam` (Rickenbacker 4003 Bridge with HPF Clank)
+* **Footswitch B:** `Dingwall Bridge [Bridge] v7.1.1.nam` (Dingwall Multi-Scale Bridge)
+* **Footswitch C:** `Upright Piezo v7.1.1.nam` (Upright Piezo Bridge Saddle Transducer)
 
-### Bank 6: Studio Voicings & Pure Dynamics
-* **Footswitch A:** `Studio Direct v6.1.1.nam` (Pure Acoustic Aperture / Studio DI)
-* **Footswitch B:** `Studio Active v6.1.1.nam` (Modern Active Buffer / Air Lift)
-* **Footswitch C:** `Studio Passive v6.1.1.nam` (High-Z RLC & Cable Loading)
+### Bank 6: Tone Shapers & Boutique Articulation
+* **Footswitch A:** `Precision Dub [Split] v7.1.1.nam` (1950s Slab P-Bass 100nF Sub-Bass Dub)
+* **Footswitch B:** `Jazz Pair Mids [Parallel] v7.1.1.nam` (60s Jazz Pair 22nF Vocal Mid-Honk)
+* **Footswitch C:** `Dingwall Middle [Neck] v7.1.1.nam` (Dingwall Fanned-Fret Neck/Middle Growl)
 
 > [!TIP]
-> **Studio Voicings Routing:**
-> In Bank 6, `Studio Direct` preserves the instrument's exact physical aperture and applies only non-linear dynamic feel. `Studio Active` and `Studio Passive` apply true electrical circuit twins (active wideband buffer vs. 250k passive RLC loading) directly to the dry input.
+> **Bank 6 Tone Shaper Routing:**
+> Bank 6 pairs deep capacitive tone-shaper states (`Precision Dub`, `Jazz Pair Mids`) with fanned-fret neck/middle articulation (`Dingwall Middle`) for instant sub-bass dub and vocal mid-forward fingerstyle switching on stage.
 
 ---
 
-## 4. Importing Files via Darkglass Suite
+## 5. Importing Files via Darkglass Suite
 
 1. Connect your Darkglass Anagram to your computer via USB-C.
 2. Open the **Darkglass Suite** application.
 3. Navigate to the **NAM / Neural Capture** library.
-4. Drag and drop trained `models/*.nam` captures into your user model library.
+4. Drag and drop trained `tone3000/packs/<pack_id>/nam/*.nam` (or standalone `models/<src_inst>/<src_voicing>/<tgt_inst>/*.nam`) captures into your user model library.
 5. In your preset chain on the pedalboard, assign **Block 1** to your imported NAM capture.
 
 ---
 
-## 5. Acoustic Upright Dual-Stage Architecture (Block 1 NAM + Block 3 3 Sigma AST IR)
+## 6. Acoustic Upright Dual-Stage Architecture (Block 1 NAM + Block 3 3 Sigma AST IR)
 
 When targeting an authentic upright double bass tone from a fretless or fretted electric bass (such as the 32" Fretless strung with **La Bella Low Tension Flats**), Allomorph splits the acoustic transformation into two specialized stages:
 
@@ -162,12 +162,12 @@ When targeting an authentic upright double bass tone from a fretless or fretted 
                  │
                  ▼
 ┌────────────────────────────────────────────────────────┐
-│ Block 1: Allomorph NAM (`upright_acoustic`)            │
-│   • Mathematical de-combing of EMG spatial aperture   │
+│ Block 1: Allomorph NAM (`Upright Piezo v7.1.1.nam`)    │
+│   • Forward Digital Twin mapping from source pickup    │
 │   • Leaky velocity-to-force integration (+6 dB/oct tilt)│
 │   • Non-linear soft-knee bridge compliance (tanh)      │
 │   • Subsonic stage rumble filter (32 Hz)               │
-│   • Anti-double-damping deconvolution for flatwounds   │
+│   • Authentic Spirocore string damping envelope        │
 └────────────────────────────────────────────────────────┘
                  │ (Pure simulated Realist/Underwood bridge force signal)
                  ▼
@@ -189,10 +189,10 @@ When targeting an authentic upright double bass tone from a fretless or fretted 
 ```
 
 ### Why Both Blocks Are Necessary:
-1. **An IR is Linear Time-Invariant (LTI):** It cannot deconvolve magnetic pickup comb notches, nor can it replicate the non-linear mechanical rocking of a double bass bridge under pizzicato attack. Feeding electric magnetic pickups straight into an acoustic IR sounds like an electric bass inside a hollow box.
+1. **An IR is Linear Time-Invariant (LTI):** It cannot transform magnetic pickup spatial comb responses into an acoustic bridge force sensor, nor can it replicate the non-linear mechanical rocking of a double bass bridge under pizzicato attack. Feeding electric magnetic pickups straight into an acoustic IR sounds like an electric bass inside a hollow box.
 2. **Block 1 Converts Pickup Physics:** Allomorph's NAM model transforms the magnetic velocity-sensing signal into a mechanical bridge force sensor, complete with dynamic compliance compression.
 3. **Block 3 Radiates the Soundboard (3 Sigma AST):** Upright Piezo is engineered and recommended to be paired with **3 Sigma Audio Upright Bass AST (Acoustic Sound Technology) IRs**. The 3 Sigma AST impulse response receives the exact bridge force excitation it was designed for, radiating it through a resonant spruce soundboard and 3/4 double-bass body cavity.
-4. **Anti-Double-Damping:** Because the 32" fretless is strung with La Bella Low Tension Flats, Allomorph's differential string engine automatically adjusts its acoustic damping curve, preventing the dull, muffled tone that occurs when a static acoustic low-pass filter is applied to already-dark flatwound strings.
+4. **Authentic String Damping:** Each Forward Digital Twin stem is synthesized using its instrument's physical string preset (e.g., La Bella Low Tension Flats on the 32" fretless source vs. Thomastik Spirocore on the 41.25" upright target), so the trained NAM model learns the exact harmonic envelope transition without double-filtering.
 
 > [!TIP]
 > **Recommended 3 Sigma Audio IR Folder & File Tag:**

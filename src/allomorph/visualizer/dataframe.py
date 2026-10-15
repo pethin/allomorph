@@ -1,7 +1,7 @@
 """
 Allomorph Visualizer - Frequency Response Modeling and DataFrame Generation
-Calculates magnitude frequency responses for target voicings, frontend deconvolutions,
-and composite signal flow stages using Polars and NumPy.
+Calculates magnitude frequency responses for instrument voicings and source-to-target
+differential comparisons using Polars and NumPy.
 """
 
 from collections.abc import Mapping, Sequence
@@ -11,11 +11,11 @@ import numpy as np
 import polars as pl
 
 from allomorph.circuit.forward import simulate_instrument_voicing
+from allomorph.config.resolvers import resolve_voicing_electroacoustics
 from allomorph.config.schema import (
     InstrumentConfig,
     PreampConfig,
     StringPresetConfig,
-    VoiceConfig,
     VoicingConfig,
 )
 from allomorph.dsp import deconvolve_log_sweep, synthesize_fast_log_sweep
@@ -93,8 +93,8 @@ def build_voice_dataframe(
 
     sensor_type = voicing.sensor_type
 
-    voice_id = voicing.id or "default_voicing"
-    vname = voicing.name or voice_id
+    voice_id = f"{inst_id}:{v_id}" if (inst_id and v_id) else (v_id or "default_voicing")
+    vname = voicing.tone_name or voicing.name or voice_id
     df = pl.DataFrame(
         {
             "frequency": np.round(freqs, 1).tolist(),
@@ -103,7 +103,8 @@ def build_voice_dataframe(
             "voice_id": [voice_id] * len(freqs),
             "voice_name": [vname] * len(freqs),
             "sensor_type": [sensor_type] * len(freqs),
-            "description": [voicing.description or vname] * len(freqs),
+            "description": [voicing.description or f"{voicing.name} ({instrument.name})"]
+            * len(freqs),
         }
     )
     if include_mode_col:
@@ -111,83 +112,7 @@ def build_voice_dataframe(
     return df
 
 
-VOICE_FAMILIES: dict[str, str] = {
-    # Precision
-    "precision_vintage": "Precision",
-    "precision_mids": "Precision",
-    "precision_warm": "Precision",
-    "precision_active": "Precision",
-    "precision_dub": "Precision",
-    "mustang_pj_neck_warm": "Precision",
-    "pj_neck_warm": "Precision",
-    "p_mm_p_solo": "Precision",
-    "custom_px_solo": "Precision",
-    "fretless_p_solo": "Precision",
-    # Jazz
-    "jazz_pair_open": "Jazz",
-    "jazz_pair_mids": "Jazz",
-    "jazz_pair_active": "Jazz",
-    "jazz_bridge_growl": "Jazz",
-    "jazz_bridge_open": "Jazz",
-    "jazz_neck_warm": "Jazz",
-    "mustang_pj_bridge_growl": "Jazz",
-    "pj_bridge_growl": "Jazz",
-    "fretless_j_growl": "Jazz",
-    # StingRay
-    "stingray_parallel": "StingRay",
-    "stingray_series": "StingRay",
-    # Soapbar
-    "soapbar_pair": "Soapbar",
-    "soapbar_neck": "Soapbar",
-    "soapbar_bridge": "Soapbar",
-    # EMG
-    "emg_soapbar_parallel": "EMG",
-    "emg_soapbar_neck": "EMG",
-    "emg_soapbar_bridge": "EMG",
-    "mmtw_dual": "EMG",
-    "mmtw_single": "EMG",
-    "mmtw_warm": "EMG",
-    # P∕MM
-    "p_mm_parallel": "P∕MM",
-    "p_mm_series": "P∕MM",
-    "p_mm_single": "P∕MM",
-    "p_mm_bridge": "P∕MM",
-    "p_mm_bridge_series": "P∕MM",
-    "p_mm_bridge_single": "P∕MM",
-    "custom_p_mm_blend": "P∕MM",
-    "custom_mm_dual": "P∕MM",
-    "custom_mm_single": "P∕MM",
-    "fretless_p_mm": "P∕MM",
-    # Dingwall
-    "dingwall_bridge": "Dingwall",
-    "dingwall_middle": "Dingwall",
-    "dingwall_parallel": "Dingwall",
-    "dingwall_series": "Dingwall",
-    "dingwall_super_p": "Dingwall",
-    "dingwall_sp1_bridge": "Dingwall",
-    "dingwall_sp1_parallel": "Dingwall",
-    "dingwall_sp1_series": "Dingwall",
-    # Rickenbacker
-    "rickenbacker_clank": "Rickenbacker",
-    "rickenbacker_open": "Rickenbacker",
-    "rickenbacker_neck": "Rickenbacker",
-    "rickenbacker_pair": "Rickenbacker",
-    # PJ
-    "pj_passive": "PJ",
-    "pj_active": "PJ",
-    "mustang_pj_parallel": "PJ",
-    "custom_pj_blend": "PJ",
-    "fretless_pj_blend": "PJ",
-    # Mudbucker
-    "mudbucker_deep": "Mudbucker",
-    "mudbucker_dub": "Mudbucker",
-    # Upright
-    "upright_piezo": "Upright",
-}
-
-
 def build_voicings_comparison_data(
-    voices: Mapping[str, VoiceConfig] | None = None,
     instruments: Mapping[str, InstrumentConfig] | None = None,
     step: int = 3,
     preamps: Mapping[str, PreampConfig] | None = None,
@@ -195,14 +120,10 @@ def build_voicings_comparison_data(
 ) -> dict[str, Any]:
     """
     Builds the compact data structure containing frequency responses and metadata
-    for all target voicings in the provided voices map.
+    for all instrument voicings in the catalog, keyed by '<instrument_id>:<voicing_id>'.
     """
     from allomorph.visualizer.schema import load_visualizer_config
 
-    if voices is None:
-        from allomorph.config.voices import VOICES
-
-        voices = VOICES
     if instruments is None:
         from allomorph.config.instruments import INSTRUMENTS
 
@@ -223,87 +144,56 @@ def build_voicings_comparison_data(
 
     voices_dict: dict[str, dict[str, Any]] = {}
     instruments_dict: dict[str, dict[str, Any]] = {}
-    families_set: set[str] = set()
 
-    for vid, v_obj in sorted(voices.items()):
-        inst_id = v_obj.instrument_id or ""
-        inst = instruments.get(inst_id)
-        if inst is None:
-            continue
-
-        voicing_cfg = inst.voicings.get(vid)
-        if voicing_cfg is None:
-            # Match by tone_name or fallback to first voicing
-            match = next(
-                (v for v in inst.voicings.values() if v.tone_name == v_obj.tone_name),
-                next(iter(inst.voicings.values()), None),
-            )
-            if match is None:
-                continue
-            voicing_cfg = match
-
-        vdf = build_voice_dataframe(
-            inst,
-            voicing_cfg,
-            mode="output",
-            preamps=preamps,
-            strings=strings,
-        )
-        mag_full = np.asarray(vdf["magnitude_db"], dtype=np.float64)
-        db_tgt = mag_full[::step] if step > 1 else mag_full
-
-        vname = v_obj.name
-        family = VOICE_FAMILIES.get(vid, "Specialty")
-        families_set.add(family)
-        rms_db = compute_curve_rms_db(db_tgt)
-
+    for inst_id, inst in sorted(instruments.items()):
         inst_name = inst.name
         inst_scale = float(inst.scale_length_in) if inst.scale_length_in is not None else 34.0
-        inst_label = f'{inst_name} ({inst_scale:.1f}")'
+        if inst.is_multiscale and inst.scale_min_in is not None and inst.scale_max_in is not None:
+            inst_label = f'{inst_name} ({inst.scale_min_in:.1f}"-{inst.scale_max_in:.1f}")'
+        else:
+            inst_label = f'{inst_name} ({inst_scale:.1f}")'
 
-        if inst_id not in instruments_dict:
-            instruments_dict[inst_id] = {
-                "id": inst_id,
-                "name": inst_name,
-                "scale": inst_scale,
-                "label": inst_label,
-                "voice_ids": [],
-            }
-        instruments_dict[inst_id]["voice_ids"].append(vid)
-
-        voices_dict[vid] = {
-            "id": vid,
-            "name": vname,
-            "tone_name": v_obj.tone_name or vname,
-            "family": family,
-            "instrument_id": inst_id,
-            "instrument_name": inst_name,
-            "sensor_type": v_obj.sensor_type,
-            "description": v_obj.description,
-            "fr": float(v_obj.fr) if v_obj.fr is not None else None,
-            "q": float(v_obj.Q) if v_obj.Q is not None else None,
-            "alpha": float(v_obj.alpha or 0.0),
-            "vsat": float(v_obj.vsat or 1.0),
-            "magnitude_db": np.round(db_tgt, 2).tolist(),
-            "rms_db": round(rms_db, 2),
+        instruments_dict[inst_id] = {
+            "id": inst_id,
+            "name": inst_name,
+            "scale": inst_scale,
+            "label": inst_label,
+            "voice_ids": [],
         }
 
-    family_order = [
-        "Precision",
-        "Jazz",
-        "StingRay",
-        "Soapbar",
-        "EMG",
-        "P∕MM",
-        "Dingwall",
-        "Rickenbacker",
-        "PJ",
-        "Mudbucker",
-        "Upright",
-    ]
-    sorted_families = [f for f in family_order if f in families_set] + sorted(
-        families_set - set(family_order)
-    )
+        for v_id, voicing_cfg in inst.voicings.items():
+            canonical_vid = f"{inst_id}:{v_id}"
+            vdf = build_voice_dataframe(
+                inst,
+                voicing_cfg,
+                mode="output",
+                preamps=preamps,
+                strings=strings,
+            )
+            mag_full = np.asarray(vdf["magnitude_db"], dtype=np.float64)
+            db_tgt = mag_full[::step] if step > 1 else mag_full
+
+            electro = resolve_voicing_electroacoustics(inst, voicing_cfg)
+            vname = voicing_cfg.tone_name or voicing_cfg.name or v_id
+            rms_db = compute_curve_rms_db(db_tgt)
+
+            instruments_dict[inst_id]["voice_ids"].append(canonical_vid)
+
+            voices_dict[canonical_vid] = {
+                "id": canonical_vid,
+                "name": vname,
+                "tone_name": vname,
+                "instrument_id": inst_id,
+                "instrument_name": inst_name,
+                "sensor_type": voicing_cfg.sensor_type,
+                "description": f"{voicing_cfg.name} ({inst_name})",
+                "fr": float(electro.fr) if electro.fr is not None else None,
+                "q": float(electro.q) if electro.q is not None else None,
+                "alpha": float(electro.alpha),
+                "vsat": float(electro.vsat),
+                "magnitude_db": np.round(db_tgt, 2).tolist(),
+                "rms_db": round(rms_db, 2),
+            }
 
     standard_instrument_order = [
         "34in_standard_p",
@@ -330,7 +220,6 @@ def build_voicings_comparison_data(
     return {
         "frequencies": f_pts,
         "voices": voices_dict,
-        "families": sorted_families,
         "instruments": instruments_dict,
         "instrument_order": sorted_instruments,
         "chips": [c.model_dump() for c in vcfg.chips],
@@ -380,8 +269,16 @@ def build_voicings_comparison_dataframe(
 
     src_name = source_voicing.name or source_voicing.id or "source"
     tgt_name = target_voicing.name or target_voicing.id or "target"
-    source_id = source_voicing.id or "source"
-    target_id = target_voicing.id or "target"
+    source_id = (
+        f"{source_instrument.id}:{source_voicing.id}"
+        if (source_instrument.id and source_voicing.id)
+        else (source_voicing.id or "source")
+    )
+    target_id = (
+        f"{target_instrument.id}:{target_voicing.id}"
+        if (target_instrument.id and target_voicing.id)
+        else (target_voicing.id or "target")
+    )
 
     if source_instrument.id == target_instrument.id and source_voicing.id == target_voicing.id:
         db_diff = np.zeros(n_pts, dtype=np.float64)
@@ -413,47 +310,3 @@ def build_voicings_comparison_dataframe(
             + [f"{tgt_name} - {src_name}"] * n_pts,
         }
     )
-
-
-def compute_fir_csd(
-    fir: Sequence[float] | np.ndarray,
-    freqs: Sequence[float] | np.ndarray,
-    num_slices: int = 24,
-    max_time_ms: float = 3.0,
-    sr: int = 48000,
-    n_fft: int = 2048,
-    n_rise: int = 8,
-) -> tuple[list[float], list[list[float]]]:
-    """
-    Computes Cumulative Spectral Decay (CSD) waterfall slices for an impulse response.
-    Slices the FIR across time from t=0 to max_time_ms with a smooth half-Hann onset taper
-    to prevent truncation spectral splatter.
-    Returns:
-      (time_ms, csd_matrix) where csd_matrix has shape [num_slices, len(freqs)] with dB values.
-    """
-    fir_arr = np.asarray(fir, dtype=np.float64)
-    total_samples = len(fir_arr)
-    max_sample = round((max_time_ms / 1000.0) * sr)
-    max_sample = min(max_sample, total_samples - 1)
-
-    time_indices = np.linspace(0, max_sample, num_slices, dtype=int)
-    time_ms = [round(float(idx / sr * 1000.0), 2) for idx in time_indices]
-
-    rise = 0.5 * (1.0 - np.cos(np.pi * np.arange(n_rise) / n_rise))
-    rfft_freqs = np.fft.rfftfreq(n_fft, d=1.0 / sr)
-    f_eval = np.asarray(freqs, dtype=np.float64)
-
-    csd_matrix: list[list[float]] = []
-    for t_start in time_indices:
-        gated = fir_arr.copy()
-        if t_start > 0:
-            gated[:t_start] = 0.0
-            r_end = min(t_start + n_rise, total_samples)
-            gated[t_start:r_end] *= rise[: (r_end - t_start)]
-
-        spec = np.abs(np.fft.rfft(gated, n_fft))
-        interp_spec = np.interp(f_eval, rfft_freqs, spec)
-        db = 20.0 * np.log10(np.maximum(interp_spec, 1e-3))
-        csd_matrix.append([round(float(v), 1) for v in db])
-
-    return time_ms, csd_matrix

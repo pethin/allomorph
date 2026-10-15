@@ -1,32 +1,36 @@
 """Deterministic resolvers and decomposition primitives for instrument voicings and pickups.
 
-Provides pure, testable units for pickup resonance inference, coil resolution
-and compounding, voicing token parsing, slug matching, and bundle assignment.
+Provides pure, testable units for pickup resonance inference, active pickup/coil
+resolution, electroacoustic voicing metadata extraction, and voicing token parsing.
 """
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
-from typing import TYPE_CHECKING
-
-from allomorph.config.geometry import resolve_pickup_coils
-from allomorph.config.schema import (
-    BundleTargetConfig,
-    InstrumentConfig,
-    PackBundleConfig,
-    PickupConfig,
-    VoiceCoilConfig,
-    VoicePickupConfig,
-    VoicingConfig,
-)
-
-if TYPE_CHECKING:
-    from allomorph.config.instruments import VoicingBundle
-
+from collections.abc import Sequence
+from dataclasses import dataclass
 
 import numpy as np
 
+from allomorph.config.geometry import resolve_pickup_coils
+from allomorph.config.schema import (
+    CoilConfig,
+    InstrumentConfig,
+    PickupConfig,
+    VoicingConfig,
+)
 from allomorph.dsp.constants import FREQS
+
+
+@dataclass(frozen=True)
+class VoicingElectroacoustics:
+    """Resolved physical coil array, RLC resonance, and magnetic core parameters for a voicing."""
+
+    coils: list[CoilConfig]
+    fr: float | None
+    q: float | None
+    magnet_type: str
+    alpha: float
+    vsat: float
 
 
 def determine_pickup_resonance_and_q(
@@ -122,11 +126,96 @@ def determine_pickup_resonance_and_q(
     return round(fr, 1), round(q, 2) if q is not None else None
 
 
+def resolve_voicing_active_pickups(
+    instrument: InstrumentConfig,
+    voicing: VoicingConfig,
+) -> list[str]:
+    """Resolves the active physical pickup IDs for an instrument voicing by evaluating
+    electrical transmission through the Modified Nodal Analysis (MNA) harness.
+    """
+    all_pickups = list(instrument.pickups.keys())
+    if len(all_pickups) <= 1:
+        return all_pickups
+
+    h_id = voicing.harness
+    harnesses = getattr(instrument, "harnesses", {})
+    if not harnesses or h_id not in harnesses:
+        return all_pickups
+
+    from allomorph.circuit.solver import solve_mna_harness
+    from allomorph.config.preamps import PREAMPS
+
+    curves = solve_mna_harness(
+        instrument,
+        harnesses[h_id],
+        voicing,
+        freqs=np.array([200.0, 1000.0], dtype=np.float64),
+        preamps=PREAMPS,
+    )
+    max_trans = (
+        max(float(np.max(np.abs(curves[p]))) for p in all_pickups if p in curves)
+        if any(p in curves for p in all_pickups)
+        else 1.0
+    )
+    thresh = max(0.10 * max_trans, 1e-4)
+    active = [p for p in all_pickups if p in curves and np.max(np.abs(curves[p])) >= thresh]
+    return active if active else all_pickups
+
+
+def resolve_voicing_active_coils(
+    instrument: InstrumentConfig,
+    voicing: VoicingConfig,
+    pickup_key: str,
+) -> list[str]:
+    """Resolves active coil IDs for a specific pickup by evaluating electrical transmission
+    through the Modified Nodal Analysis (MNA) harness.
+    """
+    p_cfg = instrument.pickups.get(pickup_key)
+    if not p_cfg or not p_cfg.coils:
+        return []
+    if len(p_cfg.coils) <= 1:
+        return [p_cfg.coils[0].id or pickup_key]
+
+    h_id = voicing.harness
+    harnesses = getattr(instrument, "harnesses", {})
+    if not harnesses or h_id not in harnesses:
+        return [c.id for c in p_cfg.coils if c.id]
+
+    from allomorph.circuit.solver import solve_mna_harness
+    from allomorph.config.preamps import PREAMPS
+
+    curves = solve_mna_harness(
+        instrument,
+        harnesses[h_id],
+        voicing,
+        freqs=np.array([200.0, 1000.0], dtype=np.float64),
+        preamps=PREAMPS,
+    )
+    all_c_keys = [
+        k for c in p_cfg.coils if c.id for k in [f"{pickup_key}.{c.id}", f"{p_cfg.id}.{c.id}", c.id]
+    ]
+    max_c_trans = (
+        max(float(np.max(np.abs(curves[k]))) for k in all_c_keys if k in curves)
+        if any(k in curves for k in all_c_keys)
+        else 1.0
+    )
+    thresh = max(0.10 * max_c_trans, 1e-4)
+    active_coils: list[str] = []
+    for c in p_cfg.coils:
+        if not c.id:
+            continue
+        c_keys = [f"{pickup_key}.{c.id}", f"{p_cfg.id}.{c.id}", c.id]
+        if any(k in curves and np.max(np.abs(curves[k])) >= thresh for k in c_keys):
+            active_coils.append(c.id)
+
+    return active_coils if active_coils else [c.id for c in p_cfg.coils if c.id]
+
+
 def build_voice_coils_for_pickup(
     pickup: PickupConfig,
     active_coil_ids: Sequence[str] | None = None,
     instrument: InstrumentConfig | None = None,
-) -> list[VoiceCoilConfig]:
+) -> list[CoilConfig]:
     """Resolves individual physical coils for a pickup filtered by active coil IDs."""
     all_coils = resolve_pickup_coils(pickup, instrument=instrument)
     raw_coils = all_coils
@@ -145,34 +234,150 @@ def build_voice_coils_for_pickup(
             scale_w = 1.0 / w_sum
 
     return [
-        VoiceCoilConfig(
+        CoilConfig(
+            id=c.id,
             position_from_bridge_m=c.position_from_bridge_m,
             aperture_width_in=c.aperture_width_in,
             weight=float(c.weight) * scale_w,
             polarity=c.polarity,
-            strings=c.strings,
+            strings=list(c.strings),
             pole_type=c.pole_type,
+            L=c.L,
+            Rdc=c.Rdc,
+            Reddy=c.Reddy,
+            Ccoil=c.Ccoil,
         )
         for c in raw_coils
     ]
 
 
-def compound_multi_pickup_coils(
-    voice_pickups: Sequence[VoicePickupConfig],
-) -> list[VoiceCoilConfig]:
-    """Compounds coils from multiple voice pickups by scaling weight and polarity by parent pickup."""
-    return [
-        VoiceCoilConfig(
-            position_from_bridge_m=c.position_from_bridge_m,
-            aperture_width_in=c.aperture_width_in,
-            weight=c.weight * p.weight,
-            polarity=c.polarity * p.polarity,
-            strings=c.strings,
-            pole_type=c.pole_type,
+def resolve_voicing_electroacoustics(
+    instrument: InstrumentConfig,
+    voicing: VoicingConfig,
+) -> VoicingElectroacoustics:
+    """Resolves active physical coils, electrical resonance (fr, Q), and magnetic saturation
+    parameters directly from an InstrumentConfig and VoicingConfig.
+    """
+    active_pickup_keys = resolve_voicing_active_pickups(instrument, voicing)
+
+    for k in active_pickup_keys:
+        if k not in instrument.pickups:
+            raise KeyError(
+                f"Pickup '{k}' not found on instrument '{instrument.id}'. "
+                f"Available pickups: {list(instrument.pickups.keys())}"
+            )
+
+    h_id = voicing.harness
+    if not h_id and instrument.harnesses:
+        h_id = next(iter(instrument.harnesses.keys()))
+    curves_dict: dict[str, np.ndarray] = {}
+    if h_id and h_id in instrument.harnesses:
+        from allomorph.circuit.solver import solve_mna_harness
+
+        curves_dict = solve_mna_harness(
+            instrument, instrument.harnesses[h_id], voicing, freqs=FREQS
         )
-        for p in voice_pickups
-        for c in p.coils
-    ]
+
+    coils: list[CoilConfig] = []
+    active_mags: list[str] = []
+    if len(active_pickup_keys) >= 2:
+        idx_100 = int(np.argmin(np.abs(np.asarray(FREQS, dtype=float) - 100.0)))
+        raw_weights = [
+            float(np.abs(curves_dict[p_key][idx_100]))
+            if (p_key in curves_dict and len(curves_dict[p_key]) > idx_100)
+            else 1.0
+            for p_key in active_pickup_keys
+        ]
+        w_total = sum(raw_weights)
+        norm_weights = (
+            [w / w_total for w in raw_weights]
+            if w_total > 1e-9
+            else [1.0 / len(active_pickup_keys)] * len(active_pickup_keys)
+        )
+
+        for idx, p_key in enumerate(active_pickup_keys):
+            p = instrument.pickups[p_key]
+            m_type = p.magnet_type or "alnico_v"
+            if m_type not in active_mags:
+                active_mags.append(m_type)
+            active_c_ids = resolve_voicing_active_coils(instrument, voicing, p_key)
+            sub_coils = build_voice_coils_for_pickup(p, active_c_ids, instrument=instrument)
+            p_w = norm_weights[idx]
+            for c in sub_coils:
+                coils.append(
+                    CoilConfig(
+                        id=c.id,
+                        position_from_bridge_m=c.position_from_bridge_m,
+                        aperture_width_in=c.aperture_width_in,
+                        weight=c.weight * p_w,
+                        polarity=c.polarity,
+                        strings=list(c.strings),
+                        pole_type=c.pole_type,
+                        L=c.L,
+                        Rdc=c.Rdc,
+                        Reddy=c.Reddy,
+                        Ccoil=c.Ccoil,
+                    )
+                )
+    else:
+        primary_key = (
+            active_pickup_keys[0] if active_pickup_keys else next(iter(instrument.pickups.keys()))
+        )
+        pickup = instrument.pickups[primary_key]
+        active_c_ids = resolve_voicing_active_coils(instrument, voicing, primary_key)
+        coils = build_voice_coils_for_pickup(pickup, active_c_ids, instrument=instrument)
+
+    primary_key_val = ""
+    target_text = f"{voicing.id or ''} {voicing.tone_name or ''} {voicing.name or ''}".lower()
+    for cand in ("bridge", "neck", "middle"):
+        if cand in target_text:
+            matched = next((k for k in active_pickup_keys if cand in k.lower()), None)
+            if matched:
+                primary_key_val = matched
+                break
+    if not primary_key_val:
+        primary_key_val = (
+            active_pickup_keys[0] if active_pickup_keys else next(iter(instrument.pickups.keys()))
+        )
+
+    primary_pickup = (
+        instrument.pickups[primary_key_val]
+        if primary_key_val in instrument.pickups
+        else next(iter(instrument.pickups.values()))
+    )
+
+    if voicing.sensor_type == "bridge_force":
+        fr: float | None = 800.0
+        q: float | None = 1.8
+    elif len(active_pickup_keys) >= 2 and any(k in curves_dict for k in active_pickup_keys):
+        active_curves = [curves_dict[k] for k in active_pickup_keys if k in curves_dict]
+        compound_curve: np.ndarray = np.sum(active_curves, axis=0)
+        fr, q = determine_pickup_resonance_and_q(compound_curve, FREQS)
+        if fr is None and primary_key_val in curves_dict:
+            fr, q = determine_pickup_resonance_and_q(curves_dict[primary_key_val], FREQS)
+    elif primary_key_val in curves_dict:
+        fr, q = determine_pickup_resonance_and_q(curves_dict[primary_key_val], FREQS)
+    else:
+        fr, q = None, None
+
+    if len(active_mags) == 1:
+        magnet_type = active_mags[0]
+    elif len(active_mags) > 1:
+        magnet_type = " / ".join(active_mags)
+    else:
+        magnet_type = primary_pickup.magnet_type or "alnico_v"
+
+    alpha = float(primary_pickup.alpha or 0.25)
+    vsat = float(primary_pickup.vsat or 1.0)
+
+    return VoicingElectroacoustics(
+        coils=coils,
+        fr=fr,
+        q=q,
+        magnet_type=magnet_type,
+        alpha=alpha,
+        vsat=vsat,
+    )
 
 
 def parse_target_voicing_token(
@@ -181,69 +386,22 @@ def parse_target_voicing_token(
 ) -> tuple[str, str]:
     """Parses a target voicing token into (instrument_id, voicing_id).
 
-    Supports canonical 'instrument_id:voicing_id', universal catalog voice slugs,
-    or local voicing IDs defaulting to default_inst_id.
+    Supports canonical 'instrument_id:voicing_id' or a local voicing ID defaulting to default_inst_id.
     """
     if ":" in target_token:
         tgt_inst_id, tgt_vid = target_token.split(":", 1)
         return tgt_inst_id, tgt_vid
-
-    from allomorph.config.voices import VOICES
-
-    if target_token in VOICES:
-        v_obj = VOICES[target_token]
-        tgt_inst_id = v_obj.instrument_id or default_inst_id
-        tgt_vid = v_obj.id
-        return tgt_inst_id, tgt_vid
-
     return default_inst_id, target_token
 
 
 def find_voicing_by_slug_or_id(
     instrument: InstrumentConfig,
-    voicing_id_or_slug: str,
+    voicing_id: str,
 ) -> VoicingConfig | None:
-    """Finds a voicing on an instrument by direct ID or normalized tone name slug."""
-    if voicing_id_or_slug in instrument.voicings:
-        return instrument.voicings[voicing_id_or_slug]
-
-    clean_target = voicing_id_or_slug.lower().replace(" ", "_").replace("∕", "_").replace("/", "_")
+    """Finds a voicing on an instrument strictly by its canonical voicing ID."""
+    if voicing_id in instrument.voicings:
+        return instrument.voicings[voicing_id]
     for v in instrument.voicings.values():
-        if v.id == voicing_id_or_slug or v.id == clean_target:
+        if v.id == voicing_id:
             return v
-        if v.tone_name:
-            slug = v.tone_name.lower().replace(" ", "_").replace("∕", "_").replace("/", "_")
-            if slug == clean_target or slug == voicing_id_or_slug:
-                return v
-
     return None
-
-
-def assign_target_to_bundle(
-    target_vid: str,
-    pack_bundles: Mapping[str, VoicingBundle],
-    bundle_configs: Sequence[PackBundleConfig],
-) -> str:
-    """Assigns a target voicing ID to an appropriate pack bundle name."""
-    # 1. Check explicit bundle targets in config
-    for b_cfg in bundle_configs:
-        for t in b_cfg.targets:
-            t_str = t.target if isinstance(t, BundleTargetConfig) else t
-            t_vid = t_str.split(":", 1)[1] if ":" in t_str else t_str
-            if target_vid == t_str or target_vid == t_vid:
-                return b_cfg.name
-
-    for b_cfg in bundle_configs:
-        for t in b_cfg.targets:
-            t_str = t.target if isinstance(t, BundleTargetConfig) else t
-            if target_vid in t_str:
-                return b_cfg.name
-
-    # 2. Check position keyword match if multiple bundles
-    if len(pack_bundles) > 1:
-        for bn in pack_bundles:
-            if bn in target_vid.lower():
-                return bn
-
-    # 3. Fallback to first available bundle
-    return next(iter(pack_bundles.keys()))

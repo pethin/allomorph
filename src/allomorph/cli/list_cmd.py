@@ -8,7 +8,6 @@ from cyclopts import App
 from allomorph.cli.console import render_table
 from allomorph.cli.targets import get_available_pack_ids
 from allomorph.config.instruments import INSTRUMENTS, partition_instrument_bundles
-from allomorph.config.voices import VOICES
 from allomorph.pipeline.pack import PACKS_DIR
 
 list_app = App(
@@ -41,24 +40,21 @@ def list_instruments() -> None:
 
 @list_app.command(name="voices")
 def list_voices() -> None:
-    """Lists all master target voices and tone models."""
+    """Lists all configured instrument voicings and tone models."""
     rows = []
-    for slug, v_cfg in sorted(VOICES.items()):
-        source_inst = getattr(v_cfg, "instrument_id", "N/A")
-        desc = getattr(v_cfg, "description", "")
-        # Truncate long descriptions for terminal display
-        short_desc = (desc[:60] + "...") if len(desc) > 63 else desc
-        rows.append(
-            [
-                slug,
-                v_cfg.tone_name or slug,
-                source_inst,
-                short_desc or "N/A",
-            ]
-        )
+    for inst_id, inst in sorted(INSTRUMENTS.items()):
+        for v_id, v_cfg in sorted(inst.voicings.items()):
+            rows.append(
+                [
+                    f"{inst_id}:{v_id}",
+                    v_cfg.tone_name or v_cfg.name or v_id,
+                    inst.name,
+                    v_cfg.harness,
+                ]
+            )
     render_table(
-        "Master Target Voices",
-        headers=["Voice ID", "Tone Name", "Source Instrument", "Description"],
+        "Instrument Voicings",
+        headers=["Voicing Key", "Tone Name", "Instrument", "Harness"],
         rows=rows,
     )
 

@@ -28,7 +28,7 @@ from allomorph.dsp import (
     read_wav,
 )
 
-WET_AUDIO_DIR = REPO_ROOT / "audio" / "wet"
+STEMS_AUDIO_DIR = REPO_ROOT / "audio" / "stems"
 
 
 def audit_audio_file(path: Path | str) -> AudioAuditRecord:
@@ -138,18 +138,18 @@ def _record_from_manifest(path: Path, entry: dict[str, Any]) -> AudioAuditRecord
     )
 
 
-def audit_wet_audio_catalog(
+def audit_stems_audio_catalog(
     audio_dir: Path | str | None = None,
     force: bool = False,
 ) -> AudioAuditReport:
-    """Audits wet audio stems in the specified directory or audio/wet/.
+    """Audits audio stems in the specified directory or audio/stems/.
 
     By default, uses authoritative telemetry recorded in sidecar manifest.json
     files when available and verified against file existence and size.
     Falls back to full audio decoding and signal analysis if manifest entries
     are missing, size-mismatched, or if force=True.
     """
-    target_dir = Path(audio_dir).resolve() if audio_dir else WET_AUDIO_DIR
+    target_dir = Path(audio_dir).resolve() if audio_dir else STEMS_AUDIO_DIR
     if not target_dir.exists():
         return AudioAuditReport(
             total_files=0,

@@ -41,13 +41,9 @@ def test_cli_visualize_specific_instrument(monkeypatch: pytest.MonkeyPatch) -> N
     def _mock_gen_interactive(**kwargs: Any) -> None:
         calls.append(kwargs)
 
-    def _mock_gen_portal(**kwargs: Any) -> None:
-        pass
-
     monkeypatch.setattr(
         "allomorph.cli.visualize_cmd.generate_interactive_chart", _mock_gen_interactive
     )
-    monkeypatch.setattr("allomorph.cli.visualize_cmd.generate_portal_pages", _mock_gen_portal)
 
     code = main(["viz", "34in_standard_p"])
     assert code == 0
@@ -60,11 +56,11 @@ def test_cli_stems_generate(monkeypatch: pytest.MonkeyPatch) -> None:
 
     def _mock_sim(**kwargs: Any) -> Path:
         calls.append(kwargs)
-        return Path("audio/wet/dummy.wav")
+        return Path("audio/stems/dummy.wav")
 
     monkeypatch.setattr("allomorph.cli.stems_cmd.simulate_instrument_voicing", _mock_sim)
 
-    code = main(["stems", "generate", "instrument:34in_standard_p:precision_vintage", "--force"])
+    code = main(["stems", "generate", "instrument:34in_standard_p:vintage_open", "--force"])
     assert code == 0
     assert len(calls) == 1
     assert calls[0]["voicing"].tone_name == "Precision Vintage"
@@ -88,16 +84,16 @@ def test_cli_stems_generate_auto_creates_dry_audio_when_missing(
 
     def _mock_sim(**kwargs: Any) -> Path:
         sim_calls.append(kwargs)
-        return Path("audio/wet/dummy.wav")
+        return Path("audio/stems/dummy.wav")
 
     monkeypatch.setattr("allomorph.naming.get_default_input_path", lambda: missing_dry)
     monkeypatch.setattr("allomorph.cli.stems_cmd.get_default_input_path", lambda: missing_dry)
     monkeypatch.setattr("allomorph.cli.stems_cmd.REPO_ROOT", tmp_path / "repo")
-    monkeypatch.setattr("allomorph.cli.stems_cmd.WET_AUDIO_DIR", tmp_path / "wet")
+    monkeypatch.setattr("allomorph.cli.stems_cmd.STEMS_AUDIO_DIR", tmp_path / "stems")
     monkeypatch.setattr("allomorph.cli.stems_cmd.ensure_input_audio_wav", _mock_ensure)
     monkeypatch.setattr("allomorph.cli.stems_cmd.simulate_instrument_voicing", _mock_sim)
 
-    code = main(["stems", "generate", "instrument:34in_standard_p:precision_vintage"])
+    code = main(["stems", "generate", "instrument:34in_standard_p:vintage_open"])
     assert code == 0
     assert len(ensure_calls) == 1
     assert ensure_calls[0]["overwrite"] is True
@@ -143,16 +139,16 @@ def test_cli_stems_generate_reuses_fresh_dry_audio(
 
     def _mock_sim(**kwargs: Any) -> Path:
         sim_calls.append(kwargs)
-        return Path("audio/wet/dummy.wav")
+        return Path("audio/stems/dummy.wav")
 
     monkeypatch.setattr("allomorph.naming.get_default_input_path", lambda: existing_dry)
     monkeypatch.setattr("allomorph.cli.stems_cmd.get_default_input_path", lambda: existing_dry)
     monkeypatch.setattr("allomorph.cli.stems_cmd.REPO_ROOT", tmp_path / "repo")
-    monkeypatch.setattr("allomorph.cli.stems_cmd.WET_AUDIO_DIR", tmp_path / "wet")
+    monkeypatch.setattr("allomorph.cli.stems_cmd.STEMS_AUDIO_DIR", tmp_path / "stems")
     monkeypatch.setattr("allomorph.cli.stems_cmd.ensure_input_audio_wav", _mock_ensure)
     monkeypatch.setattr("allomorph.cli.stems_cmd.simulate_instrument_voicing", _mock_sim)
 
-    code = main(["stems", "generate", "instrument:34in_standard_p:precision_vintage"])
+    code = main(["stems", "generate", "instrument:34in_standard_p:vintage_open"])
     assert code == 0
     # ensure_input_audio_wav should NOT have been called
     assert len(ensure_calls) == 0
@@ -194,16 +190,16 @@ def test_cli_stems_generate_force_regenerates_dry_audio(
         return Path(output_path) if output_path else existing_dry
 
     def _mock_sim(**kwargs: Any) -> Path:
-        return Path("audio/wet/dummy.wav")
+        return Path("audio/stems/dummy.wav")
 
     monkeypatch.setattr("allomorph.naming.get_default_input_path", lambda: existing_dry)
     monkeypatch.setattr("allomorph.cli.stems_cmd.get_default_input_path", lambda: existing_dry)
     monkeypatch.setattr("allomorph.cli.stems_cmd.REPO_ROOT", tmp_path / "repo")
-    monkeypatch.setattr("allomorph.cli.stems_cmd.WET_AUDIO_DIR", tmp_path / "wet")
+    monkeypatch.setattr("allomorph.cli.stems_cmd.STEMS_AUDIO_DIR", tmp_path / "stems")
     monkeypatch.setattr("allomorph.cli.stems_cmd.ensure_input_audio_wav", _mock_ensure)
     monkeypatch.setattr("allomorph.cli.stems_cmd.simulate_instrument_voicing", _mock_sim)
 
-    code = main(["stems", "generate", "instrument:34in_standard_p:precision_vintage", "--force"])
+    code = main(["stems", "generate", "instrument:34in_standard_p:vintage_open", "--force"])
     assert code == 0
     # ensure_input_audio_wav SHOULD have been called with overwrite=True
     assert len(ensure_calls) == 1
@@ -227,12 +223,12 @@ def test_cli_stems_generate_excitation_target_alone(
 
     def _mock_sim(**kwargs: Any) -> Path:
         sim_calls.append(kwargs)
-        return Path("audio/wet/dummy.wav")
+        return Path("audio/stems/dummy.wav")
 
     monkeypatch.setattr("allomorph.naming.get_default_input_path", lambda: target_dry)
     monkeypatch.setattr("allomorph.cli.stems_cmd.get_default_input_path", lambda: target_dry)
     monkeypatch.setattr("allomorph.cli.stems_cmd.REPO_ROOT", tmp_path / "repo")
-    monkeypatch.setattr("allomorph.cli.stems_cmd.WET_AUDIO_DIR", tmp_path / "wet")
+    monkeypatch.setattr("allomorph.cli.stems_cmd.STEMS_AUDIO_DIR", tmp_path / "stems")
     monkeypatch.setattr("allomorph.cli.stems_cmd.ensure_input_audio_wav", _mock_ensure)
     monkeypatch.setattr("allomorph.cli.stems_cmd.simulate_instrument_voicing", _mock_sim)
 
@@ -259,16 +255,16 @@ def test_cli_stems_generate_excitation_target_with_instrument(
 
     def _mock_sim(**kwargs: Any) -> Path:
         sim_calls.append(kwargs)
-        return Path("audio/wet/dummy.wav")
+        return Path("audio/stems/dummy.wav")
 
     monkeypatch.setattr("allomorph.naming.get_default_input_path", lambda: target_dry)
     monkeypatch.setattr("allomorph.cli.stems_cmd.get_default_input_path", lambda: target_dry)
     monkeypatch.setattr("allomorph.cli.stems_cmd.REPO_ROOT", tmp_path / "repo")
-    monkeypatch.setattr("allomorph.cli.stems_cmd.WET_AUDIO_DIR", tmp_path / "wet")
+    monkeypatch.setattr("allomorph.cli.stems_cmd.STEMS_AUDIO_DIR", tmp_path / "stems")
     monkeypatch.setattr("allomorph.cli.stems_cmd.ensure_input_audio_wav", _mock_ensure)
     monkeypatch.setattr("allomorph.cli.stems_cmd.simulate_instrument_voicing", _mock_sim)
 
-    code = main(["stems", "generate", "excitation", "instrument:34in_standard_p:precision_vintage"])
+    code = main(["stems", "generate", "excitation", "instrument:34in_standard_p:vintage_open"])
     assert code == 0
     assert len(ensure_calls) == 1
     assert len(sim_calls) == 1
@@ -276,7 +272,7 @@ def test_cli_stems_generate_excitation_target_with_instrument(
 
 
 def test_cli_stems_prune_dry_run(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr("allomorph.cli.stems_cmd.WET_AUDIO_DIR", tmp_path)
+    monkeypatch.setattr("allomorph.cli.stems_cmd.STEMS_AUDIO_DIR", tmp_path)
     inst_dir = tmp_path / "34in_standard_p"
     inst_dir.mkdir(parents=True)
     orphan_file = inst_dir / "nonexistent_tone.wav"
@@ -288,7 +284,7 @@ def test_cli_stems_prune_dry_run(tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 
 
 def test_cli_stems_prune_actual(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr("allomorph.cli.stems_cmd.WET_AUDIO_DIR", tmp_path)
+    monkeypatch.setattr("allomorph.cli.stems_cmd.STEMS_AUDIO_DIR", tmp_path)
     inst_dir = tmp_path / "34in_standard_p"
     inst_dir.mkdir(parents=True)
     orphan_file = inst_dir / "nonexistent_tone.wav"
@@ -334,7 +330,7 @@ def test_cli_audit(monkeypatch: pytest.MonkeyPatch) -> None:
             records=[],
         )
 
-    monkeypatch.setattr("allomorph.cli.audit_cmd.audit_wet_audio_catalog", _mock_audit)
+    monkeypatch.setattr("allomorph.cli.audit_cmd.audit_stems_audio_catalog", _mock_audit)
 
     code = main(["audit"])
     assert code == 0
@@ -372,3 +368,60 @@ def test_cli_train_pack_dispatch(monkeypatch: pytest.MonkeyPatch) -> None:
     assert calls[0][0] == "34in_standard_p"
     assert calls[0][1]["epochs"] == 50
     assert calls[0][1]["overwrite"] is True
+
+
+def test_cli_train_standalone_source_validation() -> None:
+    # Missing --source for instrument target fails fast with exit code 1
+    assert main(["train", "instrument:34in_standard_p:vintage_open"]) == 1
+    # Passing --source with pack target fails fast with exit code 1
+    assert main(["train", "pack:34in_standard_p", "--source", "30in_emg_mmtw:dual_mode"]) == 1
+    # Malformed --source without colon fails fast with exit code 1
+    assert main(["train", "34in_standard_p:vintage_open", "--source", "30in_emg_mmtw"]) == 1
+
+
+def test_resolve_targets_context_aware_shorthand_and_pack_voicing() -> None:
+    from allomorph.cli.targets import get_available_pack_ids, resolve_targets
+    from allomorph.config import TONE_PACKS
+
+    assert set(get_available_pack_ids()) == set(TONE_PACKS.keys())
+
+    # 1. Context-aware shorthand: instrument vs pack
+    inst_targets = resolve_targets(
+        ("34in_standard_p",), allow_shorthand=True, shorthand_kind="instrument"
+    )
+    assert len(inst_targets) == 1
+    assert inst_targets[0].kind == "instrument"
+    assert inst_targets[0].id == "34in_standard_p"
+
+    pack_targets = resolve_targets(
+        ("34in_standard_p",), allow_shorthand=True, shorthand_kind="pack"
+    )
+    assert len(pack_targets) == 1
+    assert pack_targets[0].kind == "pack"
+    assert pack_targets[0].id == "34in_standard_p"
+
+    # 2. pack:<pack_id>:<tgt_inst_id>:<tgt_voicing_id>
+    pv_targets = resolve_targets(("pack:34in_standard_p:34in_standard_p:slab_dub",))
+    assert len(pv_targets) == 1
+    assert pv_targets[0].kind == "pack"
+    assert pv_targets[0].id == "34in_standard_p"
+    assert pv_targets[0].sub_target == "34in_standard_p:slab_dub"
+
+
+def test_prune_stale_instrument_models_three_level_hierarchy(tmp_path: Path) -> None:
+    from allomorph.cli.train_cmd import prune_stale_instrument_models
+
+    # Create 3-level hierarchy: models/<src_inst>/<src_voicing>/<tgt_inst>/<file>.nam
+    src_inst_models_dir = tmp_path / "models" / "30in_emg_mmtw"
+    tgt_dir = src_inst_models_dir / "dual_mode" / "34in_standard_p"
+    tgt_dir.mkdir(parents=True)
+
+    active_nam = tgt_dir / "vintage_open_v7.1.1.nam"
+    stale_nam = tgt_dir / "obsolete_voicing_v0.0.0.nam"
+    active_nam.write_bytes(b"{}")
+    stale_nam.write_bytes(b"{}")
+
+    pruned = prune_stale_instrument_models("30in_emg_mmtw", src_inst_models_dir)
+    assert len(pruned) == 1
+    assert active_nam.exists()
+    assert not stale_nam.exists()

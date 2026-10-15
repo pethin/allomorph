@@ -3,46 +3,46 @@
 # Configures interactive frequency response visualizers, comparisons, and quick chips.
 # ==============================================================================
 
-default_source = "precision_vintage"
-default_target = "jazz_bridge_growl"
+default_source = "34in_standard_p:vintage_open"
+default_target = "34in_standard_jazz:bridge_growl"
 
 # Dynamic Quick Comparison Chips
 [[chips]]
 label = "P vs J Bridge"
-source = "precision_vintage"
-target = "jazz_bridge_growl"
+source = "34in_standard_p:vintage_open"
+target = "34in_standard_jazz:bridge_growl"
 
 [[chips]]
 label = "P vs StingRay"
-source = "precision_vintage"
-target = "stingray_parallel"
+source = "34in_standard_p:vintage_open"
+target = "34in_active_stingray:parallel_classic"
 
 [[chips]]
 label = "StingRay vs J Bridge"
-source = "stingray_parallel"
-target = "jazz_bridge_growl"
+source = "34in_active_stingray:parallel_classic"
+target = "34in_standard_jazz:bridge_growl"
 
 [[chips]]
 label = "Passive vs Active PJ"
-source = "pj_passive"
-target = "pj_active"
+source = "34in_standard_pj:pair_parallel"
+target = "34in_standard_pj:pair_active"
 
 [[chips]]
 label = "P vs Upright"
-source = "precision_vintage"
-target = "upright_piezo"
+source = "34in_standard_p:vintage_open"
+target = "41in_upright_bass:bridge_piezo"
 
 [[chips]]
 label = "Soapbar Neck vs P"
-source = "soapbar_neck"
-target = "precision_vintage"
+source = "34in_preamp_soapbar:neck_solo"
+target = "34in_standard_p:vintage_open"
 
 [[chips]]
 label = "EMG Neck vs P"
-source = "emg_soapbar_neck"
-target = "precision_vintage"
+source = "34in_active_emg:neck_solo"
+target = "34in_standard_p:vintage_open"
 
 [[chips]]
 label = "Identity (Reset)"
-source = "precision_vintage"
-target = "precision_vintage"
+source = "34in_standard_p:vintage_open"
+target = "34in_standard_p:vintage_open"

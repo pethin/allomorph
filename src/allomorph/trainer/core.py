@@ -14,17 +14,10 @@ import subprocess
 import sys
 from collections.abc import Sequence
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, override
+from typing import Any, override
 
 from allomorph.config import InstrumentConfig
-from allomorph.naming import (
-    get_default_input_path,
-    resolve_instruments,
-    resolve_voices,
-)
-
-if TYPE_CHECKING:
-    from allomorph.pipeline.schema import NamTrainingConfig
+from allomorph.naming import get_default_input_path
 from allomorph.trainer.constants import (
     DEFAULT_BATCH_SIZE,
     DEFAULT_ENGINE,
@@ -40,6 +33,8 @@ from allomorph.trainer.constants import (
     DEFAULT_PATIENCE,
     DEFAULT_PRECISION,
     DEFAULT_SEED,
+    NATIVE_DEFAULT_FIR_HP_FC,
+    NATIVE_DEFAULT_FIR_HP_WEIGHT,
     NATIVE_DEFAULT_LITE_WEIGHT,
     NATIVE_DEFAULT_LR,
     NATIVE_DEFAULT_SINE_AMPLITUDES,
@@ -435,16 +430,22 @@ def configure_a2_architecture(
     nam_core: Any,
     precision: str = DEFAULT_PRECISION,
     num_workers: int | str = DEFAULT_NUM_WORKERS,
+    val_loss_metric: str = STOCK_DEFAULT_VAL_LOSS_METRIC,
 ) -> None:
     """Configures NAM Architecture 2 packed model submodels and hardware logging for stock training."""
     from allomorph.trainer.stock import configure_a2_architecture as _cfg
 
-    _cfg(nam_core, precision=precision, num_workers=num_workers)
+    _cfg(
+        nam_core,
+        precision=precision,
+        num_workers=num_workers,
+        val_loss_metric=val_loss_metric,
+    )
 
 
 def train_voice(
-    instrument: str | InstrumentConfig = "30in",
-    voice: str = "precision_active",
+    instrument: str | InstrumentConfig = "34in_standard_p",
+    voice: str = "34in_standard_p:vintage",
     source_voicing: str | None = None,
     input_wav: str | Path | None = None,
     output_wav: str | Path | None = None,
@@ -480,6 +481,8 @@ def train_voice(
     sine_regularizer: bool = NATIVE_DEFAULT_SINE_REGULARIZER,
     sine_frequencies: Sequence[float] = NATIVE_DEFAULT_SINE_FREQUENCIES,
     sine_amplitudes: Sequence[float] = NATIVE_DEFAULT_SINE_AMPLITUDES,
+    fir_hp_weight: float = NATIVE_DEFAULT_FIR_HP_WEIGHT,
+    fir_hp_fc: float = NATIVE_DEFAULT_FIR_HP_FC,
     val_loss_metric: str = STOCK_DEFAULT_VAL_LOSS_METRIC,
 ) -> bool:
     """Trains a Neural Amp Modeler Architecture 2 model container using the configured engine."""
@@ -524,6 +527,8 @@ def train_voice(
             sine_regularizer=sine_regularizer,
             sine_frequencies=sine_frequencies,
             sine_amplitudes=sine_amplitudes,
+            fir_hp_weight=fir_hp_weight,
+            fir_hp_fc=fir_hp_fc,
         )
 
     from allomorph.trainer.stock import train_voice_stock
@@ -549,108 +554,8 @@ def train_voice(
         no_manifest=no_manifest,
         include_identity=include_identity,
         seed=seed,
+        val_loss_metric=val_loss_metric,
     )
-
-
-def train_voices_from_config(cli_cfg: NamTrainingConfig) -> bool:
-    """Executes NAM model training across configured instruments and voices in-process."""
-    if cli_cfg.pack:
-        from allomorph.naming import resolve_packs
-        from allomorph.pipeline.pack import train_tone_pack
-
-        packs_to_train = resolve_packs(cli_cfg.pack)
-        for p in packs_to_train:
-            train_tone_pack(
-                pack=p,
-                voice=cli_cfg.voice or "all",
-                overwrite=cli_cfg.overwrite,
-                epochs=cli_cfg.epochs,
-                min_epochs=cli_cfg.min_epochs,
-                patience=cli_cfg.patience,
-                min_delta=cli_cfg.min_delta,
-                mse_weight=cli_cfg.mse_weight,
-                mrstft_weight=cli_cfg.mrstft_weight,
-                batch_size=cli_cfg.batch_size,
-                precision=cli_cfg.precision,
-                num_workers=cli_cfg.num_workers,
-                lr_scheduler=cli_cfg.lr_scheduler,
-                eta_min=cli_cfg.eta_min,
-                lr_t_max=cli_cfg.lr_t_max,
-                fast_dev_run=cli_cfg.fast_dev_run,
-                engine=cli_cfg.engine,
-                seed=cli_cfg.seed,
-            )
-        return True
-
-    input_wav_path = cli_cfg.input_wav
-    instruments_to_run = resolve_instruments(cli_cfg.instrument)
-    voices_to_run = resolve_voices(cli_cfg.voice)
-    all_ok = True
-    total_runs = len(instruments_to_run) * len(voices_to_run)
-    current_run = 0
-
-    for inst in instruments_to_run:
-        for idx, voice in enumerate(voices_to_run, 1):
-            current_run += 1
-            if total_runs > 1:
-                print("\n==================================================")
-                print(f"  [{current_run}/{total_runs}] Training: {inst} -> {voice}")
-                print("==================================================")
-            out_wav = (
-                cli_cfg.output_wav
-                if (len(voices_to_run) == 1 and len(instruments_to_run) == 1)
-                else None
-            )
-            ok = train_voice(
-                instrument=inst,
-                voice=voice,
-                source_voicing=cli_cfg.source_voicing,
-                input_wav=input_wav_path,
-                output_wav=out_wav,
-                reference_wav=cli_cfg.reference_wav,
-                models_dir=cli_cfg.models_dir,
-                epochs=cli_cfg.epochs,
-                min_epochs=cli_cfg.min_epochs,
-                patience=cli_cfg.patience,
-                min_delta=cli_cfg.min_delta,
-                mse_weight=cli_cfg.mse_weight,
-                mrstft_weight=cli_cfg.mrstft_weight,
-                lr_scheduler=cli_cfg.lr_scheduler,
-                eta_min=cli_cfg.eta_min,
-                lr_t_max=cli_cfg.lr_t_max,
-                batch_size=cli_cfg.batch_size,
-                precision=cli_cfg.precision,
-                num_workers=cli_cfg.num_workers,
-                silent=not cli_cfg.show_plot,
-                save_plot=cli_cfg.save_plot,
-                fast_dev_run=cli_cfg.fast_dev_run,
-                basename=cli_cfg.basename
-                if (len(voices_to_run) == 1 and len(instruments_to_run) == 1)
-                else None,
-                version_tag=cli_cfg.version_tag,
-                no_manifest=cli_cfg.no_manifest,
-                include_identity=cli_cfg.include_identity,
-                engine=cli_cfg.engine,
-                seed=cli_cfg.seed,
-                lr=cli_cfg.native_lr,
-                weight_decay=cli_cfg.native_weight_decay,
-                slice_len=cli_cfg.native_slice_len,
-                lite_weight=cli_cfg.native_lite_weight,
-                sine_regularizer=cli_cfg.sine_regularizer,
-            )
-            if not ok:
-                all_ok = False
-
-            # Clear GPU memory between consecutive models in batch training
-            try:
-                import torch
-
-                if torch.cuda.is_available():
-                    torch.cuda.empty_cache()
-            except ImportError:
-                pass
-
-    return all_ok
 
 
 __all__ = [
@@ -668,5 +573,4 @@ __all__ = [
     "resolve_trainer_engine",
     "setup_headless_environment",
     "train_voice",
-    "train_voices_from_config",
 ]

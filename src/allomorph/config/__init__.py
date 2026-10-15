@@ -1,6 +1,6 @@
 """
-Allomorph - Configuration & Instrument/Voice Registry Engine.
-Provides modular access to physical scales, strings, instruments, target voices, and coil geometry.
+Allomorph - Configuration & Instrument/Voicing Registry Engine.
+Provides modular access to physical scales, strings, instruments, voicings, and coil geometry.
 """
 
 from allomorph.config.geometry import (
@@ -9,11 +9,8 @@ from allomorph.config.geometry import (
     compute_coil_offset_from_spacing,
     compute_effective_position,
     resolve_pickup_coils,
-    resolve_voice_coils,
-    resolve_voice_pickups,
 )
 from allomorph.config.instruments import (
-    INSTRUMENT_ALIASES,
     INSTRUMENTS,
     INSTRUMENTS_DIR,
     PACKS_CONFIG_DIR,
@@ -33,12 +30,14 @@ from allomorph.config.preamps import (
     load_preamps_config,
 )
 from allomorph.config.resolvers import (
-    assign_target_to_bundle,
+    VoicingElectroacoustics,
     build_voice_coils_for_pickup,
-    compound_multi_pickup_coils,
     determine_pickup_resonance_and_q,
     find_voicing_by_slug_or_id,
     parse_target_voicing_token,
+    resolve_voicing_active_coils,
+    resolve_voicing_active_pickups,
+    resolve_voicing_electroacoustics,
 )
 from allomorph.config.scales import (
     CONFIG_DIR,
@@ -63,9 +62,6 @@ from allomorph.config.schema import (
     SpiceFloat,
     StringPresetConfig,
     StringsCatalog,
-    VoiceCoilConfig,
-    VoiceConfig,
-    VoicePickupConfig,
     VoicingConfig,
     parse_spice_unit,
 )
@@ -73,24 +69,13 @@ from allomorph.config.strings import (
     STRINGS,
     STRINGS_FILE,
     get_instrument_string,
-    get_voice_string,
     load_strings_config,
-)
-from allomorph.config.voices import (
-    VOICES,
-    VoiceRegistry,
-    load_voice_config,
-    load_voices_config,
-    resolve_voicing_active_coils,
-    resolve_voicing_active_pickups,
-    voicing_to_voice_config,
 )
 
 __all__ = [
     "CONFIG_DIR",
     "INSTRUMENTS",
     "INSTRUMENTS_DIR",
-    "INSTRUMENT_ALIASES",
     "PACKS_CONFIG_DIR",
     "PREAMPS",
     "PREAMPS_FILE",
@@ -100,7 +85,6 @@ __all__ = [
     "STRINGS",
     "STRINGS_FILE",
     "TONE_PACKS",
-    "VOICES",
     "AllomorphBaseModel",
     "CoilConfig",
     "InstrumentConfig",
@@ -115,16 +99,11 @@ __all__ = [
     "SpiceFloat",
     "StringPresetConfig",
     "StringsCatalog",
-    "VoiceCoilConfig",
-    "VoiceConfig",
-    "VoicePickupConfig",
-    "VoiceRegistry",
     "VoicingConfig",
+    "VoicingElectroacoustics",
     "_infer_pole_type",
     "assign_string_registers_to_coils",
-    "assign_target_to_bundle",
     "build_voice_coils_for_pickup",
-    "compound_multi_pickup_coils",
     "compute_coil_offset_from_spacing",
     "compute_effective_position",
     "determine_pickup_resonance_and_q",
@@ -132,7 +111,6 @@ __all__ = [
     "get_instrument_string",
     "get_legal_disclaimer_text",
     "get_preamp",
-    "get_voice_string",
     "is_identity_voicing",
     "load_all_instruments",
     "load_all_tone_packs",
@@ -141,16 +119,12 @@ __all__ = [
     "load_scales",
     "load_strings_config",
     "load_tone_pack",
-    "load_voice_config",
-    "load_voices_config",
     "parse_spice_unit",
     "parse_target_voicing_token",
     "resolve_pickup_coils",
     "resolve_scale_range",
     "resolve_target_voicing",
-    "resolve_voice_coils",
-    "resolve_voice_pickups",
     "resolve_voicing_active_coils",
     "resolve_voicing_active_pickups",
-    "voicing_to_voice_config",
+    "resolve_voicing_electroacoustics",
 ]

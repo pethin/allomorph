@@ -2,7 +2,7 @@
 
 This document details the standardized storefront product configurations for **Allomorph Tone Packs** on [Tone3000](https://tone3000.com), engineered for Neural Amp Modeler (NAM) and the Darkglass Anagram pedalboard.
 
-Each pack contains up to 24 precision digital twin voicings calibrated via true differential circuit deconvolution ($H_{\text{diff}} = H_{\text{tgt}} / H_{\text{src}}$) to transform a specific physical bass guitar into iconic vintage, modern active, heavy multi-scale, and acoustic bass topologies.
+Each pack contains 21–24 precision Forward Digital Twin voicings paired directly from the source instrument's simulated stem (`Source Digital Twin → NAM Block 1 → Target Digital Twin`) to transform a specific physical bass guitar into iconic vintage, modern active, heavy multi-scale, and acoustic bass topologies.
 
 Tone pack metadata and bespoke storefront product copy are defined in `config/packs/*.toml`, while canonical license terms and trademark notices are defined in `config/legal.toml`.
 
@@ -29,7 +29,7 @@ All pack descriptions strictly adhere to Tone3000 platform guidelines:
 2. **Pickup Configuration Tags:** Multi-pickup editions (Jazz, P/J, Mustang P/J, Active Soapbar) include bracketed physical selector tags on every voicing (`[Parallel]`, `[Neck]`, `[Bridge]`) so users know exactly how to set their instrument switches for optimal acoustic cancellation matching.
 3. **Concise Voicing Summaries:** Each target voicing is distilled into 1–2 punchy, informative sentences highlighting real-world musical feel, mix behavior, and sonic character.
 4. **Independent Legal Disclaimers:** Trademark disclaimers and non-commercial/commercial user rights are centrally codified in `config/legal.toml` and appended to each exported listing.
-5. **Native Identity Exclusion:** Base-instrument 1:1 identical duplicates ($H_{\text{diff}} \equiv 1.0$) are omitted, ensuring every model in the pack provides transformational capacity (see [`ranking.md`](ranking.md)).
+5. **Native Identity Exclusion:** Base-instrument 1:1 identical duplicates (where source and target voicings are identical) are omitted via `is_identity_voicing`, ensuring every model in the pack provides transformational capacity (see [`ranking.md`](ranking.md)).
 6. **Tone Naming & Display Character Budgets:** Every model filename strictly adheres to the 64-character Tone3000 upload limit and 34-character Darkglass Anagram pedalboard screen target (see master guide [`naming.md`](naming.md)).
 
 ---
@@ -49,7 +49,7 @@ Bassists browse Tone3000 to find sounds that inspire them, solve gigging problem
 
 | Avoid Engineering Mumbo-Jumbo | Use Bassist-Friendly Language |
 | :--- | :--- |
-| *True differential circuit deconvolution ($H_{\text{diff}} = H_{\text{tgt}} / H_{\text{src}}$)* | Transforms your instrument's sound right at the pickups in real time |
+| *Forward Digital Twin source-to-target neural mapping* | Transforms your instrument's sound right at the pickups in real time |
 | *Aperture geometry & spatial string comb-filtering* | Pickup placement, sweet spots, and harmonic phase interactions |
 | *Bessel $J_1(x)/x$ cylindrical pole transfer* | Round pole-piece punch and dynamic transient attack |
 | *High-impedance coil eddy currents & skin-effect damping* | Warm, woody low-mid body and smooth vintage top-end bloom |
@@ -68,7 +68,7 @@ Bassists browse Tone3000 to find sounds that inspire them, solve gigging problem
 
 ## Digital Twin Voice Architecture & Ranking
 
-Every pack provides comprehensive coverage across eight modular sonic families, ordered according to the [Tone Ranking Architecture](ranking.md):
+Every pack provides comprehensive coverage across seven modular sonic families, ordered according to the [Tone Ranking Architecture](ranking.md):
 
 1. **Jazz Bass Family:**
    - **Modern Jazz Active** (Modern Active Jazz Bass NYC 2-Band Preamp with Cable Isolation)
@@ -111,7 +111,7 @@ Every pack provides comprehensive coverage across eight modular sonic families, 
       │  (Volume 100%, Tone 100%)
       ▼
 [Block 1: Allomorph NAM Preamp]  ◄── Tone3000 Pickup Twin
-      │  (Impedance matching, coil deconvolution, aperture reshaping)
+      │  (Forward Digital Twin source-to-target transformation)
       ▼
 [Block 2: Preamp / Overdrive]   ◄── Microtubes B7K, Vintage Ultra, SVT, etc.
       │  (Distorts authentic pickup resonance peaks)

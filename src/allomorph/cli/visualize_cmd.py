@@ -7,8 +7,10 @@ from pathlib import Path
 
 from allomorph.cli.console import log_info, log_step, log_success
 from allomorph.config.instruments import load_instrument
+from allomorph.config.scales import REPO_ROOT
 from allomorph.visualizer.charts import generate_all_charts, generate_interactive_chart
-from allomorph.visualizer.portal import DOCS_DIR, generate_portal_pages
+
+DOCS_DIR = REPO_ROOT / "docs"
 
 
 def visualize(
@@ -17,7 +19,7 @@ def visualize(
     mode: str = "voicings",
     out: Path | None = None,
 ) -> None:
-    """Generates interactive Altair visualization charts and master portal."""
+    """Generates interactive Altair visualization charts."""
     inst_desc = "all instruments" if instrument == "all" else f"instrument '{instrument}'"
     log_step(
         "VIZ", f"Generating interactive Altair visualizations for {inst_desc} (mode: {mode})..."
@@ -28,7 +30,7 @@ def visualize(
     if instrument.lower() == "all":
         generate_all_charts(output_dir=out_dir)
         log_info(
-            f"Interactive Frequency Response Suite generated at [bold]{DOCS_DIR / 'frequency_responses.html'}[/bold]"
+            f"Interactive Frequency Response Suite generated at [bold]{out_dir / 'frequency_responses.html'}[/bold]"
         )
         log_success("Visualization generation complete.")
     else:
@@ -41,8 +43,7 @@ def visualize(
             out_html=out_html or (target_dir / f"{inst_cfg.id}.html"),
             mode=mode,
         )
-        generate_portal_pages(output_dir=target_dir)
         log_info(
-            f"Interactive chart generated at [bold]{target_dir / f'{inst_cfg.id}.html'}[/bold]"
+            f"Interactive chart generated at [bold]{out_html or (target_dir / f'{inst_cfg.id}.html')}[/bold]"
         )
         log_success(f"Visualization generation complete for {inst_cfg.id}.")

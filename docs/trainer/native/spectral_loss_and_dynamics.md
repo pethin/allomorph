@@ -28,28 +28,26 @@ The gradient $\nabla_\theta \mathcal{L}_{\text{MSE}}$ is dominated almost exclus
 
 ---
 
-## 2. Zero-Phase FIR High-Pass Filter Design
+## 2. Zero-Phase Blackman FIR High-Pass & Multi-Harmonic Sine Regularizer
 
-To isolate harmonic bands without phase distortion, the native engine designs Type-I linear-phase FIR filters directly in pure NumPy (`design_fir_highpass`), avoiding heavy external DSP dependencies:
+To isolate harmonic bands without phase distortion, the native engine designs Type-I linear-phase Blackman-windowed FIR filters directly in pure NumPy (`design_fir_highpass` in `loss.py`, $M = 255$ taps in `engine.py`, `padding="valid"`):
 
 ### 2.1 Formulation
 
-For a filter with $M$ taps (where $M$ is odd, default $M=31$) and cutoff frequency $f_c$ at sampling rate $f_s$:
+For a filter with $M$ taps (where $M$ is odd, $M=255$ in `engine.py` and $M=31$ default in `loss.py`) and cutoff frequency $f_c = 1200.0\text{ Hz}$ at sampling rate $f_s = 48,000\text{ Hz}$:
 
 1. **Normalized Cutoff:** $\omega_c = 2\pi \dfrac{f_c}{f_s}$.
 2. **Symmetric Time Indices:** $m = n - \dfrac{M - 1}{2}$ for $n \in [0, M-1]$.
 3. **Ideal High-Pass Impulse Response:**
    $$h_{\text{ideal}}[m] = \text{sinc}(m) - \frac{\omega_c}{\pi} \text{sinc}\left(\frac{\omega_c m}{\pi}\right)$$
-4. **Hamming Tapering:**
-   $$w[n] = 0.54 - 0.46 \cos\left(\frac{2\pi n}{M - 1}\right)$$
+4. **Blackman Tapering (`np.blackman` in `engine.py` / Hamming in `loss.py`):**
+   $$w[n] = 0.42 - 0.50 \cos\left(\frac{2\pi n}{M - 1}\right) + 0.08 \cos\left(\frac{4\pi n}{M - 1}\right)$$
    $$h_{\text{win}}[n] = h_{\text{ideal}}[n] \cdot w[n]$$
 5. **Unit Nyquist Gain Normalization:**
    $$S_{\text{Nyq}} = \sum_{n=0}^{M-1} h_{\text{win}}[n] \cdot \cos(\pi m)$$
    $$h[n] = \frac{h_{\text{win}}[n]}{S_{\text{Nyq}}}$$
 
-This guarantees zero phase distortion (linear phase shift $\tau = (M-1)/2 = 15$ samples, compensated via symmetric padding) and exact $0.0\text{ dB}$ gain at Nyquist.
-
----
+Combined with the 5-harmonic small-signal sine regularizer (`sine_frequencies = (659.25, 1318.5, 1977.8, 2637.0, 3296.3)` Hz, `sine_amplitudes = (0.25, 0.10, 0.05, 0.03, 0.008)`), this guarantees zero phase distortion, exact $0.0\text{ dB}$ gain at Nyquist, and suppression of `LeakyReLU(0.01)` zero-crossing buzz.
 
 ---
 

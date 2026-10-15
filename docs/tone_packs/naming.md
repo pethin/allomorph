@@ -130,45 +130,45 @@ Every Allomorph tone name must satisfy two physical and software thresholds:
 ### 1. Darkglass Anagram Screen Viewport ($\le 34$ Characters)
 - **Viewport:** The Darkglass Anagram pedalboard LCD block displays **34 characters** without scrolling.
 - **Goal:** Achieve **100% Zero-Scroll** on stage across all production voices.
-- Under our systematic grammar, the longest name in the catalog (`Rickenbacker Clank [Bridge] v6.1.1`) is exactly **34 characters**, ensuring zero marquee scrolling across the entire library!
+- Under our systematic grammar, the longest unversioned display name in the storefront pack catalog (`Dingwall Parallel [Parallel]`) is **28 characters** (and `Rickenbacker Clank [Bridge]` is **27 characters**), ensuring zero marquee scrolling on stage!
 
 ### 2. Tone3000 Upload Ceiling ($\le 64$ Characters)
 - **Ceiling:** The Tone3000 cloud uploader strictly rejects model basenames exceeding **64 characters** (excluding `.nam`).
 - **Enforcement:** Programmatically enforced in `get_t3k_basename()` in `src/allomorph/naming.py`, which raises a diagnostic `ValueError` if violated.
-- With our grammar, all model basenames range between **20 and 34 characters**, providing a massive safety margin.
+- With our grammar, all versioned `.nam` model basenames range between **20 and 35 characters** (max **35 chars** for `Dingwall Parallel [Parallel] v7.1.1`), providing a massive safety margin below the 64-character ceiling.
 
 ---
 
-## 5. Complete 24-Voice Catalog Reference Table
+## 5. Complete 24-Voicing Storefront Target Reference Table
 
-Below is the definitive catalog of all 24 Allomorph target voices under the systematic naming system, showing character lengths and screen viewport status:
+Below is the definitive table of the 24 curated storefront target voicings (out of the 60 total native voicings across all 16 catalog instruments), showing character lengths and screen viewport status:
 
-| Voice Slug | Declarative `tone_name` | Source Pos Tag | Full Model Basename (`.nam`) | Chars | Screen Status | Musical Personality / Bassist Context |
+| Target (`<inst_id>:<voicing_id>`) | Declarative `tone_name` | Source Pos Tag | Full Model Basename (`.nam`) | Unversioned / Versioned Chars | Screen Status | Musical Personality / Bassist Context |
 | :--- | :--- | :---: | :--- | :---: | :--- | :--- |
-| `jazz_pair_active` | `Jazz Pair Active` | `[Parallel]` | `Jazz Pair Active [Parallel] v6.1.1` | 33 | **Zero-Scroll** | Active 2-band EQ slap scoop; scooped mids |
-| `jazz_pair_open` | `Jazz Pair Open` | `[Parallel]` | `Jazz Pair Open [Parallel] v6.1.1` | 31 | **Zero-Scroll** | Classic 60s dual single-coils, tone wide open |
-| `jazz_pair_mids` | `Jazz Pair Mids` | `[Parallel]` | `Jazz Pair Mids [Parallel] v6.1.1` | 31 | **Zero-Scroll** | Vocal mid-honk; smooth top with punchy mids |
-| `jazz_bridge_growl` | `Jazz Bridge Growl` | `[Bridge]` | `Jazz Bridge Growl [Bridge] v6.1.1` | 33 | **Zero-Scroll** | Singing fretless bridge burp & vocal growl |
-| `jazz_bridge_open` | `Jazz Bridge Open` | `[Bridge]` | `Jazz Bridge Open [Bridge] v6.1.1` | 33 | **Zero-Scroll** | Tight, biting 60s bridge single-coil, wide open |
-| `precision_active` | `Precision Active` | `[Split]` | `Precision Active [Split] v6.1.1` | 31 | **Zero-Scroll** | Modern active ceramic split-P with 2-band preamp |
-| `precision_vintage` | `Precision Vintage` | `[Split]` | `Precision Vintage [Split] v6.1.1` | 32 | **Zero-Scroll** | Classic '62 Alnico V split-P, CTS 250k open |
-| `precision_mids` | `Precision Mids` | `[Split]` | `Precision Mids [Split] v6.1.1` | 29 | **Zero-Scroll** | Cutting vocal P-bass with articulate punch |
-| `precision_warm` | `Precision Warm` | `[Split]` | `Precision Warm [Split] v6.1.1` | 29 | **Zero-Scroll** | Classic Motown / flatwound woody thump |
-| `precision_dub` | `Precision Dub` | `[Split]` | `Precision Dub [Split] v6.1.1` | 28 | **Zero-Scroll** | Deep 1950s sub-bass dub thump |
-| `pj_active` | `PJ Active` | `[Parallel]` | `PJ Active [Parallel] v6.1.1` | 28 | **Zero-Scroll** | Split-P + J-bridge with active 2-band preamp |
-| `pj_passive` | `PJ Passive` | `[Parallel]` | `PJ Passive [Parallel] v6.1.1` | 29 | **Zero-Scroll** | Organic P-thump with J-bridge articulation |
-| `stingray_parallel` | `StingRay Parallel` | `[Bridge]` | `StingRay Parallel [Bridge] v6.1.1` | 33 | **Zero-Scroll** | Classic 2-band active Music Man authority |
-| `stingray_series` | `StingRay Series` | `[Bridge]` | `StingRay Series [Bridge] v6.1.1` | 31 | **Zero-Scroll** | Muscular, mid-forward high-output MM punch |
-| `rickenbacker_clank` | `Rickenbacker Clank` | `[Bridge]` | `Rickenbacker Clank [Bridge] v6.1.1` | 34 | **Zero-Scroll** | Classic 4003 bridge coil with high-pass clank |
-| `rickenbacker_open` | `Rickenbacker Open` | `[Bridge]` | `Rickenbacker Open [Bridge] v6.1.1` | 33 | **Zero-Scroll** | Modern 4003 bridge coil, vintage cap bypassed |
-| `p_mm_parallel` | `P∕MM Parallel` | `[Parallel]` | `P∕MM Parallel [Parallel] v7.1.1` | 31 | **Zero-Scroll** | Split-P + MM bridge (parallel coils) with Lakland LH-3 active preamp |
-| `p_mm_series` | `P∕MM Series` | `[Parallel]` | `P∕MM Series [Parallel] v7.1.1` | 29 | **Zero-Scroll** | Split-P + MM bridge (series coils) with Lakland LH-3 active preamp |
-| `mudbucker_deep` | `Mudbucker Deep` | `[Neck]` | `Mudbucker Deep [Neck] v6.1.1` | 29 | **Zero-Scroll** | Massive 14.4H sidewinder neck sub-bass rumble |
-| `dingwall_bridge` | `Dingwall Bridge` | `[Bridge]` | `Dingwall Bridge [Bridge] v6.1.1` | 32 | **Zero-Scroll** | High-tension fanned-fret progressive clarity |
-| `dingwall_middle` | `Dingwall Middle` | `[Neck]` | `Dingwall Middle [Neck] v6.1.1` | 29 | **Zero-Scroll** | Focused aggressive low-mid punch & vocal growl |
-| `dingwall_parallel` | `Dingwall Parallel` | `[Parallel]` | `Dingwall Parallel [Parallel] v6.1.1` | 35 | **Zero-Scroll** | Modern scooped aggression, ultra-fast transients |
-| `jazz_neck_warm` | `Jazz Neck Warm` | `[Neck]` | `Jazz Neck Warm [Neck] v6.1.1` | 30 | **Zero-Scroll** | Warm, woody 60s jazz neck single-coil bloom |
-| `upright_piezo` | `Upright Piezo` | — | `Upright Piezo v6.1.1` | 20 | **Zero-Scroll** | Woody double-bass piezo bridge transducer |
+| `34in_standard_jazz:pair_active` | `Jazz Pair Active` | `[Parallel]` | `Jazz Pair Active [Parallel] v7.1.1` | 27 / 34 | **Zero-Scroll** | Active 2-band EQ slap scoop; scooped mids |
+| `34in_standard_jazz:pair_open` | `Jazz Pair Open` | `[Parallel]` | `Jazz Pair Open [Parallel] v7.1.1` | 25 / 32 | **Zero-Scroll** | Classic 60s dual single-coils, tone wide open |
+| `34in_standard_jazz:pair_mids` | `Jazz Pair Mids` | `[Parallel]` | `Jazz Pair Mids [Parallel] v7.1.1` | 25 / 32 | **Zero-Scroll** | Vocal mid-honk; smooth top with punchy mids |
+| `34in_standard_jazz:bridge_growl` | `Jazz Bridge Growl` | `[Bridge]` | `Jazz Bridge Growl [Bridge] v7.1.1` | 26 / 33 | **Zero-Scroll** | Singing fretless bridge burp & vocal growl |
+| `34in_standard_jazz:bridge_open` | `Jazz Bridge Open` | `[Bridge]` | `Jazz Bridge Open [Bridge] v7.1.1` | 25 / 32 | **Zero-Scroll** | Tight, biting 60s bridge single-coil, wide open |
+| `34in_standard_pj:neck_active` | `Precision Active` | `[Split]` | `Precision Active [Split] v7.1.1` | 24 / 31 | **Zero-Scroll** | Modern active ceramic split-P with 2-band preamp |
+| `34in_standard_p:vintage_open` | `Precision Vintage` | `[Split]` | `Precision Vintage [Split] v7.1.1` | 25 / 32 | **Zero-Scroll** | Classic '62 Alnico V split-P, CTS 250k open |
+| `34in_standard_p:vintage_mids` | `Precision Mids` | `[Split]` | `Precision Mids [Split] v7.1.1` | 22 / 29 | **Zero-Scroll** | Cutting vocal P-bass with articulate punch |
+| `34in_standard_p:vintage_warm` | `Precision Warm` | `[Split]` | `Precision Warm [Split] v7.1.1` | 22 / 29 | **Zero-Scroll** | Classic Motown / flatwound woody thump |
+| `34in_standard_p:slab_dub` | `Precision Dub` | `[Split]` | `Precision Dub [Split] v7.1.1` | 21 / 28 | **Zero-Scroll** | Deep 1950s sub-bass dub thump |
+| `34in_standard_pj:pj_active` | `PJ Active` | `[Parallel]` | `PJ Active [Parallel] v7.1.1` | 20 / 27 | **Zero-Scroll** | Split-P + J-bridge with active 2-band preamp |
+| `34in_standard_pj:pj_blend` | `PJ Passive` | `[Parallel]` | `PJ Passive [Parallel] v7.1.1` | 21 / 28 | **Zero-Scroll** | Organic P-thump with J-bridge articulation |
+| `34in_active_stingray:parallel_2band` | `StingRay Parallel` | `[Bridge]` | `StingRay Parallel [Bridge] v7.1.1` | 26 / 33 | **Zero-Scroll** | Classic 2-band active Music Man authority |
+| `34in_active_stingray:series_2band` | `StingRay Series` | `[Bridge]` | `StingRay Series [Bridge] v7.1.1` | 24 / 31 | **Zero-Scroll** | Muscular, mid-forward high-output MM punch |
+| `33in_rickenbacker_4003:bridge_vintage` | `Rickenbacker Clank` | `[Bridge]` | `Rickenbacker Clank [Bridge] v7.1.1` | 27 / 34 | **Zero-Scroll** | Classic 4003 bridge coil with high-pass clank |
+| `33in_rickenbacker_4003:bridge_modern` | `Rickenbacker Open` | `[Bridge]` | `Rickenbacker Open [Bridge] v7.1.1` | 26 / 33 | **Zero-Scroll** | Modern 4003 bridge coil, vintage cap bypassed |
+| `34in_active_pmm:pmm_lh3_parallel` | `P∕MM Parallel` | `[Parallel]` | `P∕MM Parallel [Parallel] v7.1.1` | 24 / 31 | **Zero-Scroll** | Split-P + MM bridge (parallel coils) with Lakland LH-3 active preamp |
+| `34in_active_pmm:pmm_lh3_series` | `P∕MM Series` | `[Parallel]` | `P∕MM Series [Parallel] v7.1.1` | 22 / 29 | **Zero-Scroll** | Split-P + MM bridge (series coils) with Lakland LH-3 active preamp |
+| `30in_gibson_eb0:mudbucker_series` | `Mudbucker Deep` | `[Neck]` | `Mudbucker Deep [Neck] v7.1.1` | 21 / 28 | **Zero-Scroll** | Massive 14.4H sidewinder neck sub-bass rumble |
+| `37in_multiscale_dingwall:bridge_solo` | `Dingwall Bridge` | `[Bridge]` | `Dingwall Bridge [Bridge] v7.1.1` | 24 / 31 | **Zero-Scroll** | High-tension fanned-fret progressive clarity |
+| `37in_multiscale_dingwall:neck_solo` | `Dingwall Middle` | `[Neck]` | `Dingwall Middle [Neck] v7.1.1` | 22 / 29 | **Zero-Scroll** | Focused aggressive low-mid punch & vocal growl |
+| `37in_multiscale_dingwall:pair_parallel` | `Dingwall Parallel` | `[Parallel]` | `Dingwall Parallel [Parallel] v7.1.1` | 28 / 35 | **Zero-Scroll** | Modern scooped aggression, ultra-fast transients |
+| `34in_standard_jazz:neck_warm` | `Jazz Neck Warm` | `[Neck]` | `Jazz Neck Warm [Neck] v7.1.1` | 21 / 28 | **Zero-Scroll** | Warm, woody 60s jazz neck single-coil bloom |
+| `41in_upright_bass:bridge_piezo` | `Upright Piezo` | — | `Upright Piezo v7.1.1` | 13 / 20 | **Zero-Scroll** | Woody double-bass piezo bridge transducer |
 
 ---
 
@@ -201,9 +201,9 @@ To ensure model files are compatible with macOS, Linux, and Windows filesystems,
 ### DO:
 - **DO follow the 3-token grammar:** `[Family] [Configuration] [Voicing Modifier]`.
 - **DO use permitted vocabulary:** Draw tokens strictly from Section 3.
-- **DO verify character lengths:** Ensure the complete basename with version tag is $\le 34$ characters for zero scroll on stage (and never exceed 64 chars).
+- **DO verify character lengths:** Ensure the unversioned display name is $\le 34$ characters for zero scroll on stage, and the versioned `.nam` basename never exceeds 64 chars.
 - **DO use standard physical switch tags for multi-pickup source basses:** `[Neck]`, `[Bridge]`, `[Parallel]`, `[Series]`, `[Split]`.
-- **DO verify with automated tests:** Run `uv run pytest tests/tone3000/test_tone3000.py` after any voice modification.
+- **DO verify with automated tests:** Run `uv run pytest tests/pipeline/test_pack.py tests/pipeline/test_versioning.py` after any voice modification.
 
 ### DO NOT:
 - **DO NOT include electrical component values in tone names:**
@@ -217,11 +217,11 @@ To ensure model files are compatible with macOS, Linux, and Windows filesystems,
   - ❌ `Jaco Bridge Growl`
   - ✅ `Jazz Bridge Growl`
 - **DO NOT include the source instrument name in single-instrument `tone_name`:**
-  - ❌ `34in Standard P Precision Vintage v6.1.1.nam` (43 chars, marquee scrolls)
-  - ✅ `Precision Vintage [Split] v6.1.1.nam` (32 chars, zero-scroll)
+  - ❌ `34in Standard P Precision Vintage v7.1.1.nam` (43 chars, marquee scrolls)
+  - ✅ `Precision Vintage [Split] v7.1.1.nam` (32 chars, zero-scroll)
 - **DO NOT invent arbitrary abbreviations:**
-  - ❌ `P-Bss Vntg [Splt] v6.1.1.nam` (cryptic and unprofessional)
-  - ✅ `Precision Vintage [Split] v6.1.1.nam`
+  - ❌ `P-Bss Vntg [Splt] v7.1.1.nam` (cryptic and unprofessional)
+  - ✅ `Precision Vintage [Split] v7.1.1.nam`
 - **DO NOT mix and match word order:**
   - ❌ `Active Modern Jazz Pair`
   - ✅ `Jazz Pair Active`

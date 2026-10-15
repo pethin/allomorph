@@ -34,12 +34,12 @@ from allomorph.dsp import (
 from allomorph.naming import get_default_input_path
 from allomorph.version import (
     DSP_GENERATION,
-    check_wet_stem_freshness,
+    check_stem_freshness,
     compute_recipe_token,
     resolve_tri_part_version,
 )
 
-WET_AUDIO_DIR = REPO_ROOT / "audio" / "wet"
+STEMS_AUDIO_DIR = REPO_ROOT / "audio" / "stems"
 
 
 def generate_stems(
@@ -50,8 +50,13 @@ def generate_stems(
     force: bool = False,
     jobs: int | None = None,
 ) -> None:
-    """Synthesizes target-filtered wet audio stems directly from dry string excitation."""
-    resolved = resolve_targets(targets, default="all", allow_shorthand=True)
+    """Synthesizes target-filtered audio stems directly from dry string excitation."""
+    resolved = resolve_targets(
+        targets,
+        default="all",
+        allow_shorthand=True,
+        shorthand_kind="instrument",
+    )
     if not resolved:
         log_warning("No targets matched for stem generation.")
         return
@@ -136,7 +141,7 @@ def generate_stems(
     unique_tasks: list[tuple[InstrumentConfig, VoicingConfig]] = []
     seen_tasks: set[tuple[str, str]] = set()
     for inst, v_cfg in tasks:
-        v_key = (inst.id, v_cfg.tone_name or v_cfg.id or "")
+        v_key = (inst.id, v_cfg.id or "")
         if v_key not in seen_tasks:
             seen_tasks.add(v_key)
             unique_tasks.append((inst, v_cfg))
@@ -151,9 +156,8 @@ def generate_stems(
     tasks_to_simulate: list[tuple[int, InstrumentConfig, VoicingConfig, str, Path, str]] = []
 
     for idx, (inst, v_cfg) in enumerate(unique_tasks, 1):
-        v_label = v_cfg.tone_name or v_cfg.id or "default"
-        stem_slug = v_label.lower().replace(" ", "_").replace("∕", "_").replace("/", "_")
-        target_path = WET_AUDIO_DIR / inst.id / f"{stem_slug}.wav"
+        stem_slug = v_cfg.id or ""
+        target_path = STEMS_AUDIO_DIR / inst.id / f"{stem_slug}.wav"
 
         # Check in-process cache for recipe token
         cache_key = (inst.id, stem_slug)
@@ -179,7 +183,7 @@ def generate_stems(
         if force:
             is_fresh, reason = False, "force flag"
         else:
-            is_fresh, reason = check_wet_stem_freshness(
+            is_fresh, reason = check_stem_freshness(
                 target_path,
                 expected_recipe_token=recipe_tok,
                 base_dry_path=input_wav,
@@ -278,29 +282,27 @@ def generate_stems(
 
 
 def prune_stems(*, dry_run: bool = False) -> None:
-    """Deletes orphan WAV files, stale JSON sidecars, and empty directories in audio/wet/."""
+    """Deletes orphan WAV files, stale JSON sidecars, and empty directories in audio/stems/."""
     log_step(
-        "PRUNE", f"Scanning {WET_AUDIO_DIR} for orphan stems and sidecars (dry_run={dry_run})..."
+        "PRUNE", f"Scanning {STEMS_AUDIO_DIR} for orphan stems and sidecars (dry_run={dry_run})..."
     )
 
-    if not WET_AUDIO_DIR.exists():
-        log_info("Audio directory 'audio/wet/' does not exist. Nothing to prune.")
+    if not STEMS_AUDIO_DIR.exists():
+        log_info("Audio directory 'audio/stems/' does not exist. Nothing to prune.")
         return
 
     # Build index of valid stems across all configured instruments
     valid_stems_by_inst: dict[str, set[str]] = {}
     for inst_id, inst in INSTRUMENTS.items():
         valid_stems_by_inst[inst_id] = set()
-        for v_cfg in inst.voicings.values():
-            v_label = v_cfg.tone_name or v_cfg.id or "default"
-            slug = v_label.lower().replace(" ", "_").replace("∕", "_").replace("/", "_")
-            valid_stems_by_inst[inst_id].add(slug)
+        for v_id, v_cfg in inst.voicings.items():
+            valid_stems_by_inst[inst_id].add(v_cfg.id or v_id)
 
     deleted_files: list[str] = []
     deleted_dirs: list[str] = []
 
-    # Scan instrument subdirectories in audio/wet
-    for item in sorted(WET_AUDIO_DIR.iterdir()):
+    # Scan instrument subdirectories in audio/stems
+    for item in sorted(STEMS_AUDIO_DIR.iterdir()):
         if not item.is_dir() or item.name.startswith("."):
             continue
 

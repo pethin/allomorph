@@ -4,14 +4,10 @@ saddle boundary stiffness, and cylindrical rod vs blade aperture.
 """
 
 import math
-from typing import TYPE_CHECKING
 
 import numpy as np
 
-if TYPE_CHECKING:
-    from allomorph.config.schema import InstrumentConfig
-
-from allomorph.config.schema import CoilConfig, VoiceCoilConfig, VoiceConfig
+from allomorph.config.schema import CoilConfig
 from allomorph.dsp import FREQS
 
 STANDARD_SCALE_SPEEDS = [71.16, 95.0, 126.81, 169.27]
@@ -23,7 +19,6 @@ from allomorph.physics.aperture import (
     compute_pickup_isolation_leveling,
     compute_saddle_boundary_coupling,
     get_coil_register,
-    is_voice_matching_source,
     numpy_pickup_acoustic_response,
     pickup_acoustic_response,
     soft_clamp_displacement_ratio,
@@ -122,48 +117,6 @@ def test_dual_coil_notch_smoothness_and_dc_identity():
     )
     # Notch must retain authentic physical acoustic depth (-12 to -8 dB, i.e. 0.20 to 0.40)
     assert 0.20 <= np.min(h_arr) <= 0.40
-
-
-def test_identity_acoustic_transfer_preserves_flat_bass(
-    generic_instrument_config: InstrumentConfig,
-    generic_dual_pickup_instrument: InstrumentConfig,
-    generic_voice_config: VoiceConfig,
-):
-    """Verify that modeling a source instrument against its matching voice bypasses acoustic deconvolution."""
-    # Single-pickup matching
-    assert is_voice_matching_source(generic_instrument_config, generic_voice_config)
-
-    # Multi-pickup matching (neck pickup coil matching voice)
-    voice_neck = generic_voice_config.model_copy(
-        update={
-            "coils": [
-                VoiceCoilConfig(
-                    position_from_bridge_m=0.14,
-                    aperture_width_in=0.5,
-                    weight=1.0,
-                    polarity=1.0,
-                    strings=[1, 2, 3, 4],
-                )
-            ]
-        }
-    )
-    assert is_voice_matching_source(generic_dual_pickup_instrument, voice_neck)
-
-    # Non-matching voice (different position)
-    voice_mismatch = generic_voice_config.model_copy(
-        update={
-            "coils": [
-                VoiceCoilConfig(
-                    position_from_bridge_m=0.25,
-                    aperture_width_in=0.75,
-                    weight=1.0,
-                    polarity=1.0,
-                    strings=[1, 2, 3, 4],
-                )
-            ]
-        }
-    )
-    assert not is_voice_matching_source(generic_instrument_config, voice_mismatch)
 
 
 def test_cylindrical_rod_vs_blade_aperture():
@@ -340,26 +293,6 @@ def test_multiscale_acoustic_response_range():
     assert len(resp) == len(freqs)
     assert np.all(np.isfinite(resp))
     assert math.isclose(resp[0], 1.0, abs_tol=1e-3)
-
-
-def test_is_voice_matching_source_edge_cases(
-    generic_instrument_config: InstrumentConfig,
-    generic_voice_config: VoiceConfig,
-):
-    """Verify is_voice_matching_source edge cases and mismatch branches."""
-    # Scale range mismatch (> 0.012 m)
-    v_short = generic_voice_config.model_copy(update={"scale": "30in"})
-    assert not is_voice_matching_source(generic_instrument_config, v_short)
-
-    # Coil count mismatch (1 coil vs 2 coils)
-    c0 = generic_voice_config.coils[0]
-    v_dual = generic_voice_config.model_copy(update={"coils": [c0, c0]})
-    assert not is_voice_matching_source(generic_instrument_config, v_dual)
-
-    # Coil aperture width mismatch (> 0.15 in)
-    wide_coil = c0.model_copy(update={"aperture_width_in": 2.5})
-    v_wide = generic_voice_config.model_copy(update={"coils": [wide_coil]})
-    assert not is_voice_matching_source(generic_instrument_config, v_wide)
 
 
 def test_numpy_pickup_acoustic_response_string_names_markers():

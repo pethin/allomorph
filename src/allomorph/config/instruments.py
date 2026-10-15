@@ -1,112 +1,20 @@
 """
-Source instrument configuration loading, alias resolution, and pickup lookup.
+Source instrument configuration loading, tone pack partitioning, and voicing resolution.
 """
 
 import tomllib
-from collections.abc import Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 
-REPO_ROOT = Path(__file__).resolve().parent.parent.parent.parent
-CONFIG_DIR = REPO_ROOT / "config"
-INSTRUMENTS_DIR = CONFIG_DIR / "instruments"
-
-INSTRUMENT_ALIASES: dict[str, str] = {
-    "30in": "30in_mustang_pj",
-    "34in": "34in_standard_p",
-    "standard_p": "34in_standard_p",
-    "34in_standard_jazz": "34in_standard_jazz",
-    "standard_jazz": "34in_standard_jazz",
-    "34in_standard_pj": "34in_standard_pj",
-    "standard_pj": "34in_standard_pj",
-    "34in_pj": "34in_standard_pj",
-    "pj": "34in_standard_pj",
-    "34in_active_stingray": "34in_active_stingray",
-    "active_stingray": "34in_active_stingray",
-    "stingray": "34in_active_stingray",
-    "ray": "34in_active_stingray",
-    "34in_active_pmm": "34in_active_pmm",
-    "active_pmm": "34in_active_pmm",
-    "pmm": "34in_active_pmm",
-    "sandberg": "34in_active_pmm",
-    "lakland": "34in_active_pmm",
-    "34in_preamp_soapbar": "34in_preamp_soapbar",
-    "preamp_soapbar": "34in_preamp_soapbar",
-    "preamp_soapbar_5string": "34in_preamp_soapbar",
-    "ibanez_sr": "34in_preamp_soapbar",
-    "ibanez_sr505": "34in_preamp_soapbar",
-    "sr505": "34in_preamp_soapbar",
-    "sr505e": "34in_preamp_soapbar",
-    "yamaha_trbx": "34in_preamp_soapbar",
-    "yamaha_trbx505": "34in_preamp_soapbar",
-    "trbx": "34in_preamp_soapbar",
-    "trbx505": "34in_preamp_soapbar",
-    "sire_f10": "34in_preamp_soapbar",
-    "sire_f10_5": "34in_preamp_soapbar",
-    "sire_m7": "34in_preamp_soapbar",
-    "sire_m7_5": "34in_preamp_soapbar",
-    "sire": "34in_preamp_soapbar",
-    "marcus_miller_f10": "34in_preamp_soapbar",
-    "stingray_hh": "34in_preamp_soapbar",
-    "stingray5_hh": "34in_preamp_soapbar",
-    "ray34hh": "34in_preamp_soapbar",
-    "ray35hh": "34in_preamp_soapbar",
-    "34in_active_emg": "34in_active_emg",
-    "active_emg": "34in_active_emg",
-    "emg40": "34in_active_emg",
-    "emg40dc": "34in_active_emg",
-    "emg40cs": "34in_active_emg",
-    "34in_emg": "34in_active_emg",
-    "spector5": "34in_active_emg",
-    "spector_euro5": "34in_active_emg",
-    "34in_5string_emg": "34in_active_emg",
-    "30in_mustang_pj": "30in_mustang_pj",
-    "mustang_pj": "30in_mustang_pj",
-    "30in_mustang": "30in_mustang_pj",
-    "mustang": "30in_mustang_pj",
-    "30in_standard_mustang": "30in_mustang_pj",
-    "standard_mustang": "30in_mustang_pj",
-    "37in_multiscale_dingwall": "37in_multiscale_dingwall",
-    "multiscale_dingwall": "37in_multiscale_dingwall",
-    "dingwall": "37in_multiscale_dingwall",
-    "combustion": "37in_multiscale_dingwall",
-    "ng": "37in_multiscale_dingwall",
-    "dingwall_ng": "37in_multiscale_dingwall",
-    "ng2": "37in_multiscale_dingwall",
-    "ng3": "37in_multiscale_dingwall",
-    "37in_dingwall_ng": "37in_multiscale_dingwall",
-    "34in_dingwall_sp1": "34in_dingwall_sp1",
-    "35in_dingwall_sp1": "34in_dingwall_sp1",
-    "dingwall_sp1": "34in_dingwall_sp1",
-    "sp1": "34in_dingwall_sp1",
-    "super_p": "34in_dingwall_sp1",
-    "dingwall_super_p": "34in_dingwall_sp1",
-    "33in_rickenbacker_4003": "33in_rickenbacker_4003",
-    "rickenbacker": "33in_rickenbacker_4003",
-    "rickenbacker_4003": "33in_rickenbacker_4003",
-    "rick": "33in_rickenbacker_4003",
-    "4003": "33in_rickenbacker_4003",
-    "33in": "33in_rickenbacker_4003",
-    "30in_gibson_eb0": "30in_gibson_eb0",
-    "gibson_eb0": "30in_gibson_eb0",
-    "eb0": "30in_gibson_eb0",
-    "mudbucker": "30in_gibson_eb0",
-    "30in_eb0": "30in_gibson_eb0",
-    "41in_upright_bass": "41in_upright_bass",
-    "upright": "41in_upright_bass",
-    "upright_bass": "41in_upright_bass",
-    "double_bass": "41in_upright_bass",
-    "acoustic_upright": "41in_upright_bass",
-    "41in": "41in_upright_bass",
-}
-
 from allomorph.config.resolvers import (
-    assign_target_to_bundle,
     find_voicing_by_slug_or_id,
     parse_target_voicing_token,
 )
 from allomorph.config.schema import InstrumentConfig, TonePackConfig, VoicingConfig
 
+REPO_ROOT = Path(__file__).resolve().parent.parent.parent.parent
+CONFIG_DIR = REPO_ROOT / "config"
+INSTRUMENTS_DIR = CONFIG_DIR / "instruments"
 PACKS_CONFIG_DIR = CONFIG_DIR / "packs"
 
 
@@ -114,14 +22,12 @@ def load_instrument(
     identifier_or_path: str | Path | InstrumentConfig,
 ) -> InstrumentConfig:
     """
-    Loads and validates an instrument configuration from a file path, known ID, shorthand alias, or InstrumentConfig.
-    Aliases: '30in' -> '30in_mustang_pj', '34in' -> '34in_standard_p'.
+    Loads and validates an instrument configuration from a file path, canonical ID, or InstrumentConfig.
     """
     if isinstance(identifier_or_path, InstrumentConfig):
         return identifier_or_path
 
-    raw = str(identifier_or_path).strip()
-    key = INSTRUMENT_ALIASES.get(raw, raw)
+    key = str(identifier_or_path).strip()
 
     path = Path(key)
     if not path.exists():
@@ -155,34 +61,6 @@ def load_all_instruments(instruments_dir: str | Path | None = None) -> dict[str,
 
 
 INSTRUMENTS: dict[str, InstrumentConfig] = load_all_instruments()
-
-
-STANDARD_CATALOG_TARGETS: list[tuple[str, str]] = [
-    ("34in_standard_p", "vintage_open"),
-    ("34in_standard_p", "vintage_mids"),
-    ("34in_standard_p", "vintage_warm"),
-    ("34in_standard_pj", "neck_active"),
-    ("34in_standard_p", "slab_dub"),
-    ("34in_standard_jazz", "pair_open"),
-    ("34in_standard_jazz", "pair_mids"),
-    ("34in_standard_jazz", "pair_active"),
-    ("34in_standard_jazz", "bridge_growl"),
-    ("34in_standard_jazz", "bridge_open"),
-    ("34in_standard_jazz", "neck_warm"),
-    ("34in_active_stingray", "parallel_classic"),
-    ("34in_active_stingray", "series_punch"),
-    ("37in_multiscale_dingwall", "bridge_clank"),
-    ("37in_multiscale_dingwall", "middle_growl"),
-    ("37in_multiscale_dingwall", "pair_parallel"),
-    ("33in_rickenbacker_4003", "bridge_clank"),
-    ("33in_rickenbacker_4003", "bridge_open"),
-    ("34in_standard_pj", "pair_parallel"),
-    ("34in_standard_pj", "pair_active"),
-    ("34in_active_pmm", "pmm_parallel"),
-    ("34in_active_pmm", "pmm_series"),
-    ("30in_gibson_eb0", "neck_deep"),
-    ("41in_upright_bass", "bridge_piezo"),
-]
 
 
 @dataclass
@@ -246,18 +124,13 @@ def load_tone_pack(pack_id_or_path: str | Path | TonePackConfig) -> TonePackConf
     """Loads a declarative TonePackConfig from config/packs/<pack_id>.toml or a direct path."""
     if isinstance(pack_id_or_path, TonePackConfig):
         return pack_id_or_path
-    raw = str(pack_id_or_path).strip()
-    key = INSTRUMENT_ALIASES.get(raw, raw)
+    key = str(pack_id_or_path).strip()
     p = Path(pack_id_or_path)
     if not p.is_file():
         if (PACKS_CONFIG_DIR / f"{key}.toml").is_file():
             p = PACKS_CONFIG_DIR / f"{key}.toml"
-        elif (PACKS_CONFIG_DIR / f"{pack_id_or_path}.toml").is_file():
-            p = PACKS_CONFIG_DIR / f"{pack_id_or_path}.toml"
         elif (PACKS_CONFIG_DIR / key).is_file():
             p = PACKS_CONFIG_DIR / key
-        elif (PACKS_CONFIG_DIR / pack_id_or_path).is_file():
-            p = PACKS_CONFIG_DIR / pack_id_or_path
     if not p.is_file():
         raise FileNotFoundError(
             f"Tone pack configuration not found: '{pack_id_or_path}' (searched in {PACKS_CONFIG_DIR})"
@@ -285,20 +158,21 @@ TONE_PACKS: dict[str, TonePackConfig] = load_all_tone_packs()
 
 def partition_instrument_bundles(
     source_inst: InstrumentConfig | str | Path,
-    catalog_targets: Sequence[tuple[str, str]] | None = None,
 ) -> dict[str, VoicingBundle]:
     """Partitions catalog target voicings into upload bundles for a source instrument."""
     inst = load_instrument(source_inst)
 
-    pack_path = PACKS_CONFIG_DIR / f"{inst.id}.toml"
-    if not pack_path.is_file():
-        raise FileNotFoundError(
-            f"Tone pack configuration not found for instrument '{inst.id}'. "
-            f"Expected explicit pack configuration at '{pack_path}'. "
-            f"All tone packs must be explicitly defined in config/packs/."
-        )
-
-    pack_cfg = load_tone_pack(pack_path)
+    if inst.id in TONE_PACKS:
+        pack_cfg = TONE_PACKS[inst.id]
+    else:
+        pack_path = PACKS_CONFIG_DIR / f"{inst.id}.toml"
+        if not pack_path.is_file():
+            raise FileNotFoundError(
+                f"Tone pack configuration not found for instrument '{inst.id}'. "
+                f"Expected explicit pack configuration at '{pack_path}'. "
+                f"All tone packs must be explicitly defined in config/packs/."
+            )
+        pack_cfg = load_tone_pack(pack_path)
     pack_bundles: dict[str, VoicingBundle] = {}
     for b_cfg in pack_cfg.bundles:
         src_inst_id, src_vid = b_cfg.source.split(":", 1)
@@ -328,79 +202,46 @@ def partition_instrument_bundles(
         )
         pack_bundles[b_cfg.name] = bundle
 
-    if catalog_targets is None:
-        for b_cfg in pack_cfg.bundles:
-            bundle = pack_bundles[b_cfg.name]
-            for target_entry in b_cfg.targets:
-                target_token = (
-                    target_entry if isinstance(target_entry, str) else target_entry.target
-                )
-                custom_name = None if isinstance(target_entry, str) else target_entry.name
+    for b_cfg in pack_cfg.bundles:
+        bundle = pack_bundles[b_cfg.name]
+        for target_entry in b_cfg.targets:
+            target_token = target_entry if isinstance(target_entry, str) else target_entry.target
+            custom_name = None if isinstance(target_entry, str) else target_entry.name
 
-                tgt_inst_id, tgt_vid = parse_target_voicing_token(
-                    target_token, default_inst_id=inst.id
-                )
+            tgt_inst_id, tgt_vid = parse_target_voicing_token(target_token, default_inst_id=inst.id)
 
-                tgt_inst = (
-                    INSTRUMENTS[tgt_inst_id]
-                    if tgt_inst_id in INSTRUMENTS
-                    else load_instrument(tgt_inst_id)
-                )
-                tgt_v = find_voicing_by_slug_or_id(tgt_inst, tgt_vid)
-                if tgt_v is None:
-                    raise KeyError(
-                        f"Target voicing '{tgt_vid}' not found on instrument '{tgt_inst_id}'. "
-                        f"Available voicings: {list(tgt_inst.voicings.keys())}"
-                    )
-
-                if is_identity_voicing(inst, b_cfg.source_voicing, tgt_inst, tgt_v):
-                    continue
-
-                bundle.targets.append(
-                    TargetVoicingRef(
-                        instrument_id=tgt_inst_id,
-                        voicing_id=tgt_v.id or tgt_vid,
-                        instrument=tgt_inst,
-                        voicing=tgt_v,
-                        custom_name=custom_name,
-                    )
-                )
-        return pack_bundles
-    else:
-        for target_inst_id, target_vid in catalog_targets:
-            target_inst = (
-                INSTRUMENTS[target_inst_id]
-                if target_inst_id in INSTRUMENTS
-                else load_instrument(target_inst_id)
+            tgt_inst = (
+                INSTRUMENTS[tgt_inst_id]
+                if tgt_inst_id in INSTRUMENTS
+                else load_instrument(tgt_inst_id)
             )
-            target_voicing = find_voicing_by_slug_or_id(target_inst, target_vid)
-            if target_voicing is None:
+            tgt_v = find_voicing_by_slug_or_id(tgt_inst, tgt_vid)
+            if tgt_v is None:
                 raise KeyError(
-                    f"Target voicing '{target_vid}' not found on instrument '{target_inst_id}'. "
-                    f"Available voicings: {list(target_inst.voicings.keys())}"
+                    f"Target voicing '{tgt_vid}' not found on instrument '{tgt_inst_id}'. "
+                    f"Available voicings: {list(tgt_inst.voicings.keys())}"
                 )
 
-            assigned_b_name = assign_target_to_bundle(target_vid, pack_bundles, pack_cfg.bundles)
-            target_bundle = pack_bundles[assigned_b_name]
-            if is_identity_voicing(inst, target_bundle.source_voicing, target_inst, target_voicing):
+            if is_identity_voicing(inst, b_cfg.source_voicing, tgt_inst, tgt_v):
                 continue
 
-            target_bundle.targets.append(
+            bundle.targets.append(
                 TargetVoicingRef(
-                    instrument_id=target_inst_id,
-                    voicing_id=target_vid,
-                    instrument=target_inst,
-                    voicing=target_voicing,
+                    instrument_id=tgt_inst_id,
+                    voicing_id=tgt_v.id or tgt_vid,
+                    instrument=tgt_inst,
+                    voicing=tgt_v,
+                    custom_name=custom_name,
                 )
             )
-        return pack_bundles
+    return pack_bundles
 
 
 def resolve_target_voicing(
     voicing: VoicingConfig | str,
     instrument: InstrumentConfig | str | Path | None = None,
 ) -> tuple[InstrumentConfig, VoicingConfig]:
-    """Resolves an instrument and voicing from either a native voicing ID or a universal voice slug."""
+    """Resolves an instrument and voicing strictly from '<instrument_id>:<voicing_id>' or '<voicing_id>' with explicit instrument."""
     if isinstance(voicing, VoicingConfig):
         inst = (
             load_instrument(instrument)
@@ -411,69 +252,46 @@ def resolve_target_voicing(
             raise ValueError("Must provide instrument when voicing is a VoicingConfig")
         return inst, voicing
 
-    clean_voicing = str(voicing).lower().replace(" ", "_").replace("∕", "_").replace("/", "_")
+    raw_voicing = str(voicing).strip()
 
-    # If canonical reference "instrument:voicing" is supplied without explicit instrument, parse it
-    if ":" in str(voicing) and instrument is None:
-        inst_part, voicing_part = str(voicing).split(":", 1)
-        inst = load_instrument(inst_part)
+    # Canonical reference "<instrument_id>:<voicing_id>" always takes precedence
+    if ":" in raw_voicing:
+        inst_part, voicing_part = raw_voicing.split(":", 1)
+        inst = INSTRUMENTS[inst_part] if inst_part in INSTRUMENTS else load_instrument(inst_part)
         found_v = find_voicing_by_slug_or_id(inst, voicing_part)
         if found_v is not None:
             return inst, found_v
+        if voicing_part in inst.pickups:
+            raise KeyError(
+                f"Pickup '{voicing_part}' cannot be used as a target voicing. All voicings must be "
+                f"explicitly defined under [voicings]. Available voicings on '{inst.id}': {list(inst.voicings.keys())}"
+            )
+        raise KeyError(
+            f"Voicing '{voicing_part}' not found on instrument '{inst.id}'. "
+            f"Available voicings: {list(inst.voicings.keys())}"
+        )
 
-    # If instrument was provided, check its native voicings first
     if instrument is not None:
         inst = (
             load_instrument(instrument)
             if not isinstance(instrument, InstrumentConfig)
             else instrument
         )
-        found_v = find_voicing_by_slug_or_id(inst, str(voicing))
+        found_v = find_voicing_by_slug_or_id(inst, raw_voicing)
         if found_v is not None:
             return inst, found_v
 
-        # Check if voicing matches a declared pickup on the instrument - reject with fail-fast KeyError
-        if clean_voicing in inst.pickups or str(voicing) in inst.pickups:
-            p_key = clean_voicing if clean_voicing in inst.pickups else str(voicing)
+        if raw_voicing in inst.pickups:
             raise KeyError(
-                f"Pickup '{p_key}' cannot be used as a target voicing. All voicings must be "
+                f"Pickup '{raw_voicing}' cannot be used as a target voicing. All voicings must be "
                 f"explicitly defined under [voicings]. Available voicings on '{inst.id}': {list(inst.voicings.keys())}"
             )
 
-    # Search STANDARD_CATALOG_TARGETS first, then all instruments in catalog
-    all_instruments = load_all_instruments()
-    search_pairs: list[tuple[str, str]] = list(STANDARD_CATALOG_TARGETS)
-    seen_search = set(search_pairs)
-    for iid, inst_obj in sorted(all_instruments.items()):
-        for vid in inst_obj.voicings:
-            if (iid, vid) not in seen_search:
-                seen_search.add((iid, vid))
-                search_pairs.append((iid, vid))
-
-    for iid, vid in search_pairs:
-        t_inst = all_instruments.get(iid) or load_instrument(iid)
-        if vid in t_inst.voicings:
-            t_v = t_inst.voicings[vid]
-            slug = (
-                t_v.tone_name.lower().replace(" ", "_").replace("∕", "_").replace("/", "_")
-                if t_v.tone_name
-                else vid
-            )
-            if clean_voicing in (vid, slug, (t_v.id or "").lower()):
-                return t_inst, t_v
-
-    # Fallback error reporting
-    if instrument is not None:
-        inst = (
-            load_instrument(instrument)
-            if not isinstance(instrument, InstrumentConfig)
-            else instrument
-        )
         raise KeyError(
             f"Voicing or pickup '{voicing}' not found on instrument '{inst.id}'. "
             f"Available voicings: {list(inst.voicings.keys())}, pickups: {list(inst.pickups.keys())}"
         )
 
     raise KeyError(
-        f"Target voicing '{voicing}' could not be resolved from any instrument in catalog."
+        f"Target voicing '{voicing}' must be in canonical '<instrument_id>:<voicing_id>' format when no instrument is provided."
     )

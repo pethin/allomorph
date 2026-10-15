@@ -14,11 +14,11 @@ from pathlib import Path
 from typing import Any
 
 from allomorph.config import (
-    VOICES,
     InstrumentConfig,
     compute_effective_position,
     load_instrument,
-    resolve_voice_coils,
+    resolve_target_voicing,
+    resolve_voicing_electroacoustics,
 )
 from allomorph.pipeline.schema import (
     NamExportMetadata,
@@ -35,13 +35,14 @@ from allomorph.trainer.constants import (
     STOCK_DEFAULT_MAX_EPOCHS,
     STOCK_DEFAULT_NUM_WORKERS,
     STOCK_DEFAULT_PRECISION,
+    STOCK_DEFAULT_VAL_LOSS_METRIC,
 )
 from allomorph.version import (
     ALLOMORPH_VERSION,
     DSP_GENERATION,
     compute_recipe_token,
     get_git_commit,
-    is_wet_stem_valid,
+    is_stem_valid,
     resolve_tri_part_version,
     write_manifest,
 )
@@ -55,6 +56,7 @@ def configure_a2_architecture(
     nam_core: Any,
     precision: str = STOCK_DEFAULT_PRECISION,
     num_workers: int | str = STOCK_DEFAULT_NUM_WORKERS,
+    val_loss_metric: str = STOCK_DEFAULT_VAL_LOSS_METRIC,
 ) -> None:
     """Configure NAM Architecture 2 packed model submodels, hardware acceleration, and logging for stock training."""
     from allomorph.trainer.core import resolve_hardware_num_workers, resolve_hardware_precision
@@ -154,6 +156,7 @@ def configure_a2_architecture(
             data_config, model_config, learning_config = orig_get_configs(*args, **kwargs)
             if resolved_precision in ("bf16-mixed", "16-mixed", "32-true", "32"):
                 learning_config["trainer"]["precision"] = resolved_precision
+            learning_config["trainer"]["val_loss_metric"] = val_loss_metric
             learning_config["train_dataloader"]["num_workers"] = resolved_workers
             if resolved_workers > 0:
                 learning_config["train_dataloader"]["persistent_workers"] = True
@@ -180,8 +183,8 @@ def configure_a2_architecture(
 
 
 def train_voice_stock(
-    instrument: str | InstrumentConfig = "30in",
-    voice: str = "precision_active",
+    instrument: str | InstrumentConfig = "34in_standard_p",
+    voice: str = "34in_standard_p:vintage",
     source_voicing: str | None = None,
     input_wav: str | Path | None = None,
     output_wav: str | Path | None = None,
@@ -199,6 +202,7 @@ def train_voice_stock(
     no_manifest: bool = False,
     include_identity: bool = False,
     seed: int | None = None,
+    val_loss_metric: str = STOCK_DEFAULT_VAL_LOSS_METRIC,
 ) -> bool:
     """Trains a Neural Amp Modeler Architecture 2 local model container using PyTorch Lightning."""
     try:
@@ -224,13 +228,14 @@ def train_voice_stock(
     except ImportError as e:
         print(f"Error: Failed to import 'neural-amp-modeler' ({e}).")
         print("Please run `uv sync` to ensure project dependencies are installed:")
-        print(f"  uv run python -m allomorph.trainer --voice {voice}")
+        print(f"  uv run allomorph train {voice}")
         return False
 
-    if voice not in VOICES:
-        raise KeyError(f"Target voice '{voice}' not found in catalog.")
-    vcfg = VOICES[voice]
-    voice_name = vcfg.name
+    if isinstance(instrument, str) and ":" in instrument:
+        inst_part, parsed_src_voicing = instrument.split(":", 1)
+        if source_voicing is None:
+            source_voicing = parsed_src_voicing
+        instrument = inst_part
 
     try:
         inst_cfg = (
@@ -246,8 +251,12 @@ def train_voice_stock(
             pickups={},
         )
 
+    tgt_inst, tgt_v = resolve_target_voicing(voice, instrument=inst_cfg)
+    tgt_voicing_id = tgt_v.id or (voice.split(":", 1)[1] if ":" in voice else voice)
+    voice_name = tgt_v.name
+
     inst_ver = getattr(inst_cfg, "version", 1)
-    voice_ver = getattr(vcfg, "version", 1)
+    voice_ver = getattr(tgt_v, "version", 1)
     tri_part = resolve_tri_part_version(DSP_GENERATION, inst_ver, voice_ver)
     actual_version_tag = (
         tri_part
@@ -255,12 +264,12 @@ def train_voice_stock(
         else (version_tag if version_tag not in (None, "none", False) else None)
     )
 
-    model_basename = basename or (f"{voice}_{actual_version_tag}" if actual_version_tag else voice)
+    model_basename = basename or (
+        f"{tgt_voicing_id}_{actual_version_tag}" if actual_version_tag else tgt_voicing_id
+    )
     inst_id = inst_cfg.id
     inst_name = inst_cfg.name
     scale_length_in = inst_cfg.scale_length_in or 34.0
-
-    from allomorph.config.voices import voicing_to_voice_config
 
     if source_voicing is not None:
         if source_voicing not in inst_cfg.voicings:
@@ -270,9 +279,9 @@ def train_voice_stock(
             )
         src_vcfg = inst_cfg.voicings[source_voicing]
         src_voicing_id = source_voicing
-    elif voice in inst_cfg.voicings:
-        src_vcfg = inst_cfg.voicings[voice]
-        src_voicing_id = voice
+    elif tgt_voicing_id in inst_cfg.voicings:
+        src_vcfg = inst_cfg.voicings[tgt_voicing_id]
+        src_voicing_id = tgt_voicing_id
     elif inst_cfg.voicings:
         src_voicing_id = next(iter(inst_cfg.voicings.keys()))
         src_vcfg = inst_cfg.voicings[src_voicing_id]
@@ -281,15 +290,14 @@ def train_voice_stock(
         src_vcfg = None
 
     if src_vcfg is not None:
-        src_voice_cfg = voicing_to_voice_config(inst_cfg, src_vcfg)
-        src_coils = resolve_voice_coils(src_voice_cfg)
+        src_coils = resolve_voicing_electroacoustics(inst_cfg, src_vcfg).coils
         src_eff_pos_m = compute_effective_position(src_coils) if src_coils else 0.0
         src_eff_pos_mm = src_eff_pos_m * 1000.0
         src_voicing_name = src_vcfg.name
         src_tone_name = src_vcfg.tone_name
         src_harness = src_vcfg.harness
-        src_controls = dict(src_vcfg.controls)
-        src_switches = dict(src_vcfg.switches)
+        src_controls: dict[str, float] = dict(src_vcfg.controls)
+        src_switches: dict[str, str] = dict(src_vcfg.switches)
         src_aperture = src_coils[0].aperture_width_in if src_coils else 0.75
         src_coil_spacing = (
             abs(src_coils[1].position_from_bridge_m - src_coils[0].position_from_bridge_m) / 0.0254
@@ -303,8 +311,8 @@ def train_voice_stock(
         src_voicing_name = "Default Voicing"
         src_tone_name = None
         src_harness = ""
-        src_controls: dict[str, float] = {}
-        src_switches: dict[str, str] = {}
+        src_controls = {}
+        src_switches = {}
         src_aperture = 0.75
         src_coil_spacing = 0.0
         src_type = "single_coil"
@@ -326,10 +334,17 @@ def train_voice_stock(
     )
 
     models_path = Path(models_dir)
-    if models_path.name == "nam" or models_path.name == inst_id:
+    if models_path.name == "nam" or (
+        len(models_path.parts) >= 3
+        and models_path.parts[-3] == inst_id
+        and models_path.parts[-2] == src_voicing_id
+        and models_path.parts[-1] == tgt_inst.id
+    ):
         inst_models_dir = models_path
+    elif models_path.name == inst_id:
+        inst_models_dir = models_path / src_voicing_id / tgt_inst.id
     else:
-        inst_models_dir = models_path / inst_id
+        inst_models_dir = models_path / inst_id / src_voicing_id / tgt_inst.id
     inst_models_dir.mkdir(parents=True, exist_ok=True)
     target_nam = inst_models_dir / f"{model_basename}.nam"
 
@@ -344,15 +359,7 @@ def train_voice_stock(
     input_path = find_sweep_input(input_wav)
 
     if not output_wav:
-        from allomorph.config.instruments import resolve_target_voicing
-
-        tgt_inst, tgt_v = resolve_target_voicing(voice, instrument=inst_cfg)
-        target_slug = (
-            tgt_v.tone_name.lower().replace(" ", "_").replace("∕", "_").replace("/", "_")
-            if tgt_v.tone_name
-            else (tgt_v.id or voice)
-        )
-        target_wet = AUDIO_DIR / "wet" / tgt_inst.id / f"{target_slug}.wav"
+        target_wet = AUDIO_DIR / "stems" / tgt_inst.id / f"{tgt_voicing_id}.wav"
         target_recipe_token = compute_recipe_token(
             instrument=tgt_inst,
             voicing=tgt_v,
@@ -360,7 +367,7 @@ def train_voice_stock(
         )
         if not (
             target_wet.exists()
-            and is_wet_stem_valid(
+            and is_stem_valid(
                 target_wet,
                 expected_recipe_token=target_recipe_token,
                 base_dry_path=input_path,
@@ -370,7 +377,7 @@ def train_voice_stock(
                 from allomorph.circuit import simulate_instrument_voicing
 
                 print(
-                    f"[NAM Trainer] Target wet stem missing or stale, auto-simulating: {target_wet.name}"
+                    f"[NAM Trainer] Target stem missing or stale, auto-simulating: {target_wet.name}"
                 )
                 output_path = simulate_instrument_voicing(
                     instrument=tgt_inst, voicing=tgt_v, output_wav=target_wet
@@ -390,14 +397,16 @@ def train_voice_stock(
     if not output_path.exists():
         print(f"Error: Target output audio '{output_path}' does not exist.")
         print("Please run the simulation stage first:")
-        print(f"  uv run allomorph stems generate --targets {voice}")
+        print(f"  uv run allomorph stems generate {voice}")
         return False
 
     # Resolve reference stem
     if reference_wav:
         reference_path = Path(reference_wav)
+    elif input_wav and Path(input_wav).exists():
+        reference_path = Path(input_wav)
     else:
-        candidate_source = AUDIO_DIR / "wet" / inst_id / f"{src_voicing_id}.wav"
+        candidate_source = AUDIO_DIR / "stems" / inst_id / f"{src_voicing_id}.wav"
         src_v = inst_cfg.voicings.get(src_voicing_id)
         if src_v is None:
             src_v = next(iter(inst_cfg.voicings.values()))
@@ -406,7 +415,7 @@ def train_voice_stock(
             voicing=src_v,
             base_dry_path=input_path,
         )
-        if candidate_source.exists() and is_wet_stem_valid(
+        if candidate_source.exists() and is_stem_valid(
             candidate_source,
             expected_recipe_token=src_recipe_token,
             base_dry_path=input_path,
@@ -450,6 +459,7 @@ def train_voice_stock(
         nam_core,
         precision=resolved_precision,
         num_workers=resolved_num_workers,
+        val_loss_metric=val_loss_metric,
     )
 
     train_work_dir = inst_models_dir / f".train_{model_basename}"
@@ -467,7 +477,7 @@ def train_voice_stock(
     print(f"  Batch Size:  {resolved_batch_size} (auto, {steps_per_epoch} steps/epoch)")
     print(f"  Precision:   {resolved_precision}")
     print(f"  Workers:     {resolved_num_workers} (zero-copy in-memory)")
-    print(f"  Input Audio: {input_path.name}")
+    print(f"  Source Audio:{reference_path.name}")
     print(f"  Output Audio:{output_path.name}")
     print(f"  Epochs:      {epochs}")
     print(f"  Destination: {target_nam}")
@@ -486,7 +496,7 @@ def train_voice_stock(
     print("Validating dataset and calibration markers...")
     try:
         train_output = nam_core.train(
-            input_path=str(input_path),
+            input_path=str(reference_path),
             output_path=str(output_path),
             train_path=str(train_work_dir),
             epochs=epochs,
@@ -541,8 +551,11 @@ def train_voice_stock(
     if best_studio_spec is not None:
         raw_meta["validation_spectral_loss"] = best_studio_spec
         raw_meta["validation_spectral_loss_a2_full"] = best_studio_spec
+        raw_meta["validation_esr"] = best_studio_spec
+        raw_meta["validation_esr_a2_full"] = best_studio_spec
     if best_lite_spec is not None:
         raw_meta["validation_spectral_loss_a2_lite"] = best_lite_spec
+        raw_meta["validation_esr_a2_lite"] = best_lite_spec
     if best_esr_pre is not None:
         raw_meta["esr_pre_loss"] = best_esr_pre
     if best_mrstft is not None:
@@ -557,8 +570,10 @@ def train_voice_stock(
     raw_meta["precision"] = resolved_precision
     raw_meta["num_workers"] = resolved_num_workers
     raw_meta["device_name"] = device_name
+    raw_meta["engine"] = "stock"
 
-    target_coils = resolve_voice_coils(vcfg)
+    tgt_ea = resolve_voicing_electroacoustics(tgt_inst, tgt_v)
+    target_coils = tgt_ea.coils
     target_eff_pos_m = compute_effective_position(target_coils) if target_coils else 0.0
     target_eff_pos_mm = target_eff_pos_m * 1000.0
 
@@ -584,12 +599,12 @@ def train_voice_stock(
             voicing=src_voicing_meta,
         ),
         target_voicing=NamTargetVoicingMeta(
-            id=voice,
+            id=tgt_voicing_id,
             name=voice_name,
-            tone_name=vcfg.tone_name,
-            sensor_type=vcfg.sensor_type,
-            resonant_frequency_hz=float(vcfg.fr) if vcfg.fr is not None else None,
-            q_factor=float(vcfg.Q) if vcfg.Q is not None else None,
+            tone_name=tgt_v.tone_name,
+            sensor_type="magnetic",
+            resonant_frequency_hz=tgt_ea.fr,
+            q_factor=tgt_ea.q,
             effective_position_m=target_eff_pos_m,
             effective_position_mm=target_eff_pos_mm,
             coils=target_coils,

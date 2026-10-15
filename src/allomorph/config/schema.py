@@ -42,9 +42,6 @@ __all__ = [
     "SwitchConfig",
     "SwitchPositionConfig",
     "TonePackConfig",
-    "VoiceCoilConfig",
-    "VoiceConfig",
-    "VoicePickupConfig",
     "VoicingConfig",
     "parse_spice_unit",
 ]
@@ -632,64 +629,3 @@ class TonePackConfig(AllomorphBaseModel):
                     f"is not among pack instrument(s): {sorted(allowed)}."
                 )
         return self
-
-
-# ==============================================================================
-# 7. TARGET VOICE SCHEMAS
-# ==============================================================================
-
-
-class VoiceCoilConfig(AllomorphBaseModel):
-    """Target voice coil sensing aperture geometry."""
-
-    position_from_bridge_m: float = Field(..., gt=0.0)
-    aperture_width_in: float = Field(0.75, gt=0.0)
-    weight: float = Field(1.0, gt=0.0)
-    polarity: float = 1.0
-    strings: list[int | str] = Field(default_factory=lambda: ["all"])
-    pole_type: str | None = None
-
-
-class VoicePickupConfig(AllomorphBaseModel):
-    """Multi-pickup target voice sub-pickup configuration."""
-
-    name: str
-    type: str = "single_coil"
-    magnet_type: str | None = None
-    alpha: float | None = None
-    fr: float | None = Field(default=None, gt=0.0)
-    Q: float | None = Field(default=None, gt=0.0)
-    weight: float = Field(1.0, gt=0.0)
-    polarity: float = 1.0
-    coils: list[VoiceCoilConfig] = Field(default_factory=list)
-
-
-class VoiceConfig(AllomorphBaseModel):
-    """Complete target digital twin voice specification."""
-
-    id: str
-    name: str
-    version: int = Field(1, ge=1, description="Target voice RLC netlist configuration version")
-    tone_name: str | None = None
-    description: str
-    magnet_type: str | None = None
-    sensor_type: Literal["magnetic", "bridge_force"] = "magnetic"
-    target_string: str | None = None
-    alpha: float = 0.0
-    vsat: float | None = None
-    fr: float | None = Field(default=None, gt=0.0)
-    Q: float | None = Field(default=None, gt=0.0)
-    gain_db: float = 0.0
-    scale: str = "34in"
-    coils: list[VoiceCoilConfig] = Field(default_factory=list)
-    pickups: list[VoicePickupConfig] | None = None
-    instrument_id: str | None = None
-
-    @classmethod
-    def load(cls, identifier_or_path: str | Path) -> VoiceConfig:
-        """Loads and validates a target voice configuration."""
-        from allomorph.config.voices import VOICES, load_voice_config
-
-        if isinstance(identifier_or_path, str) and identifier_or_path in VOICES:
-            return VOICES[identifier_or_path]
-        return load_voice_config(identifier_or_path)

@@ -13,7 +13,6 @@ import numpy as np
 
 from allomorph.config.scales import resolve_scale_range
 from allomorph.config.schema import InstrumentConfig, ScaleConfig, StringPresetConfig
-from allomorph.config.strings import get_voice_string
 from allomorph.physics.schema import WaveSpeedContinuumPoint
 
 __all__ = [
@@ -27,7 +26,6 @@ __all__ = [
     "compute_forward_string_transfer",
     "generate_wave_speed_continuum",
     "get_inharmonicity_for_f0",
-    "get_voice_string",
     "infer_string_names",
     "pitch_to_note_name",
     "resolve_scale_range",

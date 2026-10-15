@@ -14,6 +14,7 @@ import json
 import math
 import time
 from collections.abc import Sequence
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -24,9 +25,18 @@ from nam._dependencies.auraloss.freq import MultiResolutionSTFTLoss
 from pedalboard.io import AudioFile
 
 from allomorph.config import (
-    VOICES,
     InstrumentConfig,
+    compute_effective_position,
     load_instrument,
+    resolve_target_voicing,
+    resolve_voicing_electroacoustics,
+)
+from allomorph.pipeline.schema import (
+    NamExportMetadata,
+    NamSourceInstrumentMeta,
+    NamSourceVoicingMeta,
+    NamTargetVoicingMeta,
+    NamTrainingMetadata,
 )
 from allomorph.trainer.callbacks import (
     compute_pareto_quality_score,
@@ -61,11 +71,14 @@ from allomorph.trainer.constants import (
 from allomorph.trainer.native.loss import design_sharp_fir_highpass
 from allomorph.trainer.native.models import AllomorphWaveNetA2
 from allomorph.version import (
+    ALLOMORPH_VERSION,
     DSP_GENERATION,
     compute_file_sha256,
     compute_recipe_token,
-    is_wet_stem_valid,
+    get_git_commit,
+    is_stem_valid,
     resolve_tri_part_version,
+    write_manifest,
 )
 
 REPO_ROOT = Path(__file__).resolve().parents[4]
@@ -86,8 +99,8 @@ def load_audio_tensor(wav_path: str | Path) -> tuple[torch.Tensor, int]:
 
 
 def train_voice_native(
-    instrument: str | InstrumentConfig = "30in",
-    voice: str = "precision_active",
+    instrument: str | InstrumentConfig = "34in_standard_p",
+    voice: str = "34in_standard_p:vintage",
     source_voicing: str | None = None,
     input_wav: str | Path | None = None,
     output_wav: str | Path | None = None,
@@ -138,13 +151,13 @@ def train_voice_native(
 
     setup_headless_environment()
 
-    # 1. Resolve Target Voice
-    if voice not in VOICES:
-        raise KeyError(f"Target voice '{voice}' not found in catalog.")
-    vcfg = VOICES[voice]
-    voice_name = vcfg.name
+    # 1. Resolve Source Instrument Configuration
+    if isinstance(instrument, str) and ":" in instrument:
+        inst_part, parsed_src_voicing = instrument.split(":", 1)
+        if source_voicing is None:
+            source_voicing = parsed_src_voicing
+        instrument = inst_part
 
-    # 2. Resolve Instrument Configuration
     try:
         inst_cfg = (
             instrument if isinstance(instrument, InstrumentConfig) else load_instrument(instrument)
@@ -159,10 +172,15 @@ def train_voice_native(
             pickups={},
         )
 
+    # 2. Resolve Target Instrument & Voicing
+    tgt_inst, tgt_v = resolve_target_voicing(voice, instrument=inst_cfg)
+    tgt_voicing_id = tgt_v.id or (voice.split(":", 1)[1] if ":" in voice else voice)
+    voice_name = tgt_v.name
+
     inst_id = inst_cfg.id
     inst_name = inst_cfg.name
     inst_ver = getattr(inst_cfg, "version", 1)
-    voice_ver = getattr(vcfg, "version", 1)
+    voice_ver = getattr(tgt_v, "version", 1)
 
     # 3. Resolve Source Voicing
     if source_voicing is not None:
@@ -172,18 +190,15 @@ def train_voice_native(
                 f"Available voicings: {list(inst_cfg.voicings.keys())}"
             )
         src_voicing_id = source_voicing
-    elif voice in inst_cfg.voicings:
-        src_voicing_id = voice
+    elif tgt_voicing_id in inst_cfg.voicings:
+        src_voicing_id = tgt_voicing_id
     elif inst_cfg.voicings:
         src_voicing_id = next(iter(inst_cfg.voicings.keys()))
     else:
         src_voicing_id = "default"
 
-    src_voicing_name = (
-        inst_cfg.voicings[src_voicing_id].name
-        if src_voicing_id in inst_cfg.voicings
-        else src_voicing_id
-    )
+    src_vcfg = inst_cfg.voicings.get(src_voicing_id)
+    src_voicing_name = src_vcfg.name if src_vcfg is not None else src_voicing_id
 
     # 4. Resolve Version Tag and Basename
     tri_part = resolve_tri_part_version(DSP_GENERATION, inst_ver, voice_ver)
@@ -193,14 +208,23 @@ def train_voice_native(
         else (version_tag if version_tag not in (None, "none", False) else None)
     )
 
-    model_basename = basename or (f"{voice}_{actual_version_tag}" if actual_version_tag else voice)
+    model_basename = basename or (
+        f"{tgt_voicing_id}_{actual_version_tag}" if actual_version_tag else tgt_voicing_id
+    )
 
-    # 5. Resolve Output Model Directory
+    # 5. Resolve Output Model Directory (3-level standalone hierarchy vs flat pack/nam/)
     models_path = Path(models_dir)
-    if models_path.name == "nam" or models_path.name == inst_id:
+    if models_path.name == "nam" or (
+        len(models_path.parts) >= 3
+        and models_path.parts[-3] == inst_id
+        and models_path.parts[-2] == src_voicing_id
+        and models_path.parts[-1] == tgt_inst.id
+    ):
         inst_models_dir = models_path
+    elif models_path.name == inst_id:
+        inst_models_dir = models_path / src_voicing_id / tgt_inst.id
     else:
-        inst_models_dir = models_path / inst_id
+        inst_models_dir = models_path / inst_id / src_voicing_id / tgt_inst.id
     inst_models_dir.mkdir(parents=True, exist_ok=True)
     target_nam = inst_models_dir / f"{model_basename}.nam"
 
@@ -208,15 +232,7 @@ def train_voice_native(
     input_path = find_sweep_input(input_wav)
 
     if not output_wav:
-        from allomorph.config.instruments import resolve_target_voicing
-
-        tgt_inst, tgt_v = resolve_target_voicing(voice, instrument=inst_cfg)
-        target_slug = (
-            tgt_v.tone_name.lower().replace(" ", "_").replace("∕", "_").replace("/", "_")
-            if tgt_v.tone_name
-            else (tgt_v.id or voice)
-        )
-        target_wet = AUDIO_DIR / "wet" / tgt_inst.id / f"{target_slug}.wav"
+        target_wet = AUDIO_DIR / "stems" / tgt_inst.id / f"{tgt_voicing_id}.wav"
         target_recipe_token = compute_recipe_token(
             instrument=tgt_inst,
             voicing=tgt_v,
@@ -224,7 +240,7 @@ def train_voice_native(
         )
         if not (
             target_wet.exists()
-            and is_wet_stem_valid(
+            and is_stem_valid(
                 target_wet,
                 expected_recipe_token=target_recipe_token,
                 base_dry_path=input_path,
@@ -235,7 +251,7 @@ def train_voice_native(
 
                 if not silent:
                     print(
-                        f"[Native Trainer] Target wet stem missing or stale, auto-simulating: {target_wet.name}"
+                        f"[Native Trainer] Target stem missing or stale, auto-simulating: {target_wet.name}"
                     )
                 output_path = simulate_instrument_voicing(
                     instrument=tgt_inst, voicing=tgt_v, output_wav=target_wet
@@ -256,7 +272,7 @@ def train_voice_native(
     elif input_wav and Path(input_wav).exists():
         reference_path = Path(input_wav)
     else:
-        candidate_source = AUDIO_DIR / "wet" / inst_id / f"{src_voicing_id}.wav"
+        candidate_source = AUDIO_DIR / "stems" / inst_id / f"{src_voicing_id}.wav"
         src_v = inst_cfg.voicings.get(src_voicing_id)
         if src_v is None:
             src_v = next(iter(inst_cfg.voicings.values()))
@@ -265,7 +281,7 @@ def train_voice_native(
             voicing=src_v,
             base_dry_path=input_path,
         )
-        if candidate_source.exists() and is_wet_stem_valid(
+        if candidate_source.exists() and is_stem_valid(
             candidate_source,
             expected_recipe_token=src_recipe_token,
             base_dry_path=input_path,
@@ -403,10 +419,9 @@ def train_voice_native(
     if sine_regularizer and not fast_dev_run:
         try:
             from allomorph.circuit.forward import simulate_voicing_dsp
-            from allomorph.config.instruments import resolve_target_voicing
             from allomorph.dsp.sweeps import _synth_log_chirp
 
-            tgt_inst_reg, tgt_v_reg = resolve_target_voicing(voice, instrument=inst_cfg)
+            tgt_inst_reg, tgt_v_reg = tgt_inst, tgt_v
             src_v_reg = inst_cfg.voicings.get(src_voicing_id) if inst_cfg.voicings else None
 
             # Calculate broadband calibration gain ratio between audio stems and unnormalized DSP simulations
@@ -575,7 +590,7 @@ def train_voice_native(
     # 11. Slicing Parameters
     ny = slice_len
     nx = ny + rf_pad  # ny + 6346
-    num_blocks = max(1, (train_samples - ny) // ny)
+    num_blocks = max(1, (total_train_samples - ny) // ny)
     steps_per_epoch = max(1, num_blocks // resolved_bs)
     if fast_dev_run:
         epochs = 1
@@ -641,10 +656,30 @@ def train_voice_native(
 
         train_loss_acc = torch.tensor(0.0, device=hw_device)
 
+        max_start = max(1, total_train_samples - ny)
+        if num_blocks >= resolved_bs and max_start >= ny:
+            rem = max(1, max_start - (num_blocks - 1) * ny)
+            jitter = int(torch.randint(0, rem, (1,), device=hw_device).item()) if rem > 1 else 0
+            perm_blocks = torch.randperm(num_blocks, device=hw_device, dtype=torch.int32)
+            epoch_block_offsets: torch.Tensor | None = perm_blocks * ny + jitter
+        else:
+            epoch_block_offsets = None
+
         for step in range(steps_per_epoch):
-            indices = torch.randint(
-                0, total_train_samples - ny, (resolved_bs, 1), device=hw_device, dtype=torch.int32
-            )
+            if epoch_block_offsets is not None and (step + 1) * resolved_bs <= len(
+                epoch_block_offsets
+            ):
+                indices = epoch_block_offsets[
+                    step * resolved_bs : (step + 1) * resolved_bs
+                ].unsqueeze(1)
+            else:
+                indices = torch.randint(
+                    0,
+                    max(1, total_train_samples - ny),
+                    (resolved_bs, 1),
+                    device=hw_device,
+                    dtype=torch.int32,
+                )
             x_batch = x_train_padded[indices + arange_nx].unsqueeze(1)
             y_batch = y_train[indices + arange_ny]
 
@@ -655,7 +690,7 @@ def train_voice_native(
                     pred = model(x_batch)
                     l_full = F.mse_loss(pred[:, 1, :], y_batch)
                     l_lite = F.mse_loss(pred[:, 0, :], y_batch)
-                    total_step_loss = l_full + lite_weight * l_lite
+                    total_step_loss = mse_weight * (l_full + lite_weight * l_lite)
                     if hp_kernel is not None and fir_hp_weight > 0.0:
                         p_hp_full = F.conv1d(pred[:, 1:2, :], hp_kernel, padding="valid")
                         p_hp_lite = F.conv1d(pred[:, 0:1, :], hp_kernel, padding="valid")
@@ -672,7 +707,7 @@ def train_voice_native(
                 pred = model(x_batch)
                 l_full = F.mse_loss(pred[:, 1, :], y_batch)
                 l_lite = F.mse_loss(pred[:, 0, :], y_batch)
-                total_step_loss = l_full + lite_weight * l_lite
+                total_step_loss = mse_weight * (l_full + lite_weight * l_lite)
                 if hp_kernel is not None and fir_hp_weight > 0.0:
                     p_hp_full = F.conv1d(pred[:, 1:2, :], hp_kernel, padding="valid")
                     p_hp_lite = F.conv1d(pred[:, 0:1, :], hp_kernel, padding="valid")
@@ -714,6 +749,7 @@ def train_voice_native(
                     val_err_full_acc = torch.tensor(0.0, device=hw_device)
                     val_err_lite_acc = torch.tensor(0.0, device=hw_device)
                     val_tgt_acc = torch.tensor(0.0, device=hw_device)
+                    val_mrstft_acc = torch.tensor(0.0, device=hw_device)
 
                     for s in range(val_steps):
                         bs = min(val_bs, val_chunks - s * val_bs)
@@ -732,14 +768,22 @@ def train_voice_native(
                         val_err_full_acc.add_(torch.sum(c_err_full**2))
                         val_err_lite_acc.add_(torch.sum(c_err_lite**2))
                         val_tgt_acc.add_(torch.sum(c_by**2))
+                        if mrstft is not None:
+                            val_mrstft_acc.add_(
+                                mrstft(c_pred_full.unsqueeze(1).float(), c_by.unsqueeze(1).float())
+                                * bs
+                            )
 
                     cur_esr_full = float((val_err_full_acc / (val_tgt_acc + 1e-12)).item())
                     cur_esr_lite = float((val_err_lite_acc / (val_tgt_acc + 1e-12)).item())
                     total_eval_samples = float(val_chunks * ny)
                     val_mse_full = float((val_err_full_acc / total_eval_samples).item())
                     mse_cur = val_mse_full
-                    mb_val = mse_cur
-                    metrics_full = {"mse": mse_cur, "mrstft": 0.0, "composite_loss": mse_cur}
+                    val_mrstft = (
+                        float((val_mrstft_acc / val_chunks).item()) if mrstft is not None else 0.0
+                    )
+                    mb_val = mse_weight * mse_cur + mrstft_weight * val_mrstft
+                    metrics_full = {"mse": mse_cur, "mrstft": val_mrstft, "composite_loss": mb_val}
                 else:
                     y_val_hat = model(x_val_padded.unsqueeze(0))
                     y_full_pred = y_val_hat[0, 1, :val_samples]
@@ -750,8 +794,18 @@ def train_voice_native(
                     target_energy = float(torch.sum(y_val**2).item()) + 1e-12
                     cur_esr_full = float(torch.sum(err_full**2).item()) / target_energy
                     cur_esr_lite = float(torch.sum(err_lite**2).item()) / target_energy
-                    mb_val = mse_cur
-                    metrics_full = {"mse": mse_cur, "mrstft": 0.0, "composite_loss": mse_cur}
+                    val_mrstft = (
+                        float(
+                            mrstft(
+                                y_full_pred.unsqueeze(0).unsqueeze(0).float(),
+                                y_val.unsqueeze(0).unsqueeze(0).float(),
+                            ).item()
+                        )
+                        if mrstft is not None
+                        else 0.0
+                    )
+                    mb_val = mse_weight * mse_cur + mrstft_weight * val_mrstft
+                    metrics_full = {"mse": mse_cur, "mrstft": val_mrstft, "composite_loss": mb_val}
 
             # 14. Anti-Drift Pareto Early Stopping Evaluation
             if epoch >= min_epochs:
@@ -789,7 +843,7 @@ def train_voice_native(
                     best_val_loss = mb_val
                     best_val_esr = cur_esr_full
                     best_val_esr_lite = cur_esr_lite
-                    best_val_mrstft = metrics_full.get("mrstft")
+                    best_val_mrstft = metrics_full.get("mrstft") if mrstft is not None else None
                     best_state_dict = {k: v.cpu().clone() for k, v in model.state_dict().items()}
 
             # Compute trajectory slopes
@@ -866,8 +920,113 @@ def train_voice_native(
         best_val_loss = mb_val
         best_val_esr = cur_esr_full
         best_val_esr_lite = cur_esr_lite
+        best_val_mrstft = metrics_full.get("mrstft") if mrstft is not None else None
 
-    # 16. Export Compliant A2 .nam Model
+    # 16. Export Compliant A2 .nam Model with Full Provenance Metadata
+    if src_vcfg is not None:
+        src_coils = resolve_voicing_electroacoustics(inst_cfg, src_vcfg).coils
+        src_eff_pos_m = compute_effective_position(src_coils) if src_coils else 0.0
+        src_eff_pos_mm = src_eff_pos_m * 1000.0
+        src_tone_name = src_vcfg.tone_name
+        src_harness = src_vcfg.harness
+        src_controls: dict[str, float] = dict(src_vcfg.controls)
+        src_switches: dict[str, str] = dict(src_vcfg.switches)
+        src_aperture = src_coils[0].aperture_width_in if src_coils else 0.75
+        src_coil_spacing = (
+            abs(src_coils[1].position_from_bridge_m - src_coils[0].position_from_bridge_m) / 0.0254
+            if len(src_coils) >= 2
+            else 0.0
+        )
+        src_type = "dual_coil" if len(src_coils) >= 2 else "single_coil"
+    else:
+        src_eff_pos_m = 0.0
+        src_eff_pos_mm = 0.0
+        src_tone_name = None
+        src_harness = ""
+        src_controls = {}
+        src_switches = {}
+        src_aperture = 0.75
+        src_coil_spacing = 0.0
+        src_type = "single_coil"
+
+    src_voicing_meta = NamSourceVoicingMeta(
+        id=src_voicing_id,
+        name=src_voicing_name,
+        tone_name=src_tone_name,
+        harness=src_harness,
+        position_from_bridge_m=src_eff_pos_m,
+        position_from_bridge_mm=src_eff_pos_mm,
+        effective_position_m=src_eff_pos_m,
+        effective_position_mm=src_eff_pos_mm,
+        aperture_width_in=src_aperture,
+        coil_spacing_in=src_coil_spacing,
+        type=src_type,
+        controls=src_controls,
+        switches=src_switches,
+    )
+
+    tgt_ea = resolve_voicing_electroacoustics(tgt_inst, tgt_v)
+    target_coils = tgt_ea.coils
+    target_eff_pos_m = compute_effective_position(target_coils) if target_coils else 0.0
+    target_eff_pos_mm = target_eff_pos_m * 1000.0
+
+    epochs_trained_val = int(best_epoch if best_epoch > 0 else epoch)
+    raw_training_meta: dict[str, Any] = {
+        "validation_spectral_loss": float(best_val_loss),
+        "validation_spectral_loss_a2_full": float(best_val_loss),
+        "validation_spectral_loss_a2_lite": float(best_val_esr_lite),
+        "validation_esr": float(best_val_esr),
+        "validation_esr_a2_full": float(best_val_esr),
+        "validation_esr_a2_lite": float(best_val_esr_lite),
+        "validation_esr_ch8": float(best_val_esr),
+        "validation_esr_ch3": float(best_val_esr_lite),
+        "epochs_trained": epochs_trained_val,
+        "epochs": epochs,
+        "lr": lr,
+        "batch_size": resolved_bs,
+        "precision": resolved_precision,
+        "device_name": device_name,
+        "engine": "native",
+        "training_time_seconds": round(total_time, 2),
+    }
+    if stop_reason:
+        raw_training_meta["stop_reason"] = stop_reason
+    if best_val_mrstft is not None:
+        raw_training_meta["mrstft_loss"] = float(best_val_mrstft)
+
+    nam_meta = NamExportMetadata(
+        training=NamTrainingMetadata.model_validate(raw_training_meta),
+        license="PolyForm Noncommercial License 1.0.0 (https://polyformproject.org/licenses/noncommercial/1.0.0)",
+        copyright="Copyright 2026 Peter Nguyen <peter@phn.dev>. All commercial rights reserved.",
+        author="Peter Nguyen <peter@phn.dev>",
+        version=tri_part,
+        dsp_version=DSP_GENERATION,
+        instrument_version=inst_ver,
+        voice_version=voice_ver,
+        allomorph_version=ALLOMORPH_VERSION,
+        git_commit=get_git_commit(),
+        generated_at=datetime.now(UTC).isoformat(),
+        source_instrument=NamSourceInstrumentMeta(
+            id=inst_id,
+            name=inst_name,
+            scale_length_in=inst_cfg.scale_length_in or 34.0,
+            scale_length_m=inst_cfg.scale_length_m,
+            string_wave_speeds=inst_cfg.string_wave_speeds,
+            voicing=src_voicing_meta,
+        ),
+        target_voicing=NamTargetVoicingMeta(
+            id=tgt_voicing_id,
+            name=voice_name,
+            tone_name=tgt_v.tone_name,
+            sensor_type="magnetic",
+            resonant_frequency_hz=tgt_ea.fr,
+            q_factor=tgt_ea.q,
+            effective_position_m=target_eff_pos_m,
+            effective_position_mm=target_eff_pos_mm,
+            coils=target_coils,
+        ),
+    )
+
     model_title = f"{voice_name} [{inst_name}]"
     export_metadata: dict[str, Any] = {
         "name": model_title,
@@ -879,13 +1038,13 @@ def train_voice_native(
         "model_name": model_basename,
         "instrument_id": inst_id,
         "instrument_name": inst_name,
-        "target_voicing": voice,
         "validation_spectral_loss": best_val_loss,
         "validation_esr": best_val_esr,
         "validation_esr_a2_full": best_val_esr,
         "validation_esr_a2_lite": best_val_esr_lite,
-        "epochs_trained": best_epoch if best_epoch > 0 else epoch,
+        "epochs_trained": epochs_trained_val,
         "training_time_seconds": round(total_time, 2),
+        **nam_meta.model_dump(),
     }
     if stop_reason:
         export_metadata["stop_reason"] = stop_reason
@@ -903,7 +1062,7 @@ def train_voice_native(
     )
 
     if not no_manifest:
-        # Check if manifest.json exists in pack root (models_dir.parent) or models_dir
+        updated_pack_manifest = False
         manifest_candidates = [
             target_nam.parent.parent / "manifest.json",
             target_nam.parent / "manifest.json",
@@ -930,7 +1089,7 @@ def train_voice_native(
                         m_entry["validation_esr_a2_lite"] = float(best_val_esr_lite)
                         m_entry["validation_esr_ch8"] = float(best_val_esr)
                         m_entry["validation_esr_ch3"] = float(best_val_esr_lite)
-                        m_entry["epochs_trained"] = int(best_epoch if best_epoch > 0 else epoch)
+                        m_entry["epochs_trained"] = epochs_trained_val
                         m_entry["training_time_seconds"] = round(total_time, 2)
                         m_entry["batch_size"] = resolved_bs
                         m_entry["precision"] = resolved_precision
@@ -946,9 +1105,18 @@ def train_voice_native(
                             m_entry["mrstft_loss"] = float(best_val_mrstft)
                         with open(m_path, "w", encoding="utf-8") as mf:
                             json.dump(m_data, mf, indent=2)
+                        updated_pack_manifest = True
                         break
                 except OSError, json.JSONDecodeError:
                     pass
+
+        if not updated_pack_manifest and target_nam.exists():
+            write_manifest(
+                output_dir=inst_models_dir,
+                stage="train",
+                files=[target_nam],
+                version_tag=tri_part,
+            )
 
     if not silent:
         full_db = 10.0 * math.log10(max(best_val_esr, 1e-12))

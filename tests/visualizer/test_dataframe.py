@@ -9,12 +9,11 @@ from typing import TYPE_CHECKING
 import numpy as np
 import polars as pl
 
-from allomorph.visualizer import (
+from allomorph.visualizer.dataframe import (
     build_voice_dataframe,
     build_voicings_comparison_data,
     build_voicings_comparison_dataframe,
     compute_curve_rms_db,
-    compute_fir_csd,
 )
 
 if TYPE_CHECKING:
@@ -94,36 +93,14 @@ def test_build_voice_dataframe_sweep_smoothness_generic(
 def test_build_voicings_comparison_data(
     generic_instrument_config: InstrumentConfig,
 ):
-    """Verifies that build_voicings_comparison_data generates valid downsampled client payloads."""
-    from allomorph.config.schema import VoiceConfig
-
-    voices = {
-        "generic_voice": VoiceConfig(
-            id="generic_voice",
-            name="Generic Voicing",
-            description="Synthetic voice for testing",
-            fr=2500.0,
-            Q=1.5,
-            instrument_id=generic_instrument_config.id,
-            coils=[],
-        )
-    }
+    """Verifies that build_voicings_comparison_data generates valid comparison payload directly from instruments."""
     instruments = {generic_instrument_config.id: generic_instrument_config}
-    data = build_voicings_comparison_data(voices=voices, instruments=instruments, step=3)
-    assert "frequencies" in data
-    assert "voices" in data
-    assert "families" in data
-    assert "default_source" in data
-    assert "default_target" in data
-
+    data = build_voicings_comparison_data(instruments=instruments, step=3)
     assert len(data["frequencies"]) == 200
-    assert len(data["voices"]) > 0
-    for vdata in data["voices"].values():
-        assert "name" in vdata
-        assert "family" in vdata
-        assert "magnitude_db" in vdata
-        assert len(vdata["magnitude_db"]) == 200
-        assert not any(np.isnan(vdata["magnitude_db"]))
+    assert len(data["voices"]) == len(generic_instrument_config.voicings)
+    for v_meta in data["voices"].values():
+        assert len(v_meta["magnitude_db"]) == 200
+        assert not np.isnan(v_meta["magnitude_db"]).any()
 
 
 def test_build_voicings_comparison_dataframe(
@@ -150,20 +127,6 @@ def test_build_voicings_comparison_dataframe(
     s2 = df_tf.filter(df_tf["line_type"] == "2. Target Voicing")["magnitude_db"].to_numpy()
     s3 = df_tf.filter(df_tf["line_type"] == "3. Difference")["magnitude_db"].to_numpy()
     assert np.allclose(s1 + s3, s2, atol=0.05)
-
-
-def test_compute_fir_csd():
-    """Verifies cumulative spectral decay waterfall calculation from a synthetic FIR."""
-    sr = 48000
-    t = np.arange(2048) / sr
-    fir = np.exp(-t * 800.0) * np.sin(2.0 * np.pi * 1000.0 * t)
-    freqs = np.geomspace(20.0, 20000.0, 50)
-    time_ms, csd = compute_fir_csd(fir, freqs, num_slices=24, max_time_ms=10.0, sr=sr)
-
-    assert len(time_ms) == 24
-    assert len(csd) == 24
-    idx_1k = int(np.argmin(np.abs(freqs - 1000.0)))
-    assert csd[0][idx_1k] > csd[-1][idx_1k] + 20.0
 
 
 def test_compute_curve_rms_db():

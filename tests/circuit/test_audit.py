@@ -10,7 +10,7 @@ from allomorph.circuit.audit import (
     AudioAuditRecord,
     _record_from_manifest,
     audit_audio_file,
-    audit_wet_audio_catalog,
+    audit_stems_audio_catalog,
 )
 from allomorph.dsp import FS, write_wav_24bit
 from allomorph.version import write_manifest
@@ -61,7 +61,7 @@ def test_record_from_manifest(tmp_path: Path) -> None:
     assert rec.is_valid is True
 
 
-def test_audit_wet_audio_catalog_manifest_and_fallback(tmp_path: Path) -> None:
+def test_audit_stems_audio_catalog_manifest_and_fallback(tmp_path: Path) -> None:
     """Verifies manifest-driven catalog audit, fallback on missing/mismatched manifest, and force mode."""
     t_arr = np.linspace(0.0, 1.0, FS, endpoint=False)
     sine = (0.5 * np.sin(2.0 * np.pi * 100.0 * t_arr)).astype(np.float32)
@@ -80,7 +80,7 @@ def test_audit_wet_audio_catalog_manifest_and_fallback(tmp_path: Path) -> None:
     write_wav_24bit(str(wav_b), sine, FS)
 
     # Audit catalog
-    report = audit_wet_audio_catalog(audio_dir=tmp_path, force=False)
+    report = audit_stems_audio_catalog(audio_dir=tmp_path, force=False)
     assert report.total_files == 2
     assert report.valid_files == 2
     assert report.clipped_files == 0
@@ -88,16 +88,16 @@ def test_audit_wet_audio_catalog_manifest_and_fallback(tmp_path: Path) -> None:
     assert len(report.records) == 2
 
     # Verify force mode runs physical decoding on all files
-    report_forced = audit_wet_audio_catalog(audio_dir=tmp_path, force=True)
+    report_forced = audit_stems_audio_catalog(audio_dir=tmp_path, force=True)
     assert report_forced.total_files == 2
     assert report_forced.valid_files == 2
 
 
-def test_audit_wet_audio_catalog_empty(tmp_path: Path) -> None:
-    """Verifies audit_wet_audio_catalog returns an empty report when no files are present."""
+def test_audit_stems_audio_catalog_empty(tmp_path: Path) -> None:
+    """Verifies audit_stems_audio_catalog returns an empty report when no files are present."""
     empty_dir = tmp_path / "empty"
     empty_dir.mkdir()
-    report = audit_wet_audio_catalog(audio_dir=empty_dir)
+    report = audit_stems_audio_catalog(audio_dir=empty_dir)
     assert report.total_files == 0
     assert report.valid_files == 0
     assert report.records == []

@@ -51,7 +51,7 @@ if "tkinter" not in sys.modules:
 from allomorph.circuit import (
     CALIBRATION_PEAK_CEILING,
     audit_audio_file,
-    audit_wet_audio_catalog,
+    audit_stems_audio_catalog,
     find_default_input_audio,
     simulate_instrument_voicing,
 )
@@ -61,8 +61,6 @@ from allomorph.config import (
 from allomorph.config.geometry import (
     compute_effective_position,
     resolve_pickup_coils,
-    resolve_voice_coils,
-    resolve_voice_pickups,
 )
 from allomorph.config.instruments import (
     INSTRUMENTS,
@@ -76,10 +74,6 @@ from allomorph.config.scales import (
 from allomorph.config.strings import (
     STRINGS,
     load_strings_config,
-)
-from allomorph.config.voices import (
-    VOICES,
-    load_voices_config,
 )
 from allomorph.dsp import (
     DEFAULT_INPUT_PATH,
@@ -102,28 +96,20 @@ from allomorph.dsp import (
     write_wav_24bit,
 )
 from allomorph.naming import (
-    VOICE_CONCISE_SLUGS,
     get_default_input_path,
-    get_instrument_pickup_basename,
     get_t3k_basename,
-    resolve_instruments,
-    resolve_voices,
 )
 from allomorph.physics import (
     compute_coil_aperture,
     generate_wave_speed_continuum,
     numpy_pickup_acoustic_response,
 )
-from allomorph.pipeline.batch import (
-    simulate_all_instrument_voicings,
-    simulate_voice,
-)
 from allomorph.version import (
     ALLOMORPH_VERSION,
     DSP_GENERATION,
     compute_file_sha256,
     get_version_info,
-    is_wet_stem_valid,
+    is_stem_valid,
     resolve_tri_part_version,
     write_manifest,
 )
@@ -140,10 +126,8 @@ __all__ = [
     "NYQ",
     "SCALES",
     "STRINGS",
-    "VOICES",
-    "VOICE_CONCISE_SLUGS",
     "audit_audio_file",
-    "audit_wet_audio_catalog",
+    "audit_stems_audio_catalog",
     "calibrate_nam_v3_latency",
     "cinf_smoothstep",
     "compute_coil_aperture",
@@ -159,28 +143,20 @@ __all__ = [
     "generate_optimal_bass_dry",
     "generate_wave_speed_continuum",
     "get_default_input_path",
-    "get_instrument_pickup_basename",
     "get_t3k_basename",
     "get_version_info",
-    "is_wet_stem_valid",
+    "is_stem_valid",
     "load_all_instruments",
     "load_instrument",
     "load_scales",
     "load_strings_config",
-    "load_voices_config",
     "numpy_pickup_acoustic_response",
     "read_wav",
     "read_wav_24bit",
-    "resolve_instruments",
     "resolve_pickup_coils",
     "resolve_target_voicing",
     "resolve_tri_part_version",
-    "resolve_voice_coils",
-    "resolve_voice_pickups",
-    "resolve_voices",
-    "simulate_all_instrument_voicings",
     "simulate_instrument_voicing",
-    "simulate_voice",
     "synthesize_minimum_phase_fir",
     "write_manifest",
     "write_wav_24bit",

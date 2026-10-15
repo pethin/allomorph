@@ -467,6 +467,9 @@ class AllomorphWaveNetA2(nn.Module):
             "tone_type": meta_in.get("tone_type", "clean"),
             "trainer": "TONE3000",
         }
+        for k, v in meta_in.items():
+            if k not in top_meta and v is not None:
+                top_meta[k] = v
 
         empty_weights: list[float] = []
         container: dict[str, Any] = {

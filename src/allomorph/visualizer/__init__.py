@@ -3,12 +3,9 @@ Allomorph Visualizer Subpackage
 Interactive Altair visualizations and Polars frequency response modeling.
 """
 
-import argparse
-from collections.abc import Sequence
-from pathlib import Path
-
-from allomorph.config.instruments import load_instrument
 from allomorph.visualizer.charts import (
+    DOCS_DIR,
+    build_voicings_html,
     generate_all_charts,
     generate_interactive_chart,
     generate_voicings_page,
@@ -22,114 +19,22 @@ from allomorph.visualizer.dataframe import (
     build_voicings_comparison_data,
     build_voicings_comparison_dataframe,
     compute_curve_rms_db,
-    compute_fir_csd,
     log_freqs,
 )
-from allomorph.visualizer.portal import (
-    DOCS_DIR,
-    RESPONSES_DIR,
-    append_spec_panel,
-    build_portal_html,
-    format_instrument_meta,
-    generate_portal_pages,
-)
-from allomorph.visualizer.schema import VisualizerCliConfig
 
 __all__ = [
     "DOCS_DIR",
     "F_MAX",
     "F_MIN",
     "NUM_POINTS",
-    "RESPONSES_DIR",
-    "append_spec_panel",
-    "build_portal_html",
     "build_voice_dataframe",
     "build_voicings_comparison_data",
     "build_voicings_comparison_dataframe",
+    "build_voicings_html",
     "compute_curve_rms_db",
-    "compute_fir_csd",
-    "format_instrument_meta",
     "generate_all_charts",
     "generate_interactive_chart",
-    "generate_portal_pages",
     "generate_voicings_page",
     "log_freqs",
-    "main",
     "render_chart_to_file",
 ]
-
-
-def main(argv: Sequence[str] | None = None) -> None:
-    """CLI entrypoint for interactive frequency response visualizer."""
-    parser = argparse.ArgumentParser(
-        description="Generate interactive visualizations of Allomorph voicings and instruments."
-    )
-    parser.add_argument(
-        "--instrument",
-        "-i",
-        default="all",
-        help="Source instrument configuration (ID, alias like 30in, 32in, path to .toml, or 'all' to generate all)",
-    )
-    parser.add_argument(
-        "--mode",
-        "-m",
-        choices=[
-            "voicings",
-            "unified",
-            "output",
-            "difference",
-        ],
-        default="voicings",
-        help="Chart mode: 'voicings' (interactive 3-line voicing comparison), 'unified', 'output', or 'difference'",
-    )
-    parser.add_argument(
-        "--all",
-        action="store_true",
-        help="Build interactive charts for all configured instruments and voicings",
-    )
-    parser.add_argument(
-        "--out",
-        default=None,
-        help="Output HTML file or directory path (default: docs/frequency_responses.html)",
-    )
-    parser.add_argument(
-        "--debug-stem",
-        "-d",
-        default=None,
-        help="Run comprehensive stem diagnostics for a target voice (e.g. --debug-stem jazz_bridge_open)",
-    )
-    args = parser.parse_args(argv)
-
-    if args.debug_stem:
-        from allomorph.circuit.stem_debug import debug_voicing_stem, format_stem_report_table
-        from allomorph.config.instruments import resolve_target_voicing
-        from allomorph.config.preamps import PREAMPS
-
-        inst_arg = None if args.instrument == "all" else args.instrument
-        t_inst, v_cfg = resolve_target_voicing(args.debug_stem, instrument=inst_arg)
-        report = debug_voicing_stem(
-            instrument=t_inst,
-            voicing=v_cfg,
-            preamps=PREAMPS,
-        )
-        print(format_stem_report_table(report))
-        return
-
-    cli_cfg = VisualizerCliConfig(
-        instrument=args.instrument,
-        mode=args.mode,
-        all=args.all,
-        out=args.out,
-    )
-
-    if cli_cfg.all:
-        generate_all_charts(output_dir=cli_cfg.out)
-    elif cli_cfg.mode == "voicings":
-        generate_interactive_chart(mode=cli_cfg.mode, out_html=cli_cfg.out)
-    elif isinstance(cli_cfg.instrument, str) and cli_cfg.instrument.lower() == "all":
-        generate_all_charts(output_dir=cli_cfg.out)
-    else:
-        inst = load_instrument(cli_cfg.instrument)
-        generate_interactive_chart(instrument=inst, out_html=cli_cfg.out, mode=cli_cfg.mode)
-        if cli_cfg.out is None or (Path(cli_cfg.out).resolve() == DOCS_DIR.resolve()):
-            generate_portal_pages(output_dir=DOCS_DIR)

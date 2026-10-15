@@ -1,6 +1,6 @@
 # Physics Subpackage — Agent Routing Guide
 
-Covers spatial pickup aperture integration, multi-scale string continuum mechanics, inharmonicity dispersion, and causal minimum-phase prefilter synthesis.
+Covers spatial pickup aperture integration, multi-scale string continuum mechanics, and inharmonicity dispersion.
 
 ## Key Modules
 - [`aperture.py`](aperture.py): 2D cylindrical rod vs 1D blade sensing apertures, standing-wave comb envelopes, close-bridge saddle stiffness, bridge displacement excursion scaling, and luthier pickup isolation leveling.

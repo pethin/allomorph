@@ -3,23 +3,15 @@
 from __future__ import annotations
 
 import numpy as np
-import pytest
 
-from allomorph.config.instruments import VoicingBundle
+from allomorph.config.instruments import load_instrument
 from allomorph.config.resolvers import (
-    assign_target_to_bundle,
-    build_voice_coils_for_pickup,
-    compound_multi_pickup_coils,
     determine_pickup_resonance_and_q,
     find_voicing_by_slug_or_id,
     parse_target_voicing_token,
+    resolve_voicing_electroacoustics,
 )
 from allomorph.config.schema import (
-    CoilConfig,
-    PackBundleConfig,
-    PickupConfig,
-    VoiceCoilConfig,
-    VoicePickupConfig,
     VoicingConfig,
 )
 from allomorph.dsp.constants import FREQS
@@ -75,56 +67,6 @@ def test_determine_pickup_resonance_and_q_none_and_empty():
     assert determine_pickup_resonance_and_q([1.0, 2.0]) == (None, None)
 
 
-def test_build_voice_coils_for_pickup():
-    coils = [
-        CoilConfig(
-            id="c1", position_from_bridge_m=0.080, aperture_width_in=0.75, weight=1.0, polarity=1.0
-        ),
-        CoilConfig(
-            id="c2", position_from_bridge_m=0.060, aperture_width_in=0.75, weight=1.0, polarity=-1.0
-        ),
-    ]
-    pickup = PickupConfig(id="dual", name="Dual Coil", type="humbucker", coils=coils)
-
-    # All coils
-    v_coils = build_voice_coils_for_pickup(pickup)
-    assert len(v_coils) == 2
-    assert v_coils[0].polarity == 1.0
-    assert v_coils[1].polarity == -1.0
-
-    # Filtered by active coil ID
-    v_filtered = build_voice_coils_for_pickup(pickup, active_coil_ids=["c1"])
-    assert len(v_filtered) == 1
-    assert v_filtered[0].position_from_bridge_m == pytest.approx(0.080)
-
-
-def test_compound_multi_pickup_coils():
-    p1_coils = [
-        VoiceCoilConfig(
-            position_from_bridge_m=0.100, aperture_width_in=0.75, weight=1.0, polarity=1.0
-        ),
-    ]
-    p2_coils = [
-        VoiceCoilConfig(
-            position_from_bridge_m=0.050, aperture_width_in=0.75, weight=0.8, polarity=-1.0
-        ),
-    ]
-    p1 = VoicePickupConfig(
-        name="Neck", type="Single", fr=3600.0, Q=1.5, weight=0.5, polarity=1.0, coils=p1_coils
-    )
-    p2 = VoicePickupConfig(
-        name="Bridge", type="Single", fr=3200.0, Q=1.6, weight=0.5, polarity=-1.0, coils=p2_coils
-    )
-
-    compounded = compound_multi_pickup_coils([p1, p2])
-    assert len(compounded) == 2
-    assert compounded[0].weight == 0.5
-    assert compounded[0].polarity == 1.0
-
-    assert compounded[1].weight == pytest.approx(0.4)
-    assert compounded[1].polarity == 1.0  # -1.0 * -1.0
-
-
 def test_parse_target_voicing_token():
     # Colon syntax
     inst_id, vid = parse_target_voicing_token(
@@ -152,41 +94,18 @@ def test_find_voicing_by_slug_or_id():
     inst.voicings["v1"] = v1
     inst.voicings["v2"] = v2
 
-    # Match by exact ID
+    # Match strictly by exact voicing_id
     assert find_voicing_by_slug_or_id(inst, "v1") is v1
+    assert find_voicing_by_slug_or_id(inst, "v2") is v2
 
-    # Match by normalized tone name slug
-    assert find_voicing_by_slug_or_id(inst, "precision_vintage") is v1
-    assert find_voicing_by_slug_or_id(inst, "jazz_bridge_growl") is v2
-
-    # Non-existent returns None
+    # Tone name slugs or non-existent IDs return None
+    assert find_voicing_by_slug_or_id(inst, "precision_vintage") is None
     assert find_voicing_by_slug_or_id(inst, "non_existent") is None
 
 
-def test_assign_target_to_bundle():
-    b_neck = VoicingBundle(
-        bundle_name="neck", source_voicing="v_neck", position_name="Neck", targets=[]
-    )
-    b_bridge = VoicingBundle(
-        bundle_name="bridge", source_voicing="v_bridge", position_name="Bridge", targets=[]
-    )
-    pack_bundles = {"neck": b_neck, "bridge": b_bridge}
-
-    b_configs = [
-        PackBundleConfig(name="neck", source="inst_test:v_neck", targets=["inst_target:target_a"]),
-        PackBundleConfig(
-            name="bridge", source="inst_test:v_bridge", targets=["inst_target:target_b"]
-        ),
-    ]
-
-    # Explicit config target
-    assert assign_target_to_bundle("inst_target:target_a", pack_bundles, b_configs) == "neck"
-    assert assign_target_to_bundle("target_a", pack_bundles, b_configs) == "neck"
-    assert assign_target_to_bundle("inst_target:target_b", pack_bundles, b_configs) == "bridge"
-    assert assign_target_to_bundle("target_b", pack_bundles, b_configs) == "bridge"
-
-    # Position keyword fallback
-    assert assign_target_to_bundle("custom_bridge_lead", pack_bundles, b_configs) == "bridge"
-
-    # Default fallback
-    assert assign_target_to_bundle("mystery_voicing", pack_bundles, b_configs) == "neck"
+def test_resolve_voicing_electroacoustics():
+    inst = load_instrument("34in_standard_p")
+    ea = resolve_voicing_electroacoustics(inst, inst.voicings["vintage_open"])
+    assert len(ea.coils) == 2
+    assert ea.fr is None or ea.fr > 0.0
+    assert ea.magnet_type == "alnico_v"

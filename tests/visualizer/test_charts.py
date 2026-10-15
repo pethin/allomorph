@@ -58,19 +58,23 @@ def test_generate_interactive_chart_modes():
     with tempfile.TemporaryDirectory() as tmpdir:
         # 1. Output mode
         p_out = Path(tmpdir) / "out.html"
-        generate_interactive_chart(instrument="30in", out_html=str(p_out), mode="output")
+        generate_interactive_chart(instrument="30in_emg_mmtw", out_html=str(p_out), mode="output")
         assert p_out.exists()
         assert "Output Voice Frequency Responses" in p_out.read_text(encoding="utf-8")
 
         # 2. Difference mode
         p_diff = Path(tmpdir) / "diff.html"
-        generate_interactive_chart(instrument="30in", out_html=str(p_diff), mode="difference")
+        generate_interactive_chart(
+            instrument="30in_emg_mmtw", out_html=str(p_diff), mode="difference"
+        )
         assert p_diff.exists()
         assert "Input/Output Differential Transfer Functions" in p_diff.read_text(encoding="utf-8")
 
         # 3. Unified mode with radio selector
         p_unified = Path(tmpdir) / "unified.html"
-        generate_interactive_chart(instrument="30in", out_html=str(p_unified), mode="unified")
+        generate_interactive_chart(
+            instrument="30in_emg_mmtw", out_html=str(p_unified), mode="unified"
+        )
         assert p_unified.exists()
         assert "Display Mode: " in p_unified.read_text(encoding="utf-8")
 

@@ -1111,7 +1111,7 @@ def test_catalog_wide_active_voicings_transmission_integrity():
     unphysical numerical attenuation (< -40 dB) due to open-circuit ground-shunting bugs."""
     from allomorph.config.instruments import load_all_instruments
     from allomorph.config.preamps import PREAMPS
-    from allomorph.config.voices import resolve_voicing_active_pickups
+    from allomorph.config.resolvers import resolve_voicing_active_pickups
 
     instruments = load_all_instruments()
     f_eval = np.array([80.0, 200.0, 1000.0, 3000.0], dtype=np.float64)

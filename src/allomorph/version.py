@@ -413,6 +413,61 @@ def compute_recipe_token(
             elif isinstance(p_cfg, Mapping):
                 payload["preamp"] = dict(p_cfg)
 
+    # Resolve string preset
+    if strings is None:
+        from allomorph.config.strings import STRINGS
+
+        strings = STRINGS
+
+    inst_strings = inst_dict.get("strings")
+    str_preset_id = (
+        voice_dict.get("string_preset_override")
+        or (inst_strings.get("preset") if isinstance(inst_strings, Mapping) else None)
+        or "roundwound_nickel_standard"
+    )
+    if str_preset_id and strings is not None and hasattr(strings, "get"):
+        s_cfg = strings.get(str_preset_id)
+        if s_cfg is not None:
+            if hasattr(s_cfg, "model_dump"):
+                payload["string_preset"] = s_cfg.model_dump(mode="json", exclude_none=True)
+            elif isinstance(s_cfg, Mapping):
+                payload["string_preset"] = dict(s_cfg)
+
+    # Resolve scale preset
+    from allomorph.config.scales import SCALES
+
+    is_multi = bool(inst_dict.get("is_multiscale", False))
+    scale_in = inst_dict.get("scale_length_in")
+    scale_min_in = inst_dict.get("scale_min_in")
+    scale_max_in = inst_dict.get("scale_max_in")
+    for sc_id, sc_cfg in sorted(SCALES.items()):
+        if is_multi and sc_cfg.is_multiscale:
+            if (
+                scale_min_in is not None
+                and scale_max_in is not None
+                and sc_cfg.scale_min_in is not None
+                and sc_cfg.scale_max_in is not None
+                and abs(float(scale_min_in) - float(sc_cfg.scale_min_in)) < 1e-4
+                and abs(float(scale_max_in) - float(sc_cfg.scale_max_in)) < 1e-4
+            ):
+                payload["scale_preset"] = {
+                    "id": sc_id,
+                    **sc_cfg.model_dump(mode="json", exclude_none=True),
+                }
+                break
+        elif (
+            not is_multi
+            and not sc_cfg.is_multiscale
+            and scale_in is not None
+            and sc_cfg.scale_length_in is not None
+            and abs(float(scale_in) - float(sc_cfg.scale_length_in)) < 1e-4
+        ):
+            payload["scale_preset"] = {
+                "id": sc_id,
+                **sc_cfg.model_dump(mode="json", exclude_none=True),
+            }
+            break
+
     raw_bytes = json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("utf-8")
     digest = hashlib.sha256(raw_bytes).hexdigest()
     return f"alo_rec_{digest}"
@@ -433,11 +488,17 @@ def compute_bundle_recipe_token(
     hasher.update(f"dry:{eff_dry}\n".encode())
 
     if isinstance(stem_tokens, Mapping):
-        sorted_items = sorted(stem_tokens.items())
+        sorted_items: list[tuple[str, str]] = sorted(
+            (str(k), str(v)) for k, v in stem_tokens.items()
+        )
     elif stem_tokens and isinstance(stem_tokens[0], tuple):
-        sorted_items = sorted(stem_tokens)  # type: ignore[arg-type]
+        tuple_items: list[tuple[str, str]] = [
+            (str(item[0]), str(item[1])) for item in stem_tokens if isinstance(item, tuple)
+        ]
+        sorted_items = sorted(tuple_items)
     else:
-        sorted_items = [(f"stem_{i}", str(tok)) for i, tok in enumerate(sorted(stem_tokens))]  # type: ignore[type-var]
+        str_items: list[str] = sorted(str(tok) for tok in stem_tokens)
+        sorted_items = [(f"stem_{i}", tok) for i, tok in enumerate(str_items)]
 
     for name, tok in sorted_items:
         hasher.update(f"{name}:{tok}\n".encode())
@@ -500,16 +561,17 @@ def write_manifest(
     )
 
 
-def check_wet_stem_freshness(
+def check_stem_freshness(
     stem_path: Path | str,
     expected_recipe_token: str,
     base_dry_path: Path | str | None = None,
     expected_version: str | None = None,
 ) -> tuple[bool, str]:
-    """Validates that a compiled wet audio stem exists and matches the expected recipe token.
+    """Validates that a compiled audio stem exists and matches the expected recipe token.
 
     Returns (is_fresh, reason) where reason is 'cached & fresh' or diagnostic explanation.
     """
+    _ = base_dry_path
     stem_p = Path(stem_path)
     if not stem_p.exists():
         return False, "audio file missing"
@@ -541,13 +603,13 @@ def check_wet_stem_freshness(
     return True, "cached & fresh"
 
 
-def is_wet_stem_valid(
+def is_stem_valid(
     stem_path: Path | str,
     expected_recipe_token: str,
     base_dry_path: Path | str | None = None,
     expected_version: str | None = None,
 ) -> bool:
-    """Validates that a compiled wet audio stem exists and matches the expected recipe token.
+    """Validates that a compiled audio stem exists and matches the expected recipe token.
 
     Returns False if:
     - The stem file does not exist.
@@ -556,7 +618,7 @@ def is_wet_stem_valid(
     - The manifest's recorded recipe_token does not match expected_recipe_token.
     - An expected_version is provided and the manifest version does not match it.
     """
-    valid, _ = check_wet_stem_freshness(
+    valid, _ = check_stem_freshness(
         stem_path=stem_path,
         expected_recipe_token=expected_recipe_token,
         base_dry_path=base_dry_path,
@@ -571,7 +633,7 @@ __all__ = [
     "DEFAULT_VOICE_VERSION",
     "DSP_GENERATION",
     "_MANIFEST_LOCK",
-    "check_wet_stem_freshness",
+    "check_stem_freshness",
     "compute_bundle_recipe_token",
     "compute_excitation_digest_token",
     "compute_excitation_recipe_token",
@@ -584,7 +646,7 @@ __all__ = [
     "get_dry_excitation_token",
     "get_git_commit",
     "get_version_info",
-    "is_wet_stem_valid",
+    "is_stem_valid",
     "resolve_tri_part_version",
     "write_manifest",
 ]

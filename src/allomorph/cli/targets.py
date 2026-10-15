@@ -7,8 +7,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Literal
 
-from allomorph.config.instruments import INSTRUMENTS
-from allomorph.pipeline.pack import PACKS_DIR
+from allomorph.config.instruments import INSTRUMENTS, TONE_PACKS
 
 TargetKind = Literal["pack", "instrument", "excitation"]
 
@@ -19,15 +18,12 @@ class ResolvedTarget:
 
     kind: TargetKind
     id: str
-    sub_target: str | None = None  # tone slug, voicing id, or None for all
+    sub_target: str | None = None  # voicing id, <inst_id>:<voicing_id>, or None for all
 
 
 def get_available_pack_ids() -> list[str]:
     """Returns sorted list of available tone pack IDs."""
-    if not PACKS_DIR.exists():
-        return sorted(INSTRUMENTS.keys())
-    packs = [p.name for p in PACKS_DIR.iterdir() if p.is_dir() and not p.name.startswith(".")]
-    return sorted(packs) if packs else sorted(INSTRUMENTS.keys())
+    return sorted(TONE_PACKS.keys()) if TONE_PACKS else sorted(INSTRUMENTS.keys())
 
 
 def get_available_instrument_ids() -> list[str]:
@@ -35,20 +31,25 @@ def get_available_instrument_ids() -> list[str]:
     return sorted(INSTRUMENTS.keys())
 
 
-def parse_target_token(token: str, allow_shorthand: bool = False) -> list[ResolvedTarget]:
+def parse_target_token(
+    token: str,
+    allow_shorthand: bool = False,
+    shorthand_kind: Literal["pack", "instrument"] = "instrument",
+) -> list[ResolvedTarget]:
     """
     Parses a single target token according to the Allomorph target grammar.
 
     Grammar:
       - 'packs': all tone packs
       - 'pack:<name>': specific pack
-      - 'pack:<name>:<tone>': specific tone in pack
+      - 'pack:<name>:<voicing>': specific voicing in pack
+      - 'pack:<name>:<inst>:<voicing>': specific cross-instrument target voicing in pack
       - 'instruments': all instruments
       - 'instrument:<name>': all voicings for instrument
       - 'instrument:<name>:<voicing>': specific voicing on instrument
-      - 'all': if allow_shorthand, maps to 'instruments'
-      - '<name>:<voicing>': if allow_shorthand, maps to 'instrument:<name>:<voicing>'
-      - '<name>': if allow_shorthand and <name> in INSTRUMENTS, maps to 'instrument:<name>'
+      - 'all': if allow_shorthand, maps to 'packs' (when shorthand_kind=='pack') or 'instruments'
+      - '<name>:<voicing>': if allow_shorthand, maps to '<shorthand_kind>:<name>:<voicing>'
+      - '<name>': if allow_shorthand, maps to '<shorthand_kind>:<name>'
     """
     raw = token.strip()
     if not raw:
@@ -67,6 +68,8 @@ def parse_target_token(token: str, allow_shorthand: bool = False) -> list[Resolv
         return [ResolvedTarget(kind="instrument", id=i) for i in available_insts]
 
     if allow_shorthand and raw == "all":
+        if shorthand_kind == "pack":
+            return [ResolvedTarget(kind="pack", id=p) for p in available_packs]
         return [ResolvedTarget(kind="instrument", id=i) for i in available_insts]
 
     parts = raw.split(":")
@@ -77,18 +80,27 @@ def parse_target_token(token: str, allow_shorthand: bool = False) -> list[Resolv
         return [ResolvedTarget(kind="excitation", id="default", sub_target=sub)]
 
     if prefix == "pack":
-        if len(parts) == 1:
+        if len(parts) == 1 or not parts[1]:
             raise ValueError("Invalid target syntax 'pack'. Expected 'pack:<name>' or 'packs'.")
         pack_name = parts[1]
         if pack_name not in available_packs and pack_name not in available_insts:
             raise ValueError(
                 f"Unknown tone pack '{pack_name}'. Available packs: {', '.join(available_packs)}"
             )
-        tone = parts[2] if len(parts) > 2 else None
+        if len(parts) == 2:
+            tone = None
+        elif len(parts) == 3:
+            tone = parts[2]
+        elif len(parts) == 4:
+            tone = f"{parts[2]}:{parts[3]}"
+        else:
+            raise ValueError(
+                f"Invalid pack target syntax '{raw}'. Expected 'pack:<pack_id>[:<inst_id>:<voicing_id>]'."
+            )
         return [ResolvedTarget(kind="pack", id=pack_name, sub_target=tone)]
 
     if prefix == "instrument":
-        if len(parts) == 1:
+        if len(parts) == 1 or not parts[1]:
             raise ValueError(
                 "Invalid target syntax 'instrument'. Expected 'instrument:<name>' or 'instruments'."
             )
@@ -97,10 +109,23 @@ def parse_target_token(token: str, allow_shorthand: bool = False) -> list[Resolv
             raise ValueError(
                 f"Unknown instrument '{inst_name}'. Available instruments: {', '.join(available_insts)}"
             )
-        voicing = parts[2] if len(parts) > 2 else None
+        if len(parts) > 3:
+            raise ValueError(
+                f"Invalid instrument target syntax '{raw}'. Expected 'instrument:<inst_id>[:<voicing_id>]'."
+            )
+        voicing = parts[2] if len(parts) == 3 else None
         return [ResolvedTarget(kind="instrument", id=inst_name, sub_target=voicing)]
 
     if allow_shorthand:
+        if shorthand_kind == "pack":
+            if len(parts) == 3 and parts[0] in available_packs:
+                return [
+                    ResolvedTarget(kind="pack", id=parts[0], sub_target=f"{parts[1]}:{parts[2]}")
+                ]
+            if len(parts) == 2 and parts[0] in available_packs:
+                return [ResolvedTarget(kind="pack", id=parts[0], sub_target=parts[1])]
+            if len(parts) == 1 and parts[0] in available_packs:
+                return [ResolvedTarget(kind="pack", id=parts[0])]
         # Check <instrument>:<voicing> shorthand
         if len(parts) == 2 and parts[0] in available_insts:
             return [ResolvedTarget(kind="instrument", id=parts[0], sub_target=parts[1])]
@@ -118,6 +143,7 @@ def resolve_targets(
     target_tokens: Sequence[str],
     default: str = "packs",
     allow_shorthand: bool = False,
+    shorthand_kind: Literal["pack", "instrument"] = "instrument",
 ) -> list[ResolvedTarget]:
     """Resolves a collection of target tokens into a deduplicated list of ResolvedTargets."""
     tokens = list(target_tokens) if target_tokens else [default]
@@ -125,7 +151,9 @@ def resolve_targets(
     seen: set[tuple[TargetKind, str, str | None]] = set()
 
     for tok in tokens:
-        items = parse_target_token(tok, allow_shorthand=allow_shorthand)
+        items = parse_target_token(
+            tok, allow_shorthand=allow_shorthand, shorthand_kind=shorthand_kind
+        )
         for item in items:
             key = (item.kind, item.id, item.sub_target)
             if key not in seen:

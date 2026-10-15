@@ -1,18 +1,17 @@
 """
-Tests for pickup and target voice coil geometry and coordinate resolution.
+Tests for pickup coil geometry, electroacoustic decomposition, and coordinate resolution.
 """
 
 import math
 
 from allomorph.config import (
-    VOICES,
     compute_effective_position,
     load_instrument,
     resolve_pickup_coils,
-    resolve_voice_coils,
-    resolve_voice_pickups,
+    resolve_voicing_electroacoustics,
 )
-from allomorph.config.schema import VoiceCoilConfig, VoiceConfig
+from allomorph.config.geometry import _infer_pole_type
+from allomorph.config.schema import CoilConfig, PickupConfig
 
 
 def test_resolve_pickup_coils():
@@ -43,135 +42,46 @@ def test_resolve_pickup_coils():
     assert math.isclose(coils_bridge[0].position_from_bridge_m, 0.0635, abs_tol=1e-4)
 
 
-def test_resolve_voice_pickups():
-    # 1. Multi-pickup: jazz_pair_active
-    p_act = resolve_voice_pickups(VOICES["jazz_pair_active"])
-    assert len(p_act) == 2
-    assert p_act[0].fr == 5120.0
-    assert p_act[0].Q == 1.03
-    assert p_act[1].fr == 5779.1
-    assert p_act[1].Q == 1.08
-
-    # 2. Multi-pickup: jazz_pair_open
-    p_jazz = resolve_voice_pickups(VOICES["jazz_pair_open"])
-    assert len(p_jazz) == 2
-    assert p_jazz[0].fr == 2734.7
-    assert p_jazz[0].Q == 0.92
-    assert p_jazz[1].fr == 2902.6
-    assert p_jazz[1].Q == 0.91
-
-    # 3. Multi-pickup: pj_active (Ultra II 3-band active P/J)
-    p_pj_act = resolve_voice_pickups(VOICES["pj_active"])
-    assert len(p_pj_act) == 2
-    assert p_pj_act[0].fr is None
-    assert p_pj_act[0].Q is None
-    assert math.isclose(p_pj_act[0].weight, 0.5498, abs_tol=1e-3)
-    assert len(p_pj_act[0].coils) == 2  # P-split E/A + D/G
-    assert p_pj_act[1].fr == 5071.8
-    assert p_pj_act[1].Q == 1.09
-    assert math.isclose(p_pj_act[1].weight, 0.4502, abs_tol=1e-3)
-    assert len(p_pj_act[1].coils) == 1  # J-bridge
-
-    # 4. Multi-pickup: pj_passive
-    p_pj_pas = resolve_voice_pickups(VOICES["pj_passive"])
-    assert len(p_pj_pas) == 2
-    assert p_pj_pas[0].fr == 2530.6
-    assert p_pj_pas[0].Q == 1.01
-    assert p_pj_pas[1].fr == 2769.5
-    assert p_pj_pas[1].Q == 0.80
-
-    # 5. Multi-pickup: p_mm_series & p_mm_parallel (dual-buffered active blend)
-    p_pmm = resolve_voice_pickups(VOICES["p_mm_series"])
-    assert len(p_pmm) == 2
-    assert p_pmm[0].fr == 2504.1
-    assert p_pmm[0].Q == 1.15
-    assert p_pmm[1].fr == 2430.7
-    assert p_pmm[1].Q == 1.06
-
-    p_pmm_act = resolve_voice_pickups(VOICES["p_mm_parallel"])
-    assert len(p_pmm_act) == 2
-    assert p_pmm_act[0].fr == 2504.1
-    assert p_pmm_act[0].Q == 1.15
-    assert p_pmm_act[1].fr == 4773.1
-    assert p_pmm_act[1].Q == 0.65
-
-    # 6. Single-pickup voice auto-wrapping: precision_active (Ultra II 3-band active P)
-    p_p = resolve_voice_pickups(VOICES["precision_active"])
-    assert len(p_p) == 1
-    assert p_p[0].fr == 3985.1
-    assert p_p[0].Q == 0.93
-    assert p_p[0].weight == 1.0
-    assert len(p_p[0].coils) == 2
-
-
-def test_resolve_voice_coils():
-    # 01 Modern active jazz should have 2 coils, each with strings=["all"]
-    c01 = resolve_voice_coils(VOICES["jazz_pair_active"])
-    assert len(c01) == 2
-    assert c01[0].position_from_bridge_m == 0.1556
-    assert c01[1].position_from_bridge_m == 0.0635
-    assert c01[0].strings == ["all"]
-
-    # 04 Modern active split P ceramic should have 2 split coils with specific string bindings
-    c04 = resolve_voice_coils(VOICES["precision_active"])
-    assert len(c04) == 2
-    assert c04[0].strings == [3, 4]
-    assert c04[0].position_from_bridge_m == 0.1390
-    assert c04[1].strings == [1, 2]
-    assert c04[1].position_from_bridge_m == 0.1110
-
-    # 07 Modern PJ active should have 3 coils (split P + J bridge)
-    c07 = resolve_voice_coils(VOICES["pj_active"])
-    assert len(c07) == 3
-    assert c07[0].strings == [3, 4]
-    assert c07[1].strings == [1, 2]
-    assert c07[2].strings == ["all"]
-
-    # 11 P/MM hybrid should have 4 coils (split P + MM humbucker pair)
-    c11 = resolve_voice_coils(VOICES["p_mm_series"])
-    assert len(c11) == 4
-    assert c11[0].strings == [3, 4]
-    assert c11[1].strings == [1, 2]
-    assert c11[2].strings == ["all"]
-    assert c11[3].strings == ["all"]
-
-    c11_act = resolve_voice_coils(VOICES["p_mm_parallel"])
-    assert len(c11_act) == 4
-    assert c11_act[0].strings == [3, 4]
-    assert c11_act[1].strings == [1, 2]
-    assert c11_act[2].strings == ["all"]
-    assert c11_act[3].strings == ["all"]
-
-    # Check effective positions are calculated correctly
-    eff01 = compute_effective_position(c01)
+def test_resolve_voicing_electroacoustics_pickups_and_coils():
+    # 1. Multi-pickup: 34in_standard_jazz:pair_active
+    inst_j = load_instrument("34in_standard_jazz")
+    ea_act = resolve_voicing_electroacoustics(inst_j, inst_j.voicings["pair_active"])
+    assert len(ea_act.coils) == 2
+    assert ea_act.coils[0].position_from_bridge_m == 0.1556
+    assert ea_act.coils[1].position_from_bridge_m == 0.0635
+    assert ea_act.coils[0].strings == ["all"]
+    eff01 = compute_effective_position(ea_act.coils)
     assert 0.10 < eff01 < 0.12  # Average of 0.1556 and 0.0635 is 0.10955
 
-    # Custom voice coil resolution test
-    custom_voice = VoiceConfig(
-        id="custom_voice",
-        name="Custom Voice",
-        description="Test custom voice",
-        fr=3000.0,
-        Q=1.5,
-        coils=[
-            VoiceCoilConfig(
-                position_from_bridge_m=0.066,
-                aperture_width_in=0.75,
-                weight=1.0,
-                polarity=1.0,
-                strings=["all"],
-            )
-        ],
-    )
-    c_custom = resolve_voice_coils(custom_voice)
-    assert len(c_custom) == 1
-    assert c_custom[0].strings == ["all"]
+    # 2. Multi-pickup: 34in_standard_jazz:pair_open
+    ea_jazz = resolve_voicing_electroacoustics(inst_j, inst_j.voicings["pair_open"])
+    assert len(ea_jazz.coils) == 2
+
+    # 3. Multi-pickup: 34in_standard_pj:pair_active (Ultra II 3-band active P/J)
+    inst_pj = load_instrument("34in_standard_pj")
+    ea_pj_act = resolve_voicing_electroacoustics(inst_pj, inst_pj.voicings["pair_active"])
+    assert len(ea_pj_act.coils) == 3
+    assert ea_pj_act.coils[0].strings == [3, 4]
+    assert ea_pj_act.coils[1].strings == [1, 2]
+    assert ea_pj_act.coils[2].strings == ["all"]
+
+    # 4. Single-pickup: 34in_standard_pj:neck_active
+    ea_p_act = resolve_voicing_electroacoustics(inst_pj, inst_pj.voicings["neck_active"])
+    assert len(ea_p_act.coils) == 2
+    assert ea_p_act.coils[0].strings == [3, 4]
+    assert ea_p_act.coils[1].strings == [1, 2]
+
+    # 5. Multi-pickup: 34in_active_pmm:pmm_series & pmm_parallel
+    inst_pmm = load_instrument("34in_active_pmm")
+    ea_pmm_ser = resolve_voicing_electroacoustics(inst_pmm, inst_pmm.voicings["pmm_series"])
+    assert len(ea_pmm_ser.coils) == 4
+    assert ea_pmm_ser.coils[0].strings == [3, 4]
+    assert ea_pmm_ser.coils[1].strings == [1, 2]
+    assert ea_pmm_ser.coils[2].strings == ["all"]
+    assert ea_pmm_ser.coils[3].strings == ["all"]
 
 
 def test_infer_pole_type_and_geometry_branches():
-    from allomorph.config.geometry import _infer_pole_type
-    from allomorph.config.schema import CoilConfig, PickupConfig, VoiceConfig
-
     # 1. From coil pole_type
     c_rod = CoilConfig(position_from_bridge_m=0.08, pole_type="rod")
     assert _infer_pole_type(coil=c_rod) == "rod"
@@ -196,20 +106,8 @@ def test_infer_pole_type_and_geometry_branches():
     p_aln = PickupConfig(name="Vintage Single", type="single_coil", magnet_type="alnico_v")
     assert _infer_pole_type(p_aln) == "rod"
 
-    # 7. VoiceConfig inspection
-    v_blade = VoiceConfig(
-        id="v_b",
-        name="Blade Voice",
-        description="Test blade voice",
-        fr=3000.0,
-        Q=1.5,
-    )
-    assert _infer_pole_type(v_blade) == "blade"
-
 
 def test_resolve_pickup_coils_explicit_and_single_fallback():
-    from allomorph.config.schema import CoilConfig, PickupConfig
-
     # 1. Explicit coils list on PickupConfig
     explicit = PickupConfig(
         name="Explicit Coils",
@@ -240,25 +138,7 @@ def test_resolve_pickup_coils_explicit_and_single_fallback():
     assert sc_coils[0].position_from_bridge_m == 0.08
 
 
-def test_resolve_voice_coils_empty_fallback():
-    from allomorph.config.schema import VoiceConfig
-
-    # Voice with no pickups and no coils falls back to default 0.088m coil
-    v_empty = VoiceConfig(
-        id="empty_voice",
-        name="Empty Voice",
-        description="Test empty voice",
-        fr=3000.0,
-        Q=1.5,
-    )
-    coils = resolve_voice_coils(v_empty)
-    assert len(coils) == 1
-    assert coils[0].position_from_bridge_m == 0.088
-
-
 def test_compute_effective_position_edge_cases():
-    from allomorph.config.schema import CoilConfig
-
     # 1. Empty coils list returns default 0.08m
     assert compute_effective_position([]) == 0.08
 

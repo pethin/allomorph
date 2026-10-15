@@ -11,16 +11,13 @@ import pytest
 
 from allomorph.config.instruments import INSTRUMENTS
 from allomorph.config.schema import InstrumentConfig
-from allomorph.config.voices import VOICES
 from allomorph.naming import get_t3k_basename
 from allomorph.pipeline.schema import (
     NamExportMetadata,
     NamSourceInstrumentMeta,
     NamSourceVoicingMeta,
     NamTargetVoicingMeta,
-    NamTrainingConfig,
     NamTrainingMetadata,
-    PipelineCliConfig,
 )
 from allomorph.version import (
     ALLOMORPH_VERSION,
@@ -96,26 +93,27 @@ def test_t3k_filename_length_ceiling():
     """
     version_tag = "v2.1.1"
     for inst_id, inst_cfg in INSTRUMENTS.items():
-        for vid, vcfg in VOICES.items():
-            tone_name = vcfg.tone_name or vcfg.name
-            if len(inst_cfg.pickups) <= 1:
-                pos_names = [None]
-            else:
-                pos_names = [
-                    p.position_name or p.name
-                    for p in inst_cfg.pickups.values()
-                    if p.position_name or p.name
-                ] or [None]
+        for tgt_inst_id, tgt_inst in INSTRUMENTS.items():
+            for vid, vcfg in tgt_inst.voicings.items():
+                tone_name = vcfg.tone_name or vcfg.name
+                if len(inst_cfg.pickups) <= 1:
+                    pos_names = [None]
+                else:
+                    pos_names = [
+                        p.position_name or p.name
+                        for p in inst_cfg.pickups.values()
+                        if p.position_name or p.name
+                    ] or [None]
 
-            for pos_name in pos_names:
-                basename = get_t3k_basename(
-                    tone_name,
-                    pos_name,
-                    version_tag=version_tag,
-                )
-                assert len(basename) <= 64, (
-                    f"Tone '{basename}' for {inst_id} -> {vid} exceeds 64-character ceiling ({len(basename)} > 64)"
-                )
+                for pos_name in pos_names:
+                    basename = get_t3k_basename(
+                        tone_name,
+                        pos_name,
+                        version_tag=version_tag,
+                    )
+                    assert len(basename) <= 64, (
+                        f"Tone '{basename}' for {inst_id} -> {tgt_inst_id}:{vid} exceeds 64-character ceiling ({len(basename)} > 64)"
+                    )
 
 
 def test_t3k_basename_exceeding_ceiling_raises_error():
@@ -204,9 +202,9 @@ def test_simulate_instrument_pickup_with_version_tag(
     assert m["files"][wet_p.name]["digest_token"] == m["digest_token"]
 
 
-def test_wet_stem_manifest_validation_and_invalidation(tmp_path: Path):
-    """Verify is_wet_stem_valid detects valid stems and catches stale/mismatched recipe tokens."""
-    from allomorph.version import is_wet_stem_valid, write_manifest
+def test_stem_manifest_validation_and_invalidation(tmp_path: Path):
+    """Verify is_stem_valid detects valid stems and catches stale/mismatched recipe tokens."""
+    from allomorph.version import is_stem_valid, write_manifest
 
     # 1. Setup mock wet stem
     wet_stem = tmp_path / "mock_wet.wav"
@@ -216,7 +214,7 @@ def test_wet_stem_manifest_validation_and_invalidation(tmp_path: Path):
     mutated_token = "alo_stem_2222222222222222222222222222222222222222222222222222222222222222"
 
     # 2. Initially without manifest -> invalid
-    assert not is_wet_stem_valid(wet_stem, expected_recipe_token=original_token)
+    assert not is_stem_valid(wet_stem, expected_recipe_token=original_token)
 
     # 3. Write authoritative manifest recording recipe_token
     manifest_p = write_manifest(
@@ -229,20 +227,18 @@ def test_wet_stem_manifest_validation_and_invalidation(tmp_path: Path):
     assert manifest_p.exists()
 
     # 4. Now it must be valid
-    assert is_wet_stem_valid(wet_stem, expected_recipe_token=original_token)
-    assert is_wet_stem_valid(
-        wet_stem, expected_recipe_token=original_token, expected_version="v6.1.1"
-    )
-    assert not is_wet_stem_valid(
+    assert is_stem_valid(wet_stem, expected_recipe_token=original_token)
+    assert is_stem_valid(wet_stem, expected_recipe_token=original_token, expected_version="v6.1.1")
+    assert not is_stem_valid(
         wet_stem, expected_recipe_token=original_token, expected_version="v6.2.1"
     )
 
     # 5. Mutate expected recipe token -> must immediately invalidate stale wet stem cache!
-    assert not is_wet_stem_valid(wet_stem, expected_recipe_token=mutated_token)
+    assert not is_stem_valid(wet_stem, expected_recipe_token=mutated_token)
 
     # 6. Non-existent wet stem returns False
     missing_stem = tmp_path / "missing_stem.wav"
-    assert not is_wet_stem_valid(missing_stem, expected_recipe_token=original_token)
+    assert not is_stem_valid(missing_stem, expected_recipe_token=original_token)
 
 
 def test_manifest_tracks_instrument_and_voicing_versions(tmp_path: Path):
@@ -316,7 +312,7 @@ def test_nam_export_metadata_schema_version_fields():
             voicing=NamSourceVoicingMeta(name="EMG MM Dual Coil"),
         ),
         target_voicing=NamTargetVoicingMeta(
-            id="precision_vintage",
+            id="vintage_open",
             name="Vintage 62 P (Alnico V)",
         ),
     )
@@ -327,17 +323,8 @@ def test_nam_export_metadata_schema_version_fields():
     assert d["voice_version"] == 1
     assert d["allomorph_version"] == "0.2.0"
     assert d["git_commit"] == "abc1234"
-    assert d["target_voicing"]["id"] == "precision_vintage"
+    assert d["target_voicing"]["id"] == "vintage_open"
     assert d["source_instrument"]["voicing"]["name"] == "EMG MM Dual Coil"
-
-
-def test_cli_config_schemas_support_version_and_manifest_flags():
-    """Verify that NamTrainingConfig and PipelineCliConfig include version_tag and no_manifest."""
-    n_cfg = NamTrainingConfig(version_tag="v2.1.1", no_manifest=True)
-    assert n_cfg.version_tag == "v2.1.1"
-    p_cfg = PipelineCliConfig(version_tag="auto", no_manifest=False)
-    assert p_cfg.version_tag == "auto"
-    assert p_cfg.no_manifest is False
 
 
 def test_resolve_tri_part_version_flexible_none():
@@ -371,9 +358,9 @@ def test_ensure_input_audio_wav(tmp_path: Path):
     assert len(audio) == int(1.0 * FS)
 
 
-def test_is_wet_stem_valid_comprehensive_matrix(tmp_path: Path):
-    """Verify is_wet_stem_valid condition matrix (missing files, invalid JSON, version/token mismatch)."""
-    from allomorph.version import is_wet_stem_valid, write_manifest
+def test_is_stem_valid_comprehensive_matrix(tmp_path: Path):
+    """Verify is_stem_valid condition matrix (missing files, invalid JSON, version/token mismatch)."""
+    from allomorph.version import is_stem_valid, write_manifest
 
     base_dry = tmp_path / "base_dry.wav"
     base_dry.write_bytes(b"base dry audio content")
@@ -384,24 +371,24 @@ def test_is_wet_stem_valid_comprehensive_matrix(tmp_path: Path):
 
     # 1. Stem file does not exist
     non_existent = tmp_path / "non_existent.wav"
-    assert is_wet_stem_valid(non_existent, expected_recipe_token=expected_token) is False
+    assert is_stem_valid(non_existent, expected_recipe_token=expected_token) is False
 
     # 2. Manifest does not exist
-    assert is_wet_stem_valid(stem, expected_recipe_token=expected_token) is False
+    assert is_stem_valid(stem, expected_recipe_token=expected_token) is False
 
     # 3. Manifest contains invalid JSON
     manifest_p.write_text("invalid json {", encoding="utf-8")
-    assert is_wet_stem_valid(stem, expected_recipe_token=expected_token) is False
+    assert is_stem_valid(stem, expected_recipe_token=expected_token) is False
 
     # 4. Manifest missing stem entry
     manifest_p.write_text(json.dumps({"files": {}}), encoding="utf-8")
-    assert is_wet_stem_valid(stem, expected_recipe_token=expected_token) is False
+    assert is_stem_valid(stem, expected_recipe_token=expected_token) is False
 
     # 5. Manifest entry missing recipe_token
     manifest_p.write_text(
         json.dumps({"files": {stem.name: {"version": "v6.1.1"}}}), encoding="utf-8"
     )
-    assert is_wet_stem_valid(stem, expected_recipe_token=expected_token) is False
+    assert is_stem_valid(stem, expected_recipe_token=expected_token) is False
 
     # 6. Expected version mismatch
     write_manifest(
@@ -413,7 +400,7 @@ def test_is_wet_stem_valid_comprehensive_matrix(tmp_path: Path):
         recipe_token=expected_token,
     )
     assert (
-        is_wet_stem_valid(stem, expected_recipe_token=expected_token, expected_version="v3.1.1")
+        is_stem_valid(stem, expected_recipe_token=expected_token, expected_version="v3.1.1")
         is False
     )
 
@@ -427,7 +414,7 @@ def test_is_wet_stem_valid_comprehensive_matrix(tmp_path: Path):
         recipe_token="alo_stem_wrongtoken000000000000000000000000000000000000000000000000000000",
     )
     assert (
-        is_wet_stem_valid(stem, expected_recipe_token=expected_token, expected_version="v6.1.1")
+        is_stem_valid(stem, expected_recipe_token=expected_token, expected_version="v6.1.1")
         is False
     )
 
@@ -441,8 +428,7 @@ def test_is_wet_stem_valid_comprehensive_matrix(tmp_path: Path):
         recipe_token=expected_token,
     )
     assert (
-        is_wet_stem_valid(stem, expected_recipe_token=expected_token, expected_version="v6.1.1")
-        is True
+        is_stem_valid(stem, expected_recipe_token=expected_token, expected_version="v6.1.1") is True
     )
 
 

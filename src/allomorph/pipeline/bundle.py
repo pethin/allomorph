@@ -50,14 +50,7 @@ def resolve_bundle_target_file_descriptors(
         )
         stem_filename = f"{stem_base}.wav"
 
-        target_slug = (
-            target_ref.voicing.tone_name.lower()
-            .replace(" ", "_")
-            .replace("∕", "_")
-            .replace("/", "_")
-            if target_ref.voicing.tone_name
-            else (target_ref.voicing.id or "default_voicing")
-        )
+        target_slug = target_ref.voicing.id or target_ref.voicing_id or "default_voicing"
 
         descriptors.append(
             {

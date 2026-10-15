@@ -17,7 +17,6 @@ from allomorph.config.schema import (
     ResolvedStringConfig,
     StringPresetConfig,
     StringsCatalog,
-    VoiceConfig,
 )
 
 
@@ -52,19 +51,3 @@ def get_instrument_string(
         )
 
     return ResolvedStringConfig.from_preset_and_overrides(strings_map[preset], s_block)
-
-
-def get_voice_string(
-    voice_cfg: VoiceConfig,
-    strings: Mapping[str, StringPresetConfig] | None = None,
-) -> StringPresetConfig:
-    """Resolves target string configuration for a target voice."""
-    preset = voice_cfg.target_string or "roundwound_nickel_standard"
-    strings_map = strings if strings is not None else STRINGS
-
-    if preset not in strings_map:
-        raise KeyError(
-            f"String preset '{preset}' not found in strings catalog ({STRINGS_FILE}). "
-            f"Available presets: {list(strings_map.keys())}"
-        )
-    return strings_map[preset]

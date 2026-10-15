@@ -1,5 +1,5 @@
 """
-Unit tests for pipeline schemas (CLI arguments, storefront listings, NAM model metadata).
+Unit tests for pipeline schemas (storefront listings, NAM model metadata, artwork configs).
 """
 
 import pytest
@@ -11,36 +11,9 @@ from allomorph.pipeline.schema import (
     NamSourceInstrumentMeta,
     NamSourceVoicingMeta,
     NamTargetVoicingMeta,
-    NamTrainingConfig,
     NamTrainingMetadata,
-    PipelineCliConfig,
     Tone3000PackListing,
 )
-
-
-def test_pipeline_cli_config_validation():
-    """Verify PipelineCliConfig validation of command line options."""
-    cfg = PipelineCliConfig(
-        stage="sim",
-        instrument="30in",
-        pack="34in_active_stingray",
-        overwrite=True,
-        force=True,
-    )
-    assert cfg.stage == "sim"
-    assert cfg.instrument == "30in"
-    assert cfg.pack == "34in_active_stingray"
-    assert cfg.overwrite is True
-    assert cfg.force is True
-
-    with pytest.raises(ValidationError):
-        PipelineCliConfig(stage="unsupported_stage")  # type: ignore[arg-type]
-
-    # Verify rejection of eliminated 2-branch CLI fields
-    dead_fields = ["pickup", "vol_pos", "tone_pos", "blend_pos", "pot_taper", "cable_pf"]
-    for field in dead_fields:
-        with pytest.raises(ValidationError):
-            PipelineCliConfig.model_validate({field: 0.5 if "pos" in field else "test"})
 
 
 def test_tone3000_listing_validation():
@@ -96,7 +69,7 @@ def test_nam_export_metadata_validation():
         copyright="Copyright 2026 Peter Nguyen",
         author="Peter Nguyen",
         source_instrument=NamSourceInstrumentMeta(
-            id="30in",
+            id="30in_emg_mmtw",
             name='30" Short Scale Bass',
             scale_length_in=30.0,
             scale_length_m=0.762,
@@ -104,15 +77,15 @@ def test_nam_export_metadata_validation():
             voicing=NamSourceVoicingMeta(name="EMG MMTWX", position_from_bridge_m=0.0775),
         ),
         target_voicing=NamTargetVoicingMeta(
-            id="precision_vintage",
+            id="vintage_open",
             name="'62 Precision Bass (Alnico V)",
             sensor_type="magnetic",
             resonant_frequency_hz=3200.0,
             q_factor=1.8,
         ),
     )
-    assert meta.source_instrument.id == "30in"
-    assert meta.target_voicing.id == "precision_vintage"
+    assert meta.source_instrument.id == "30in_emg_mmtw"
+    assert meta.target_voicing.id == "vintage_open"
     assert meta.training.validation_spectral_loss == 0.0004
     assert meta.training.validation_spectral_loss_a2_full == 0.0004
     assert meta.training.validation_spectral_loss_a2_lite == 0.0018
@@ -126,53 +99,6 @@ def test_nam_export_metadata_validation():
     # Rejection of missing required fields
     with pytest.raises(ValidationError):
         NamExportMetadata.model_validate({"training": {}})
-
-
-def test_nam_training_config_validation():
-    """Verify NamTrainingConfig defaults and hyperparameter bounds."""
-    cfg = NamTrainingConfig()
-    assert cfg.instrument == "all"
-    assert cfg.pack is None
-    assert cfg.overwrite is False
-    assert cfg.voice == "all"
-    assert cfg.epochs == 120
-    assert cfg.min_epochs == 100
-    assert cfg.batch_size == "auto"
-    assert cfg.precision == "auto"
-    assert cfg.num_workers == "auto"
-    assert cfg.patience == 15
-    assert cfg.min_delta == 1.0e-6
-    assert cfg.mse_weight == 1.0
-    assert cfg.mrstft_weight == 0.0
-    assert cfg.lr_scheduler == "cosine"
-    assert cfg.eta_min == 1.0e-6
-    assert cfg.lr_t_max == 115
-    assert cfg.engine == "auto"
-
-    # Valid custom configuration
-    custom = NamTrainingConfig(
-        instrument="30in",
-        pack="30in_emg_mmtw",
-        overwrite=True,
-        voice="precision_vintage",
-        epochs=50,
-        min_epochs=10,
-        patience=8,
-        min_delta=1e-5,
-        batch_size=64,
-        fast_dev_run=True,
-    )
-    assert custom.pack == "30in_emg_mmtw"
-    assert custom.overwrite is True
-    assert custom.epochs == 50
-    assert custom.min_epochs == 10
-    assert custom.patience == 8
-    assert custom.min_delta == 1e-5
-    assert custom.batch_size == 64
-
-    # Negative epochs rejection
-    with pytest.raises(ValidationError):
-        NamTrainingConfig.model_validate({"epochs": 0})
 
 
 def test_artwork_pack_config_validation():

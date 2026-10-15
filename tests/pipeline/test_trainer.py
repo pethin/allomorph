@@ -132,96 +132,6 @@ def test_hardware_resolution_utilities():
     assert resolve_hardware_num_workers("auto") == 0
 
 
-def test_train_nam_cli_schedule_and_patience_parsing():
-    import argparse
-
-    from allomorph.trainer import (
-        DEFAULT_BATCH_SIZE,
-        DEFAULT_ETA_MIN,
-        DEFAULT_LR_SCHEDULER,
-        DEFAULT_LR_T_MAX,
-        DEFAULT_MAX_EPOCHS,
-        DEFAULT_MIN_DELTA,
-        DEFAULT_MIN_EPOCHS,
-        DEFAULT_MSE_WEIGHT,
-        DEFAULT_NUM_WORKERS,
-        DEFAULT_PATIENCE,
-        DEFAULT_PRECISION,
-        add_trainer_arguments,
-    )
-
-    parser = argparse.ArgumentParser()
-    add_trainer_arguments(parser)
-
-    # Default parsing
-    args = parser.parse_args([])
-    assert args.epochs == DEFAULT_MAX_EPOCHS
-    assert args.min_epochs == DEFAULT_MIN_EPOCHS
-    assert args.patience == DEFAULT_PATIENCE
-    assert args.min_delta == DEFAULT_MIN_DELTA
-    assert args.mse_weight == DEFAULT_MSE_WEIGHT
-    assert args.batch_size == DEFAULT_BATCH_SIZE
-    assert args.precision == DEFAULT_PRECISION
-    assert args.num_workers == DEFAULT_NUM_WORKERS
-    assert args.lr_scheduler == DEFAULT_LR_SCHEDULER
-    assert args.eta_min == DEFAULT_ETA_MIN
-    assert args.lr_t_max == DEFAULT_LR_T_MAX
-
-    # Custom parsing
-    custom_args = parser.parse_args(
-        [
-            "--epochs",
-            "40",
-            "--min-epochs",
-            "8",
-            "--patience",
-            "7",
-            "--min-delta",
-            "1e-5",
-            "--mse-weight",
-            "0.05",
-            "--batch-size",
-            "32",
-            "--precision",
-            "bf16-mixed",
-            "--num-workers",
-            "4",
-            "--lr-scheduler",
-            "exponential",
-            "--eta-min",
-            "1e-6",
-            "--lr-t-max",
-            "40",
-        ]
-    )
-    assert custom_args.epochs == 40
-    assert custom_args.min_epochs == 8
-    assert custom_args.patience == 7
-    assert custom_args.min_delta == 1e-5
-    assert custom_args.mse_weight == 0.05
-    assert custom_args.batch_size == 32
-    assert custom_args.precision == "bf16-mixed"
-    assert custom_args.num_workers == 4
-    assert custom_args.lr_scheduler == "exponential"
-    assert custom_args.eta_min == 1e-6
-    assert custom_args.lr_t_max == 40
-
-    # Auto string parsing
-    auto_args = parser.parse_args(
-        [
-            "--batch-size",
-            "auto",
-            "--precision",
-            "auto",
-            "--num-workers",
-            "auto",
-        ]
-    )
-    assert auto_args.batch_size == "auto"
-    assert auto_args.precision == "auto"
-    assert auto_args.num_workers == "auto"
-
-
 def test_configure_a2_architecture():
     import nam.train.core as nam_core
 
@@ -507,8 +417,8 @@ def test_train_voice_stock_fast_dev_run(tmp_path: Path):
 
     models_dir = tmp_path / "models"
     ok = train_voice(
-        instrument="30in",
-        voice="precision_active",
+        instrument="30in_emg_mmtw:dual_mode",
+        voice="34in_standard_pj:neck_active",
         input_wav=input_audio,
         output_wav=input_audio,
         reference_wav=input_audio,
@@ -613,66 +523,14 @@ def test_resolve_trainer_engine_and_mps_env() -> None:
     assert len(device_name) > 0
 
 
-def test_train_voices_from_config_and_main(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Verify train_voices_from_config and CLI main function dispatch."""
-    import allomorph.trainer
-    from allomorph.pipeline.schema import NamTrainingConfig
-    from allomorph.trainer import main, train_voices_from_config
-
-    # 1. With pack config
-    pack_called: list[bool] = []
-
-    def _mock_pack(*args: object, **kwargs: object) -> None:
-        pack_called.append(True)
-
-    monkeypatch.setattr("allomorph.pipeline.pack.train_tone_pack", _mock_pack)
-    cfg_pack = NamTrainingConfig(pack="34in_standard_p", voice="all")
-    assert train_voices_from_config(cfg_pack) is True
-    assert len(pack_called) == 1
-
-    # 2. Main with CLI args mocking train_voices_from_config
-    def _mock_train_cfg(cfg: object) -> bool:
-        return True
-
-    monkeypatch.setattr(allomorph.trainer, "train_voices_from_config", _mock_train_cfg)
-    ret = main(["--instrument", "34in_standard_p", "--voice", "vintage_open"])
-    assert ret == 0
-
-    # 3. Main with GUI flag (mocked to prevent desktop window launch)
-    gui_called: list[bool] = []
-
-    def _mock_nam_gui(*args: object, **kwargs: object) -> None:
-        gui_called.append(True)
-
-    monkeypatch.setattr("nam.cli.nam_gui", _mock_nam_gui, raising=False)
-    assert main(["--gui"]) == 0
-    assert len(gui_called) == 1
-
-    def _mock_nam_gui_err(*args: object, **kwargs: object) -> None:
-        raise RuntimeError("Mock GUI unavailable")
-
-    monkeypatch.setattr("nam.cli.nam_gui", _mock_nam_gui_err, raising=False)
-    assert main(["--gui"]) == 1
-
-
 def test_main_entrypoints(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Verify python -m allomorph and python -m allomorph.trainer entrypoints."""
+    """Verify python -m allomorph entrypoint."""
     import runpy
 
-    # allomorph.__main__
     def _mock_cli_main(*args: object, **kwargs: object) -> int:
         return 0
 
     monkeypatch.setattr("allomorph.cli.main", _mock_cli_main)
     with pytest.raises(SystemExit) as exc_info:
         runpy.run_module("allomorph.__main__", run_name="__main__")
-    assert exc_info.value.code in (0, 2)  # 0 or 2 depending on default CLI args
-
-    # allomorph.trainer.__main__
-    def _mock_main(*args: object, **kwargs: object) -> int:
-        return 0
-
-    monkeypatch.setattr("allomorph.trainer.main", _mock_main)
-    with pytest.raises(SystemExit) as exc_info2:
-        runpy.run_module("allomorph.trainer.__main__", run_name="__main__")
-    assert exc_info2.value.code == 0
+    assert exc_info.value.code in (0, 2)

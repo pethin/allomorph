@@ -9,15 +9,12 @@ from allomorph.config.schema import (
     CoilConfig,
     InstrumentConfig,
     PickupConfig,
-    VoiceCoilConfig,
-    VoiceConfig,
-    VoicePickupConfig,
 )
 
 
 def _infer_pole_type(
-    pickup_or_voice: PickupConfig | VoiceConfig | VoicePickupConfig | None = None,
-    coil: CoilConfig | VoiceCoilConfig | None = None,
+    pickup: PickupConfig | None = None,
+    coil: CoilConfig | None = None,
 ) -> str:
     """
     Infers magnetic pole geometry: 'rod' (cylindrical Alnico rod, Airy/Bessel spatial window)
@@ -25,16 +22,12 @@ def _infer_pole_type(
     """
     if coil and coil.pole_type:
         return str(coil.pole_type).lower()
-    if pickup_or_voice is not None:
-        if isinstance(pickup_or_voice, PickupConfig) and pickup_or_voice.pole_type:
-            return str(pickup_or_voice.pole_type).lower()
-        mag = str(pickup_or_voice.magnet_type or "").lower()
-        p_type = str(
-            pickup_or_voice.sensor_type
-            if isinstance(pickup_or_voice, VoiceConfig)
-            else pickup_or_voice.type
-        ).lower()
-        p_name = str(pickup_or_voice.name).lower()
+    if pickup is not None:
+        if pickup.pole_type:
+            return str(pickup.pole_type).lower()
+        mag = str(pickup.magnet_type or "").lower()
+        p_type = str(pickup.type).lower()
+        p_name = str(pickup.name).lower()
         if "blade" in p_name or "blade" in p_type or "bar" in p_name:
             return "blade"
         if "emg" in p_name or "emg" in p_type:
@@ -146,70 +139,7 @@ def resolve_pickup_coils(
     ]
 
 
-def resolve_voice_pickups(voice_cfg: VoiceConfig) -> list[VoicePickupConfig]:
-    """
-    Resolves a target voice configuration into a canonical list of VoicePickupConfig models.
-    Handles multi-pickup voices and single-pickup fallbacks.
-    """
-    if voice_cfg.pickups:
-        return voice_cfg.pickups
-
-    # Fallback for single-pickup voices: wrap top-level voice coils/fr/Q
-    top_coils = resolve_voice_coils(voice_cfg, _from_pickups=False)
-    return [
-        VoicePickupConfig(
-            name=voice_cfg.name,
-            type=voice_cfg.sensor_type,
-            magnet_type=voice_cfg.magnet_type,
-            fr=voice_cfg.fr,
-            Q=voice_cfg.Q,
-            weight=1.0,
-            polarity=1.0,
-            coils=top_coils,
-        )
-    ]
-
-
-def resolve_voice_coils(
-    voice_cfg: VoiceConfig, _from_pickups: bool = True
-) -> list[VoiceCoilConfig]:
-    """Resolves target voice configuration into a canonical list of VoiceCoilConfig models."""
-
-    if _from_pickups and voice_cfg.pickups:
-        all_coils = []
-        for p in voice_cfg.pickups:
-            p_weight = float(p.weight)
-            p_pol = float(p.polarity)
-            for c in p.coils:
-                all_coils.append(
-                    VoiceCoilConfig(
-                        position_from_bridge_m=c.position_from_bridge_m,
-                        aperture_width_in=c.aperture_width_in,
-                        weight=c.weight * p_weight,
-                        polarity=c.polarity * p_pol,
-                        strings=list(c.strings),
-                        pole_type=c.pole_type or "rod",
-                    )
-                )
-        if all_coils:
-            return all_coils
-
-    if voice_cfg.coils:
-        return [c.model_copy(deep=True) for c in voice_cfg.coils]
-
-    return [
-        VoiceCoilConfig(
-            position_from_bridge_m=0.088,
-            aperture_width_in=0.75,
-            weight=1.0,
-            polarity=1.0,
-            strings=["all"],
-            pole_type=_infer_pole_type(voice_cfg),
-        )
-    ]
-
-
-def compute_effective_position(coils: Sequence[CoilConfig | VoiceCoilConfig]) -> float:
+def compute_effective_position(coils: Sequence[CoilConfig]) -> float:
     """Computes weighted average physical position from bridge in meters."""
     if not coils:
         return 0.08

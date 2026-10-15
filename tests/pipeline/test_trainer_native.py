@@ -217,13 +217,15 @@ def test_train_voice_native_fast_dev_run(tmp_path: Path) -> None:
     models_dir = tmp_path / "models"
 
     ok = train_voice_native(
-        instrument="34in_standard_p",
-        voice="precision_dub",
+        instrument="30in_emg_mmtw:dual_mode",
+        voice="34in_standard_p:slab_dub",
         reference_wav=src_wav,
         output_wav=tgt_wav,
         models_dir=models_dir,
         epochs=1,
         min_epochs=1,
+        mrstft_weight=0.1,
+        mse_weight=1.0,
         fast_dev_run=True,
         silent=True,
         device="cpu",
@@ -232,11 +234,28 @@ def test_train_voice_native_fast_dev_run(tmp_path: Path) -> None:
     assert ok is True
     exported_models = list(models_dir.glob("**/*.nam"))
     assert len(exported_models) == 1
+    # Verify 3-level standalone directory structure: models/<src_inst>/<src_voicing>/<tgt_inst>/
+    rel_parts = exported_models[0].relative_to(models_dir).parts
+    assert rel_parts[:3] == ("30in_emg_mmtw", "dual_mode", "34in_standard_p")
+
     with open(exported_models[0], "r", encoding="utf-8") as f:
         data = json.load(f)
     assert data["architecture"] == "SlimmableContainer"
     assert data["version"] == "0.7.0"
     assert len(data["config"]["submodels"]) == 2
+
+    # Finding 4.1: Verify full NamExportMetadata provenance is preserved in exported .nam
+    from allomorph.pipeline.schema import NamExportMetadata
+
+    export_meta = NamExportMetadata.model_validate(data["metadata"])
+    assert export_meta.source_instrument.id == "30in_emg_mmtw"
+    assert export_meta.source_instrument.voicing.id == "dual_mode"
+    assert export_meta.target_voicing.id == "slab_dub"
+    assert export_meta.training.mrstft_loss is not None and export_meta.training.mrstft_loss > 0.0
+
+    # Finding 4.4: Verify standalone manifest.json is written in target instrument directory
+    manifest_file = exported_models[0].parent / "manifest.json"
+    assert manifest_file.exists()
 
 
 def test_native_default_hyperparameters_and_isolation() -> None:

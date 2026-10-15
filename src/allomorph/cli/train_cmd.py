@@ -25,7 +25,7 @@ from allomorph.config.instruments import (
     resolve_target_voicing,
 )
 from allomorph.config.scales import REPO_ROOT
-from allomorph.config.voices import VOICES
+from allomorph.pipeline.bundle import resolve_bundle_target_file_descriptors
 from allomorph.pipeline.pack import PACKS_DIR, train_tone_pack
 from allomorph.trainer import train_voice
 from allomorph.trainer.constants import (
@@ -99,23 +99,18 @@ def prune_stale_pack_models(pack_id: str, dry_run: bool = False) -> list[str]:
         return []
 
     bundles = partition_instrument_bundles(inst)
+    is_multi_pickup = len(bundles) > 1
     valid_model_basenames: set[str] = set()
     for b in bundles.values():
-        for t_v in b.targets:
-            v_cfg = t_v.voicing
-            stem_slug = (
-                v_cfg.tone_name.lower().replace(" ", "_").replace("∕", "_").replace("/", "_")
-                if v_cfg.tone_name
-                else (v_cfg.id or "default")
-            )
-            valid_model_basenames.add(stem_slug)
+        for desc in resolve_bundle_target_file_descriptors(b, is_multi_pickup):
+            valid_model_basenames.add(desc["stem_base"])
+            valid_model_basenames.add(desc["target_slug"])
 
     pruned: list[str] = []
     for nam_file in sorted(nam_dir.glob("*.nam")):
         base = nam_file.stem
-        # Check if basename matches any valid bundle target stem
-        is_valid = any(
-            base.endswith(slug) or slug.endswith(base) or base == slug
+        is_valid = base in valid_model_basenames or any(
+            base.startswith(slug) or base.endswith(slug) or slug.endswith(base)
             for slug in valid_model_basenames
         )
         if not is_valid:
@@ -144,27 +139,52 @@ def prune_stale_pack_models(pack_id: str, dry_run: bool = False) -> list[str]:
 def prune_stale_instrument_models(
     inst_id: str, target_models_dir: Path, dry_run: bool = False
 ) -> list[str]:
-    """Prunes orphan .nam models from an instrument models directory."""
+    """Prunes orphan .nam models from an instrument models directory (3-level hierarchy and flat files)."""
     inst = INSTRUMENTS.get(inst_id)
     if not inst or not target_models_dir.exists():
         return []
 
-    valid_slugs = {
-        v.tone_name.lower().replace(" ", "_").replace("∕", "_").replace("/", "_")
-        if v.tone_name
-        else (v.id or "default")
-        for v in inst.voicings.values()
-    }
-
+    valid_src_voicings = {v.id or vid for vid, v in inst.voicings.items()}
     pruned: list[str] = []
+
+    # 1. Check any flat .nam files directly inside target_models_dir
     for nam_file in sorted(target_models_dir.glob("*.nam")):
         base = nam_file.stem
-        if not any(slug in base for slug in valid_slugs):
+        if not any(base == slug or base.startswith(f"{slug}_") for slug in valid_src_voicings):
             action = "[DRY-RUN] Would prune" if dry_run else "Pruned orphan model"
             log_step("PRUNE", f"{action}: {nam_file.name}")
             pruned.append(nam_file.name)
             if not dry_run:
                 nam_file.unlink(missing_ok=True)
+
+    # 2. Check 3-level hierarchy: <target_models_dir>/<src_voicing_id>/<tgt_inst_id>/<tgt_voicing_id>_vX.Y.Z.nam
+    for src_v_dir in sorted(target_models_dir.iterdir()):
+        if not src_v_dir.is_dir() or src_v_dir.name.startswith("."):
+            continue
+        src_v_valid = src_v_dir.name in valid_src_voicings
+        for tgt_inst_dir in sorted(src_v_dir.iterdir()):
+            if not tgt_inst_dir.is_dir() or tgt_inst_dir.name.startswith("."):
+                continue
+            tgt_inst = INSTRUMENTS.get(tgt_inst_dir.name)
+            valid_tgt_voicings = (
+                {v.id or vid for vid, v in tgt_inst.voicings.items()} if tgt_inst else set()
+            )
+            for nam_file in sorted(tgt_inst_dir.glob("*.nam")):
+                base = nam_file.stem
+                is_valid = (
+                    src_v_valid
+                    and tgt_inst is not None
+                    and any(
+                        base == slug or base.startswith(f"{slug}_") for slug in valid_tgt_voicings
+                    )
+                )
+                if not is_valid:
+                    rel_name = str(nam_file.relative_to(target_models_dir))
+                    action = "[DRY-RUN] Would prune" if dry_run else "Pruned orphan model"
+                    log_step("PRUNE", f"{action}: {rel_name}")
+                    pruned.append(nam_file.name)
+                    if not dry_run:
+                        nam_file.unlink(missing_ok=True)
 
     return pruned
 
@@ -172,6 +192,7 @@ def prune_stale_instrument_models(
 def train(
     targets: tuple[str, ...] = ("packs",),
     *,
+    source: str | None = None,
     engine: Literal["auto", "native", "stock"] = DEFAULT_ENGINE,
     epochs: int | None = None,
     batch_size: str = DEFAULT_BATCH_SIZE,
@@ -298,11 +319,54 @@ def train(
         )
     )
 
-    # 2. Target Resolution
-    resolved = resolve_targets(targets, default="packs", allow_shorthand=True)
+    # 2. Context-Aware Target Resolution & Fail-Fast --source Validation
+    shorthand_kind: Literal["pack", "instrument"] = "instrument" if source is not None else "pack"
+    default_target = "instruments" if source is not None else "packs"
+    EffectiveTargets = (
+        ("instruments",) if (source is not None and targets == ("packs",)) else targets
+    )
+    resolved = resolve_targets(
+        EffectiveTargets,
+        default=default_target,
+        allow_shorthand=True,
+        shorthand_kind=shorthand_kind,
+    )
     if not resolved:
         log_warning("No targets matched for training.")
         return
+
+    has_pack_targets = any(t.kind == "pack" for t in resolved)
+    has_inst_targets = any(t.kind == "instrument" for t in resolved)
+
+    if has_pack_targets and source is not None:
+        raise ValueError(
+            "Option '--source' cannot be used when training tone pack targets "
+            "(packs define their own bundle source voicings)."
+        )
+
+    src_inst_cfg = None
+    src_voicing_id: str | None = None
+    if has_inst_targets:
+        if source is None:
+            raise ValueError(
+                "Option '--source <instrument_id>:<voicing_id>' is required when training "
+                "standalone instrument targets."
+            )
+        if ":" not in source:
+            raise ValueError(
+                f"Invalid '--source' format '{source}'. Expected '<instrument_id>:<voicing_id>'."
+            )
+        src_inst_id, src_voicing_id = source.split(":", 1)
+        if not src_inst_id or not src_voicing_id:
+            raise ValueError(
+                f"Invalid '--source' format '{source}'. Expected '<instrument_id>:<voicing_id>'."
+            )
+        src_inst_cfg = load_instrument(src_inst_id)
+        if src_voicing_id not in src_inst_cfg.voicings:
+            raise ValueError(
+                f"Source voicing '{src_voicing_id}' not found on instrument '{src_inst_cfg.id}'. "
+                f"Available voicings: {sorted(src_inst_cfg.voicings.keys())}"
+            )
 
     log_step(
         "TRAIN",
@@ -343,6 +407,15 @@ def train(
                     fast_dev_run=fast_dev_run,
                     engine=resolved_engine,
                     seed=seed,
+                    lr=lr,
+                    weight_decay=weight_decay,
+                    slice_len=slice_len,
+                    lite_weight=lite_weight,
+                    fir_hp_weight=fir_hp_weight,
+                    fir_hp_fc=fir_hp_fc,
+                    val_interval=val_interval,
+                    sine_regularizer=sine_regularizer,
+                    val_loss_metric=val_loss_metric,
                 )
                 total_trained += 1
             except Exception as e:  # noqa: BLE001
@@ -350,55 +423,51 @@ def train(
                 sys.exit(1)
 
         elif tgt.kind == "instrument":
-            inst_id = tgt.id
-            out_models_dir = (
-                Path(models_dir) / inst_id if models_dir is not None else MODELS_DIR / inst_id
-            )
-            out_models_dir.mkdir(parents=True, exist_ok=True)
+            assert src_inst_cfg is not None
+            assert src_voicing_id is not None
+            tgt_inst_id = tgt.id
+            base_models_dir = Path(models_dir) if models_dir is not None else MODELS_DIR
+            src_inst_models_dir = base_models_dir / src_inst_cfg.id
+            src_inst_models_dir.mkdir(parents=True, exist_ok=True)
 
             if prune:
-                pruned_models = prune_stale_instrument_models(inst_id, out_models_dir)
+                pruned_models = prune_stale_instrument_models(src_inst_cfg.id, src_inst_models_dir)
                 total_pruned += len(pruned_models)
 
             try:
-                inst_cfg = load_instrument(inst_id)
+                tgt_inst_cfg = load_instrument(tgt_inst_id)
             except Exception as e:  # noqa: BLE001
-                log_error(f"Failed to load instrument '{inst_id}': {e}")
+                log_error(f"Failed to load target instrument '{tgt_inst_id}': {e}")
                 sys.exit(1)
 
             voices_to_train: list[str] = []
             if tgt.sub_target is not None:
-                _, v_cfg = resolve_target_voicing(tgt.sub_target, instrument=inst_cfg)
-                slug = (
-                    v_cfg.tone_name.lower().replace(" ", "_").replace("∕", "_").replace("/", "_")
-                    if v_cfg.tone_name
-                    else (v_cfg.id or tgt.sub_target)
-                )
-                voices_to_train.append(slug if slug in VOICES else tgt.sub_target)
+                _, v_cfg = resolve_target_voicing(tgt.sub_target, instrument=tgt_inst_cfg)
+                vid = v_cfg.id or tgt.sub_target
+                voices_to_train.append(f"{tgt_inst_cfg.id}:{vid}")
             else:
-                for v_cfg in inst_cfg.voicings.values():
-                    slug = (
-                        v_cfg.tone_name.lower()
-                        .replace(" ", "_")
-                        .replace("∕", "_")
-                        .replace("/", "_")
-                        if v_cfg.tone_name
-                        else (v_cfg.id or "")
-                    )
-                    voices_to_train.append(slug if slug in VOICES else (v_cfg.id or ""))
+                for vid, v_cfg in tgt_inst_cfg.voicings.items():
+                    voices_to_train.append(f"{tgt_inst_cfg.id}:{v_cfg.id or vid}")
 
             for v in voices_to_train:
-                log_step("TRAIN", f"Training instrument model {inst_id} -> {v}...")
+                log_step(
+                    "TRAIN",
+                    f"Training standalone model {src_inst_cfg.id}:{src_voicing_id} -> {v}...",
+                )
                 ok = train_voice(
-                    instrument=inst_cfg,
+                    instrument=src_inst_cfg,
                     voice=v,
-                    models_dir=out_models_dir,
+                    source_voicing=src_voicing_id,
+                    models_dir=base_models_dir,
                     epochs=resolved_epochs,
                     min_epochs=min_epochs,
                     patience=patience,
                     min_delta=min_delta,
                     mse_weight=mse_weight,
                     mrstft_weight=mrstft_weight,
+                    lr_scheduler=lr_scheduler,
+                    eta_min=eta_min,
+                    lr_t_max=lr_t_max,
                     batch_size=batch_size,
                     precision=precision,
                     num_workers=num_workers,
@@ -409,6 +478,8 @@ def train(
                     weight_decay=weight_decay,
                     slice_len=slice_len,
                     lite_weight=lite_weight,
+                    fir_hp_weight=fir_hp_weight,
+                    fir_hp_fc=fir_hp_fc,
                     val_interval=val_interval,
                     sine_regularizer=sine_regularizer,
                     val_loss_metric=val_loss_metric,
@@ -416,7 +487,7 @@ def train(
                 if ok:
                     total_trained += 1
                 else:
-                    log_error(f"Training failed for {inst_id} -> {v}")
+                    log_error(f"Training failed for {src_inst_cfg.id}:{src_voicing_id} -> {v}")
                     sys.exit(1)
 
     prune_str = f", pruned {total_pruned} stale model(s)" if total_pruned > 0 else ""

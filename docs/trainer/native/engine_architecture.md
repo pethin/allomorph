@@ -24,37 +24,35 @@ Unlike the stock training wrapper (`allomorph.trainer.stock`), which relies on P
 
 ### 2.1 WaveNet Architecture 2 Topology
 
-The model consists of an input 1D convolution, a stacked residual dilated convolutional network with gated activations (tanh $\odot$ sigmoid), and a dual-tier output head:
+The model consists of an input 1x1 rechannel projection, a 23-layer stacked residual dilated convolutional network with `LeakyReLU(0.01)` activations (`gating_mode: "none"`), and a 16-tap dual-tier head rechannel:
 
 ```mermaid
 graph TD
-    In["Input Audio Tensor x[n]<br/>(B, 1, 14538)"] --> HeadConv["Receptive Field Conv1D<br/>k=16, d=1, channels=11"]
-    HeadConv --> L0["Layer 0: k=6, d=1"]
-    L0 --> L1["Layer 1: k=6, d=2"]
-    L1 --> L2["Layer 2: k=6, d=4"]
-    L2 --> Dots["... 23 Dilated Layers ..."]
-    Dots --> L22["Layer 22: k=15, d=4"]
-    L22 --> Head["Dual Head Linear 1x1<br/>(B, 2, 8192)"]
+    In["Input Audio Tensor x[n]<br/>(B, 1, 14538)"] --> Rechannel["Input Rechannel Conv1D<br/>k=1, d=1, channels=11"]
+    Rechannel --> L0["Layers 0..6: k=6, d in [1,3,7,17,41,101,239]"]
+    L0 --> L7["Layers 7..13: k=6, d in [1,3,7,17,41,101,239]"]
+    L7 --> L14["Layers 14..15: k=15, d in [1, 13]"]
+    L14 --> L16["Layers 16..22: k=6, d in [1,3,7,17,41,101,239]"]
+    L16 --> Head["Dual Head Conv1D (k=16)<br/>(B, 2, 8192)"]
     Head --> OutLite["y_hat[0]: A2 Lite (Ch 0..2)"]
     Head --> OutFull["y_hat[1]: A2 Full (Ch 3..10)"]
 ```
 
 ### 2.2 Receptive Field Derivation
 
-The receptive field ($L_{\text{RF}}$) of a dilated convolutional stack is governed by:
+The receptive field ($L_{\text{RF}}$) of the 23-layer dilated convolutional stack with 16-tap head rechannel is governed by:
 
-$$L_{\text{RF}} = 1 + (k_{\text{in}} - 1) + \sum_{i=0}^{N-1} (k_i - 1) \cdot d_i$$
+$$L_{\text{RF}} = 1 + (k_{\text{head}} - 1) + \sum_{i=0}^{22} (k_i - 1) \cdot d_i$$
 
-For the Allomorph Architecture 2 configuration:
-- Input receptive field conv: $k_{\text{in}} = 16 \implies \Delta L_{\text{in}} = 15$
-- Layers 0 to 20 (21 layers): $k = 6$, dilations cycle through $[1, 2, 4, 8, 16, 32, 64, 128, 256, 512]$ twice, then $[1]$:
-  $$\Delta L_{0..20} = (6 - 1) \cdot \left( 2 \cdot \sum_{j=0}^9 2^j + 1 \right) = 5 \cdot (2 \cdot 1023 + 1) = 5 \cdot 2047 = 10,235 \text{ (effective receptive reach)}$$
-- Layers 21 and 22 (2 layers): $k = 15, d \in [2, 4]$:
-  $$\Delta L_{21} = (15 - 1) \cdot 2 = 28$$
-  $$\Delta L_{22} = (15 - 1) \cdot 4 = 56$$
+For the official Allomorph Architecture 2 configuration (`models.py`):
+- Output head rechannel convolution: $k_{\text{head}} = 16 \implies \Delta L_{\text{head}} = 15$
+- Three 7-layer dilation blocks (Layers $0..6$, $7..13$, $16..22$): $k = 6$, dilations $[1, 3, 7, 17, 41, 101, 239]$ ($\sum d = 409$ per block):
+  $$\Delta L_{\text{blocks}} = 3 \times (6 - 1) \times 409 = 6,135 \text{ samples}$$
+- Mid-stack long-kernel pair (Layers $14$ and $15$): $k = 15$, dilations $[1, 13]$:
+  $$\Delta L_{14..15} = (15 - 1) \times (1 + 13) = 196 \text{ samples}$$
 
 Summing the exact layer kernel receptive offsets:
-$$L_{\text{RF}} = 1 + 15 + 6248 + 84 = 6,347 \text{ samples}$$
+$$L_{\text{RF}} = 1 + 15 + 6,135 + 196 = 6,347 \text{ samples}$$
 
 At $f_s = 48,000\text{ Hz}$, $L_{\text{RF}} = \dfrac{6347}{48000} \approx 132.23\text{ ms}$. This encompasses multiple cycles of the lowest bass fundamental ($E_1 = 41.2\text{ Hz} \implies T = 24.27\text{ ms}$, covering $>5.4$ full periods), capturing string attack transient dynamics, electromagnetic back-EMF drag, and magnetic core saturation settling.
 
@@ -86,18 +84,15 @@ During initialization and after every optimizer gradient step, `apply_weight_mas
 ```python
 with torch.no_grad():
     for layer in self.layers:
-        # Dilated Conv1D weight: (2 * channels_total, channels_total, kernel_size)
-        # Gated conv has 2 * 11 = 22 output channels (11 for tanh, 11 for sigm)
-        layer.conv.weight[:3, 3:, :] = 0.0  # Lite tanh inputs from Full
-        layer.conv.weight[3:11, :3, :] = 0.0  # Full tanh inputs from Lite
-        layer.conv.weight[11:14, 3:, :] = 0.0  # Lite sigm inputs from Full
-        layer.conv.weight[14:22, :3, :] = 0.0  # Full sigm inputs from Lite
+        # Dilated Conv1D weight: (11, 11, kernel_size) with LeakyReLU(0.01)
+        layer.conv.weight[:3, 3:, :] = 0.0  # Lite inputs from Full
+        layer.conv.weight[3:11, :3, :] = 0.0  # Full inputs from Lite
 
-        # Residual 1x1 Conv1D: (channels_total, channels_total, 1)
+        # Residual 1x1 Conv1D: (11, 11, 1)
         layer.layer1x1.weight[:3, 3:, :] = 0.0
         layer.layer1x1.weight[3:11, :3, :] = 0.0
 
-    # Output head 1x1 Conv1D: (2, channels_total, 1)
+    # Output head Conv1D (k=16): (2, 11, 16)
     # Output 0 takes exclusively from Lite (0..2); Output 1 takes from Full (3..10)
     self.head_rechannel.weight[0, 3:, :] = 0.0
     self.head_rechannel.weight[1, :3, :] = 0.0
@@ -173,7 +168,7 @@ Benchmarked on AMD Radeon RX 9070 XT (`bf16-mixed`, 64 CUs, 16 GB VRAM):
 
 ## 5. Standalone `.nam` JSON Serialization
 
-The model exports directly to the official Neural Amp Modeler Architecture 2 format (`architecture: "SlimmableContainer"`, `version: "0.7.0"`) adhering strictly to Tone3000 validation standards and Darkglass Anagram hardware requirements:
+The model exports directly to the official Neural Amp Modeler Architecture 2 format (`architecture: "SlimmableContainer"`, `version: "0.7.0"`) adhering strictly to Tone3000 validation standards, full `NamExportMetadata` provenance, and Darkglass Anagram hardware requirements:
 
 ```json
 {
@@ -182,9 +177,9 @@ The model exports directly to the official Neural Amp Modeler Architecture 2 for
     "date": { "year": 2026, "month": 10, "day": 11, "hour": 2, "minute": 25, "second": 4 },
     "loudness": -13.1202,
     "gain": 0.0725,
-    "name": "Jazz Pair Active v6.1.1",
-    "modeled_by": "bassedpotato",
-    "gear_type": "other",
+    "name": "Jazz Pair Active [Parallel] v7.1.1",
+    "modeled_by": "Allomorph (Peter Nguyen <peter@phn.dev>)",
+    "gear_type": "preamp",
     "gear_make": "Fender Precision Bass",
     "gear_model": "Fender Precision Bass",
     "tone_type": "clean",

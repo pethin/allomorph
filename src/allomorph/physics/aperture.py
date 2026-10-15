@@ -10,13 +10,10 @@ from collections.abc import Sequence
 
 import numpy as np
 
-from allomorph.config.geometry import resolve_pickup_coils, resolve_voice_coils
 from allomorph.config.schema import (
     CoilConfig,
     InstrumentConfig,
     ScaleConfig,
-    VoiceCoilConfig,
-    VoiceConfig,
 )
 from allomorph.dsp.constants import cinf_smoothstep
 from allomorph.physics.schema import WaveSpeedContinuumPoint
@@ -153,57 +150,7 @@ def compute_pickup_isolation_leveling(
     return float(10.0 ** (boost_db / 20.0))
 
 
-def is_voice_matching_source(
-    instrument: InstrumentConfig,
-    voice_cfg: VoiceConfig,
-) -> bool:
-    """
-    Determines if a target voice matches the source instrument's physical scale and pickup geometry,
-    meaning zero spatial or acoustic transfer is required (identity transformation).
-    Tuning- and string-count-agnostic: matches on physical scale length and coil geometry.
-    """
-    src_range = resolve_scale_range(instrument)
-    tgt_range = resolve_scale_range(voice_cfg.scale)
-
-    # Scale match based on physical vibrating length range (within 1.2 cm)
-    if abs(src_range[0] - tgt_range[0]) > 0.012 or abs(src_range[1] - tgt_range[1]) > 0.012:
-        return False
-
-    tgt_coils = resolve_voice_coils(voice_cfg)
-    if not tgt_coils:
-        return False
-
-    t_sort = sorted(tgt_coils, key=lambda c: c.position_from_bridge_m)
-
-    def _coils_match(candidate_coils: list[CoilConfig]) -> bool:
-        if len(candidate_coils) != len(tgt_coils):
-            return False
-        c_sort = sorted(candidate_coils, key=lambda c: c.position_from_bridge_m)
-        for sc, tc in zip(c_sort, t_sort):
-            if abs(sc.position_from_bridge_m - tc.position_from_bridge_m) > 0.005:
-                return False
-            if abs(sc.aperture_width_in - tc.aperture_width_in) > 0.15:
-                return False
-        return True
-
-    # 1. Check each physical pickup in isolation
-    for p in instrument.pickups.values():
-        p_coils = resolve_pickup_coils(p, instrument)
-        if _coils_match(p_coils):
-            return True
-
-    # 2. Check full instrument coil ensemble (e.g. Jazz pair)
-    if len(instrument.pickups) > 1:
-        all_coils = [
-            c for p in instrument.pickups.values() for c in resolve_pickup_coils(p, instrument)
-        ]
-        if _coils_match(all_coils):
-            return True
-
-    return False
-
-
-def get_coil_register(coil: CoilConfig | VoiceCoilConfig) -> str:
+def get_coil_register(coil: CoilConfig) -> str:
     """
     Identifies whether a coil half is 'lower' (bass strings register),
     'upper' (treble strings register), or 'all' across the string bed.
@@ -329,7 +276,7 @@ def compute_coil_aperture_sinc(
 def combine_coherent_incoherent_aperture(
     coil_sum: np.ndarray,
     p_incoh: np.ndarray,
-    active_coils: Sequence[CoilConfig | VoiceCoilConfig],
+    active_coils: Sequence[CoilConfig],
     v0_arr: np.ndarray,
     freqs: np.ndarray,
     total_w: float,
@@ -354,7 +301,7 @@ def combine_coherent_incoherent_aperture(
 
 def numpy_pickup_acoustic_response(
     freqs: Sequence[float] | np.ndarray,
-    coils: Sequence[CoilConfig | VoiceCoilConfig],
+    coils: Sequence[CoilConfig],
     scale_length_m: float
     | tuple[float, float]
     | list[float]
@@ -381,7 +328,7 @@ def numpy_pickup_acoustic_response(
     total_pt_weight = 0.0
 
     for reg, pts in partitions.items():
-        active: list[CoilConfig | VoiceCoilConfig] = []
+        active: list[CoilConfig] = []
         for c in coils:
             coil_reg = get_coil_register(c)
             if coil_reg == "all" or coil_reg == reg:

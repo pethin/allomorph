@@ -11,13 +11,15 @@ import altair as alt
 import polars as pl
 
 from allomorph.config.instruments import load_instrument
-from allomorph.config.schema import InstrumentConfig, VoiceConfig
+from allomorph.config.scales import REPO_ROOT
+from allomorph.config.schema import InstrumentConfig
 from allomorph.visualizer.dataframe import (
     build_voice_dataframe,
     build_voicings_comparison_data,
     build_voicings_comparison_dataframe,
 )
-from allomorph.visualizer.portal import DOCS_DIR
+
+DOCS_DIR = REPO_ROOT / "docs"
 
 alt.data_transformers.disable_max_rows()
 
@@ -113,20 +115,15 @@ def render_chart_to_file(
 
 
 def build_voicings_html(
-    voices: Mapping[str, VoiceConfig] | None = None,
     instruments: Mapping[str, InstrumentConfig] | None = None,
 ) -> str:
     """Constructs the flat, self-contained HTML string for the Allomorph Frequency Response Suite."""
-    if voices is None:
-        from allomorph.config.voices import VOICES
-
-        voices = VOICES
     if instruments is None:
         from allomorph.config.instruments import INSTRUMENTS
 
         instruments = INSTRUMENTS
 
-    voicings_data = build_voicings_comparison_data(voices=voices, instruments=instruments, step=1)
+    voicings_data = build_voicings_comparison_data(instruments=instruments, step=1)
     data_json = json.dumps(voicings_data, separators=(",", ":"))
 
     return f"""<!DOCTYPE html>
@@ -530,44 +527,26 @@ def build_voicings_html(
 
     function populateSelect(selectEl, selectedId) {{
       selectEl.innerHTML = '';
-      if (instruments && instrumentOrder.length > 0) {{
-        instrumentOrder.forEach(instId => {{
-          const instMeta = instruments[instId];
-          if (!instMeta || !instMeta.voice_ids || instMeta.voice_ids.length === 0) return;
-          const optgroup = document.createElement('optgroup');
-          optgroup.label = instMeta.label || instMeta.name;
-          instMeta.voice_ids.forEach(vid => {{
-            const v = voices[vid];
-            if (!v) return;
-            const opt = document.createElement('option');
-            opt.value = v.id;
-            opt.textContent = v.name;
-            if (v.id === selectedId) opt.selected = true;
-            optgroup.appendChild(opt);
-          }});
-          selectEl.appendChild(optgroup);
+      instrumentOrder.forEach(instId => {{
+        const instMeta = instruments[instId];
+        if (!instMeta || !instMeta.voice_ids || instMeta.voice_ids.length === 0) return;
+        const optgroup = document.createElement('optgroup');
+        optgroup.label = instMeta.label || instMeta.name;
+        instMeta.voice_ids.forEach(vid => {{
+          const v = voices[vid];
+          if (!v) return;
+          const opt = document.createElement('option');
+          opt.value = v.id;
+          opt.textContent = v.name;
+          if (v.id === selectedId) opt.selected = true;
+          optgroup.appendChild(opt);
         }});
-      }} else {{
-        const families = data.families || [];
-        families.forEach(fam => {{
-          const famVoices = Object.values(voices).filter(v => v.family === fam);
-          if (famVoices.length === 0) return;
-          const optgroup = document.createElement('optgroup');
-          optgroup.label = fam;
-          famVoices.forEach(v => {{
-            const opt = document.createElement('option');
-            opt.value = v.id;
-            opt.textContent = v.name;
-            if (v.id === selectedId) opt.selected = true;
-            optgroup.appendChild(opt);
-          }});
-          selectEl.appendChild(optgroup);
-        }});
-      }}
+        selectEl.appendChild(optgroup);
+      }});
     }}
 
-    populateSelect(sourceSelect, data.default_source || 'precision_vintage');
-    populateSelect(targetSelect, data.default_target || 'jazz_bridge_growl');
+    populateSelect(sourceSelect, data.default_source || '34in_standard_p:vintage_open');
+    populateSelect(targetSelect, data.default_target || '34in_standard_jazz:bridge_growl');
 
     function applyPreset(srcId, tgtId) {{
       sourceSelect.value = srcId;
@@ -726,7 +705,6 @@ def build_voicings_html(
 
 def generate_voicings_page(
     target_html: Path | str | None = None,
-    voices: Mapping[str, VoiceConfig] | None = None,
     instruments: Mapping[str, InstrumentConfig] | None = None,
 ) -> Path:
     """Renders the flat, self-contained interactive Voicing Comparison page (default: docs/frequency_responses.html)."""
@@ -734,21 +712,20 @@ def generate_voicings_page(
         target_html = DOCS_DIR / "frequency_responses.html"
     target_html = Path(target_html)
     target_html.parent.mkdir(parents=True, exist_ok=True)
-    html_content = build_voicings_html(voices=voices, instruments=instruments)
+    html_content = build_voicings_html(instruments=instruments)
     target_html.write_text(html_content, encoding="utf-8")
     print(f"Saved Voicings Comparison page: {target_html}")
     return target_html
 
 
 def generate_interactive_chart(
-    instrument: InstrumentConfig | str = "30in",
+    instrument: InstrumentConfig | str = "30in_mustang_pj",
     out_html: str | Path | None = None,
     mode: str = "voicings",
-    voices: Mapping[str, VoiceConfig] | None = None,
     instruments: Mapping[str, InstrumentConfig] | None = None,
 ) -> Path:
     """
-    Calculates voice responses and renders an interactive chart.
+    Calculates voicing responses and renders an interactive chart.
     mode:
       - 'voicings': interactive 3-line voicing comparison (Source, Target, Diff).
       - 'unified': embeds both Output Voice and Input/Output Difference curves with interactive radio buttons.
@@ -758,14 +735,9 @@ def generate_interactive_chart(
     if mode == "voicings":
         return generate_voicings_page(
             target_html=Path(out_html) if out_html is not None else None,
-            voices=voices,
             instruments=instruments,
         )
 
-    if voices is None:
-        from allomorph.config.voices import VOICES
-
-        voices = VOICES
     if instruments is None:
         from allomorph.config.instruments import INSTRUMENTS
 
@@ -797,46 +769,38 @@ def generate_interactive_chart(
     target_dfs: list[pl.DataFrame] = []
     diff_dfs: list[pl.DataFrame] = []
 
-    for vid, v_cfg in sorted(voices.items()):
-        t_inst = instruments.get(v_cfg.instrument_id or "")
-        if t_inst is None:
-            continue
-        v_obj = t_inst.voicings.get(vid)
-        if v_obj is None:
-            v_obj = next(
-                (v for v in t_inst.voicings.values() if v.tone_name == v_cfg.tone_name),
-                next(iter(t_inst.voicings.values()), None),
-            )
-        if v_obj is None:
-            continue
+    for _, t_inst in sorted(instruments.items()):
+        for v_id, v_obj in t_inst.voicings.items():
+            v_label = v_obj.tone_name or v_obj.name or v_id
+            v_desc = f"{v_obj.name} ({t_inst.name})"
 
-        if mode in ("output", "unified"):
-            df_out = build_voice_dataframe(t_inst, v_obj, mode="output")
-            df_out = df_out.with_columns(
-                pl.lit(v_cfg.name).alias("voice_name"),
-                pl.lit(v_cfg.sensor_type).alias("sensor_type"),
-                pl.lit(v_cfg.description).alias("description"),
-            )
-            if mode == "unified":
-                df_out = df_out.with_columns(pl.lit("Output Voice").alias("mode"))
-            target_dfs.append(df_out)
+            if mode in ("output", "unified"):
+                df_out = build_voice_dataframe(t_inst, v_obj, mode="output")
+                df_out = df_out.with_columns(
+                    pl.lit(v_label).alias("voice_name"),
+                    pl.lit(v_obj.sensor_type).alias("sensor_type"),
+                    pl.lit(v_desc).alias("description"),
+                )
+                if mode == "unified":
+                    df_out = df_out.with_columns(pl.lit("Output Voice").alias("mode"))
+                target_dfs.append(df_out)
 
-        if mode in ("difference", "unified"):
-            df_diff_pair = build_voicings_comparison_dataframe(
-                source_instrument=inst,
-                source_voicing=src_voicing,
-                target_instrument=t_inst,
-                target_voicing=v_obj,
-            )
-            df_diff = df_diff_pair.filter(pl.col("line_type") == "3. Difference")
-            df_diff = df_diff.with_columns(
-                pl.lit(v_cfg.name).alias("voice_name"),
-                pl.lit(v_cfg.sensor_type).alias("sensor_type"),
-                pl.lit(v_cfg.description).alias("description"),
-            )
-            if mode == "unified":
-                df_diff = df_diff.with_columns(pl.lit("Input/Output Difference").alias("mode"))
-            diff_dfs.append(df_diff)
+            if mode in ("difference", "unified"):
+                df_diff_pair = build_voicings_comparison_dataframe(
+                    source_instrument=inst,
+                    source_voicing=src_voicing,
+                    target_instrument=t_inst,
+                    target_voicing=v_obj,
+                )
+                df_diff = df_diff_pair.filter(pl.col("line_type") == "3. Difference")
+                df_diff = df_diff.with_columns(
+                    pl.lit(v_label).alias("voice_name"),
+                    pl.lit(v_obj.sensor_type).alias("sensor_type"),
+                    pl.lit(v_desc).alias("description"),
+                )
+                if mode == "unified":
+                    df_diff = df_diff.with_columns(pl.lit("Input/Output Difference").alias("mode"))
+                diff_dfs.append(df_diff)
 
     if mode == "output":
         master_df = pl.concat(target_dfs)

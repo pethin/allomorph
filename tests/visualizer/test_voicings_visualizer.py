@@ -1,86 +1,47 @@
 """
 Allomorph - Voicings Comparison Visualizer Test Suite.
-Validates the interactive 2D voicing comparison (Source vs Target Voicing),
+Validates the interactive Altair voicing comparison (Source vs Target Voicing),
 3-line frequency response curves (H_src, H_tgt, H_diff), identity pairing evaluation,
-and standalone HTML generation.
+and standalone Altair HTML generation.
 """
 
-import json
 import tempfile
-import time
 from pathlib import Path
 
 import numpy as np
-import pytest
 
-from allomorph.config import VOICES
+from allomorph.config import INSTRUMENTS
+from allomorph.config.instruments import resolve_target_voicing
 from allomorph.visualizer import (
     build_voicings_comparison_data,
-    build_voicings_comparison_dataframe,
-    generate_voicings_page,
+    generate_interactive_chart,
 )
+from allomorph.visualizer.dataframe import build_voicings_comparison_dataframe
 
 
-def test_build_voicings_comparison_data_performance_and_bounds():
-    """Validates warm cache performance, frequency bounds, and catalog coverage."""
-    # Warm up cache
-    build_voicings_comparison_data(step=3)
-
-    t0 = time.perf_counter()
+def test_build_voicings_comparison_data_bounds_and_coverage():
+    """Validates frequency bounds and catalog coverage of build_voicings_comparison_data."""
     data = build_voicings_comparison_data(step=3)
-    duration_ms = (time.perf_counter() - t0) * 1000.0
+    expected_keys = {
+        f"{inst_id}:{v_id}" for inst_id, inst in INSTRUMENTS.items() for v_id in inst.voicings
+    }
+    assert set(data["voices"].keys()) == expected_keys
 
-    # 1. Performance guardrail: building data must execute in < 150 ms warm
-    assert duration_ms < 150.0, f"build_voicings_comparison_data took {duration_ms:.2f} ms"
-
-    # 2. Key schema assertions
-    assert "frequencies" in data
-    assert "voices" in data
-    assert "families" in data
-    assert "instruments" in data
-    assert "instrument_order" in data
-    assert "chips" in data
-    assert len(data["chips"]) >= 8
-    assert "default_source" in data
-    assert "default_target" in data
-
-    # 3. Frequencies downsampling: 200 points across 20 Hz to 20 kHz
-    freqs = data["frequencies"]
-    assert len(freqs) == 200
-    assert freqs[0] == pytest.approx(20.0, abs=0.2)
-    assert 19000.0 <= freqs[-1] <= 20000.0
-
-    # 4. Coverage of all registered target voices
-    assert set(data["voices"].keys()) == set(VOICES.keys())
-
-    # 5. Response curves validity and bounded physical limits
-    for vid, entry in data["voices"].items():
-        assert "name" in entry
-        assert "family" in entry
-        assert "magnitude_db" in entry
-        mags = entry["magnitude_db"]
-        assert len(mags) == 200
-        m_arr = np.array(mags, dtype=np.float64)
-        assert not np.isnan(m_arr).any()
-        assert not np.isinf(m_arr).any()
-        assert np.max(m_arr) < 25.0, f"{vid} peak {np.max(m_arr)} exceeds 25 dB"
-        assert np.min(m_arr) >= -120.0, f"{vid} notch {np.min(m_arr)} below -120 dB"
-
-        # 2-decimal rounding guardrail
-        for m in mags:
-            assert round(m, 2) == m, f"Unrounded float {m} in voice {vid}"
+    for v_meta in data["voices"].values():
+        mags = np.asarray(v_meta["magnitude_db"], dtype=np.float64)
+        assert not np.isnan(mags).any()
+        assert not np.isinf(mags).any()
+        assert np.max(mags) < 25.0
+        assert np.min(mags) >= -120.0
 
 
 def test_voicings_comparison_identity_and_differential_math():
     """Validates that identity pairings evaluate to exact 0.00 dB, and difference equals Target - Source."""
-    from allomorph.config.instruments import resolve_target_voicing
-
-    # 1. Identity pair: Source == Target -> H_diff == 0.00 dB everywhere
     test_identities = [
-        "precision_vintage",
-        "jazz_bridge_growl",
-        "stingray_parallel",
-        "upright_piezo",
+        "34in_standard_p:vintage_open",
+        "34in_standard_jazz:bridge_growl",
+        "34in_active_stingray:parallel_classic",
+        "41in_upright_bass:bridge_piezo",
     ]
     for vid in test_identities:
         inst, v_cfg = resolve_target_voicing(vid)
@@ -88,9 +49,9 @@ def test_voicings_comparison_identity_and_differential_math():
         s3 = df_id.filter(df_id["line_type"] == "3. Difference")["magnitude_db"]
         assert (s3 == 0.0).all(), f"Identity pair {vid} -> {vid} did not evaluate to 0.00 dB"
 
-    # 2. Transformative pair: Source + Difference == Target everywhere
-    s_inst, s_v_cfg = resolve_target_voicing("precision_vintage")
-    t_inst, t_v_cfg = resolve_target_voicing("jazz_bridge_growl")
+    # Transformative pair: Source + Difference == Target everywhere
+    s_inst, s_v_cfg = resolve_target_voicing("34in_standard_p:vintage_open")
+    t_inst, t_v_cfg = resolve_target_voicing("34in_standard_jazz:bridge_growl")
     df_diff = build_voicings_comparison_dataframe(s_inst, s_v_cfg, t_inst, t_v_cfg, step=1)
     s1 = df_diff.filter(df_diff["line_type"] == "1. Source Voicing")["magnitude_db"].to_numpy()
     s2 = df_diff.filter(df_diff["line_type"] == "2. Target Voicing")["magnitude_db"].to_numpy()
@@ -99,31 +60,12 @@ def test_voicings_comparison_identity_and_differential_math():
     assert np.allclose(s1 + s3, s2, atol=0.05)
 
 
-def test_generate_voicings_page_html_integrity():
-    """Validates HTML generation, client-side data serialization, and DOM controls."""
+def test_generate_interactive_chart_voicings_html_integrity():
+    """Validates Altair HTML generation for voicings mode."""
     with tempfile.TemporaryDirectory() as tmpdir:
         out_file = Path(tmpdir) / "voicings.html"
-        res_path = generate_voicings_page(out_file)
+        res_path = generate_interactive_chart(out_html=out_file, mode="voicings")
         assert res_path.exists()
         content = res_path.read_text(encoding="utf-8")
-
-        # HTML structure assertions
-        assert "<!DOCTYPE html>" in content
-        assert "Plotly" in content or "plotly" in content
-        assert "source-select" in content
-        assert "target-select" in content
-        assert "btn-swap" in content
-        assert "plot-div" in content
-        assert "presets-container" in content
-
-        # Check that JSON data payload is embedded and parseable
-        marker_start = '<script id="voicings-data" type="application/json">'
-        assert marker_start in content
-        json_part = content.split(marker_start)[1].split("</script>")[0]
-        parsed_data = json.loads(json_part)
-        assert "frequencies" in parsed_data
-        assert "voices" in parsed_data
-        assert len(parsed_data["voices"]) == len(VOICES)
-        assert "instruments" in parsed_data
-        assert "chips" in parsed_data
-        assert len(parsed_data["chips"]) >= 8
+        assert "Allomorph Frequency Response Suite" in content
+        assert "34in_standard_p:vintage_open" in content

@@ -7,7 +7,6 @@ respecting Tone3000's strict '1 Dry File + Multiple Wet Stems' batch upload cons
 import hashlib
 import json
 import shutil
-from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
 
@@ -23,7 +22,7 @@ from allomorph.config.instruments import (
 from allomorph.config.scales import REPO_ROOT
 from allomorph.config.schema import InstrumentConfig
 from allomorph.dsp import read_wav
-from allomorph.naming import VOICE_SLUG_ALIASES, get_default_input_path
+from allomorph.naming import get_default_input_path
 from allomorph.pipeline.bundle import (
     assemble_root_pack_manifest,
     build_bundle_manifest_entry,
@@ -43,6 +42,15 @@ from allomorph.trainer.constants import (
     DEFAULT_NUM_WORKERS,
     DEFAULT_PATIENCE,
     DEFAULT_PRECISION,
+    DEFAULT_VAL_LOSS_METRIC,
+    NATIVE_DEFAULT_FIR_HP_FC,
+    NATIVE_DEFAULT_FIR_HP_WEIGHT,
+    NATIVE_DEFAULT_LITE_WEIGHT,
+    NATIVE_DEFAULT_LR,
+    NATIVE_DEFAULT_SINE_REGULARIZER,
+    NATIVE_DEFAULT_SLICE_LEN,
+    NATIVE_DEFAULT_VAL_INTERVAL,
+    NATIVE_DEFAULT_WEIGHT_DECAY,
 )
 from allomorph.version import (
     DSP_GENERATION,
@@ -52,12 +60,12 @@ from allomorph.version import (
     compute_recipe_token,
     compute_stem_digest_token,
     get_dry_excitation_token,
-    is_wet_stem_valid,
+    is_stem_valid,
     resolve_tri_part_version,
 )
 
 AUDIO_DIR = REPO_ROOT / "audio"
-WET_AUDIO_DIR = AUDIO_DIR / "wet"
+STEMS_AUDIO_DIR = AUDIO_DIR / "stems"
 PACKS_DIR = REPO_ROOT / "tone3000" / "packs"
 ASSETS_DIR = REPO_ROOT / "tone3000" / "assets"
 
@@ -75,7 +83,6 @@ def check_pack_needs_repacking(
     instrument: InstrumentConfig | str | Path,
     output_dir: Path | str | None = None,
     input_wav: Path | str | None = None,
-    catalog_targets: Sequence[tuple[str, str]] | None = None,
 ) -> bool:
     """Checks whether a tone pack requires repacking based on directory existence,
     bundle file integrity, and cryptographic recipe tokens."""
@@ -89,7 +96,7 @@ def check_pack_needs_repacking(
     if not manifest_path.exists() or not bundles_dir.exists():
         return True
 
-    bundles = partition_instrument_bundles(inst, catalog_targets=catalog_targets)
+    bundles = partition_instrument_bundles(inst)
     is_multi_pickup = len(bundles) > 1
 
     try:
@@ -130,7 +137,7 @@ def check_pack_needs_repacking(
             if not dry_f or not (b_dir / dry_f).exists():
                 return True
 
-            b_src_path = WET_AUDIO_DIR / inst.id / f"{b_bundle.source_voicing}.wav"
+            b_src_path = STEMS_AUDIO_DIR / inst.id / f"{b_bundle.source_voicing}.wav"
             if not b_src_path.exists():
                 return True
             master_dry_digest = compute_stem_digest_token(b_src_path)
@@ -158,7 +165,7 @@ def check_pack_needs_repacking(
                 if not (b_dir / s_fn).exists():
                     return True
 
-                t_stem_path = WET_AUDIO_DIR / t_ref.instrument_id / f"{desc['target_slug']}.wav"
+                t_stem_path = STEMS_AUDIO_DIR / t_ref.instrument_id / f"{desc['target_slug']}.wav"
                 if not t_stem_path.exists():
                     return True
 
@@ -199,14 +206,13 @@ def export_tone_pack(
     output_dir: Path | str | None = None,
     input_wav: Path | str | None = None,
     max_samples: int | None = None,
-    catalog_targets: Sequence[tuple[str, str]] | None = None,
     jobs: int | None = None,
     train: bool = False,
 ) -> Path:
     """
     Exports a complete Tone3000 upload pack for an instrument partitioned into
     self-contained bundles matching the '1 Dry + Multiple Wet Stems' upload constraint.
-    Copies existing pre-compiled wet stems from audio/wet/, or compiles then copies them.
+    Copies existing pre-compiled stems from audio/stems/, or compiles then copies them.
     """
     inst = (
         load_instrument(instrument) if not isinstance(instrument, InstrumentConfig) else instrument
@@ -216,14 +222,12 @@ def export_tone_pack(
     bundles_dir = pack_dir / "bundles"
     nam_dir = pack_dir / "nam"
 
-    if not check_pack_needs_repacking(
-        inst, output_dir=pack_dir, input_wav=input_wav, catalog_targets=catalog_targets
-    ):
+    if not check_pack_needs_repacking(inst, output_dir=pack_dir, input_wav=input_wav):
         print(f"\n[Tone Pack Exporter] Tone Pack already exists and is fresh at '{pack_dir}'.")
         return pack_dir
 
     # 1. Partition instrument into pickup bundles first to validate before creating directories
-    bundles = partition_instrument_bundles(inst, catalog_targets=catalog_targets)
+    bundles = partition_instrument_bundles(inst)
     is_multi_pickup = len(bundles) > 1
 
     pack_dir.mkdir(parents=True, exist_ok=True)
@@ -238,7 +242,6 @@ def export_tone_pack(
 
     manifest_path = pack_dir / "manifest.json"
 
-    # 2. Process each bundle
     # 2. Process each bundle
     def _process_bundle(item: tuple[str, VoicingBundle]) -> tuple[str, dict[str, Any]]:
         b_name, bundle = item
@@ -284,10 +287,10 @@ def export_tone_pack(
 
         # A. Synthesize / Copy Source Audio for this bundle
         current_dry_v_tag = resolve_tri_part_version(DSP_GENERATION, inst.version, source_voice_ver)
-        source_wet_path = WET_AUDIO_DIR / inst.id / f"{src_v_id}.wav"
+        source_wet_path = STEMS_AUDIO_DIR / inst.id / f"{src_v_id}.wav"
 
         if max_samples is None:
-            if not is_wet_stem_valid(
+            if not is_stem_valid(
                 source_wet_path,
                 expected_recipe_token=dry_recipe_token,
                 base_dry_path=input_wav,
@@ -324,7 +327,7 @@ def export_tone_pack(
 
         dry_dest = b_dir / dry_filename
 
-        # B. Wet Audio Stems (Copy cached wet audio from audio/wet or compile then copy)
+        # B. Target Audio Stems (Copy cached stems from audio/stems or compile then copy)
         bundle_stems: list[dict[str, Any]] = []
         stem_filenames: list[str] = []
         descriptors = resolve_bundle_target_file_descriptors(bundle, is_multi_pickup)
@@ -335,7 +338,7 @@ def export_tone_pack(
             tone_name = desc["tone_name"]
             target_v_tag_current = desc["target_v_tag"]
             target_slug = desc["target_slug"]
-            target_wet_path = WET_AUDIO_DIR / target_ref.instrument_id / f"{target_slug}.wav"
+            target_wet_path = STEMS_AUDIO_DIR / target_ref.instrument_id / f"{target_slug}.wav"
 
             target_recipe_token = compute_recipe_token(
                 instrument=target_ref.instrument,
@@ -345,7 +348,7 @@ def export_tone_pack(
             )
 
             if max_samples is None:
-                if not is_wet_stem_valid(
+                if not is_stem_valid(
                     target_wet_path,
                     expected_recipe_token=target_recipe_token,
                     base_dry_path=input_wav,
@@ -799,6 +802,15 @@ def train_tone_pack(
     fast_dev_run: bool = False,
     engine: str = "auto",
     seed: int | None = None,
+    lr: float = NATIVE_DEFAULT_LR,
+    weight_decay: float = NATIVE_DEFAULT_WEIGHT_DECAY,
+    slice_len: int = NATIVE_DEFAULT_SLICE_LEN,
+    lite_weight: float = NATIVE_DEFAULT_LITE_WEIGHT,
+    fir_hp_weight: float = NATIVE_DEFAULT_FIR_HP_WEIGHT,
+    fir_hp_fc: float = NATIVE_DEFAULT_FIR_HP_FC,
+    val_interval: int = NATIVE_DEFAULT_VAL_INTERVAL,
+    sine_regularizer: bool = NATIVE_DEFAULT_SINE_REGULARIZER,
+    val_loss_metric: str = DEFAULT_VAL_LOSS_METRIC,
 ) -> Path:
     """Trains a complete Tone3000 upload pack, outputting flat .nam files to tone3000/packs/[pack]/nam/.
 
@@ -807,9 +819,6 @@ def train_tone_pack(
     Skips already trained models unless overwrite=True.
     Updates the pack manifest with a top-level 'models' section indexing all trained model containers.
     """
-
-    from allomorph.config.voices import VOICES
-
     if (
         isinstance(pack, (str, Path))
         and Path(pack).is_dir()
@@ -877,9 +886,7 @@ def train_tone_pack(
 
     selected_voices: set[str] | None = None
     if voice and str(voice).strip().lower() != "all":
-        from allomorph.naming import resolve_voices
-
-        selected_voices = set(resolve_voices(voice))
+        selected_voices = {v.strip() for v in str(voice).split(",") if v.strip()}
 
     if "models" not in manifest_data or not isinstance(manifest_data["models"], dict):
         manifest_data["models"] = {}
@@ -915,12 +922,13 @@ def train_tone_pack(
                 if ":" in target_str
                 else s_info.get("target_voicing", "")
             )
-            canonical_voice = VOICE_SLUG_ALIASES.get(raw_slug, raw_slug)
-            if canonical_voice not in VOICES:
-                canonical_voice = VOICE_SLUG_ALIASES.get(target_voicing, target_voicing)
 
             if selected_voices is not None:
-                matches_filter = raw_slug in selected_voices or canonical_voice in selected_voices
+                matches_filter = (
+                    target_str in selected_voices
+                    or target_voicing in selected_voices
+                    or raw_slug in selected_voices
+                )
                 if not matches_filter:
                     continue
 
@@ -1007,9 +1015,10 @@ def train_tone_pack(
                 if "source" in b_info and ":" in b_info["source"]
                 else b_info.get("source_voicing")
             )
+            voice_target = target_str if ":" in target_str else (target_voicing or raw_slug)
             ok = train_voice(
                 instrument=inst,
-                voice=canonical_voice if canonical_voice in VOICES else target_voicing,
+                voice=voice_target,
                 source_voicing=src_vid,
                 input_wav=dry_p,
                 output_wav=stem_p,
@@ -1030,10 +1039,19 @@ def train_tone_pack(
                 lr_t_max=lr_t_max,
                 fast_dev_run=fast_dev_run,
                 version_tag=None,
-                no_manifest=False,
+                no_manifest=True,
                 include_identity=False,
                 engine=engine,
                 seed=seed,
+                lr=lr,
+                weight_decay=weight_decay,
+                slice_len=slice_len,
+                lite_weight=lite_weight,
+                fir_hp_weight=fir_hp_weight,
+                fir_hp_fc=fir_hp_fc,
+                val_interval=val_interval,
+                sine_regularizer=sine_regularizer,
+                val_loss_metric=val_loss_metric,
                 silent=False,
             )
             if not ok:

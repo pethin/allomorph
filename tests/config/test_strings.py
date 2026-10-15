@@ -9,10 +9,8 @@ from allomorph.config.schema import ResolvedStringConfig, StringPresetConfig
 from allomorph.config.strings import (
     STRINGS,
     get_instrument_string,
-    get_voice_string,
     load_strings_config,
 )
-from allomorph.config.voices import VOICES
 
 
 def test_strings_catalog_loading():
@@ -56,21 +54,3 @@ def test_get_instrument_string():
     custom_inst.strings.preset = "non_existent_preset_xyz"
     with pytest.raises(KeyError, match="String preset 'non_existent_preset_xyz' not found"):
         get_instrument_string(custom_inst)
-
-
-def test_get_voice_string():
-    """Verify target string resolution for target voices."""
-    voice = VOICES["precision_vintage"]
-    v_str = get_voice_string(voice)
-    assert isinstance(v_str, StringPresetConfig)
-
-    # Voice with custom target string
-    v_custom = voice.model_copy(deep=True)
-    v_custom.target_string = "flatwound_vintage_heavy"
-    v_res = get_voice_string(v_custom)
-    assert v_res.name == STRINGS["flatwound_vintage_heavy"].name
-
-    # Voice with unknown string preset raises KeyError
-    v_custom.target_string = "non_existent_voice_string_xyz"
-    with pytest.raises(KeyError, match="String preset 'non_existent_voice_string_xyz' not found"):
-        get_voice_string(v_custom)

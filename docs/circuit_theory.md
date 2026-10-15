@@ -187,8 +187,8 @@ Every passive, active, and piezo instrument voicing is simulated as a standalone
 [Master String Excitation] ──► [H_acoustic(f)] ──► [H_elec(s) MNA] ──► [Non-Linear Transducer] ──► [Digital Twin Stem]
 ```
 
-* **Source Digital Twin ("Dry" NAM Input):** Simulates the player's physical source instrument (`audio/wet/<source_inst>/<source_voicing>.wav`) with its exact coil geometry, MNA electrical loading, and magnet/op-amp dynamics.
-* **Target Digital Twin ("Wet" NAM Output):** Simulates the target instrument (`audio/wet/<target_inst>/<target_voicing>.wav`) from the identical master string excitation (`audio/input.wav`).
+* **Source Digital Twin ("Dry" NAM Input):** Simulates the player's physical source instrument (`audio/stems/<source_inst>/<source_voicing>.wav`) with its exact coil geometry, MNA electrical loading, and magnet/op-amp dynamics.
+* **Target Digital Twin ("Wet" NAM Output):** Simulates the target instrument (`audio/stems/<target_inst>/<target_voicing>.wav`) from the identical master string excitation (`audio/input.wav`).
 * **Analytical Difference Mode (`mode="difference"`):** In visualizer difference charts, the analytical transfer difference is evaluated directly as $20\log_{10}|H_{\text{tgt}}(f)| - 20\log_{10}|H_{\text{src}}(f)|$, yielding exact $0.00\text{ dB}$ across all bins when source and target voicings match.
 
 ---

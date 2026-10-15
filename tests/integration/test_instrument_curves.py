@@ -28,7 +28,7 @@ from allomorph.visualizer.dataframe import (
 
 def test_pj_mid_scoop_curve():
     """Validates that PJ voicings exhibit their characteristic low-mid scoop around ~900 Hz."""
-    for vid in ["pj_passive", "pj_active"]:
+    for vid in ["34in_standard_pj:pair_parallel", "34in_standard_pj:pair_active"]:
         inst, v_cfg = resolve_target_voicing(vid)
         df = build_voice_dataframe(inst, v_cfg, mode="output")
         freqs = df["frequency"].to_numpy()
@@ -50,7 +50,7 @@ def test_pj_mid_scoop_curve():
 
 def test_jazz_pair_mid_scoop_curve():
     """Validates that Jazz Bass neck+bridge pair exhibits its characteristic mid scoop around ~640 Hz."""
-    inst, v_cfg = resolve_target_voicing("jazz_pair_open")
+    inst, v_cfg = resolve_target_voicing("34in_standard_jazz:pair_open")
     df = build_voice_dataframe(inst, v_cfg, mode="output")
     freqs = df["frequency"].to_numpy()
     mag = df["magnitude_db"].to_numpy()
@@ -71,7 +71,7 @@ def test_jazz_pair_mid_scoop_curve():
 
 def test_precision_vintage_resonant_frequency_curve():
     """Validates that Precision Vintage (wide-open 250k CTS) exhibits its resonant peak at ~2.1 kHz."""
-    inst, v = resolve_target_voicing("precision_vintage")
+    inst, v = resolve_target_voicing("34in_standard_p:vintage_open")
     harness = inst.harnesses[v.harness]
     curves = solve_mna_harness(inst, harness, v, freqs=FREQS)
     mag = next(iter(curves.values()))
@@ -89,7 +89,7 @@ def test_precision_vintage_resonant_frequency_curve():
 def test_precision_warm_tone_rolloff_curve():
     """Validates that Precision Warm (47nF tone pot rolled off) downshifts resonance and attenuates treble."""
     # 1. Electrical resonance downshifts into low-mids (150 - 400 Hz)
-    inst, v = resolve_target_voicing("precision_warm")
+    inst, v = resolve_target_voicing("34in_standard_p:vintage_warm")
     harness = inst.harnesses[v.harness]
     curves = solve_mna_harness(inst, harness, v, freqs=FREQS)
     mag_elec = next(iter(curves.values()))
@@ -100,8 +100,8 @@ def test_precision_warm_tone_rolloff_curve():
     )
 
     # 2. Acoustic + circuit output response attenuates treble by > 20 dB at 5 kHz relative to Vintage Open
-    inst_warm, v_warm = resolve_target_voicing("precision_warm")
-    inst_p, v_p = resolve_target_voicing("precision_vintage")
+    inst_warm, v_warm = resolve_target_voicing("34in_standard_p:vintage_warm")
+    inst_p, v_p = resolve_target_voicing("34in_standard_p:vintage_open")
     df_warm = build_voice_dataframe(inst_warm, v_warm)
     df_p = build_voice_dataframe(inst_p, v_p)
     mag_warm_5k = df_warm.filter(pl.col("frequency") > 4500.0)["magnitude_db"].to_list()[0]
@@ -114,7 +114,7 @@ def test_precision_warm_tone_rolloff_curve():
 def test_precision_mids_resonant_frequency_curve():
     """Validates that Precision Mids (22nF ToneStyler shunt) produces a focused vocal resonance at ~440 Hz."""
     # 1. Electrical resonance peak around 400 - 500 Hz
-    inst, v = resolve_target_voicing("precision_mids")
+    inst, v = resolve_target_voicing("34in_standard_p:vintage_mids")
     harness = inst.harnesses[v.harness]
     curves = solve_mna_harness(inst, harness, v, freqs=FREQS)
     mag_elec = next(iter(curves.values()))
@@ -125,8 +125,8 @@ def test_precision_mids_resonant_frequency_curve():
     )
 
     # 2. Output response has steep treble rolloff (> 15 dB difference at 3 kHz vs Precision Vintage)
-    inst_v, v_v = resolve_target_voicing("precision_vintage")
-    inst_m, v_m = resolve_target_voicing("precision_mids")
+    inst_v, v_v = resolve_target_voicing("34in_standard_p:vintage_open")
+    inst_m, v_m = resolve_target_voicing("34in_standard_p:vintage_mids")
     df_comp = build_voicings_comparison_dataframe(inst_v, v_v, inst_m, v_m, step=1)
     s3 = df_comp.filter(df_comp["line_type"] == "3. Difference")["magnitude_db"].to_numpy()
     freqs = df_comp.filter(df_comp["line_type"] == "3. Difference")["frequency"].to_numpy()
@@ -139,7 +139,7 @@ def test_precision_mids_resonant_frequency_curve():
 
 def test_rickenbacker_clank_hpf_curve():
     """Validates that Rickenbacker Clank (series 4.7nF HPF) cuts sub-bass below 50 Hz by > 10 dB."""
-    inst_rick, v_rick = resolve_target_voicing("rickenbacker_clank")
+    inst_rick, v_rick = resolve_target_voicing("33in_rickenbacker_4003:bridge_clank")
     df_rick = build_voice_dataframe(inst_rick, v_rick)
     mag_low = df_rick.filter(pl.col("frequency") < 50.0)["magnitude_db"].to_list()[0]
     mag_mid = df_rick.filter((pl.col("frequency") > 800.0) & (pl.col("frequency") < 1200.0))[
@@ -159,8 +159,8 @@ def test_bridge_proximity_bass_excursion_curve():
     - Precision Vintage (125mm from bridge): full fundamental excursion around 0 dB (+0.0 to +2.5 dB)
     - Jazz Bridge Open (63.5mm near bridge): leaner fundamental at 20 Hz (-4.5 to -2.0 dB)
     """
-    inst_p, v_p = resolve_target_voicing("precision_vintage")
-    inst_j, v_j = resolve_target_voicing("jazz_bridge_open")
+    inst_p, v_p = resolve_target_voicing("34in_standard_p:vintage_open")
+    inst_j, v_j = resolve_target_voicing("34in_standard_jazz:bridge_open")
     df_p = build_voice_dataframe(inst_p, v_p, mode="output")
     df_j = build_voice_dataframe(inst_j, v_j, mode="output")
 
@@ -178,8 +178,8 @@ def test_bridge_proximity_bass_excursion_curve():
 
 def test_pmm_series_differential_curve():
     """Validates that P/MM Parallel -> P/MM Series difference curve stays <= +2.0 dB relative to passband across 5-20 kHz."""
-    inst_par, v_par = resolve_target_voicing("p_mm_parallel")
-    inst_ser, v_ser = resolve_target_voicing("p_mm_series")
+    inst_par, v_par = resolve_target_voicing("34in_active_pmm:pmm_parallel")
+    inst_ser, v_ser = resolve_target_voicing("34in_active_pmm:pmm_series")
     df_par = build_voice_dataframe(inst_par, v_par)
     df_ser = build_voice_dataframe(inst_ser, v_ser)
 
@@ -232,10 +232,10 @@ def test_tonestyler_p_bass_progression_curve():
     Resonant peak physically glides down through the spectrum:
     vintage (~2.1 kHz) > mids (~440 Hz) > warm (~210 Hz) > dub (~150 Hz).
     """
-    inst05, v05 = resolve_target_voicing("precision_vintage")
-    inst05b, v05b = resolve_target_voicing("precision_mids")
-    inst05c, v05c = resolve_target_voicing("precision_warm")
-    inst05d, v05d = resolve_target_voicing("precision_dub")
+    inst05, v05 = resolve_target_voicing("34in_standard_p:vintage_open")
+    inst05b, v05b = resolve_target_voicing("34in_standard_p:vintage_mids")
+    inst05c, v05c = resolve_target_voicing("34in_standard_p:vintage_warm")
+    inst05d, v05d = resolve_target_voicing("34in_standard_p:slab_dub")
 
     c05 = next(
         iter(solve_mna_harness(inst05, inst05.harnesses[v05.harness], v05, freqs=FREQS).values())
@@ -283,7 +283,7 @@ def test_jazz_pair_mids_22nf_tone_cap_curve():
     """Verify Voice 02b (60s Jazz Bass Pair with 22nF Tone Cap):
     Harness is passive and contains 22nF tone capacitor component override.
     """
-    inst, v = resolve_target_voicing("jazz_pair_mids")
+    inst, v = resolve_target_voicing("34in_standard_jazz:pair_mids")
     assert v.harness == "passive"
     assert v.components.get("controls.tone.cap") == pytest.approx(2.2e-8)
     curves = solve_mna_harness(inst, inst.harnesses[v.harness], v, freqs=FREQS)
@@ -295,8 +295,8 @@ def test_stingray_series_vs_parallel_curve():
     1. Active series resonance sits lower than parallel resonance.
     2. Series connection delivers +5.0 to +6.5 dB output boost over parallel across passband.
     """
-    inst09, v09 = resolve_target_voicing("stingray_parallel")
-    inst09b, v09b = resolve_target_voicing("stingray_series")
+    inst09, v09 = resolve_target_voicing("34in_active_stingray:parallel_classic")
+    inst09b, v09b = resolve_target_voicing("34in_active_stingray:series_punch")
 
     c09_dict = solve_mna_harness(inst09, inst09.harnesses[v09.harness], v09, freqs=FREQS)
     c09b_dict = solve_mna_harness(inst09b, inst09b.harnesses[v09b.harness], v09b, freqs=FREQS)
@@ -325,13 +325,14 @@ def test_dingwall_composite_source_circuit_curve():
     """Verify 37in_multiscale_dingwall pair_parallel declares source circuit
     and evaluates circuit transfer functions cleanly without falling back to generic RLC.
     """
+    from allomorph.config.resolvers import resolve_voicing_electroacoustics
+
     inst = load_instrument("37in_multiscale_dingwall")
     assert "pair_parallel" in inst.voicings
     v = inst.voicings["pair_parallel"]
-    from allomorph.config.voices import voicing_to_voice_config
 
-    vcfg = voicing_to_voice_config(inst, v)
-    assert vcfg.id == "dingwall_parallel"
+    ea = resolve_voicing_electroacoustics(inst, v)
+    assert len(ea.coils) == 4
 
     curves = solve_mna_harness(inst, inst.harnesses[v.harness], v, freqs=FREQS)
     assert len(curves) >= 1

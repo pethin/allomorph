@@ -22,14 +22,17 @@ def test_is_identity_voicing_tone_cap_mismatch():
     assert is_identity_voicing(inst, "mmtwx", inst, tgt_voicing) is False
 
 
-def test_load_instrument_aliases():
-    """Verify standard aliases resolve correctly to canonical instruments."""
-    aliases = ["30in", "34in", "mustang", "dingwall", "upright", "rick", "eb0"]
-    for alias in aliases:
-        cfg = load_instrument(alias)
+def test_load_instrument_canonical_ids():
+    """Verify canonical instrument IDs resolve and non-canonical aliases raise FileNotFoundError."""
+    canonical_ids = ["30in_mustang_pj", "34in_standard_p", "37in_multiscale_dingwall"]
+    for cid in canonical_ids:
+        cfg = load_instrument(cid)
         assert isinstance(cfg, InstrumentConfig)
-        assert cfg.id is not None
+        assert cfg.id == cid
         assert cfg.name is not None
+
+    with pytest.raises(FileNotFoundError):
+        load_instrument("mustang")
 
 
 def test_load_instrument_by_path():
@@ -178,10 +181,6 @@ def test_load_tone_pack_and_errors():
     assert isinstance(tp, TonePackConfig)
     assert load_tone_pack(tp) is tp
 
-    # Alias resolution
-    tp_alias = load_tone_pack("stingray")
-    assert tp_alias.id == "34in_active_stingray"
-
     with pytest.raises(FileNotFoundError, match="Tone pack configuration not found"):
         load_tone_pack("nonexistent_tone_pack_999")
 
@@ -200,58 +199,14 @@ def test_load_all_tone_packs_catalog():
         assert len(pcfg.bundles) > 0
 
 
-def test_resolve_packs_selection():
-    """Verify resolve_packs only selects packs that exist when all packs are selected."""
-    from allomorph.config.instruments import TONE_PACKS
-    from allomorph.naming import resolve_packs
-
-    expected_existing = sorted(TONE_PACKS.keys())
-
-    # 1. No pack specified, instrument is "all" -> only existing packs
-    assert resolve_packs(None, "all") == expected_existing
-    assert resolve_packs(None, None) == expected_existing
-
-    # 2. Pack specified as "all" -> only existing packs
-    assert resolve_packs("all", None) == expected_existing
-    assert resolve_packs("all", "30in") == expected_existing
-
-    # 3. Explicit pack by ID and alias
-    assert resolve_packs("34in_standard_p") == ["34in_standard_p"]
-    assert resolve_packs("stingray") == ["34in_active_stingray"]
-    assert resolve_packs("30in") == ["30in_mustang_pj"]
-
-    # 4. Explicit comma-separated packs
-    assert resolve_packs("34in_standard_p,34in_standard_jazz") == [
-        "34in_standard_p",
-        "34in_standard_jazz",
-    ]
-
-    # 5. Explicit pack for instrument without pack raises FileNotFoundError
-    with pytest.raises(FileNotFoundError, match="Tone pack configuration not found"):
-        resolve_packs("30in_emg_mmtw")
-
-    # 6. Unknown pack raises FileNotFoundError
-    with pytest.raises(FileNotFoundError, match="Unknown tone pack identifier"):
-        resolve_packs("nonexistent_xyz")
-
-
-def test_partition_instrument_bundles_target_variants():
-    """Verify partition_instrument_bundles with catalog_targets and KeyError."""
+def test_partition_instrument_bundles_explicit_tone_pack():
+    """Verify partition_instrument_bundles resolves explicit tone pack bundles."""
     from allomorph.config.instruments import partition_instrument_bundles
 
     inst = load_instrument("34in_standard_p")
-    targets = [
-        ("34in_standard_jazz", "pair_open"),
-        ("34in_standard_jazz", "bridge_growl"),
-    ]
-    bundles = partition_instrument_bundles(inst, catalog_targets=targets)
+    bundles = partition_instrument_bundles(inst)
     assert "split" in bundles
-    assert len(bundles["split"].targets) == 2
-
-    # Target voicing not found raises KeyError
-    bad_targets = [("34in_standard_jazz", "nonexistent_voicing_123")]
-    with pytest.raises(KeyError, match="Target voicing 'nonexistent_voicing_123' not found"):
-        partition_instrument_bundles(inst, catalog_targets=bad_targets)
+    assert len(bundles["split"].targets) > 0
 
 
 def test_load_instrument_filename_directly():
@@ -282,25 +237,6 @@ def test_3coil_pmm_compound_response():
     assert positions == [50.8, 73.7, 136.8]
 
 
-def test_catalog_instruments_voice_matching_source():
-    """Verify is_voice_matching_source across matching and non-matching catalog pairs."""
-    from allomorph.config.voices import VOICES
-    from allomorph.physics.aperture import is_voice_matching_source
-
-    inst_p = load_instrument("34in_standard_p")
-    assert is_voice_matching_source(inst_p, VOICES["precision_vintage"])
-
-    inst_jazz = load_instrument("34in_standard_jazz")
-    assert is_voice_matching_source(inst_jazz, VOICES["jazz_pair_open"])
-    assert is_voice_matching_source(inst_jazz, VOICES["jazz_pair_active"])
-
-    inst_dingwall = load_instrument("37in_multiscale_dingwall")
-    assert is_voice_matching_source(inst_dingwall, VOICES["dingwall_bridge"])
-
-    # Non-matching voice should return False
-    assert not is_voice_matching_source(inst_p, VOICES["jazz_pair_open"])
-
-
 def test_resolve_target_voicing_errors():
     """Verify diagnostic exceptions in resolve_target_voicing."""
     from allomorph.config.instruments import resolve_target_voicing
@@ -317,7 +253,7 @@ def test_resolve_target_voicing_errors():
         resolve_target_voicing("split_p", instrument=inst)
 
     # Missing voicing raises KeyError
-    with pytest.raises(KeyError, match="could not be resolved"):
+    with pytest.raises(KeyError, match="must be in canonical"):
         resolve_target_voicing("non_existent_voicing_xyz")
 
 

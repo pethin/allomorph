@@ -5,7 +5,7 @@ from collections.abc import Generator
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
-    from allomorph.config.schema import InstrumentConfig, VoiceConfig
+    from allomorph.config.schema import InstrumentConfig
 
 
 # Ensure headless matplotlib raster backend is active
@@ -510,27 +510,4 @@ def generic_piezo_instrument() -> InstrumentConfig:
                 harness="direct",
             ),
         },
-    )
-
-
-@pytest.fixture
-def generic_voice_config() -> VoiceConfig:
-    """Returns a synthetic, unbranded target voice configuration for SUT tests."""
-    from allomorph.config.schema import VoiceCoilConfig, VoiceConfig
-
-    return VoiceConfig(
-        id="generic_voice",
-        name="Generic Voice",
-        description="Generic synthetic voice",
-        fr=3000.0,
-        Q=1.5,
-        coils=[
-            VoiceCoilConfig(
-                position_from_bridge_m=0.10,
-                aperture_width_in=0.75,
-                weight=1.0,
-                polarity=1.0,
-                strings=[1, 2, 3, 4],
-            )
-        ],
     )

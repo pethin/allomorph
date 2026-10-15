@@ -1,11 +1,11 @@
 # Pipeline & Tone Pack Orchestration Subpackage — Agent Routing Guide
 
-Covers Tone3000 upload bundle partitioning, storefront tone pack assembly, cryptographic recipe-token manifest provenance, and multi-process batch execution.
+Covers Tone3000 upload bundle partitioning, storefront tone pack assembly, and cryptographic recipe-token manifest provenance.
 
 ## Key Modules
 - [`pack.py`](pack.py) & [`schema.py`](schema.py): Tone3000 storefront pack generation, description formatting, and Pydantic schema validation.
 - [`bundle.py`](bundle.py): Pickup position affinity partitioning (`bundles/<pickup>/`) and dry/wet stem staging.
-- [`manifest.py`](manifest.py) & [`batch.py`](batch.py): Cryptographic token provenance, audio QA telemetry verification, and `ProcessPoolExecutor` worker pools.
+- [`manifest.py`](manifest.py): Cryptographic token provenance and audio QA telemetry verification.
 - [`../naming.py`](../naming.py) & [`../version.py`](../version.py): Tone naming grammar, character budget enforcement, and tri-part semantic versioning (`v[dsp].[inst].[voice]`).
 
 ## Required Reading (Single Source of Truth)

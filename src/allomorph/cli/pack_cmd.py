@@ -20,7 +20,9 @@ def pack(
     max_samples: int | None = None,
 ) -> None:
     """Packages Tone3000 upload bundles respecting the '1 Dry + Multiple Wet Stems' constraint."""
-    resolved = resolve_targets(targets, default="packs", allow_shorthand=True)
+    resolved = resolve_targets(
+        targets, default="packs", allow_shorthand=True, shorthand_kind="pack"
+    )
     if not resolved:
         log_warning("No targets matched for tone packing.")
         return

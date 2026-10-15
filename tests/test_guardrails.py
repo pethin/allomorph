@@ -25,13 +25,12 @@ from allomorph.circuit.saturation import (
     apply_oversampled_saturation,
 )
 from allomorph.circuit.solver import compute_active_preamp_eq, smooth_soft_knee_db
+from allomorph.cli.targets import resolve_targets
 from allomorph.config.instruments import (
-    STANDARD_CATALOG_TARGETS,
     load_all_instruments,
     load_instrument,
 )
-from allomorph.config.voices import VOICES
-from allomorph.naming import get_t3k_basename, resolve_instruments, resolve_voices
+from allomorph.naming import get_t3k_basename
 from allomorph.physics.aperture import soft_clamp_displacement_ratio
 from allomorph.physics.strings import (
     INHARMONICITY_ANCHORS_BS,
@@ -199,11 +198,6 @@ def test_guardrail_5_3_transducer_taxonomy():
     """Guardrail 5.3.4: All instruments and target voicings must declare a valid physical sensor_type."""
     valid_sensors = {"magnetic", "bridge_force"}
 
-    for vid, v in VOICES.items():
-        assert v.sensor_type in valid_sensors, (
-            f"Voice {vid} had invalid sensor_type: {v.sensor_type}"
-        )
-
     all_insts = load_all_instruments()
     for inst_id, inst in all_insts.items():
         for vid, v in inst.voicings.items():
@@ -223,12 +217,12 @@ def test_guardrail_5_3_zero_silent_fallbacks():
         resolve_target_voicing("broken_voice", instrument=inst)
 
     # 2. Unknown instrument
-    with pytest.raises(ValueError, match="Unknown source instrument"):
-        resolve_instruments("ghost_bass_model")
+    with pytest.raises(ValueError, match="Unknown instrument"):
+        resolve_targets(["instrument:ghost_bass_model"], shorthand_kind="instrument")
 
-    # 3. Unknown voice
-    with pytest.raises(ValueError, match="Unknown target voice"):
-        resolve_voices("ghost_target_voice")
+    # 3. Unknown pack
+    with pytest.raises(ValueError, match="Unknown tone pack"):
+        resolve_targets(["pack:ghost_target_pack"], shorthand_kind="pack")
 
 
 def test_guardrail_5_4_small_signal_linearity():
@@ -255,10 +249,9 @@ def test_guardrail_5_4_small_signal_linearity_property(small_sig: np.ndarray) ->
 def test_guardrail_5_6_tone_naming_pedalboard_budget():
     """Guardrail 5.6: Target voice model basenames must satisfy pedalboard zero-scroll (<= 34 chars unversioned)
     and Tone3000 upload constraints (<= 64 chars versioned). Slashes must be sanitized to Unicode Division Slash."""
-    for inst_id, target_vid in STANDARD_CATALOG_TARGETS:
-        tgt_inst = load_instrument(inst_id)
-        if target_vid in tgt_inst.voicings:
-            voicing = tgt_inst.voicings[target_vid]
+    all_insts = load_all_instruments()
+    for tgt_inst in all_insts.values():
+        for voicing in tgt_inst.voicings.values():
             tone_name = voicing.tone_name or voicing.name
 
             # Unversioned stage name (single pickup or standalone)
@@ -290,8 +283,8 @@ def test_guardrail_5_3_difference_high_frequency_ceiling():
     _VOICING_CURVE_CACHE.clear()
 
     # Specifically test P/MM Parallel (Source) -> P/MM Series (Target)
-    inst_par, v_par = resolve_target_voicing("p_mm_parallel")
-    inst_ser, v_ser = resolve_target_voicing("p_mm_series")
+    inst_par, v_par = resolve_target_voicing("34in_active_pmm:pmm_parallel")
+    inst_ser, v_ser = resolve_target_voicing("34in_active_pmm:pmm_series")
     df_par = build_voice_dataframe(inst_par, v_par)
     df_ser = build_voice_dataframe(inst_ser, v_ser)
 

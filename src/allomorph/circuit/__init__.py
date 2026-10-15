@@ -10,7 +10,7 @@ from allomorph.circuit.audit import (
     AudioAuditRecord,
     AudioAuditReport,
     audit_audio_file,
-    audit_wet_audio_catalog,
+    audit_stems_audio_catalog,
 )
 from allomorph.circuit.diagnostics import (
     CALIBRATION_PEAK_CEILING,
@@ -23,6 +23,7 @@ from allomorph.circuit.diagnostics import (
 )
 from allomorph.circuit.forward import (
     AUDIO_DIR,
+    STEMS_AUDIO_DIR,
     simulate_instrument_voicing,
     simulate_pickup_transducer_branch,
     simulate_voicing_dsp,
@@ -75,6 +76,7 @@ __all__ = [
     "MAGNET_PROPERTIES",
     "MODELS_DIR",
     "REPO_ROOT",
+    "STEMS_AUDIO_DIR",
     "_HAS_NUMBA",
     "AudioAuditRecord",
     "AudioAuditReport",
@@ -92,7 +94,7 @@ __all__ = [
     "apply_oversampled_saturation",
     "apply_sweep_parameter_override",
     "audit_audio_file",
-    "audit_wet_audio_catalog",
+    "audit_stems_audio_catalog",
     "compute_active_preamp_eq",
     "compute_core_impedance",
     "compute_parametric_sweep",

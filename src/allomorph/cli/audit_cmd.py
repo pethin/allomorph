@@ -6,7 +6,7 @@ Audio QA telemetry, BS.1770-4 gated LUFS, crest factor, and true-peak clipping a
 import sys
 from pathlib import Path
 
-from allomorph.circuit.audit import audit_wet_audio_catalog
+from allomorph.circuit.audit import audit_stems_audio_catalog
 from allomorph.cli.console import log_error, log_info, log_step, log_success, render_table
 
 
@@ -16,10 +16,10 @@ def audit(
     force: bool = False,
     verbose: bool = False,
 ) -> None:
-    """Audits wet audio stems for BS.1770-4 loudness, true-peak ceiling, and clipping compliance."""
-    log_step("AUDIT", f"Auditing audio files in {audio_dir or 'audio/wet/'} (force={force})...")
+    """Audits audio stems for BS.1770-4 loudness, true-peak ceiling, and clipping compliance."""
+    log_step("AUDIT", f"Auditing audio files in {audio_dir or 'audio/stems/'} (force={force})...")
 
-    report = audit_wet_audio_catalog(audio_dir=audio_dir, force=force)
+    report = audit_stems_audio_catalog(audio_dir=audio_dir, force=force)
 
     if report.total_files == 0:
         log_info("No WAV files found to audit.")

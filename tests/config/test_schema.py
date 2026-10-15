@@ -24,9 +24,6 @@ from allomorph.config.schema import (
     SwitchConfig,
     SwitchPositionConfig,
     TonePackConfig,
-    VoiceCoilConfig,
-    VoiceConfig,
-    VoicePickupConfig,
     VoicingConfig,
 )
 
@@ -202,45 +199,6 @@ def test_pickup_and_instrument_config_validation():
                 "string_wave_speeds": [77.4, 103.4, 137.9, 184.2],
                 "pickups": {"bridge": pickup},
                 "unregistered_custom_attr": "forbidden",
-            }
-        )
-
-
-def test_voice_config_validation():
-    """Verify VoiceConfig, VoicePickupConfig, and VoiceCoilConfig validation."""
-    coil = VoiceCoilConfig(
-        position_from_bridge_m=0.0635,
-        aperture_width_in=0.75,
-    )
-    voice_pickup = VoicePickupConfig(
-        name="Bridge Single",
-        fr=3200.0,
-        Q=1.6,
-        coils=[coil],
-    )
-    voice = VoiceConfig(
-        id="03_test_voice",
-        name="Test Voice",
-        description="A test target voice",
-        fr=3200.0,
-        Q=1.6,
-        pickups=[voice_pickup],
-    )
-    assert voice.id == "03_test_voice"
-    assert voice.pickups is not None and len(voice.pickups) == 1
-
-    # Extra field forbidden on VoiceConfig
-    with pytest.raises(ValidationError):
-        VoiceConfig.model_validate(
-            {
-                "id": "03_test_voice",
-                "name": "Test Voice",
-                "description": "A test target voice",
-                "fr": 3200.0,
-                "Q": 1.6,
-                "circuit": {"topology": "single", "L": 3.2, "Rdc": 8000.0, "Reddy": 150000.0},
-                "pickups": [{"name": "Bridge Single", "fr": 3200.0, "Q": 1.6}],
-                "extra_bad_arg": "bad",
             }
         )
 
@@ -500,8 +458,8 @@ def test_voicing_config_rejects_misplaced_hardware_fields():
         assert "extra_forbidden" in str(exc_info.value)
 
 
-def test_voice_config_rejects_dead_metallurgy_fields():
-    """Verify that VoiceConfig rejects the 15 eliminated dead micro-metallurgy fields."""
+def test_voicing_config_rejects_dead_metallurgy_fields():
+    """Verify that VoicingConfig rejects the 15 eliminated dead micro-metallurgy fields."""
     dead_fields = [
         "alpha3",
         "eta_hyst",
@@ -521,13 +479,11 @@ def test_voice_config_rejects_dead_metallurgy_fields():
     ]
     for dead_field in dead_fields:
         with pytest.raises(ValidationError) as exc_info:
-            VoiceConfig.model_validate(
+            VoicingConfig.model_validate(
                 {
                     "id": "v_test",
                     "name": "Test Voice",
-                    "description": "Test",
-                    "fr": 3000.0,
-                    "Q": 1.5,
+                    "harness": "passive",
                     dead_field: 0.1,
                 }
             )

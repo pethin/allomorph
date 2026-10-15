@@ -141,7 +141,6 @@ Every playable tone on an instrument is declared under `[voicings.<id>]`:
 | :--- | :--- | :--- | :---: | :--- |
 | `name` | `string` | — | **Required** | Descriptive title (e.g. `"Vintage 1962 Open"`). |
 | `tone_name` | `string` | — | **Required** | Standardized 2-to-3 token musician label (e.g. `"Precision Vintage"`). |
-| `slug` | `string` | — | `None` | Optional canonical slug override in the global `VOICES` registry. |
 | `affinity` | `string` | — | `"neck"` | Position affinity for Tone3000 bundle partitioning: `"neck"`, `"bridge"`, or `"parallel"`. |
 | `harness` | `string` | Key | `""` | Active harness key in `[harnesses]`. |
 | `controls` | `table[float]` | $[0.0, 1.0]$ | `{}` | Map of control IDs to knob positions (e.g. `{ neck_vol = 0.99, bridge_vol = 1.0, tone = 1.0 }`). |

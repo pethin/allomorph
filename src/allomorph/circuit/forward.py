@@ -19,6 +19,10 @@ from allomorph.circuit.saturation import (
 )
 from allomorph.circuit.solver import solve_mna_harness
 from allomorph.config.geometry import compute_effective_position, resolve_pickup_coils
+from allomorph.config.resolvers import (
+    resolve_voicing_active_coils,
+    resolve_voicing_active_pickups,
+)
 from allomorph.config.scales import REPO_ROOT, resolve_scale_range
 from allomorph.config.schema import (
     CoilConfig,
@@ -29,10 +33,6 @@ from allomorph.config.schema import (
     VoicingConfig,
 )
 from allomorph.config.strings import get_instrument_string
-from allomorph.config.voices import (
-    resolve_voicing_active_coils,
-    resolve_voicing_active_pickups,
-)
 from allomorph.dsp import (
     FREQS,
     FS,
@@ -64,18 +64,18 @@ from allomorph.version import (
     compute_pcm_stem_digest,
     compute_recipe_token,
     get_dry_excitation_token,
-    is_wet_stem_valid,
+    is_stem_valid,
     resolve_tri_part_version,
     write_manifest,
 )
 
 AUDIO_DIR = REPO_ROOT / "audio"
-WET_AUDIO_DIR = AUDIO_DIR / "wet"
+STEMS_AUDIO_DIR = AUDIO_DIR / "stems"
 
 __all__ = [
     "AUDIO_DIR",
     "CALIBRATION_PEAK_CEILING",
-    "WET_AUDIO_DIR",
+    "STEMS_AUDIO_DIR",
     "compute_lufs",
     "simulate_instrument_voicing",
     "simulate_pickup_transducer_branch",
@@ -783,11 +783,7 @@ def simulate_instrument_voicing(
     """
     inst = instrument
     voicing_cfg = voicing
-    voicing_id = (
-        voicing_cfg.tone_name.lower().replace(" ", "_").replace("∕", "_").replace("/", "_")
-        if voicing_cfg.tone_name
-        else (voicing_cfg.id or "default_voicing")
-    )
+    voicing_id = voicing_cfg.id or "default_voicing"
 
     # Resolve input audio path
     in_path: Path | None = None
@@ -816,7 +812,7 @@ def simulate_instrument_voicing(
         out_path = Path(output_wav)
         out_path.parent.mkdir(parents=True, exist_ok=True)
     elif not return_audio:
-        out_path = WET_AUDIO_DIR / inst.id / f"{voicing_id}.wav"
+        out_path = STEMS_AUDIO_DIR / inst.id / f"{voicing_id}.wav"
         out_path.parent.mkdir(parents=True, exist_ok=True)
 
     # Compute deterministic recipe token for this instrument voicing
@@ -834,7 +830,7 @@ def simulate_instrument_voicing(
         inst_ver = getattr(inst, "version", 1)
         voice_ver = getattr(voicing_cfg, "version", 1)
         v_tag = resolve_tri_part_version(DSP_GENERATION, inst_ver, voice_ver)
-        if is_wet_stem_valid(
+        if is_stem_valid(
             out_path,
             expected_recipe_token=recipe_tok,
             base_dry_path=in_path,
