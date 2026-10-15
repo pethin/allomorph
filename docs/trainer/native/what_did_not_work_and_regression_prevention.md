@@ -91,10 +91,10 @@ Loudness normalization was removed from `simulate_voicing_dsp` and `simulate_ins
 ### 3.4 Failure Mode 4: Probe vs. Stem Calibration Gain Conflict
 
 #### What Was Attempted:
-Using unnormalized synthetic probes in conjunction with full-length training stems normalized to $-20.50\text{ LUFS}$ via `normalize_training_stem`.
+Using unnormalized synthetic probes in conjunction with full-length training stems normalized to $-20.50\text{ dBFS}$ RMS via `normalize_training_stem`.
 
 #### Why It Failed (Severe Fizz on Bridge Pickups):
-Target wet stems on bridge pickups (such as `StingRay Parallel`) have smaller physical string displacement excursion ($\eta = x/L \approx 66\text{ mm} / 864\text{ mm} = 0.076$) compared to split-P neck pickups ($\eta \approx 125\text{ mm} / 864\text{ mm} = 0.145$). To normalize the bridge stem to $-20.50\text{ LUFS}$ during training, `normalize_training_stem` applies a calibrated digital boost of **$+8.22\text{ dB}$**.
+Target wet stems on bridge pickups (such as `StingRay Parallel`) have smaller physical string displacement excursion ($\eta = x/L \approx 66\text{ mm} / 864\text{ mm} = 0.076$) compared to split-P neck pickups ($\eta \approx 125\text{ mm} / 864\text{ mm} = 0.145$). To normalize the bridge stem to $-20.50\text{ dBFS}$ RMS during training, `normalize_training_stem` applies a calibrated digital boost of **$+8.22\text{ dB}$**.
 
 However, synthetic probe slices generated through `simulate_voicing_dsp` carried raw physical transfer gain without the $+8.22\text{ dB}$ stage calibration boost:
 - When learning from audio sweeps, the model was penalized if it did not amplify by $+8.22\text{ dB}$.
@@ -104,7 +104,7 @@ However, synthetic probe slices generated through `simulate_voicing_dsp` carried
 #### The Fix:
 Dynamically calibrate probe gain in [`engine.py`](../../../src/allomorph/trainer/native/engine.py):
 $$\text{probe\_gain\_correction} = \frac{\text{stem\_gain\_ratio}}{\text{raw\_dsp\_gain\_ratio}} = \frac{\text{rms}(y_{\text{train}}) / \text{rms}(x_{\text{train}})}{\text{rms}(c_{\text{tgt}}) / \text{rms}(c_{\text{src}})}$$
-Multiplying synthetic probe targets by `probe_gain_correction` guarantees bit-exact gain coherence ($0.00\text{ dB}$ conflict) between audio sweeps and chime probes, eliminating LeakyReLU kinks and dropping air noise on guitar harmonics to $\le -55.3\text{ dBc}$.
+Multiplying synthetic probe targets by `probe_gain_correction` guarantees bit-exact gain coherence ($0.00\text{ dB}$ conflict) between audio sweeps and chime probes (where $\text{stem\_gain\_ratio} = 1.00$ under RMS stem normalization), eliminating LeakyReLU kinks and dropping air noise on guitar harmonics to $\le -55.3\text{ dBc}$.
 
 ---
 

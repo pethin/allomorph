@@ -1,15 +1,15 @@
 {
   "bundle": "parallel",
-  "recipe_token": "alo_bun_18fb6cabfb13de9fae1c57575eb16b63c0c33e867c707bf03b4f8e13ac7ef07e",
+  "recipe_token": "alo_bun_e15ed1dce6b838060110d29532e13f30b7c27117b199af9fd94937adbca5c0a0",
   "source": "34in_active_emg:pair_parallel",
   "position_name": "Parallel",
   "base_dry_file": "input.wav",
-  "base_dry_token": "alo_dry_7fec1022a087e0f354853c022431aea42cf43b08a237db1c6b3f9b1c67dc52bf",
-  "base_dry_recipe_token": "alo_dryrec_1dee8abb9871ffc254481f6c39e9028000c60419d5ae944d440548aef440b909",
+  "base_dry_token": "alo_dry_891a0d5650ab0e9d897d36e584180a6a2dd4c0652a252ebe5ad6cf589d62dd37",
+  "base_dry_recipe_token": "alo_dryrec_1a9431f5085c7cfb3d73dc284983b967034111a8ae80406c864e053f31fff744",
   "dry_file": "dry v7.1.1.wav",
   "dry_version": "v7.1.1",
-  "dry_recipe_token": "alo_rec_9e40c4a88b0778d046bc0ec790db061241731ed10fedc068915d6848cd83c733",
-  "dry_digest_token": "alo_stem_17c1354e74e1f2f2229dabadb1f7660e4ac7880b5a78f9c664ed74514c2112b2",
+  "dry_recipe_token": "alo_rec_6459ed8913b62657282a5f3bb18a4f02d9391586ebe9d6e2cf8c448d91868b90",
+  "dry_digest_token": "alo_stem_5c2f9e57e5fc6a1ce515725cf429538982f6aa63863d76153785dc03f72deb9c",
   "instrument_id": "34in_active_emg",
   "instrument_version": 1,
   "source_voicing_version": 1,
@@ -22,8 +22,8 @@
       "target_voicing_version": 1,
       "version": "v7.1.1",
       "tone_name": "Jazz Pair Open",
-      "recipe_token": "alo_rec_9058135109538a83002460983b32377b9f71be073854ef184e9bb6a9d95627c3",
-      "digest_token": "alo_stem_20fd8c116e0ff7dbd910bfd0d5c9123b2e7a5f78b13c814da52650c0c08f0a2b"
+      "recipe_token": "alo_rec_b8320bf4a730dc8b660bf1ed7e42f525d5605d90a4b01758204c845673194e07",
+      "digest_token": "alo_stem_2cbff0eb292d45976719f5616748b80578f8c06fe3da85c7ac17b6f221f09608"
     },
     {
       "filename": "Jazz Pair Active [Parallel] v7.1.1.wav",
@@ -32,8 +32,8 @@
       "target_voicing_version": 1,
       "version": "v7.1.1",
       "tone_name": "Jazz Pair Active",
-      "recipe_token": "alo_rec_2e0c1f6b515af4d570cf75aa07fe67a85ae92224cc07f8af2d77a2a042f91ff5",
-      "digest_token": "alo_stem_49dc859bf8488a7ea35675c85da254212abc0df2d120b08052bc38fe58e0191b"
+      "recipe_token": "alo_rec_112e5e8c78b709053168d78e856d76bdb3325f8563c84f249716240aefc1a104",
+      "digest_token": "alo_stem_5322f14183d80dec609ef66d75f1b5debcc86e385a8349b8c79ebae755c26c94"
     },
     {
       "filename": "Rickenbacker Vintage [Parallel] v7.1.1.wav",
@@ -42,8 +42,8 @@
       "target_voicing_version": 1,
       "version": "v7.1.1",
       "tone_name": "Rickenbacker Vintage",
-      "recipe_token": "alo_rec_8cc974d9c845ddddbf8d16e802509383b1728a1c273865f4f8d860e1638c2958",
-      "digest_token": "alo_stem_d3190610cd8cd118b1da9405dfb6fd6c9845d3b31da4c5180451eca8586fcda6"
+      "recipe_token": "alo_rec_b7e283075cce3890dda02d80bb543df342f1348ba2b32ff063dfd153ed7a7b60",
+      "digest_token": "alo_stem_50ef6e81f3e8e95e9f307ac8546a8ac7bc01c18f508f0b7cab281e0ac4b4ddb0"
     },
     {
       "filename": "P\u2215MM Parallel [Parallel] v7.1.1.wav",
@@ -52,8 +52,8 @@
       "target_voicing_version": 1,
       "version": "v7.1.1",
       "tone_name": "P\u2215MM Parallel",
-      "recipe_token": "alo_rec_0da6278e2121637b2af0325c371fbd9edcbdec9122401d2dc565d09815448aa3",
-      "digest_token": "alo_stem_8b9b9e00ac95a5da3e879543a9b2b5ab0510d4265d4de031ff96012128d4e5e4"
+      "recipe_token": "alo_rec_6c6d6d8f6d0e36b88a4aca9835c369eb948d68da94e38db9aa3894db32537218",
+      "digest_token": "alo_stem_3d81944f63660022b7b6eaaad5a04b0689ab3f4e05403e8276eb3c8cfd8f6832"
     },
     {
       "filename": "P\u2215MM Series [Parallel] v7.1.1.wav",
@@ -62,8 +62,8 @@
       "target_voicing_version": 1,
       "version": "v7.1.1",
       "tone_name": "P\u2215MM Series",
-      "recipe_token": "alo_rec_c62dd1f52c32ea067739038ae5b50a74a9bb3508ef9b54ad052bb3d66287383c",
-      "digest_token": "alo_stem_3118536185370d95d46194ad48292aa47ee94f3c09f7dc4e47fa5fdf9d838184"
+      "recipe_token": "alo_rec_e2db3f29eb0ec32aa610bf1139e76412d393376c7e7a5f814bebbb5a04b6d364",
+      "digest_token": "alo_stem_ea463c9840c625479d00f6950fe79daa89866ea33c6861df4d47d91e1b0a12e9"
     },
     {
       "filename": "PJ Active [Parallel] v7.1.1.wav",
@@ -72,8 +72,8 @@
       "target_voicing_version": 1,
       "version": "v7.1.1",
       "tone_name": "PJ Active",
-      "recipe_token": "alo_rec_8e999456d6fef3848e08b4a70000141da42938404b3a565fec2a4efffca2b44b",
-      "digest_token": "alo_stem_ee7e967112276729f188e71dde5fdf9a9d4c1bdca426da41563523c6b259b703"
+      "recipe_token": "alo_rec_01828f3ed12992723c12ec057588d832ca1f81d71eb3e60b89f37efb2d5fcfb3",
+      "digest_token": "alo_stem_2bef654f16d4695cb3b4a72cb82416c14d1f92bbd1e9b7c4a535777438650eda"
     },
     {
       "filename": "PJ Passive [Parallel] v7.1.1.wav",
@@ -82,8 +82,8 @@
       "target_voicing_version": 1,
       "version": "v7.1.1",
       "tone_name": "PJ Passive",
-      "recipe_token": "alo_rec_d3a22ea94ee208a9eb31b68df2e9aa0bd664b46ee9973a19974157c88d582ec2",
-      "digest_token": "alo_stem_ac5e6f41ed4d6549568a22f9c72ff51dd7eede7af40f9e7b255d59cd6e93192e"
+      "recipe_token": "alo_rec_828c829dad09688bbc8866274b0caeb8243e62c0e862060d59ebcf62eb7b5bf1",
+      "digest_token": "alo_stem_fdbbbf43393ac24611ab907d63120b0606c815e90193f39d6b4f342c11420527"
     },
     {
       "filename": "Dingwall Parallel [Parallel] v7.1.1.wav",
@@ -92,8 +92,8 @@
       "target_voicing_version": 1,
       "version": "v7.1.1",
       "tone_name": "Dingwall Parallel",
-      "recipe_token": "alo_rec_5bd89ee896c0a6fd831235c21aa51515b8cf493d857aa517d6dd3bc602d7b31f",
-      "digest_token": "alo_stem_ad72f5656b30399cf858782156fdbb0a5c7cec2cf755bf82ed61a0134a8cb619"
+      "recipe_token": "alo_rec_54a0ff6123593a15ea4c094649342125773888d50fb4d8df91df2cf83c4d2e9a",
+      "digest_token": "alo_stem_9e49a3a5de40bb21ea514a7c8cdedc905a418c9c3271c7ba5a16902c4f9b2ef0"
     }
   ]
 }

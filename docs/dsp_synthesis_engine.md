@@ -90,12 +90,12 @@ The engine synthesizes five distinct playing techniques:
 
 ---
 
-## 5. ITU-R BS.1770-4 Loudness Matching & Peak Safety (`loudness.py`)
+## 5. Broadband RMS Level Calibration, ITU-R BS.1770-4 Telemetry & Peak Safety (`conditioning.py`, `loudness.py`)
 
-### 5.1 The NAM Training Loudness Reference Standard ($-20.50\text{ LUFS}$)
+### 5.1 The NAM Training Broadband RMS Reference Standard ($-20.50\text{ dBFS}$ RMS)
 
-All dry excitation tracks (`audio/input.wav`) and NAM training stems (normalized at the start of training via `normalize_training_stem`) are leveled to the official NAM reference standard:
-$$\text{Target Integrated Loudness} = -20.50\text{ LUFS}$$
+All dry excitation tracks (`audio/input.wav`) and NAM training stems (normalized at the start of training via `normalize_training_stem`) are leveled to the broadband RMS reference standard (`TARGET_RMS_DBFS`) so Block 1 Digital Twins maintain exact $0.00\text{ dB}$ broadband voltage gain staging into downstream pedalboard blocks:
+$$\text{Target Broadband RMS Level} = -20.50\text{ dBFS RMS}$$
 $$\text{True-Peak Safety Ceiling} = 0.9900\text{ (}-0.09\text{ dBFS)}$$
 
 ### 5.2 K-Weighted Integrated Loudness Algorithm

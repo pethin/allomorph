@@ -12,14 +12,12 @@ Decomposed into 8 pure, property-testable segment generators:
 """
 
 import json
-import math
 from pathlib import Path
 
 import numpy as np
 
-from allomorph.dsp.constants import FS, TARGET_LUFS, apply_cinf_fades
+from allomorph.dsp.constants import FS, TARGET_RMS_DBFS, apply_cinf_fades
 from allomorph.dsp.io import write_wav_24bit
-from allomorph.dsp.loudness import compute_lufs
 from allomorph.dsp.plucks import (
     _synth_dyad,
     _synth_ghost_note,
@@ -424,17 +422,12 @@ def generate_optimal_bass_dry(
         active_mean = float(np.mean(audio[active_mask]))
         audio[active_mask] -= active_mean
 
-    # Level scaling (ITU-R BS.1770-4 gated loudness calibration when target_rms_dbfs is specified)
+    # Broadband RMS level calibration when target_rms_dbfs is specified
     if target_rms_dbfs is not None:
-        current_lufs = compute_lufs(audio, sample_rate=sample_rate)
-        if math.isfinite(current_lufs) and current_lufs > -100.0:
-            gain = 10.0 ** ((target_rms_dbfs - current_lufs) / 20.0)
-            audio = audio * gain
-        else:
-            target_rms = 10.0 ** (target_rms_dbfs / 20.0)
-            current_rms = float(np.sqrt(np.mean(audio**2)))
-            if current_rms > 0:
-                audio = audio * (target_rms / current_rms)
+        target_rms = 10.0 ** (target_rms_dbfs / 20.0)
+        current_rms = float(np.sqrt(np.mean(audio**2)))
+        if current_rms > 0:
+            audio = audio * (target_rms / current_rms)
         current_peak = float(np.max(np.abs(audio)))
         ceiling = 10.0 ** (peak_dbfs / 20.0)
         if current_peak > ceiling:
@@ -537,7 +530,7 @@ def ensure_input_audio_wav(
     duration_sec: float = 240.0,
     sample_rate: int = FS,
     peak_dbfs: float = -1.0,
-    target_rms_dbfs: float | None = TARGET_LUFS,
+    target_rms_dbfs: float | None = TARGET_RMS_DBFS,
     overwrite: bool = False,
     version_tag: str | None = None,
     no_manifest: bool = False,

@@ -188,7 +188,7 @@ def test_export_tone_pack_parallel_bundles_and_cached_stems(
             val = 0.35 if is_dry else 0.85
             samples = np.array([0.0, val, -val], dtype=np.float32)
             write_wav_24bit(p, samples, sample_rate=48000)
-            from allomorph.version import compute_recipe_token
+            from allomorph.version import compute_recipe_token, resolve_tri_part_version
 
             recipe_tok = compute_recipe_token(
                 instrument=instrument,
@@ -199,7 +199,7 @@ def test_export_tone_pack_parallel_bundles_and_cached_stems(
                 p.parent,
                 "sim",
                 [p],
-                version_tag="v6.1.1",
+                version_tag=resolve_tri_part_version(),
                 base_dry_file=mini_dry_audio.name,
                 recipe_token=recipe_tok,
             )

@@ -477,7 +477,7 @@ def train_voice_stock(
         tone_type="clean",
     )
 
-    print("Validating dataset and calibrating stems to -20.50 LUFS...")
+    print("Validating dataset and calibrating stems to -20.50 dBFS RMS...")
     from allomorph.dsp.io import read_wav, write_wav_24bit
 
     ref_audio, ref_sr = read_wav(reference_path, dtype=np.float64)

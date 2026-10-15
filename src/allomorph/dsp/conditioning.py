@@ -11,7 +11,7 @@ from typing import Literal, overload
 import numpy as np
 import pedalboard
 
-from allomorph.dsp.constants import CALIBRATION_PEAK_CEILING, FS, TARGET_LUFS
+from allomorph.dsp.constants import CALIBRATION_PEAK_CEILING, FS, TARGET_LUFS, TARGET_RMS_DBFS
 from allomorph.dsp.convolution import fft_convolve
 from allomorph.dsp.fir import synthesize_minimum_phase_fir
 from allomorph.dsp.io import compute_true_peak
@@ -20,6 +20,7 @@ from allomorph.dsp.loudness import compute_lufs
 __all__ = [
     "CALIBRATION_PEAK_CEILING",
     "TARGET_LUFS",
+    "TARGET_RMS_DBFS",
     "apply_calibrated_normalization",
     "apply_dc_block",
     "apply_johnson_dither",
@@ -126,7 +127,17 @@ def apply_calibrated_normalization(
     filtered = audio.copy()
     final_lufs: float = -100.0
 
-    if mode in ("auto", "lufs"):
+    if mode in ("auto", "rms"):
+        target_rms = (
+            10.0 ** (float(target_dbfs) / 20.0)
+            if target_dbfs is not None
+            else float(np.sqrt(np.mean(ref_mono**2)))
+        )
+        cur_rms = float(np.sqrt(np.mean(filtered**2)))
+        if cur_rms > 1e-9:
+            scale_rms = target_rms / cur_rms
+            filtered = filtered * scale_rms
+    elif mode == "lufs":
         in_lufs = (
             ref_lufs if ref_lufs is not None else compute_lufs(ref_mono, sample_rate=sample_rate)
         )
@@ -151,16 +162,6 @@ def apply_calibrated_normalization(
                 final_lufs = (
                     cur_lufs + 20.0 * math.log10(scale_rms) if not math.isinf(cur_lufs) else -100.0
                 )
-    elif mode == "rms":
-        target_rms = (
-            10.0 ** (float(target_dbfs) / 20.0)
-            if target_dbfs is not None
-            else float(np.sqrt(np.mean(ref_mono**2)))
-        )
-        cur_rms = float(np.sqrt(np.mean(filtered**2)))
-        if cur_rms > 1e-9:
-            scale_rms = target_rms / cur_rms
-            filtered = filtered * scale_rms
     elif mode == "peak":
         target_peak = (
             10.0 ** (float(target_dbfs) / 20.0)
@@ -186,7 +187,7 @@ def apply_calibrated_normalization(
         final_tp = float(np.max(np.abs(filtered)))
 
     if return_metadata:
-        if mode not in ("auto", "lufs") and (math.isinf(final_lufs) or final_lufs == -100.0):
+        if mode != "lufs" and (math.isinf(final_lufs) or final_lufs == -100.0):
             final_lufs = compute_lufs(filtered, sample_rate=sample_rate)
         final_tp_dbfs = 20.0 * math.log10(max(final_tp, 1e-12))
         return filtered, {

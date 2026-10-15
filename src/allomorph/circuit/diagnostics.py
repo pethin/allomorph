@@ -69,6 +69,15 @@ class AudioAuditReport(BaseModel):
     total_files: int = Field(description="Total files audited")
     valid_files: int = Field(description="Files passing all telemetry invariants")
     clipped_files: int = Field(description="Files exceeding the true-peak ceiling")
+    mean_rms_dbfs: float | None = Field(
+        default=None, description="Average RMS level in dBFS across audited files"
+    )
+    min_rms_dbfs: float | None = Field(
+        default=None, description="Minimum RMS level in dBFS in catalog"
+    )
+    max_rms_dbfs: float | None = Field(
+        default=None, description="Maximum RMS level in dBFS in catalog"
+    )
     mean_lufs: float | None = Field(default=None, description="Average LUFS across valid files")
     min_lufs: float | None = Field(default=None, description="Minimum LUFS in catalog")
     max_lufs: float | None = Field(default=None, description="Maximum LUFS in catalog")
@@ -164,6 +173,9 @@ def aggregate_audit_report(records: Sequence[AudioAuditRecord]) -> AudioAuditRep
             total_files=0,
             valid_files=0,
             clipped_files=0,
+            mean_rms_dbfs=None,
+            min_rms_dbfs=None,
+            max_rms_dbfs=None,
             mean_lufs=None,
             min_lufs=None,
             max_lufs=None,
@@ -174,6 +186,11 @@ def aggregate_audit_report(records: Sequence[AudioAuditRecord]) -> AudioAuditRep
 
     valid_count = sum(1 for r in records if r.is_valid)
     clipped_count = sum(1 for r in records if r.has_clipping)
+
+    rms_dbs = [r.rms_dbfs for r in records if math.isfinite(r.rms_dbfs)]
+    mean_rms = float(np.mean(rms_dbs)) if rms_dbs else None
+    min_rms = min(rms_dbs) if rms_dbs else None
+    max_rms = max(rms_dbs) if rms_dbs else None
 
     valid_lufs = [r.lufs for r in records if r.lufs is not None]
     mean_lufs = float(np.mean(valid_lufs)) if valid_lufs else None
@@ -188,6 +205,9 @@ def aggregate_audit_report(records: Sequence[AudioAuditRecord]) -> AudioAuditRep
         total_files=total,
         valid_files=valid_count,
         clipped_files=clipped_count,
+        mean_rms_dbfs=round(mean_rms, 2) if mean_rms is not None else None,
+        min_rms_dbfs=round(min_rms, 2) if min_rms is not None else None,
+        max_rms_dbfs=round(max_rms, 2) if max_rms is not None else None,
         mean_lufs=round(mean_lufs, 2) if mean_lufs is not None else None,
         min_lufs=round(min_lufs, 2) if min_lufs is not None else None,
         max_lufs=round(max_lufs, 2) if max_lufs is not None else None,

@@ -84,6 +84,10 @@ def test_audit_stems_audio_catalog_manifest_and_fallback(tmp_path: Path) -> None
     assert report.total_files == 2
     assert report.valid_files == 2
     assert report.clipped_files == 0
+    assert report.mean_rms_dbfs is not None
+    assert report.min_rms_dbfs is not None
+    assert report.max_rms_dbfs is not None
+    assert abs(report.mean_rms_dbfs - (-9.03)) < 0.20
     assert report.mean_lufs is not None
     assert len(report.records) == 2
 
@@ -100,4 +104,5 @@ def test_audit_stems_audio_catalog_empty(tmp_path: Path) -> None:
     report = audit_stems_audio_catalog(audio_dir=empty_dir)
     assert report.total_files == 0
     assert report.valid_files == 0
+    assert report.mean_rms_dbfs is None
     assert report.records == []

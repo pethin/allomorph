@@ -340,19 +340,19 @@ def normalize_training_stem(
     audio: np.ndarray,
     sample_rate: int = 48000,
 ) -> np.ndarray:
-    """Normalizes an unnormalized source or target training stem to TARGET_LUFS (-20.50 LUFS)
+    """Normalizes an unnormalized source or target training stem to TARGET_RMS_DBFS (-20.50 dBFS RMS)
     bounded by CALIBRATION_PEAK_CEILING (0.9900) for NAM training.
     """
     from allomorph.dsp.conditioning import (
         CALIBRATION_PEAK_CEILING,
-        TARGET_LUFS,
+        TARGET_RMS_DBFS,
         apply_calibrated_normalization,
     )
 
     return apply_calibrated_normalization(
         np.asarray(audio, dtype=np.float64),
-        mode="lufs",
-        target_dbfs=TARGET_LUFS,
+        mode="rms",
+        target_dbfs=TARGET_RMS_DBFS,
         sample_rate=sample_rate,
         peak_ceiling=CALIBRATION_PEAK_CEILING,
         return_metadata=False,

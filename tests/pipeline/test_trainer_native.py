@@ -413,20 +413,25 @@ def test_native_default_hyperparameters_and_isolation() -> None:
 
 
 def test_normalize_training_stem_calibrates_unnormalized_stems() -> None:
-    """Verifies normalize_training_stem calibrates arbitrary unnormalized stems to TARGET_LUFS (-20.50 LUFS)."""
-    from allomorph.dsp import TARGET_LUFS, compute_lufs, compute_true_peak
+    """Verifies normalize_training_stem calibrates arbitrary unnormalized stems to TARGET_RMS_DBFS (-20.50 dBFS RMS)."""
+    import math
+
+    from allomorph.dsp import TARGET_RMS_DBFS, compute_true_peak
     from allomorph.dsp.conditioning import CALIBRATION_PEAK_CEILING
     from allomorph.trainer import normalize_training_stem
 
     sr = 48000
     t = np.linspace(0, 2.0, sr * 2, endpoint=False, dtype=np.float64)
-    quiet_stem = 0.02 * np.sin(2.0 * np.pi * 220.0 * t)
-    loud_stem = 0.60 * np.sin(2.0 * np.pi * 220.0 * t)
+    quiet_sub_stem = 0.02 * np.sin(2.0 * np.pi * 80.0 * t)
+    loud_clank_stem = 0.60 * np.sin(2.0 * np.pi * 3000.0 * t)
 
-    norm_quiet = normalize_training_stem(quiet_stem, sample_rate=sr)
-    norm_loud = normalize_training_stem(loud_stem, sample_rate=sr)
+    norm_quiet = normalize_training_stem(quiet_sub_stem, sample_rate=sr)
+    norm_loud = normalize_training_stem(loud_clank_stem, sample_rate=sr)
 
-    assert abs(compute_lufs(norm_quiet, sample_rate=sr) - TARGET_LUFS) < 0.05
-    assert abs(compute_lufs(norm_loud, sample_rate=sr) - TARGET_LUFS) < 0.05
+    rms_quiet_dbfs = 20.0 * math.log10(float(np.sqrt(np.mean(norm_quiet**2))))
+    rms_loud_dbfs = 20.0 * math.log10(float(np.sqrt(np.mean(norm_loud**2))))
+
+    assert abs(rms_quiet_dbfs - TARGET_RMS_DBFS) < 1e-3
+    assert abs(rms_loud_dbfs - TARGET_RMS_DBFS) < 1e-3
     assert compute_true_peak(norm_quiet, sample_rate=sr) <= CALIBRATION_PEAK_CEILING + 1e-4
     assert compute_true_peak(norm_loud, sample_rate=sr) <= CALIBRATION_PEAK_CEILING + 1e-4

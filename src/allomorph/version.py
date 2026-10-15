@@ -117,7 +117,7 @@ def compute_excitation_recipe_token(
         "sample_rate": sample_rate,
         "duration_sec": duration_sec,
         "recipe_tag": tag,
-        "target_lufs": -20.50,
+        "target_rms_dbfs": -20.50,
     }
     raw = json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("utf-8")
     return f"alo_dryrec_{hashlib.sha256(raw).hexdigest()}"

@@ -248,8 +248,11 @@ class AllomorphWaveNetA2(nn.Module):
     def _get_mask_tensors(self) -> tuple[list[torch.Tensor], list[torch.Tensor]]:
         if (
             self._cached_mask_weights is None
+            or self._cached_mask_masks is None
             or len(self._cached_mask_weights) == 0
+            or len(self._cached_mask_masks) == 0
             or self._cached_mask_weights[0].device != self.head_rechannel.weight.device
+            or self._cached_mask_masks[0].device != self.head_rechannel.weight.device
         ):
             w_list: list[torch.Tensor] = []
             m_list: list[torch.Tensor] = []

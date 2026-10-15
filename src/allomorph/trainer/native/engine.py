@@ -364,7 +364,7 @@ def train_voice_native(
         )
         print("-------------------------------------------------------", flush=True)
 
-    # 9. In-VRAM Zero-Copy Audio Loading & Loudness Calibration (-20.50 LUFS)
+    # 9. In-VRAM Zero-Copy Audio Loading & RMS Level Calibration (-20.50 dBFS RMS)
     x_full, sr_x = load_audio_tensor(reference_path)
     y_full, sr_y = load_audio_tensor(output_path)
 

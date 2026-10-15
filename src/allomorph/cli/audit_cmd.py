@@ -30,6 +30,16 @@ def audit(
         ["Total Files", str(report.total_files)],
         ["Compliant Files", str(report.valid_files)],
         ["Clipped Files", str(report.clipped_files)],
+        [
+            "Mean RMS",
+            f"{report.mean_rms_dbfs:.2f} dBFS" if report.mean_rms_dbfs is not None else "N/A",
+        ],
+        [
+            "Min / Max RMS",
+            f"{report.min_rms_dbfs:.2f} / {report.max_rms_dbfs:.2f} dBFS"
+            if report.min_rms_dbfs is not None and report.max_rms_dbfs is not None
+            else "N/A",
+        ],
         ["Mean LUFS", f"{report.mean_lufs:.2f} LUFS" if report.mean_lufs is not None else "N/A"],
         [
             "Min / Max LUFS",
@@ -49,6 +59,7 @@ def audit(
                 detail_rows.append(
                     [
                         r.file_name,
+                        f"{r.rms_dbfs:.2f} dBFS",
                         f"{r.lufs:.2f}" if r.lufs is not None else "N/A",
                         f"{r.true_peak_dbfs:.2f} dBFS",
                         f"{r.crest_factor_db:.2f} dB",
@@ -58,7 +69,7 @@ def audit(
         if detail_rows:
             render_table(
                 "Audio File Details",
-                headers=["File", "LUFS", "True Peak", "Crest Factor", "Status"],
+                headers=["File", "RMS (dBFS)", "LUFS", "True Peak", "Crest Factor", "Status"],
                 rows=detail_rows,
                 border_style="red" if report.clipped_files > 0 else "dim",
             )

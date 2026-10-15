@@ -43,6 +43,7 @@ NYQ = FS / 2.0
 FREQS = [i * (NYQ / (NUM_TAPS - 1)) for i in range(NUM_TAPS)]
 
 TARGET_LUFS: float = -20.50  # ITU-R BS.1770-4 NAM reference loudness standard
+TARGET_RMS_DBFS: float = -20.50  # Calibrated NAM training stem RMS reference standard (-20.50 dBFS)
 CALIBRATION_PEAK_CEILING: float = 0.9900  # -0.09 dBFS true-peak safety ceiling
 
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent.parent
