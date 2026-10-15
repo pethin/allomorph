@@ -303,7 +303,7 @@ def test_ultra2_pj_and_pure_passive_p_configurations():
     assert "modern_active" not in inst_p.voicings
     assert set(inst_p.voicings.keys()) == {
         "vintage_open",
-        "vintage_mids",
+        "slab_51",
         "vintage_warm",
         "slab_dub",
     }

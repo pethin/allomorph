@@ -7,7 +7,7 @@ version = 1
 storefront_description = """
 ALLOMORPH: ACTIVE STINGRAY BASS EDITION
 
-Transform your active Music Man StingRay (4 or 5-string) or Sterling Ray34/Ray35/Ray4/Ray5 bass into 23 legendary vintage passive, modern active, progressive rock, and acoustic pickup configurations.
+Transform your active Music Man StingRay (4 or 5-string) or Sterling Ray34/Ray35/Ray4/Ray5 bass into 25 legendary vintage passive, modern active, progressive rock, and acoustic pickup configurations.
 
 
 OVERVIEW
@@ -44,7 +44,7 @@ QUICK INSTRUMENT SETUP
 Plug straight in. Because the StingRay features a single bridge sweet-spot humbucker, all target models map directly to your physical humbucker. All pickup positioning, pot loading, tone capacitor shaping, and active preamp EQs are handled automatically by the models.
 
 
-THE 23 DIGITAL TWIN VOICINGS
+THE 25 DIGITAL TWIN VOICINGS
 
 
 Precision Bass & Tone Shaper Family
@@ -52,11 +52,11 @@ Precision Bass & Tone Shaper Family
 01. Precision Vintage
 The gold standard: a vintage 1962 Precision Bass with tone wide open. Warm, woody low-mids, open harmonic bloom, and organic touch sensitivity that sits perfectly in any mix.
 
-02. Precision Active
-Fender American Ultra II active split-coil P-bass tone with 18V 3-band active preamp. Punchy, articulate, and wideband with authoritative low-end weight and bright transient clarity—built for modern rock, gospel, and mix cutting authority.
+02. Precision 51 Slab
+Original 1951–1956 single-coil Precision pickup on roundwound strings. Raw, uncompressed, biting single-coil growl and open top-end snap (Sting / Dusty Hill).
 
-03. Precision Mids
-Vintage P-bass with a modern vocal low-mid punch. Cuts finger clatter and high-end sizzle while keeping a muscular, forward presence in a busy mix.
+03. Precision Active
+Fender American Ultra II active split-coil P-bass tone with 18V 3-band active preamp. Punchy, articulate, and wideband with authoritative low-end weight and bright transient clarity—built for modern rock, gospel, and mix cutting authority.
 
 04. Precision Warm
 The legendary Motown flatwound sound (James Jamerson / Pino Palladino). Fat, pillowy sub-bass thump with rolled-off highs that glues the groove together.
@@ -73,14 +73,14 @@ The quintessential NYC active slap tone: tight, massive sub-bass and crisp, glas
 07. Jazz Pair Open
 The golden-era '60s Jazz Bass sound. Both pickups wide open deliver that iconic hollow midrange scoop, warm low-mids, and smooth, singing top-end.
 
-08. Jazz Pair Mids
-Jazz Bass pair with a vocal midrange punch. Thickens up your fingerstyle attack and smooths out harsh fret clank while keeping every note articulate.
-
-09. Jazz Bridge Growl
+08. Jazz Bridge Growl
 The unmistakable Jaco Pastorius tone: rolling the neck volume back just a touch unlocks that singing, vocal, honky bridge growl without losing low-end body.
 
-10. Jazz Bridge Open
+09. Jazz Bridge Open
 Solo '60s bridge single-coil. Tight, laser-focused midrange bite and percussive attack, perfect for 16th-note funk and fast staccato fingerstyle.
+
+10. Jazz Bridge 70s
+Solo '70s bridge single-coil positioned 0.4" closer to the bridge saddle (53.3mm datum). Tighter fundamental and cutting upper-mid harmonics for aggressive rock growl (Geddy Lee) and staccato funk bite (Marcus Miller).
 
 11. Jazz Neck Warm
 Solo '60s neck single-coil. Deep, warm, and round with a woody low-end bloom that rivals a P-bass while retaining single-coil openness.
@@ -109,31 +109,37 @@ Progressive & Classic Rock Legends
 16. Rickenbacker Clank
 The quintessential prog-rock clank (Chris Squire / Geddy Lee). Tight, lean low end with biting, aggressive pick attack and cutting upper-mid grit.
 
-17. Rickenbacker Open
-Modern 4003 bridge tone with the vintage capacitor bypassed. Fuller low-end body and punch while retaining that signature biting Rickenbacker top-end cut.
+17. Rickenbacker Vintage
+Authentic vintage 4001 dual-pickup circuit with the 4.7nF high-pass capacitor engaged on the bridge pickup. Combines full-range neck sub-bass with biting bridge clank while eliminating 500 Hz phase cancellation.
 
-18. Dingwall Bridge
+18. Rickenbacker Neck
+Solo Rickenbacker neck single-coil positioned at the 24th-fret harmonic node (210mm from bridge). Deep, pillowy, woody low-end bloom (Paul McCartney / Al Cisneros).
+
+19. Dingwall Bridge
 Modern progressive metal tone: razor-sharp pick clank, extreme note clarity, and piano-like low-B definition tailored for drop tunings and heavy distortion.
 
-19. Dingwall Middle
+20. Dingwall Middle
 FD3 middle pickup solo: focused, aggressive low-mid grunt and punchy growl with exceptional articulation across all registers.
 
-20. Dingwall Parallel
+21. Dingwall Parallel
 FD3 bridge and middle coils in parallel: modern scooped aggression with ultra-fast transient attack, tight sub-bass, and pristine harmonic sparkle.
 
-21. Mudbucker Deep
+22. Mudbucker Deep
 The legendary Gibson "Mudbucker": a dark, colossal wall of pure vintage bass rumble with zero top-end harshness—pure '60s and '70s British blues-rock.
+
+23. Mudbucker Baritone
+Authentic Gibson EB-2 / EB-3 Baritone choke filter (2.5H inductor + 22nF capacitor). Attenuates sub-bass mud below 200 Hz to focus a snarling, vocal midrange rock bark (Jack Bruce / Cream).
 
 
 Acoustic Transducers
 
-22. Upright Piezo
+24. Upright Piezo
 Acoustic upright double bass: transforms your electric bass into a woody, resonant acoustic upright with natural body thump and organic finger feel. Pair with 3 Sigma Audio "Acoustic Upright Standard" AST IRs in your cabinet loader for authentic soundboard acoustic bloom.
 
 
 Music Man StingRay Family
 
-23. StingRay Series
+25. StingRay Series
 StingRay wired in series for a hotter, thicker signal with punchy low-mids and an aggressive, in-your-face rock bark.
 """
 
@@ -142,26 +148,28 @@ name = "bridge"
 source = "34in_active_stingray:parallel_classic"
 targets = [
     "34in_standard_p:vintage_open",
+    "34in_standard_p:slab_51",
     "34in_standard_pj:neck_active",
-    "34in_standard_p:vintage_mids",
     "34in_standard_p:vintage_warm",
     "34in_standard_p:slab_dub",
     "34in_standard_jazz:pair_active",
     "34in_standard_jazz:pair_open",
-    "34in_standard_jazz:pair_mids",
     "34in_standard_jazz:bridge_growl",
     "34in_standard_jazz:bridge_open",
+    "34in_standard_jazz:bridge_70s",
     "34in_standard_jazz:neck_warm",
     "34in_active_pmm:pmm_parallel",
     "34in_active_pmm:pmm_series",
     "34in_standard_pj:pair_active",
     "34in_standard_pj:pair_parallel",
     "33in_rickenbacker_4003:bridge_clank",
-    "33in_rickenbacker_4003:bridge_open",
+    "33in_rickenbacker_4003:pair_vintage",
+    "33in_rickenbacker_4003:neck_warm",
     "37in_multiscale_dingwall:bridge_clank",
     "37in_multiscale_dingwall:middle_growl",
     "37in_multiscale_dingwall:pair_parallel",
     "30in_gibson_eb0:neck_deep",
+    "30in_gibson_eb0:neck_baritone",
     "41in_upright_bass:bridge_piezo",
     "34in_active_stingray:series_punch",
 ]

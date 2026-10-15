@@ -431,6 +431,13 @@ class InstrumentConfig(AllomorphBaseModel):
                         f"Component override '{key}' in {ctx} on instrument '{self.id}' (harness '{h_name}') "
                         f"sets unsupported pickup property '{parts[-1]}'."
                     )
+            elif "." in key and not key.startswith("preamp."):
+                parts = key.split(".")
+                if len(parts) != 2 or parts[1] != "Rdc":
+                    raise KeyError(
+                        f"Component override '{key}' in {ctx} on instrument '{self.id}' (harness '{h_name}') "
+                        f"sets unsupported component property '{parts[-1]}'."
+                    )
 
         # Validate harnesses wiring and switches
         for h_name, h_cfg in self.harnesses.items():

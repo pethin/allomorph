@@ -331,11 +331,32 @@ def solve_mna_harness(
                 f"Unrecognized preamp component override '{comp_name}' in voicing '{voicing.id}' "
                 f"on instrument '{instrument.id}'."
             )
+        if comp_name.endswith(".Rdc") and not comp_name.startswith("pickups."):
+            base_comp = comp_name[:-4]
+            if base_comp in active_components:
+                continue
+            raise KeyError(
+                f"Orphaned inductor resistance override '{comp_name}' without base component '{base_comp}' "
+                f"in voicing '{voicing.id}' on instrument '{instrument.id}'."
+            )
         c_val = float(comp_val)
         term_in = f"{comp_name}.in"
         term_out = f"{comp_name}.out"
         if term_in in ds.parent or term_out in ds.parent:
-            if c_val < 1e-3:
+            rdc_key = f"{comp_name}.Rdc"
+            if (
+                "choke" in comp_name.lower()
+                or "inductor" in comp_name.lower()
+                or rdc_key in active_components
+            ):
+                if rdc_key not in active_components:
+                    raise KeyError(
+                        f"Inductor/choke component '{comp_name}' in voicing '{voicing.id}' "
+                        f"on instrument '{instrument.id}' requires an explicit '{rdc_key}' DC resistance."
+                    )
+                r_choke = float(active_components[rdc_key])
+                stamp_adm(term_in, term_out, 1.0 / (r_choke + s * c_val))
+            elif c_val < 1e-3:
                 stamp_adm(term_in, term_out, s * c_val)
             else:
                 stamp_adm(term_in, term_out, 1.0 / c_val)
@@ -519,6 +540,13 @@ def solve_mna_harness(
         else (harness.k_mutual if harness.k_mutual is not None else 0.0)
     )
     coil_keys = list(coils_dict.keys())
+    conn_coil_keys = {
+        k
+        for k, cb in coils_dict.items()
+        if cb.t_hot in ds.parent
+        and cb.t_cold in ds.parent
+        and ds.find(cb.t_hot) != ds.find(cb.t_cold)
+    }
     stamped_pairs: set[tuple[int, int]] = set()
 
     for idx_a in range(len(coil_keys)):
@@ -537,11 +565,13 @@ def solve_mna_harness(
 
         coupled_b: _CoilBranch | None = None
         idx_b = -1
-        if k_m > 0.0 and len(coil_keys) >= 2:
+        if k_m > 0.0 and k_a in conn_coil_keys and len(conn_coil_keys) >= 2:
             for j in range(idx_a + 1, len(coil_keys)):
                 k_candidate = coil_keys[j]
+                if k_candidate not in conn_coil_keys:
+                    continue
                 c_cand = coils_dict[k_candidate]
-                if c_a.pickup_id == c_cand.pickup_id or len(coil_keys) == 2:
+                if c_a.pickup_id == c_cand.pickup_id or len(conn_coil_keys) == 2:
                     coupled_b = c_cand
                     idx_b = j
                     break

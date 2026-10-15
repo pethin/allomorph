@@ -146,14 +146,6 @@ harness = "passive"
 switches = { pickup_selector = "bridge", vintage_tone = "vintage" }
 controls = { bridge_vol = 1.0, bridge_tone = 1.0 }
 
-[voicings.bridge_open]
-version = 1
-name = "Modern 4003 Bridge Open (Bypass HPF)"
-tone_name = "Rickenbacker Open"
-harness = "passive"
-switches = { pickup_selector = "bridge", vintage_tone = "bypass" }
-controls = { bridge_vol = 1.0, bridge_tone = 1.0 }
-
 [voicings.neck_warm]
 version = 1
 name = "4003 Neck Warm"
@@ -162,10 +154,10 @@ harness = "passive"
 switches = { pickup_selector = "neck", vintage_tone = "bypass" }
 controls = { neck_vol = 1.0, neck_tone = 1.0 }
 
-[voicings.pair_open]
+[voicings.pair_vintage]
 version = 1
-name = "4003 Dual Pickups Parallel"
-tone_name = "Rickenbacker Pair"
+name = "Vintage 4001 Dual Pair (Bridge 4.7nF HPF)"
+tone_name = "Rickenbacker Vintage"
 harness = "passive"
-switches = { pickup_selector = "both", vintage_tone = "bypass" }
+switches = { pickup_selector = "both", vintage_tone = "vintage" }
 controls = { neck_vol = 1.0, neck_tone = 1.0, bridge_vol = 1.0, bridge_tone = 1.0 }

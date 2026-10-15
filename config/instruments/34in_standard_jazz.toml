@@ -60,12 +60,24 @@ coils = [
     { id = "bridge", position_from_bridge_m = 0.0635, aperture_width_in = 0.45, pole_type = "rod", L = 3.6, Rdc = 7800.0, Reddy = 125000.0, Ccoil = 7.0e-11, weight = 1.0 },
 ]
 
+[pickups.bridge_70s]
+name = "70s Jazz Bridge Single-Coil"
+position_name = "Bridge"
+position_from_bridge_m = 0.0533  # 53.3mm from bridge (0.4" closer to bridge saddle)
+aperture_width_in = 0.45         # 0.45" narrow single-coil sensing aperture
+coil_spacing_in = 0.0
+type = "single_coil"
+magnet_type = "alnico_v"
+coils = [
+    { id = "bridge", position_from_bridge_m = 0.0533, aperture_width_in = 0.45, pole_type = "rod", L = 3.6, Rdc = 7800.0, Reddy = 125000.0, Ccoil = 7.0e-11, weight = 1.0 },
+]
+
 # ------------------------------------------------------------------------------
-# 2. CONTROL HARNESSES (Multi-Harness: Authentic 2V/1T Passive and Active 2-Band)
+# 2. CONTROL HARNESSES (Multi-Harness: 60s Passive, 70s Passive, and Active 2-Band)
 # ------------------------------------------------------------------------------
 
 [harnesses.passive]
-name = "Jazz Bass 2V/1T Passive Harness"
+name = "60s Jazz Bass 2V/1T Passive Harness"
 type = "passive"
 load_resistance = 1000000.0
 cable_pf = 750.0
@@ -102,6 +114,51 @@ resistance = 250000.0
 default = 1.0
 
 [harnesses.passive.controls.tone]
+name = "Master Tone"
+type = "pot"
+taper = "audio_15"
+resistance = 250000.0
+cap = 4.7e-8
+default = 1.0
+
+[harnesses.passive_70s]
+name = "70s Jazz Bass 2V/1T Passive Harness"
+type = "passive"
+load_resistance = 1000000.0
+cable_pf = 750.0
+k_mutual = 0.04
+
+wiring = [
+    ["pickups.neck.hot", "controls.neck_vol.wiper"],
+    ["controls.neck_vol.in", "bus"],
+    ["controls.neck_vol.gnd", "GND"],
+    ["pickups.neck.cold", "GND"],
+
+    ["pickups.bridge_70s.hot", "controls.bridge_vol.wiper"],
+    ["controls.bridge_vol.in", "bus"],
+    ["controls.bridge_vol.gnd", "GND"],
+    ["pickups.bridge_70s.cold", "GND"],
+
+    ["bus", "controls.tone.in"],
+    ["controls.tone.gnd", "GND"],
+    ["bus", "out"],
+]
+
+[harnesses.passive_70s.controls.neck_vol]
+name = "Neck Volume"
+type = "pot"
+taper = "audio_15"
+resistance = 250000.0
+default = 1.0
+
+[harnesses.passive_70s.controls.bridge_vol]
+name = "Bridge Volume"
+type = "pot"
+taper = "audio_15"
+resistance = 250000.0
+default = 1.0
+
+[harnesses.passive_70s.controls.tone]
 name = "Master Tone"
 type = "pot"
 taper = "audio_15"
@@ -165,14 +222,6 @@ tone_name = "Jazz Pair Open"
 harness = "passive"
 controls = { neck_vol = 1.0, bridge_vol = 1.0, tone = 1.0 }
 
-[voicings.pair_mids]
-version = 1
-name = "60s Jazz Pair Vocal Mids"
-tone_name = "Jazz Pair Mids"
-harness = "passive"
-controls = { neck_vol = 1.0, bridge_vol = 1.0, tone = 0.0 }
-components = { "controls.tone.cap" = 2.2e-8, "controls.tone.Rtone" = 3.3 }
-
 [voicings.bridge_growl]
 version = 1
 name = "60s Jazz Bridge Growl"
@@ -185,6 +234,13 @@ version = 1
 name = "60s Jazz Bridge Open"
 tone_name = "Jazz Bridge Open"
 harness = "passive"
+controls = { neck_vol = 0.0, bridge_vol = 1.0, tone = 1.0 }
+
+[voicings.bridge_70s]
+version = 1
+name = "70s Jazz Bridge Single-Coil"
+tone_name = "Jazz Bridge 70s"
+harness = "passive_70s"
 controls = { neck_vol = 0.0, bridge_vol = 1.0, tone = 1.0 }
 
 [voicings.neck_warm]

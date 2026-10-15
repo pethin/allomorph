@@ -50,12 +50,24 @@ coils = [
     { id = "rearward", strings = [1, 2], position_from_bridge_m = 0.1110, aperture_width_in = 0.45, pole_type = "rod", L = 1.9, Rdc = 5250.0, Reddy = 90000.0, Ccoil = 1.2e-10, weight = 1.0 },
 ]
 
+[pickups.single_51]
+name = "1951 Single-Coil P"
+position_name = "Split"
+position_from_bridge_m = 0.1397  # 139.7mm from bridge (11.5" from 12th fret)
+aperture_width_in = 0.38         # 0.38" narrow single-row 3/16" Alnico V rod sensing window
+coil_spacing_in = 0.0
+type = "single_coil"
+magnet_type = "alnico_v"
+coils = [
+    { id = "single", strings = ["all"], position_from_bridge_m = 0.1397, aperture_width_in = 0.38, pole_type = "rod", L = 2.8, Rdc = 7200.0, Reddy = 120000.0, Ccoil = 6.5e-11, weight = 1.0 },
+]
+
 # ------------------------------------------------------------------------------
-# 2. CONTROL HARNESS (Standard Passive 1V/1T)
+# 2. CONTROL HARNESSES (Multi-Harness: 1962 Split-Coil P and 1951 Single-Coil P)
 # ------------------------------------------------------------------------------
 
 [harnesses.passive]
-name = "Standard P-Bass Passive 1V/1T"
+name = "Standard 1962 P-Bass Passive 1V/1T"
 type = "passive"
 load_resistance = 1000000.0
 cable_pf = 750.0
@@ -84,6 +96,35 @@ resistance = 250000.0
 cap = 4.7e-8
 default = 1.0
 
+[harnesses.passive_51]
+name = "1951 Slab P-Bass Passive 1V/1T"
+type = "passive"
+load_resistance = 1000000.0
+cable_pf = 750.0
+wiring = [
+    ["pickups.single_51.single.cold", "GND"],
+    ["pickups.single_51.single.hot", "controls.vol.in"],
+    ["controls.vol.wiper", "out"],
+    ["controls.vol.gnd", "GND"],
+    ["controls.vol.in", "controls.tone.in"],
+    ["controls.tone.gnd", "GND"],
+]
+
+[harnesses.passive_51.controls.vol]
+name = "Master Volume"
+type = "pot"
+taper = "audio_15"
+resistance = 250000.0
+default = 1.0
+
+[harnesses.passive_51.controls.tone]
+name = "Master Tone"
+type = "pot"
+taper = "audio_15"
+resistance = 250000.0
+cap = 5.0e-8
+default = 1.0
+
 # ------------------------------------------------------------------------------
 # 3. NATIVE INSTRUMENT VOICINGS
 # ------------------------------------------------------------------------------
@@ -95,13 +136,13 @@ tone_name = "Precision Vintage"
 harness = "passive"
 controls = { vol = 1.0, tone = 1.0 }
 
-[voicings.vintage_mids]
+[voicings.slab_51]
 version = 1
-name = "Vintage 1962 Vocal Mids"
-tone_name = "Precision Mids"
-harness = "passive"
-controls = { vol = 1.0, tone = 0.0 }
-components = { "controls.tone.cap" = 2.2e-8, "controls.tone.Rtone" = 3.3 }
+name = "1951 Original Single-Coil Slab P"
+tone_name = "Precision 51 Slab"
+harness = "passive_51"
+controls = { vol = 1.0, tone = 1.0 }
+string_preset_override = "roundwound_nickel_standard"
 
 [voicings.vintage_warm]
 version = 1

@@ -14,16 +14,12 @@ import math
 
 import numpy as np
 import polars as pl
-import pytest
 
 from allomorph.circuit.solver import solve_mna_harness
 from allomorph.config import INSTRUMENTS, load_instrument
 from allomorph.config.instruments import resolve_target_voicing
 from allomorph.dsp import FREQS
-from allomorph.visualizer.dataframe import (
-    build_voice_dataframe,
-    build_voicings_comparison_dataframe,
-)
+from allomorph.visualizer.dataframe import build_voice_dataframe
 
 
 def test_pj_mid_scoop_curve():
@@ -111,34 +107,31 @@ def test_precision_warm_tone_rolloff_curve():
     )
 
 
-def test_precision_mids_resonant_frequency_curve():
-    """Validates that Precision Mids (22nF ToneStyler shunt) produces a focused vocal resonance at ~440 Hz."""
-    # 1. Electrical resonance peak around 400 - 500 Hz
-    inst, v = resolve_target_voicing("34in_standard_p:vintage_mids")
-    harness = inst.harnesses[v.harness]
-    curves = solve_mna_harness(inst, harness, v, freqs=FREQS)
-    mag_elec = next(iter(curves.values()))
-    peak_idx = int(np.argmax(mag_elec))
-    peak_freq = FREQS[peak_idx]
-    assert 380.0 <= peak_freq <= 500.0, (
-        f"Precision Mids electrical peak at {peak_freq:.1f} Hz outside [380, 500] Hz"
+def test_precision_51_slab_resonant_frequency_curve():
+    """Validates that Precision 51 Slab (1951 single-coil P pickup on roundwound strings)
+    exhibits a brighter, higher resonant peak (~2.48 kHz) than the 1962 split-coil (~2.06 kHz).
+    """
+    inst_51, v_51 = resolve_target_voicing("34in_standard_p:slab_51")
+    inst_62, v_62 = resolve_target_voicing("34in_standard_p:vintage_open")
+
+    curves_51 = solve_mna_harness(inst_51, inst_51.harnesses[v_51.harness], v_51, freqs=FREQS)
+    curves_62 = solve_mna_harness(inst_62, inst_62.harnesses[v_62.harness], v_62, freqs=FREQS)
+    assert "single_51" in curves_51
+    mag_51 = curves_51["single_51"]
+    mag_62 = next(iter(curves_62.values()))
+
+    peak_51 = FREQS[int(np.argmax(mag_51))]
+    peak_62 = FREQS[int(np.argmax(mag_62))]
+    assert 2300.0 <= peak_51 <= 2700.0, (
+        f"Precision 51 Slab electrical peak at {peak_51:.1f} Hz outside [2300, 2700] Hz"
     )
-
-    # 2. Output response has steep treble rolloff (> 15 dB difference at 3 kHz vs Precision Vintage)
-    inst_v, v_v = resolve_target_voicing("34in_standard_p:vintage_open")
-    inst_m, v_m = resolve_target_voicing("34in_standard_p:vintage_mids")
-    df_comp = build_voicings_comparison_dataframe(inst_v, v_v, inst_m, v_m, step=1)
-    s3 = df_comp.filter(df_comp["line_type"] == "3. Difference")["magnitude_db"].to_numpy()
-    freqs = df_comp.filter(df_comp["line_type"] == "3. Difference")["frequency"].to_numpy()
-    idx_3k = int(np.argmin(np.abs(freqs - 3000.0)))
-    assert s3[idx_3k] < -15.0, (
-        f"Precision Mids 3 kHz attenuation {s3[idx_3k]:.1f} dB was not < -15 dB"
-    )
-    assert np.max(np.abs(s3)) > 20.0
+    assert peak_51 > peak_62 + 350.0
 
 
-def test_rickenbacker_clank_hpf_curve():
-    """Validates that Rickenbacker Clank (series 4.7nF HPF) cuts sub-bass below 50 Hz by > 10 dB."""
+def test_rickenbacker_clank_and_vintage_pair_hpf_curve():
+    """Validates that Rickenbacker Clank (series 4.7nF HPF) cuts sub-bass below 50 Hz by > 10 dB,
+    and Rickenbacker Vintage pair combines full-range neck sub-bass with the HPF bridge pickup.
+    """
     inst_rick, v_rick = resolve_target_voicing("33in_rickenbacker_4003:bridge_clank")
     df_rick = build_voice_dataframe(inst_rick, v_rick)
     mag_low = df_rick.filter(pl.col("frequency") < 50.0)["magnitude_db"].to_list()[0]
@@ -153,26 +146,39 @@ def test_rickenbacker_clank_hpf_curve():
     df_rick_out = build_voice_dataframe(inst_rick, v_rick, mode="output")
     assert float(np.max(df_rick_out["magnitude_db"].to_numpy())) < 5.0
 
+    # Rickenbacker Vintage dual pair restores sub-bass via the neck pickup (> +12 dB at 50 Hz vs solo bridge clank)
+    inst_pair, v_pair = resolve_target_voicing("33in_rickenbacker_4003:pair_vintage")
+    df_pair = build_voice_dataframe(inst_pair, v_pair)
+    mag_pair_low = df_pair.filter(pl.col("frequency") < 50.0)["magnitude_db"].to_list()[0]
+    assert mag_pair_low > mag_low + 12.0
+
 
 def test_bridge_proximity_bass_excursion_curve():
     """Validates that bridge proximity shapes low-frequency fundamental excursion:
     - Precision Vintage (125mm from bridge): full fundamental excursion around 0 dB (+0.0 to +2.5 dB)
     - Jazz Bridge Open (63.5mm near bridge): leaner fundamental at 20 Hz (-4.5 to -2.0 dB)
+    - Jazz Bridge 70s (53.3mm closer to bridge): even tighter fundamental than 60s Bridge Open
     """
     inst_p, v_p = resolve_target_voicing("34in_standard_p:vintage_open")
-    inst_j, v_j = resolve_target_voicing("34in_standard_jazz:bridge_open")
+    inst_j60, v_j60 = resolve_target_voicing("34in_standard_jazz:bridge_open")
+    inst_j70, v_j70 = resolve_target_voicing("34in_standard_jazz:bridge_70s")
     df_p = build_voice_dataframe(inst_p, v_p, mode="output")
-    df_j = build_voice_dataframe(inst_j, v_j, mode="output")
+    df_j60 = build_voice_dataframe(inst_j60, v_j60, mode="output")
+    df_j70 = build_voice_dataframe(inst_j70, v_j70, mode="output")
 
     mag_p_20 = df_p["magnitude_db"][0]
-    mag_j_20 = df_j["magnitude_db"][0]
+    mag_j60_20 = df_j60["magnitude_db"][0]
+    mag_j70_20 = df_j70["magnitude_db"][0]
 
     assert 0.0 <= mag_p_20 <= 2.5, f"Precision 20 Hz dB {mag_p_20} outside [0.0, 2.5]"
-    assert -4.5 <= mag_j_20 <= -2.0, f"Jazz Bridge 20 Hz dB {mag_j_20} outside [-4.5, -2.0]"
+    assert -4.5 <= mag_j60_20 <= -2.0, f"Jazz Bridge 60s 20 Hz dB {mag_j60_20} outside [-4.5, -2.0]"
+    assert mag_j70_20 < mag_j60_20 - 1.0, (
+        f"Jazz Bridge 70s ({mag_j70_20:.2f} dB) should have tighter 20 Hz fundamental than 60s ({mag_j60_20:.2f} dB)"
+    )
 
-    mag_j_1k = df_j.filter(pl.col("frequency") > 1000.0)["magnitude_db"].to_list()[0]
-    assert mag_j_20 < mag_j_1k - 2.5, (
-        f"Jazz Bridge fundamental ({mag_j_20:.1f} dB) was not leaner than mids ({mag_j_1k:.1f} dB)"
+    mag_j_1k = df_j60.filter(pl.col("frequency") > 1000.0)["magnitude_db"].to_list()[0]
+    assert mag_j60_20 < mag_j_1k - 2.5, (
+        f"Jazz Bridge fundamental ({mag_j60_20:.1f} dB) was not leaner than mids ({mag_j_1k:.1f} dB)"
     )
 
 
@@ -227,44 +233,30 @@ def test_active_pickup_resonant_frequency_peaks():
         )
 
 
-def test_tonestyler_p_bass_progression_curve():
-    """Verify P-Bass tone sequence (vintage, mids, warm, dub):
+def test_p_bass_tone_rolloff_progression_curve():
+    """Verify P-Bass tone sequence (slab_51, vintage_open, vintage_warm, slab_dub):
     Resonant peak physically glides down through the spectrum:
-    vintage (~2.1 kHz) > mids (~440 Hz) > warm (~210 Hz) > dub (~150 Hz).
+    slab_51 (~2.48 kHz) > vintage_open (~2.06 kHz) > vintage_warm (~210 Hz) > slab_dub (~150 Hz).
     """
+    inst51, v51 = resolve_target_voicing("34in_standard_p:slab_51")
     inst05, v05 = resolve_target_voicing("34in_standard_p:vintage_open")
-    inst05b, v05b = resolve_target_voicing("34in_standard_p:vintage_mids")
     inst05c, v05c = resolve_target_voicing("34in_standard_p:vintage_warm")
     inst05d, v05d = resolve_target_voicing("34in_standard_p:slab_dub")
 
-    c05 = next(
-        iter(solve_mna_harness(inst05, inst05.harnesses[v05.harness], v05, freqs=FREQS).values())
-    )
-    c05b = next(
-        iter(
-            solve_mna_harness(inst05b, inst05b.harnesses[v05b.harness], v05b, freqs=FREQS).values()
-        )
-    )
-    c05c = next(
-        iter(
-            solve_mna_harness(inst05c, inst05c.harnesses[v05c.harness], v05c, freqs=FREQS).values()
-        )
-    )
-    c05d = next(
-        iter(
-            solve_mna_harness(inst05d, inst05d.harnesses[v05d.harness], v05d, freqs=FREQS).values()
-        )
-    )
+    c51 = solve_mna_harness(inst51, inst51.harnesses[v51.harness], v51, freqs=FREQS)["single_51"]
+    c05 = solve_mna_harness(inst05, inst05.harnesses[v05.harness], v05, freqs=FREQS)["split_p"]
+    c05c = solve_mna_harness(inst05c, inst05c.harnesses[v05c.harness], v05c, freqs=FREQS)["split_p"]
+    c05d = solve_mna_harness(inst05d, inst05d.harnesses[v05d.harness], v05d, freqs=FREQS)["split_p"]
 
     # Peak frequencies glide downward
+    peak_f51 = FREQS[int(np.argmax(c51))]
     peak_f05 = FREQS[int(np.argmax(c05))]
-    peak_f05b = FREQS[int(np.argmax(c05b))]
     peak_f05c = FREQS[int(np.argmax(c05c))]
 
+    assert 2300.0 <= peak_f51 <= 2700.0
     assert 1900.0 <= peak_f05 <= 2400.0
-    assert 400.0 <= peak_f05b <= 480.0
     assert 180.0 <= peak_f05c <= 240.0
-    assert peak_f05 > peak_f05b > peak_f05c
+    assert peak_f51 > peak_f05 > peak_f05c
 
     # dub has deepest cutoff: at 500 Hz, dub is significantly more attenuated than warm
     idx_500 = min(range(len(FREQS)), key=lambda i: abs(FREQS[i] - 500.0))
@@ -279,15 +271,32 @@ def test_tonestyler_p_bass_progression_curve():
     assert db_05d_440 < -8.0
 
 
-def test_jazz_pair_mids_22nf_tone_cap_curve():
-    """Verify Voice 02b (60s Jazz Bass Pair with 22nF Tone Cap):
-    Harness is passive and contains 22nF tone capacitor component override.
+def test_mudbucker_baritone_choke_filter_curve():
+    """Verify Gibson EB-2 / EB-3 Baritone choke filter (2.5H shunt inductor + 22nF series capacitor):
+    Attenuates sub-bass below 100 Hz by > 20 dB relative to 800 Hz midrange bark.
     """
-    inst, v = resolve_target_voicing("34in_standard_jazz:pair_mids")
-    assert v.harness == "passive"
-    assert v.components.get("controls.tone.cap") == pytest.approx(2.2e-8)
-    curves = solve_mna_harness(inst, inst.harnesses[v.harness], v, freqs=FREQS)
-    assert "neck" in curves and "bridge" in curves
+    inst_deep, v_deep = resolve_target_voicing("30in_gibson_eb0:neck_deep")
+    inst_bari, v_bari = resolve_target_voicing("30in_gibson_eb0:neck_baritone")
+
+    c_deep = solve_mna_harness(inst_deep, inst_deep.harnesses[v_deep.harness], v_deep, freqs=FREQS)[
+        "mudbucker"
+    ]
+    c_bari = solve_mna_harness(inst_bari, inst_bari.harnesses[v_bari.harness], v_bari, freqs=FREQS)[
+        "mudbucker"
+    ]
+
+    idx_50 = int(np.argmin(np.abs(np.array(FREQS) - 50.0)))
+    idx_800 = int(np.argmin(np.abs(np.array(FREQS) - 800.0)))
+
+    # Baritone filter cuts 50 Hz relative to 800 Hz by > 20 dB
+    bari_50_vs_800_db = 20.0 * math.log10(c_bari[idx_50] / c_bari[idx_800])
+    assert bari_50_vs_800_db < -20.0, (
+        f"Mudbucker Baritone 50 Hz vs 800 Hz attenuation was {bari_50_vs_800_db:.1f} dB (expected < -20 dB)"
+    )
+
+    # Compared to neck_deep, baritone attenuates 50 Hz by > 25 dB
+    sub_cut_vs_deep_db = 20.0 * math.log10(c_bari[idx_50] / c_deep[idx_50])
+    assert sub_cut_vs_deep_db < -25.0
 
 
 def test_stingray_series_vs_parallel_curve():

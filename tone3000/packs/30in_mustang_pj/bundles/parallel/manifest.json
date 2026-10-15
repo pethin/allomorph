@@ -1,15 +1,15 @@
 {
   "bundle": "parallel",
-  "recipe_token": "alo_bun_3fcca28c18114850be69033b58dba5c2129acfec6687b9320452c1cf687b4930",
+  "recipe_token": "alo_bun_e21419a271d5b48aea690119f653eeba4c812a0daa48fb6603c4c0c715881a59",
   "source": "30in_mustang_pj:pair_parallel",
   "position_name": "Parallel",
   "base_dry_file": "input.wav",
-  "base_dry_token": "alo_dry_85c150f6fedf8e45dc44518de1acdc6c6a77a0f1b042dc82306580186c150547",
-  "base_dry_recipe_token": "alo_dryrec_150b3e9ed126c72cde9eb931ca04052999af6a2069c196cd3e28a0b4bf6dc399",
-  "dry_file": "dry v6.1.1.wav",
-  "dry_version": "v6.1.1",
-  "dry_recipe_token": "alo_rec_55f14983dc0614a8d9344039297dbc7b31331f2781db3d95bfe91dbe2e271eb1",
-  "dry_digest_token": "alo_stem_47b35a42068ae43843055bdf1f9051e12bde6a92d85f46c76dd6d9ee210ef407",
+  "base_dry_token": "alo_dry_7fec1022a087e0f354853c022431aea42cf43b08a237db1c6b3f9b1c67dc52bf",
+  "base_dry_recipe_token": "alo_dryrec_1dee8abb9871ffc254481f6c39e9028000c60419d5ae944d440548aef440b909",
+  "dry_file": "dry v7.1.1.wav",
+  "dry_version": "v7.1.1",
+  "dry_recipe_token": "alo_rec_60b629bc8283e9ad2a2b7fb16dd456e532b1b978e26a56680c6769bdb2545c7a",
+  "dry_digest_token": "alo_stem_c39d7df75a6652dab4180c129958dbc65187fb42bbb353181a1cbd5cbe06253c",
   "instrument_id": "30in_mustang_pj",
   "instrument_version": 1,
   "source_voicing_version": 1,
@@ -22,28 +22,28 @@
       "target_voicing_version": 1,
       "version": "v7.1.1",
       "tone_name": "Jazz Pair Active",
-      "recipe_token": "alo_rec_65accacc1171656e002975f1ebd9a8cad00601d1b2abb04eb99731840f84614c",
-      "digest_token": "alo_stem_6dba3372e82e426c919862d4cc4b860b8cdf82bd36eb3d0346c16d33830065c8"
+      "recipe_token": "alo_rec_2e0c1f6b515af4d570cf75aa07fe67a85ae92224cc07f8af2d77a2a042f91ff5",
+      "digest_token": "alo_stem_49dc859bf8488a7ea35675c85da254212abc0df2d120b08052bc38fe58e0191b"
     },
     {
-      "filename": "Jazz Pair Open [Parallel] v6.1.1.wav",
+      "filename": "Jazz Pair Open [Parallel] v7.1.1.wav",
       "target": "34in_standard_jazz:pair_open",
       "target_instrument_version": 1,
       "target_voicing_version": 1,
-      "version": "v6.1.1",
+      "version": "v7.1.1",
       "tone_name": "Jazz Pair Open",
-      "recipe_token": "alo_rec_23757560bc03eb6c283b114743a2e74f10dae2b416c169396070dddd51adb9c8",
-      "digest_token": "alo_stem_ff4fc9bd954f8b235be8d534ebbf6a2cfba9aa43116d1c266c7196bba22dc2a2"
+      "recipe_token": "alo_rec_9058135109538a83002460983b32377b9f71be073854ef184e9bb6a9d95627c3",
+      "digest_token": "alo_stem_20fd8c116e0ff7dbd910bfd0d5c9123b2e7a5f78b13c814da52650c0c08f0a2b"
     },
     {
-      "filename": "Jazz Pair Mids [Parallel] v6.1.1.wav",
-      "target": "34in_standard_jazz:pair_mids",
+      "filename": "Rickenbacker Vintage [Parallel] v7.1.1.wav",
+      "target": "33in_rickenbacker_4003:pair_vintage",
       "target_instrument_version": 1,
       "target_voicing_version": 1,
-      "version": "v6.1.1",
-      "tone_name": "Jazz Pair Mids",
-      "recipe_token": "alo_rec_6c2172b44a8f580645d0620b1121703a43b58ba27991c995639d10d8b1c17b57",
-      "digest_token": "alo_stem_9e24fd093cf7f5efe17cf4fbbe165f83ff19ab9439bb7cf87f15eacec1eee046"
+      "version": "v7.1.1",
+      "tone_name": "Rickenbacker Vintage",
+      "recipe_token": "alo_rec_8cc974d9c845ddddbf8d16e802509383b1728a1c273865f4f8d860e1638c2958",
+      "digest_token": "alo_stem_d3190610cd8cd118b1da9405dfb6fd6c9845d3b31da4c5180451eca8586fcda6"
     },
     {
       "filename": "P\u2215MM Parallel [Parallel] v7.1.1.wav",
@@ -52,8 +52,8 @@
       "target_voicing_version": 1,
       "version": "v7.1.1",
       "tone_name": "P\u2215MM Parallel",
-      "recipe_token": "alo_rec_f99707e5710d75c2ec2199a842566baa76d6c85b9d616e0e80a71845942d418e",
-      "digest_token": "alo_stem_2705ae1b9f99f3851410c1df0a9889bf01b90c1766db9ad789b22f49abe5cd8b"
+      "recipe_token": "alo_rec_0da6278e2121637b2af0325c371fbd9edcbdec9122401d2dc565d09815448aa3",
+      "digest_token": "alo_stem_8b9b9e00ac95a5da3e879543a9b2b5ab0510d4265d4de031ff96012128d4e5e4"
     },
     {
       "filename": "P\u2215MM Series [Parallel] v7.1.1.wav",
@@ -62,8 +62,8 @@
       "target_voicing_version": 1,
       "version": "v7.1.1",
       "tone_name": "P\u2215MM Series",
-      "recipe_token": "alo_rec_4d6be2b7f98a39c62bc720ae0f26f47714824f78338d10ec30ab1c899d3d6e5b",
-      "digest_token": "alo_stem_47639d73312fefae2fe43abd0d491d71fb7774c8c28de8f8a4530eb050eb0ee0"
+      "recipe_token": "alo_rec_c62dd1f52c32ea067739038ae5b50a74a9bb3508ef9b54ad052bb3d66287383c",
+      "digest_token": "alo_stem_3118536185370d95d46194ad48292aa47ee94f3c09f7dc4e47fa5fdf9d838184"
     },
     {
       "filename": "PJ Active [Parallel] v7.1.1.wav",
@@ -72,18 +72,18 @@
       "target_voicing_version": 1,
       "version": "v7.1.1",
       "tone_name": "PJ Active",
-      "recipe_token": "alo_rec_b12db53c49649572ad0049f86d669c43a5bff0410939a3ac1d78967089e31352",
-      "digest_token": "alo_stem_1b28c97f667a1ac677e6d41b071196e1d64f42308a1f9f9c2587aa969a077f47"
+      "recipe_token": "alo_rec_8e999456d6fef3848e08b4a70000141da42938404b3a565fec2a4efffca2b44b",
+      "digest_token": "alo_stem_ee7e967112276729f188e71dde5fdf9a9d4c1bdca426da41563523c6b259b703"
     },
     {
-      "filename": "PJ Passive [Parallel] v6.1.1.wav",
+      "filename": "PJ Passive [Parallel] v7.1.1.wav",
       "target": "34in_standard_pj:pair_parallel",
       "target_instrument_version": 1,
       "target_voicing_version": 1,
-      "version": "v6.1.1",
+      "version": "v7.1.1",
       "tone_name": "PJ Passive",
-      "recipe_token": "alo_rec_01b8d6c6cee406801157f56c034c0c822cd15c4c0f6d82a082bae9b520fa060d",
-      "digest_token": "alo_stem_858c215a16cda417dc537e0fe48c7689575d8c7c6e425db502ec1d9f9f0a9972"
+      "recipe_token": "alo_rec_d3a22ea94ee208a9eb31b68df2e9aa0bd664b46ee9973a19974157c88d582ec2",
+      "digest_token": "alo_stem_ac5e6f41ed4d6549568a22f9c72ff51dd7eede7af40f9e7b255d59cd6e93192e"
     },
     {
       "filename": "Dingwall Parallel [Parallel] v7.1.1.wav",
@@ -92,8 +92,8 @@
       "target_voicing_version": 1,
       "version": "v7.1.1",
       "tone_name": "Dingwall Parallel",
-      "recipe_token": "alo_rec_e64b28bc3c14fc17d9ccfcbd3714ffb0627b1a3433f413a3a467cde613171d6d",
-      "digest_token": "alo_stem_3941591a74e7bb5508118961f570c00de5c4b5b541fb4df14c212c8edc3552cc"
+      "recipe_token": "alo_rec_5bd89ee896c0a6fd831235c21aa51515b8cf493d857aa517d6dd3bc602d7b31f",
+      "digest_token": "alo_stem_ad72f5656b30399cf858782156fdbb0a5c7cec2cf755bf82ed61a0134a8cb619"
     }
   ]
 }
