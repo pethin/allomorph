@@ -8,7 +8,7 @@ from pathlib import Path
 from allomorph.cli.console import log_info, log_step, log_success
 from allomorph.config.instruments import load_instrument
 from allomorph.visualizer.charts import generate_all_charts, generate_interactive_chart
-from allomorph.visualizer.portal import DOCS_DIR, RESPONSES_DIR, generate_portal_pages
+from allomorph.visualizer.portal import DOCS_DIR, generate_portal_pages
 
 
 def visualize(
@@ -23,13 +23,12 @@ def visualize(
         "VIZ", f"Generating interactive Altair visualizations for {inst_desc} (mode: {mode})..."
     )
 
-    out_dir = Path(out) if out is not None else RESPONSES_DIR
+    out_dir = Path(out) if out is not None else DOCS_DIR
 
     if instrument.lower() == "all":
         generate_all_charts(output_dir=out_dir)
-        log_info(f"Interactive charts generated in [bold]{RESPONSES_DIR}/[/bold]")
         log_info(
-            f"Master interactive portal updated at [bold]{DOCS_DIR / 'frequency_responses.html'}[/bold]"
+            f"Interactive Frequency Response Suite generated at [bold]{DOCS_DIR / 'frequency_responses.html'}[/bold]"
         )
         log_success("Visualization generation complete.")
     else:

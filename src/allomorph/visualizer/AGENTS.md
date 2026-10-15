@@ -3,7 +3,7 @@
 Covers Polars dataframe generation, Altair (Vega-Lite) frequency response chart compilation, and the self-contained interactive HTML documentation portal (`docs/frequency_responses.html`).
 
 ## Key Modules
-- [`dataframe.py`](dataframe.py): Vectorized continuum frequency response evaluation, global universal target caching (`get_cached_target_dfs`), and differential curve computation.
+- [`dataframe.py`](dataframe.py): Vectorized continuum frequency response evaluation, global 1D forward curve caching (`_VOICING_CURVE_CACHE`), and voicing comparison data assembly (`build_voicings_comparison_data`).
 - [`charts.py`](charts.py): Declarative Altair Vega-Lite chart builders.
 - [`portal.py`](portal.py): Self-contained HTML portal and interactive Voicing Comparator assembly.
 

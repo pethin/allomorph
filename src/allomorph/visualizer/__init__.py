@@ -90,7 +90,7 @@ def main(argv: Sequence[str] | None = None) -> None:
     parser.add_argument(
         "--out",
         default=None,
-        help="Output HTML file or directory path (default: docs/frequency_responses/<instrument_id>.html)",
+        help="Output HTML file or directory path (default: docs/frequency_responses.html)",
     )
     parser.add_argument(
         "--debug-stem",
@@ -131,5 +131,5 @@ def main(argv: Sequence[str] | None = None) -> None:
     else:
         inst = load_instrument(cli_cfg.instrument)
         generate_interactive_chart(instrument=inst, out_html=cli_cfg.out, mode=cli_cfg.mode)
-        if cli_cfg.out is None or (Path(cli_cfg.out).resolve() == RESPONSES_DIR.resolve()):
-            generate_portal_pages(output_dir=RESPONSES_DIR)
+        if cli_cfg.out is None or (Path(cli_cfg.out).resolve() == DOCS_DIR.resolve()):
+            generate_portal_pages(output_dir=DOCS_DIR)

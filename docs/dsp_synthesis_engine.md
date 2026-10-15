@@ -22,11 +22,11 @@ src/allomorph/dsp/
 ├── plucks.py        # 2D modal string vibration, inharmonicity, pitch sag, techniques
 ├── sweeps.py        # Logarithmic frequency chirps with string tilt damping
 ├── loudness.py      # ITU-R BS.1770-4 K-weighted gated LUFS, true-peak, and crest factor
-├── conditioning.py  # Pre/de-emphasis filters, phase unwrapping, Hilbert transform
-├── fir.py           # Zero-phase Blackman/Hamming FIR filter design
+├── conditioning.py  # 8 Hz DC blocking, RLC-colored Johnson-Nyquist dither (-108 dBFS), and LUFS normalization
+├── fir.py           # Pure real-FFT homomorphic cepstrum minimum-phase FIR synthesis
 ├── convolution.py   # Overlap-save FFT convolution with SIMD optimizations
 ├── io.py            # 24-bit 48 kHz PCM little-endian byte packing and WAV I/O
-└── constants.py     # Master DSP constants (FS=48000, target LUFS=-20.50, peak=0.9900)
+└── constants.py     # Master DSP constants (FS=48000, TARGET_LUFS=-20.50, CALIBRATION_PEAK_CEILING=0.9900)
 ```
 
 ---
@@ -40,16 +40,16 @@ Real vibrating electric bass strings exhibit steep high-frequency energy decay d
 - Clank & bite register ($2\text{--}4\text{ kHz}$): Vibrational energy down by $-25\text{ to } -35\text{ dB}$.
 - Treble air register ($8\text{--}15\text{ kHz}$): Vibrational energy down by $-43.5\text{ to } -60\text{ dB}$.
 
-To prevent unphysical high-frequency drive from destabilizing downstream neural network training, all synthetic logarithmic frequency chirps apply continuous physical string tilt filtering:
+To prevent unphysical high-frequency drive from destabilizing downstream neural network training, all synthetic logarithmic frequency chirps apply continuous physical string tilt filtering (`-12 dB/octave` second-order roll-off):
 
-$$H_{\text{tilt}}(f) = \frac{1}{\sqrt{1 + \left(\frac{f}{f_{\text{corner}}}\right)^2}}, \quad f_{\text{corner}} = 1200.0\text{ Hz}$$
+$$H_{\text{tilt}}(f) = \frac{1}{1 + \left(\frac{f}{f_{\text{corner}}}\right)^2}, \quad f_{\text{corner}} = 1200.0\text{ Hz}$$
 
 ```python
 # src/allomorph/dsp/sweeps.py
 if string_tilt:
     # Continuous instantaneous frequency vector:
     f_t = f_start * (f_end / f_start) ** (t / dur)
-    tilt_gain = 1.0 / np.sqrt(1.0 + (f_t / f_corner) ** 2)
+    tilt_gain = 1.0 / (1.0 + (f_t / f_corner) ** 2)
     sig = sig * tilt_gain
 ```
 
@@ -66,26 +66,26 @@ In earlier versions, flat $22\text{ kHz}$ chirps without string tilt were tested
 
 String vibration is evaluated using a 2D modal model combining orthogonal vertical (perpendicular to pickup face) and horizontal (parallel to fretboard) vibration planes:
 
-$$y(t) = \sum_{n=1}^{N_{\text{partials}}} A_n \cdot \left[ \sin(2\pi f_n t + \phi_{v, n}) \cdot e^{-d_{v, n} t} + \alpha_h \sin(2\pi f_n t + \phi_{h, n}) \cdot e^{-d_{h, n} t} \right]$$
+$$y(t) = \sum_{n=1}^{N_{\text{partials}}} A_n \cdot \left[ 0.65\sin(2\pi f_n t + \phi_{\text{sag}, n}) \cdot e^{-d_{v, n} t} + 0.35\sin(2\pi (f_n + \Delta f_{\text{split}}) t + \phi_{\text{sag}, n}) \cdot e^{-d_{h, n} t} \right]$$
 
-1. **Inharmonicity Stiffness Dispersion ($B_s$):**
-   $$f_n = n \cdot f_0 \cdot \sqrt{1 + B_s \cdot n^2}$$
-   where $B_s$ is interpolated from empirical string stiffness calibration tables via exact Gaussian RBF solvers.
+1. **Inharmonicity Stiffness Dispersion ($B_s$) with Shear-Wave Saturation ($f_{\text{disp,max}} = 3500\text{ Hz}$):**
+   $$f_n = n \cdot f_0 \cdot \sqrt{1 + \frac{B_s \cdot n^2}{1 + (n f_0 / f_{\text{disp,max}})^2}}$$
+   where $B_s$ is interpolated from empirical string stiffness calibration tables via the exact $C^\infty$ Gaussian RBF solver (`get_inharmonicity_for_f0` in `allomorph.physics.strings`), matching the pickup spatial dispersion tensor (`compute_string_dispersion_tensor` in `allomorph.physics.aperture`).
 2. **Attack Pitch Sag (Non-Linear Elongation Transient):**
-   During the initial pluck attack ($<40\text{ ms}$), high initial displacement increases string tension $\Delta T \propto \int (\partial y/\partial x)^2 dx$, momentarily sharpening the pitch:
-   $$f(t) = f_0 \cdot \left(1.0 + \Delta_{\text{sag}} \cdot e^{-t / \tau_{\text{sag}}}\right), \quad \tau_{\text{sag}} \approx 30\text{--}45\text{ ms}$$
-3. **Biaxial Damping Decay Rates:**
+   During the initial pluck attack, high initial displacement increases string tension $\Delta T \propto \int (\partial y/\partial x)^2 dx$, momentarily sharpening the pitch:
+   $$\Delta f(t) = \Delta_{\text{sag}} \cdot e^{-t / \tau_{\text{sag}}}, \quad \Delta_{\text{sag}} = 2.5\text{ Hz}, \quad \tau_{\text{sag}} = 80\text{ ms}\text{ }(0.08\text{ s})$$
+3. **Biaxial Damping Decay Rates & Spectral Roll-off:**
    Vertical polarization couples directly to the magnetic field and body bridge witness point, decaying faster than horizontal polarization:
-   $$d_{v, n} = (0.70 + 0.10 n + 0.00025 n^2) \cdot \gamma_{\text{tech}}$$
-   $$d_{h, n} = (0.35 + 0.05 n + 0.00012 n^2) \cdot \gamma_{\text{tech}}$$
+   $$d_{v, n} = (0.70 + 0.10 n + 0.00025 n^2) \cdot m_{\text{decay}}, \quad d_{h, n} = (0.35 + 0.05 n + 0.00012 n^2) \cdot m_{\text{decay}}$$
+   while partial amplitudes follow $A_n \propto n^{-\gamma_{\text{tech}}}$ with $C^\infty$ quadrature pluck-position and fingertip floors.
 
 ### 4.2 Luthier Articulation Techniques
 
 The engine synthesizes five distinct playing techniques:
-- **Fingerstyle:** Smooth fleshy pad contact with warm low-mid bloom ($\gamma_{\text{tech}} = 1.45$).
-- **Pick Strike:** Sharp plectrum attack with instantaneous transient burst and enhanced upper partials ($\gamma_{\text{tech}} = 1.10$).
-- **Slap Thumb & Pop:** Aggressive percussive impact with boundary fret slap click and extended dynamic crest factor ($\gamma_{\text{tech}} = 0.95$).
-- **Palm-Muted Staccato:** Viscoelastic hand damping filtering partials above $600\text{ Hz}$ via exponential rolloff ($\gamma_{\text{tech}} = 1.80$).
+- **Fingerstyle:** Smooth fleshy pad contact with warm low-mid bloom ($\gamma_{\text{tech}} = 1.45$, $m_{\text{decay}} = 1.0$).
+- **Pick Strike:** Sharp plectrum attack with instantaneous transient burst and enhanced upper partials ($\gamma_{\text{tech}} = 1.10$, $m_{\text{decay}} = 1.0$).
+- **Slap Thumb & Pop:** Aggressive percussive impact with boundary fret slap click and extended dynamic crest factor ($\gamma_{\text{tech}} = 0.95$, $m_{\text{decay}} = 1.3$).
+- **Palm-Muted Staccato:** Viscoelastic hand damping filtering partials above $600\text{ Hz}$ via $C^\infty$ softplus exponential roll-off ($\gamma_{\text{tech}} = 1.80$, $m_{\text{decay}} = 6.0$).
 - **Natural Harmonics:** Pure crystalline sinusoidal overtones generated at nodes ($L/2, L/3, L/4$) with 5 partials, strictly omitting non-harmonic string modes.
 
 ---
@@ -120,16 +120,13 @@ To prevent artificial dynamic compression or distortion on transient peaks:
 
 ---
 
-## 6. Zero-Phase FIR Design & Minimum-Phase Synthesis (`fir.py`, `conditioning.py`)
+## 6. Post-Conditioning & Minimum-Phase FIR Synthesis (`conditioning.py`, `fir.py`)
 
-### 6.1 Type-I Linear-Phase FIR Filter Design
-Implemented directly in NumPy without heavy external dependencies:
-$$h_{\text{win}}[n] = h_{\text{ideal}}[n] \cdot w_{\text{Blackman}}[n]$$
-$$w_{\text{Blackman}}[n] = 0.42 - 0.50 \cos\left(\frac{2\pi n}{M-1}\right) + 0.08 \cos\left(\frac{4\pi n}{M-1}\right)$$
-- Normalized to exact $1.00$ ($0.00\text{ dB}$) passband gain.
-- Evaluated via PyTorch GPU GEMM 1D convolution (`F.conv1d`) with `padding="valid"` to eliminate boundary step transients.
+### 6.1 Sub-Audible DC Blocking & RLC-Colored Thermal Dither (`conditioning.py`)
+1. **Sub-Audible DC Blocking (`apply_dc_block`):** Applies an $8.0\text{ Hz}$ high-pass filter followed by exact mean subtraction so every rendered stem has zero DC offset.
+2. **RLC-Colored Johnson-Nyquist Thermal Dither (`apply_johnson_dither`):** Shapes deterministic white noise through the minimum-phase FIR of the composite passive RLC transfer function and injects it at $-108.0\text{ dBFS}$ RMS to prevent 24-bit PCM quantization limit cycles during silence and ring-out tails.
 
-### 6.2 Minimum-Phase Synthesis via Pure Real-FFT Homomorphic Cepstrum
+### 6.2 Minimum-Phase Synthesis via Pure Real-FFT Homomorphic Cepstrum (`fir.py`)
 For zero-latency pedalboard execution, linear magnitude responses $|H[k]|$ are converted to causal minimum-phase FIR kernels ($N = 4096$ taps, $N_{\text{fft}} = 16384$) via a pure real-FFT pipeline (`irfft` $\to$ causal folding $\to$ `rfft` $\to$ `irfft`) with cepstral power regularization floor $\epsilon = 10^{-12}$ ($-120\text{ dB}$):
 1. **Real Cepstrum Computation:** Given real, conjugate-symmetric log-magnitude spectrum $L[k] = \frac{1}{2}\ln(|H[k]|^2 + 10^{-12})$ for $k \in [0, N]$:
    $$\hat{c}[n] = \text{irfft}(L)[n]$$

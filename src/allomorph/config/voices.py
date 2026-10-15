@@ -341,10 +341,10 @@ def load_voice_config(identifier_or_path: str | Path | VoiceConfig) -> VoiceConf
 
 def load_voices_config(instruments_path: str | Path | None = None) -> VoiceRegistry:
     """
-    Constructs the target voice registry dynamically from instrument catalog configurations.
+    Constructs the target voice registry dynamically from instrument catalog configurations,
+    auto-loading all native voicings across all instruments in config/instruments/*.toml.
     """
     from allomorph.config.instruments import (
-        SOURCE_CATALOG_VOICINGS,
         STANDARD_CATALOG_TARGETS,
         load_all_instruments,
     )
@@ -353,7 +353,18 @@ def load_voices_config(instruments_path: str | Path | None = None) -> VoiceRegis
     voices_dict: dict[str, VoiceConfig] = {}
     aliases: dict[str, str] = {}
 
-    all_catalog_entries = list(STANDARD_CATALOG_TARGETS) + list(SOURCE_CATALOG_VOICINGS)
+    seen_pairs: set[tuple[str, str]] = set()
+    all_catalog_entries: list[tuple[str, str]] = []
+    for inst_id, voicing_id in STANDARD_CATALOG_TARGETS:
+        if (inst_id, voicing_id) not in seen_pairs:
+            seen_pairs.add((inst_id, voicing_id))
+            all_catalog_entries.append((inst_id, voicing_id))
+    for inst_id, inst in sorted(instruments.items()):
+        for voicing_id in inst.voicings:
+            if (inst_id, voicing_id) not in seen_pairs:
+                seen_pairs.add((inst_id, voicing_id))
+                all_catalog_entries.append((inst_id, voicing_id))
+
     for inst_id, voicing_id in all_catalog_entries:
         if inst_id not in instruments:
             continue

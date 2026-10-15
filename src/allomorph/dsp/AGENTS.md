@@ -4,7 +4,7 @@ Covers master dry string excitation synthesis (`audio/input.wav`), biaxial modal
 
 ## Key Modules
 - [`dry.py`](dry.py), [`plucks.py`](plucks.py), [`sweeps.py`](sweeps.py): Master excitation assembler, 2D modal plucks with pitch sag, and physical string-tilted logarithmic chirps.
-- [`fir.py`](fir.py) & [`conditioning.py`](conditioning.py): Pure real-FFT homomorphic cepstrum minimum-phase FIR synthesis, `cinf_smoothstep` tail windowing, and Type-I Blackman FIR design.
+- [`fir.py`](fir.py) & [`conditioning.py`](conditioning.py): Pure real-FFT homomorphic cepstrum minimum-phase FIR synthesis with `cinf_smoothstep` tail windowing (`fir.py`), and 8 Hz DC blocking, RLC-colored Johnson-Nyquist thermal dither (`-108 dBFS`), and calibrated LUFS/peak normalization (`conditioning.py`).
 - [`loudness.py`](loudness.py): ITU-R BS.1770-4 K-weighted gated LUFS measurement, 4x oversampled FFT sinc true-peak detection, and linear peak-based safety scaling.
 - [`convolution.py`](convolution.py) & [`io.py`](io.py): Overlap-save SIMD FFT convolution, C-view 24-bit little-endian byte packing, and `pedalboard` WAV I/O.
 

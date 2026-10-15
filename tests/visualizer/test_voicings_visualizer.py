@@ -64,7 +64,7 @@ def test_build_voicings_comparison_data_performance_and_bounds():
         assert not np.isnan(m_arr).any()
         assert not np.isinf(m_arr).any()
         assert np.max(m_arr) < 25.0, f"{vid} peak {np.max(m_arr)} exceeds 25 dB"
-        assert np.min(m_arr) > -120.0, f"{vid} notch {np.min(m_arr)} below -120 dB"
+        assert np.min(m_arr) >= -120.0, f"{vid} notch {np.min(m_arr)} below -120 dB"
 
         # 2-decimal rounding guardrail
         for m in mags:

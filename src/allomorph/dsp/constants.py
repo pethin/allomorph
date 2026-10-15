@@ -42,6 +42,9 @@ NUM_TAPS = 4096
 NYQ = FS / 2.0
 FREQS = [i * (NYQ / (NUM_TAPS - 1)) for i in range(NUM_TAPS)]
 
+TARGET_LUFS: float = -20.50  # ITU-R BS.1770-4 NAM reference loudness standard
+CALIBRATION_PEAK_CEILING: float = 0.9900  # -0.09 dBFS true-peak safety ceiling
+
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent.parent
 AUDIO_DIR = REPO_ROOT / "audio"
 DEFAULT_INPUT_PATH = AUDIO_DIR / "input.wav"

@@ -55,47 +55,39 @@ def test_format_instrument_meta():
 
 
 def test_build_portal_html():
-    """Validates construction of responsive portal HTML string."""
+    """Validates construction of flat, self-contained portal HTML string without iframe nesting."""
     html = build_portal_html(default_id="voicings", base_url_prefix="./")
     assert "<!DOCTYPE html>" in html
-    assert "Allomorph | Voicing Comparisons & Frequency Response Suite" in html
-    assert f"{len(VOICES)} Catalog Voicings" in html
-    assert "H_src (Cyan)" in html
-    assert "H_tgt (Orange)" in html
-    assert "H_diff (Purple)" in html
-    assert "selectPrimaryView" in html
-    assert "updateView" in html
-
-    # Custom base URL prefix
-    custom_prefix_html = build_portal_html(base_url_prefix="./frequency_responses/")
-    assert "./frequency_responses/" in custom_prefix_html
-
-    # Custom instruments meta mapping
-    inst_30 = load_instrument("30in")
-    custom_meta = {"30in": format_instrument_meta(inst_30)}
-    html_custom = build_portal_html(instruments_meta=custom_meta)
-    assert "<!DOCTYPE html>" in html_custom
+    assert "Allomorph | Frequency Response Suite & Voicing Comparisons" in html
+    assert "Allomorph Frequency Response Suite" in html
+    assert "flow-pipeline-card" in html
+    assert "control-card" in html
+    assert "plot-div" in html
+    assert "<iframe" not in html
+    assert "pnav-voicings" not in html
+    assert "<- Master Portal" not in html
+    assert "&larr; Master Portal" not in html
+    assert f"{len(VOICES)}" in html
 
 
 def test_generate_portal_pages(tmp_path: Path):
-    """Validates writing index.html to target directory."""
-    generate_portal_pages(output_dir=tmp_path, default_id="voicings")
-    index_file = tmp_path / "index.html"
-    assert index_file.exists()
-    content = index_file.read_text(encoding="utf-8")
+    """Validates writing flat frequency_responses.html to target directory."""
+    res = generate_portal_pages(output_dir=tmp_path, default_id="voicings")
+    portal_file = tmp_path / "frequency_responses.html"
+    assert res == portal_file
+    assert portal_file.exists()
+    assert not (tmp_path / "index.html").exists()
+    content = portal_file.read_text(encoding="utf-8")
     assert "<!DOCTYPE html>" in content
-    assert "Allomorph | Voicing Comparisons" in content
-    assert f"{len(VOICES)} Catalog Voicings" in content
+    assert "Allomorph Frequency Response Suite" in content
+    assert "<iframe" not in content
 
 
 def test_generate_portal_pages_responses_dir(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """Validates writing index.html and root frequency_responses.html when output_dir == RESPONSES_DIR."""
-    resp_dir = tmp_path / "frequency_responses"
-    resp_dir.mkdir(parents=True, exist_ok=True)
-    monkeypatch.setattr("allomorph.visualizer.portal.RESPONSES_DIR", resp_dir)
+    """Validates writing root frequency_responses.html when output_dir == DOCS_DIR."""
     monkeypatch.setattr("allomorph.visualizer.portal.DOCS_DIR", tmp_path)
-    generate_portal_pages(output_dir=resp_dir)
-    assert (resp_dir / "index.html").exists()
+    generate_portal_pages(output_dir=tmp_path)
     assert (tmp_path / "frequency_responses.html").exists()
+    assert not (tmp_path / "frequency_responses").exists()

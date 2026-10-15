@@ -13,6 +13,10 @@ import math
 import numpy as np
 
 from allomorph.dsp.constants import FS, apply_cinf_fades, njit, prange
+from allomorph.physics.strings import get_inharmonicity_for_f0
+
+_GEO_FLOOR_NORM: float = math.hypot(1.0, 0.25)
+_TIP_FLOOR_NORM: float = math.hypot(1.0, 0.15)
 
 
 @njit(fastmath=True, parallel=True)
@@ -133,12 +137,18 @@ def compute_modal_frequencies(
     f0: float,
     inharmonicity_b: float,
     num_harmonics: int,
+    f_disp_max: float = 3500.0,
 ) -> np.ndarray:
-    """Computes physical string inharmonic modal frequencies: fn = n * f0 * sqrt(1 + B * n^2)."""
+    """Computes physical string inharmonic modal frequencies with shear-wave saturation:
+    fn = n * f0 * sqrt(1 + B_s * n^2 / (1 + (n * f0 / f_disp_max)^2)).
+    """
     if num_harmonics <= 0:
         return np.empty(0, dtype=np.float64)
     ns = np.arange(1, num_harmonics + 1, dtype=np.float64)
-    return ns * f0 * np.sqrt(np.maximum(1.0 + inharmonicity_b * (ns**2), 1e-12))
+    f_harm = ns * f0
+    f_cut_sq = (f_harm / f_disp_max) ** 2
+    disp_factor = 1.0 + inharmonicity_b * (ns**2) / (1.0 + f_cut_sq)
+    return f_harm * np.sqrt(np.maximum(disp_factor, 1e-12))
 
 
 def apply_attack_pitch_sag(
@@ -181,8 +191,8 @@ def generate_exponential_ringout_envelope(
 
 
 def _calc_inharmonicity_b(f0: float) -> float:
-    """Calculates physical string inharmonicity coefficient B as a function of fundamental frequency f0."""
-    return float(0.00008 + 0.00018 * np.exp(-f0 / 75.0))
+    """Calculates physical string inharmonicity coefficient B_s via the canonical Gaussian RBF solver."""
+    return get_inharmonicity_for_f0(f0)
 
 
 def _synth_pluck(
@@ -225,17 +235,18 @@ def _synth_pluck(
     drhs: list[float] = []
     hs: list[float] = []
     for h in range(1, max_h):
-        fn = h * f0 * np.sqrt(1.0 + b_coeff * (h**2))
+        f_harm = h * f0
+        fn = f_harm * math.sqrt(1.0 + b_coeff * (h**2) / (1.0 + (f_harm / 3500.0) ** 2))
         if fn >= (sample_rate / 2.0) - 200.0:
             break
-        geo_pos = max(float(np.sin(h * np.pi * 0.14)), 0.25)
+        geo_pos = math.hypot(math.sin(h * math.pi * 0.14), 0.25) / _GEO_FLOOR_NORM
         h_weight = (1.0 / (h**gamma)) * geo_pos
         if technique == "finger":
-            arg_tip = h * np.pi * 0.016
-            f_tip = abs(np.sin(arg_tip) / arg_tip) if arg_tip > 1e-4 else 1.0
-            h_weight *= max(float(f_tip), 0.15)
-        if technique == "palm_mute" and fn > 600.0:
-            h_weight *= float(np.exp(-(fn - 600.0) / 300.0))
+            arg_tip = h * math.pi * 0.016
+            f_tip = abs(math.sin(arg_tip) / arg_tip) if arg_tip > 1e-4 else 1.0
+            h_weight *= math.hypot(f_tip, 0.15) / _TIP_FLOOR_NORM
+        if technique == "palm_mute":
+            h_weight *= float(np.exp(-np.logaddexp(0.0, (fn - 600.0) / 300.0)))
         d_rate_v = (0.7 + 0.10 * h + 0.00025 * (h**2)) * decay_mult
         d_rate_h = (0.35 + 0.05 * h + 0.00012 * (h**2)) * decay_mult
         fns.append(fn)
@@ -504,6 +515,7 @@ def _synth_vibrato_pluck(
     delta = 2.0 ** (mod_depth_cents / 1200.0) - 1.0
     phase_mod = -delta * (f0 / mod_rate) * np.cos(2.0 * np.pi * mod_rate * t)
     base_phase = 2.0 * np.pi * f0 * t + 2.0 * np.pi * phase_mod
+    b_coeff = _calc_inharmonicity_b(f0)
     sig = np.zeros(n, dtype=np.float64)
     max_h = min(110, int((sample_rate / 2.0 - 200.0) / f0))
     fns: list[float] = []
@@ -511,16 +523,18 @@ def _synth_vibrato_pluck(
     drs: list[float] = []
     hs: list[float] = []
     for h in range(1, max_h):
-        fn = h * f0
+        f_harm = h * f0
+        disp_mult = math.sqrt(1.0 + b_coeff * (h**2) / (1.0 + (f_harm / 3500.0) ** 2))
+        fn = f_harm * disp_mult
         if fn >= (sample_rate / 2.0) - 200.0:
             break
-        geo_pos = max(float(np.sin(h * np.pi * 0.14)), 0.25)
+        geo_pos = math.hypot(math.sin(h * math.pi * 0.14), 0.25) / _GEO_FLOOR_NORM
         h_weight = (1.0 / (h**1.40)) * geo_pos
         decay_rate = 0.5 + 0.07 * h + 0.00018 * (h**2)
         fns.append(fn)
         hws.append(h_weight)
         drs.append(decay_rate)
-        hs.append(float(h))
+        hs.append(float(h) * disp_mult)
 
     if fns:
         _accumulate_vibrato_modes_simd(
@@ -559,10 +573,11 @@ def _synth_long_ringout(
     drvs: list[float] = []
     drhs: list[float] = []
     for h in range(1, max_h):
-        fn = h * f0 * np.sqrt(1.0 + b_coeff * (h**2))
+        f_harm = h * f0
+        fn = f_harm * math.sqrt(1.0 + b_coeff * (h**2) / (1.0 + (f_harm / 3500.0) ** 2))
         if fn >= (sample_rate / 2.0) - 200.0:
             break
-        geo_pos = max(float(np.sin(h * np.pi * 0.14)), 0.25)
+        geo_pos = math.hypot(math.sin(h * math.pi * 0.14), 0.25) / _GEO_FLOOR_NORM
         h_weight = (1.0 / (h**1.40)) * geo_pos
         decay_v_rate = 0.35 + 0.05 * h + 0.00012 * (h**2)
         decay_h_rate = 0.20 + 0.03 * h + 0.00006 * (h**2)

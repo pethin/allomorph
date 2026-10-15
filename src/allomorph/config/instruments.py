@@ -185,27 +185,6 @@ STANDARD_CATALOG_TARGETS: list[tuple[str, str]] = [
 ]
 
 
-def _load_source_catalog_voicings() -> list[tuple[str, str]]:
-    vis_path = CONFIG_DIR / "visualizer.toml"
-    if vis_path.is_file():
-        with open(vis_path, "rb") as f:
-            data = tomllib.load(f)
-        entries = data.get("additional_source_voicings", [])
-        if isinstance(entries, list):
-            result: list[tuple[str, str]] = []
-            for item in entries:
-                if isinstance(item, str) and ":" in item:
-                    inst_id, vid = item.split(":", 1)
-                    result.append((inst_id, vid))
-            return result
-    return []
-
-
-# Additional source instrument voicings available in the visualizer suite
-# (loaded from config/visualizer.toml additional_source_voicings as SSOT)
-SOURCE_CATALOG_VOICINGS: list[tuple[str, str]] = _load_source_catalog_voicings()
-
-
 @dataclass
 class TargetVoicingRef:
     instrument_id: str
@@ -461,9 +440,18 @@ def resolve_target_voicing(
                 f"explicitly defined under [voicings]. Available voicings on '{inst.id}': {list(inst.voicings.keys())}"
             )
 
-    # Search STANDARD_CATALOG_TARGETS and SOURCE_CATALOG_VOICINGS across all instruments
-    for iid, vid in list(STANDARD_CATALOG_TARGETS) + list(SOURCE_CATALOG_VOICINGS):
-        t_inst = load_instrument(iid)
+    # Search STANDARD_CATALOG_TARGETS first, then all instruments in catalog
+    all_instruments = load_all_instruments()
+    search_pairs: list[tuple[str, str]] = list(STANDARD_CATALOG_TARGETS)
+    seen_search = set(search_pairs)
+    for iid, inst_obj in sorted(all_instruments.items()):
+        for vid in inst_obj.voicings:
+            if (iid, vid) not in seen_search:
+                seen_search.add((iid, vid))
+                search_pairs.append((iid, vid))
+
+    for iid, vid in search_pairs:
+        t_inst = all_instruments.get(iid) or load_instrument(iid)
         if vid in t_inst.voicings:
             t_v = t_inst.voicings[vid]
             slug = (

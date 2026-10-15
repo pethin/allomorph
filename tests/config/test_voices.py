@@ -25,9 +25,11 @@ def test_voice_parameter_validity():
                         "active" in cfg.instrument_id
                         or "dingwall" in cfg.instrument_id
                         or "preamp" in cfg.instrument_id
+                        or "emg" in cfg.instrument_id
                     )
                 )
                 or "active" in vid
+                or "emg" in vid
             )
             max_fr = 20000.0 if is_active else 6000.0
             assert 200.0 <= cfg.fr <= max_fr, f"{vid} fr outside audible musical range: {cfg.fr}"
@@ -197,11 +199,16 @@ def test_phase2_coil_split_weight_renormalization():
         assert np.isclose(vcfg.coils[0].weight, 1.0)
 
 
-def test_phase2_source_catalog_voicings_ssot():
-    """Finding 2.7: SOURCE_CATALOG_VOICINGS is loaded directly from config/visualizer.toml."""
-    from allomorph.config.instruments import SOURCE_CATALOG_VOICINGS
-    from allomorph.visualizer.schema import load_visualizer_config
+def test_all_instrument_voicings_loaded_in_voices_registry():
+    """Finding 3.2: All 60 native voicings across all 16 instruments are auto-loaded into VOICES and mapped in VOICE_FAMILIES."""
+    from allomorph.config.instruments import load_all_instruments
+    from allomorph.visualizer.dataframe import VOICE_FAMILIES
 
-    viz_cfg = load_visualizer_config()
-    expected = [tuple(s.split(":", 1)) for s in viz_cfg.additional_source_voicings]
-    assert expected == SOURCE_CATALOG_VOICINGS
+    instruments = load_all_instruments()
+    total_voicings = sum(len(inst.voicings) for inst in instruments.values())
+    assert len(VOICES) == total_voicings == 60
+    assert set(VOICES.keys()) == set(VOICE_FAMILIES.keys())
+    for inst_id, inst in instruments.items():
+        for v_id in inst.voicings:
+            ref = f"{inst_id}:{v_id}"
+            assert ref in VOICES, f"Canonical voicing reference {ref} missing from VOICES"

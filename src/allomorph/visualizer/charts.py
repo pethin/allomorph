@@ -17,7 +17,7 @@ from allomorph.visualizer.dataframe import (
     build_voicings_comparison_data,
     build_voicings_comparison_dataframe,
 )
-from allomorph.visualizer.portal import RESPONSES_DIR, generate_portal_pages
+from allomorph.visualizer.portal import DOCS_DIR
 
 alt.data_transformers.disable_max_rows()
 
@@ -112,26 +112,11 @@ def render_chart_to_file(
     return target_path
 
 
-def generate_voicings_page(
-    target_html: Path | str | None = None,
+def build_voicings_html(
     voices: Mapping[str, VoiceConfig] | None = None,
     instruments: Mapping[str, InstrumentConfig] | None = None,
-) -> Path:
-    """
-    Renders the interactive 2D Voicing Comparison page (voicings.html):
-    Allows selecting any Source Voicing and Target Voicing from the standard catalog voicings in VOICES.
-    Displays an interactive 3-line graph:
-      1. Source Voicing (H_src)
-      2. Target Voicing (H_tgt)
-      3. Difference
-    When Source == Target, the differential line evaluates to exact 0.00 dB.
-    Includes live metrics, preset comparisons, and zero-scroll responsiveness.
-    """
-    if target_html is None:
-        target_html = RESPONSES_DIR / "voicings.html"
-    target_html = Path(target_html)
-    target_html.parent.mkdir(parents=True, exist_ok=True)
-
+) -> str:
+    """Constructs the flat, self-contained HTML string for the Allomorph Frequency Response Suite."""
     if voices is None:
         from allomorph.config.voices import VOICES
 
@@ -144,12 +129,12 @@ def generate_voicings_page(
     voicings_data = build_voicings_comparison_data(voices=voices, instruments=instruments, step=1)
     data_json = json.dumps(voicings_data, separators=(",", ":"))
 
-    html_content = f"""<!DOCTYPE html>
+    return f"""<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Allomorph | Voicing Comparisons (3-Line Response)</title>
+  <title>Allomorph | Frequency Response Suite & Voicing Comparisons</title>
   <style>
     :root {{
       --bg: #0d1117;
@@ -158,6 +143,7 @@ def generate_voicings_page(
       --border: #30363d;
       --accent: #38bdf8;
       --accent-hover: #0ea5e9;
+      --accent-subtle: rgba(56, 189, 248, 0.12);
       --text: #f0f6fc;
       --text-muted: #8b949e;
       --tag-bg: #21262d;
@@ -173,81 +159,82 @@ def generate_voicings_page(
       background-color: var(--bg);
       color: var(--text);
       line-height: 1.5;
-      padding: 16px;
+      padding: 24px;
     }}
     .container {{
-      max-width: 1240px;
+      max-width: 1280px;
       margin: 0 auto;
       display: flex;
       flex-direction: column;
-      gap: 12px;
+      gap: 16px;
     }}
-    .header-card {{
-      background: var(--card-bg);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 14px 20px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      flex-wrap: wrap;
-      gap: 12px;
-    }}
-    .header-title-col {{
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-    }}
-    .header-title {{
-      font-size: 18px;
+    .header h1 {{
+      font-size: 24px;
       font-weight: 700;
       color: var(--text);
       display: flex;
       align-items: center;
-      gap: 10px;
+      gap: 12px;
+      flex-wrap: wrap;
     }}
     .badge {{
       font-size: 11px;
       font-weight: 700;
       text-transform: uppercase;
       letter-spacing: 0.6px;
-      background: rgba(56, 189, 248, 0.15);
+      background: var(--accent-subtle);
       color: var(--accent);
       border: 1px solid var(--accent);
       padding: 2px 8px;
       border-radius: 12px;
     }}
-    .header-sub {{
-      font-size: 12px;
+    .header .subtitle {{
+      font-size: 14px;
       color: var(--text-muted);
+      margin-top: 6px;
     }}
-    .header-links {{
-      display: flex;
-      gap: 8px;
-      align-items: center;
-    }}
-    .nav-btn {{
-      background: var(--tag-bg);
+    .flow-pipeline-card {{
+      background: var(--card-bg);
       border: 1px solid var(--border);
-      color: var(--text-muted);
-      padding: 6px 12px;
-      border-radius: 6px;
-      font-size: 12px;
-      font-weight: 600;
-      text-decoration: none;
-      transition: all 0.15s ease;
-      display: inline-flex;
+      border-radius: 8px;
+      padding: 12px 18px;
+      display: flex;
       align-items: center;
-      gap: 6px;
+      justify-content: space-between;
+      gap: 8px;
+      overflow-x: auto;
     }}
-    .nav-btn:hover {{
-      background: var(--card-hover);
+    .flow-step {{
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      min-width: 160px;
+    }}
+    .flow-step-num {{
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: var(--text-muted);
+      font-weight: 700;
+    }}
+    .flow-step-title {{
+      font-size: 13px;
+      font-weight: 700;
       color: var(--text);
-      border-color: #8b949e;
     }}
-    .nav-btn.primary {{
+    .flow-step-desc {{
+      font-size: 11px;
+      color: var(--text-muted);
+      line-height: 1.3;
+    }}
+    .flow-step.flow-active .flow-step-num {{
       color: var(--accent);
-      border-color: var(--accent);
+    }}
+    .flow-arrow {{
+      color: var(--border);
+      font-size: 18px;
+      font-weight: 700;
+      padding: 0 4px;
     }}
     .control-card {{
       background: var(--card-bg);
@@ -418,18 +405,34 @@ def generate_voicings_page(
 </head>
 <body>
   <div class="container">
-    <div class="header-card">
-      <div class="header-title-col">
-        <div class="header-title">
-          <span>Allomorph Voicing Comparisons</span>
-          <span class="badge">3-Line Direct Forward Twin</span>
-        </div>
-        <div class="header-sub">
-          Source Voicing (H<sub>src</sub>) &times; Difference (Target - Source) = Target Voicing (H<sub>tgt</sub>)
-        </div>
+    <div class="header">
+      <h1>Allomorph Frequency Response Suite <span class="badge">Universal Voicings</span> <span class="badge">Direct Forward Simulation</span></h1>
+      <div class="subtitle">Interactive Source vs Target Voicing Comparisons &amp; Analytical Differential Transformations.</div>
+    </div>
+
+    <div class="flow-pipeline-card">
+      <div class="flow-step">
+        <div class="flow-step-num">Step 1</div>
+        <div class="flow-step-title">Source Digital Twin</div>
+        <div class="flow-step-desc">Forward source instrument simulation (H<sub>src</sub>)</div>
       </div>
-      <div class="header-links">
-        <a href="index.html" class="nav-btn">&larr; Master Portal</a>
+      <div class="flow-arrow">&rarr;</div>
+      <div class="flow-step">
+        <div class="flow-step-num">Step 2</div>
+        <div class="flow-step-title">Target Digital Twin</div>
+        <div class="flow-step-desc">Forward target instrument simulation (H<sub>tgt</sub>)</div>
+      </div>
+      <div class="flow-arrow">&rarr;</div>
+      <div class="flow-step flow-active">
+        <div class="flow-step-num">Training</div>
+        <div class="flow-step-title">NAM Block 1 Training</div>
+        <div class="flow-step-desc">WaveNet A2 learns Source &rarr; Target transform</div>
+      </div>
+      <div class="flow-arrow">&rarr;</div>
+      <div class="flow-step">
+        <div class="flow-step-num">Output</div>
+        <div class="flow-step-title">Stage Physical Twin</div>
+        <div class="flow-step-desc">Physical Bass A &rarr; NAM Block 1 &approx; Physical Bass B</div>
       </div>
     </div>
 
@@ -583,29 +586,6 @@ def generate_voicings_page(
       renderChart();
     }}
 
-    function cinfSmoothstep(t) {{
-      if (t <= 0.0) return 0.0;
-      if (t >= 1.0) return 1.0;
-      let arg = (1.0 - 2.0 * t) / (t * (1.0 - t));
-      arg = Math.min(Math.max(arg, -80.0), 80.0);
-      return 1.0 / (1.0 + Math.exp(arg));
-    }}
-
-    function computeCurveRmsDb(mags) {{
-      let sum = 0.0;
-      for (let i = 0; i < mags.length; i++) {{
-        sum += Math.pow(10.0, mags[i] / 10.0);
-      }}
-      return 10.0 * Math.log10(Math.max(sum / mags.length, 1e-12));
-    }}
-
-    function smoothSoftKneeDb(x, thresh, ceiling, alpha) {{
-      const w = Math.max(ceiling - thresh, 1e-6);
-      const z = alpha * (x - thresh);
-      const excess = (z > 50.0 ? z : (z < -50.0 ? 0.0 : Math.log1p(Math.exp(z)))) / alpha;
-      return x - excess + w * Math.tanh(excess / w);
-    }}
-
     function renderChart() {{
       const srcId = sourceSelect.value;
       const tgtId = targetSelect.value;
@@ -615,8 +595,6 @@ def generate_voicings_page(
 
       const srcMags = src.magnitude_db;
       const tgtMags = tgt.magnitude_db;
-      const srcRms = (typeof src.rms_db === 'number') ? src.rms_db : computeCurveRmsDb(srcMags);
-      const tgtRms = (typeof tgt.rms_db === 'number') ? tgt.rms_db : computeCurveRmsDb(tgtMags);
 
       const diffMags = [];
       let maxBoost = -999;
@@ -736,7 +714,7 @@ def generate_voicings_page(
         }}
       }};
 
-      Plotly.react('plot-div', [traceZero, traceSource, traceTarget, traceDiff], layout, {{ responsive: true, displayModeBar: false }});
+        Plotly.react('plot-div', [traceZero, traceSource, traceTarget, traceDiff], layout, {{ responsive: true, displayModeBar: false }});
     }}
 
     window.addEventListener('DOMContentLoaded', renderChart);
@@ -744,6 +722,19 @@ def generate_voicings_page(
 </body>
 </html>
 """
+
+
+def generate_voicings_page(
+    target_html: Path | str | None = None,
+    voices: Mapping[str, VoiceConfig] | None = None,
+    instruments: Mapping[str, InstrumentConfig] | None = None,
+) -> Path:
+    """Renders the flat, self-contained interactive Voicing Comparison page (default: docs/frequency_responses.html)."""
+    if target_html is None:
+        target_html = DOCS_DIR / "frequency_responses.html"
+    target_html = Path(target_html)
+    target_html.parent.mkdir(parents=True, exist_ok=True)
+    html_content = build_voicings_html(voices=voices, instruments=instruments)
     target_html.write_text(html_content, encoding="utf-8")
     print(f"Saved Voicings Comparison page: {target_html}")
     return target_html
@@ -789,7 +780,7 @@ def generate_interactive_chart(
     inst_name = inst.name
 
     if out_html is None:
-        target_path = RESPONSES_DIR / f"{inst_id}.html"
+        target_path = DOCS_DIR / f"{inst_id}.html"
     else:
         p = Path(out_html)
         if p.is_dir() or (not p.suffix and not p.exists()):
@@ -873,17 +864,12 @@ def generate_interactive_chart(
 
 
 def generate_all_charts(output_dir: str | Path | None = None) -> dict[str, Path]:
-    """Generates standalone interactive charts for voicings comparison, 3D IR difference, and the portal."""
-    out_dir = Path(output_dir) if output_dir else RESPONSES_DIR
+    """Generates the flat, self-contained interactive Frequency Response Suite page (docs/frequency_responses.html)."""
+    out_dir = Path(output_dir) if output_dir else DOCS_DIR
     out_dir.mkdir(parents=True, exist_ok=True)
-
-    # 1. Interactive Voicings Comparison (3-line graph: Source, Target, Diff)
-    print("Generating Voicings Comparison (voicings.html)...")
-    voicings_html = generate_voicings_page(out_dir / "voicings.html")
-
-    generated: dict[str, Path] = {
+    target_path = out_dir if out_dir.suffix == ".html" else (out_dir / "frequency_responses.html")
+    print(f"Generating Frequency Response Suite ({target_path.name})...")
+    voicings_html = generate_voicings_page(target_path)
+    return {
         "voicings": voicings_html,
     }
-
-    generate_portal_pages(output_dir=out_dir)
-    return generated

@@ -15,7 +15,19 @@ from typing import Any
 import numpy as np
 from pydantic import BaseModel, Field
 
-CALIBRATION_PEAK_CEILING: float = 0.9900  # -0.087 dBFS
+from allomorph.dsp.constants import CALIBRATION_PEAK_CEILING
+
+__all__ = [
+    "CALIBRATION_PEAK_CEILING",
+    "DEFAULT_FREQUENCY_ANCHORS",
+    "AudioAuditRecord",
+    "AudioAuditReport",
+    "aggregate_audit_report",
+    "compute_stem_level_metrics",
+    "evaluate_causal_onset_and_peak",
+    "extract_frequency_anchors",
+    "is_manifest_entry_fresh",
+]
 
 DEFAULT_FREQUENCY_ANCHORS: dict[str, float] = {
     "sub_bass_10hz_db": 10.0,

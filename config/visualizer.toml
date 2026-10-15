@@ -6,16 +6,6 @@
 default_source = "precision_vintage"
 default_target = "jazz_bridge_growl"
 
-# Additional source voicings for visualizer comparison beyond tone pack bundles
-additional_source_voicings = [
-    "34in_preamp_soapbar:pair_parallel",
-    "34in_preamp_soapbar:neck_solo",
-    "34in_preamp_soapbar:bridge_solo",
-    "34in_active_emg:pair_parallel",
-    "34in_active_emg:neck_solo",
-    "34in_active_emg:bridge_solo",
-]
-
 # Dynamic Quick Comparison Chips
 [[chips]]
 label = "P vs J Bridge"

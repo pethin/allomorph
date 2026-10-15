@@ -18,7 +18,7 @@ from allomorph.config.schema import (
     VoiceCoilConfig,
     VoiceConfig,
 )
-from allomorph.dsp import cinf_smoothstep
+from allomorph.dsp.constants import cinf_smoothstep
 from allomorph.physics.schema import WaveSpeedContinuumPoint
 from allomorph.physics.strings import (
     generate_wave_speed_continuum,

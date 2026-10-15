@@ -11,13 +11,20 @@ from typing import Literal, overload
 import numpy as np
 import pedalboard
 
-from allomorph.dsp.constants import FS
+from allomorph.dsp.constants import CALIBRATION_PEAK_CEILING, FS, TARGET_LUFS
 from allomorph.dsp.convolution import fft_convolve
 from allomorph.dsp.fir import synthesize_minimum_phase_fir
 from allomorph.dsp.io import compute_true_peak
 from allomorph.dsp.loudness import compute_lufs
 
-CALIBRATION_PEAK_CEILING = 0.9900  # -0.09 dBFS true-peak headroom ceiling
+__all__ = [
+    "CALIBRATION_PEAK_CEILING",
+    "TARGET_LUFS",
+    "apply_calibrated_normalization",
+    "apply_dc_block",
+    "apply_johnson_dither",
+    "get_white_noise_vector",
+]
 
 
 def get_white_noise_vector(n_samples: int, seed: int = 42) -> np.ndarray:

@@ -19,10 +19,13 @@ def test_generate_all_charts():
         out_dir = Path(tmpdir)
         generated = generate_all_charts(output_dir=out_dir)
 
-        # 1. Check Voicings comparison page exists and obsolete 3D IR is not generated
+        # 1. Check flat single-file frequency_responses.html exists and obsolete 3D IR / nested files do not
         assert "voicings" in generated
         assert "voicing_ir_3d" not in generated
-        assert (out_dir / "voicings.html").exists()
+        portal_path = out_dir / "frequency_responses.html"
+        assert portal_path.exists()
+        assert not (out_dir / "voicings.html").exists()
+        assert not (out_dir / "index.html").exists()
         assert not (out_dir / "voicing_ir_3d.html").exists()
 
         # 2. Verify legacy per-instrument forward signal flow charts are NOT generated
@@ -37,16 +40,18 @@ def test_generate_all_charts():
         assert not (out_dir / "baked_responses.html").exists()
         assert not (out_dir / "baked_waterfall_3d.html").exists()
 
-        # 4. Check index portal in output directory
-        index_path = out_dir / "index.html"
-        assert index_path.exists()
-        portal_content = index_path.read_text(encoding="utf-8")
+        # 4. Check flat single-file content (no iframe, no single-tab button, no nested back-link)
+        portal_content = portal_path.read_text(encoding="utf-8")
         assert "Allomorph Frequency Response Suite" in portal_content
-        assert "iframe" in portal_content
-        assert "pnav-voicings" in portal_content
+        assert "flow-pipeline-card" in portal_content
+        assert "control-card" in portal_content
+        assert "plot-div" in portal_content
+        assert "<iframe" not in portal_content
+        assert "pnav-voicings" not in portal_content
         assert "pnav-waterfall3d" not in portal_content
         assert "pnav-inspector" not in portal_content
         assert "tab-btn" not in portal_content
+        assert "&larr; Master Portal" not in portal_content
 
 
 def test_generate_interactive_chart_modes():
@@ -70,15 +75,15 @@ def test_generate_interactive_chart_modes():
         assert "Display Mode: " in p_unified.read_text(encoding="utf-8")
 
         # 4. Voicings mode
-        p_v = Path(tmpdir) / "voicings.html"
+        p_v = Path(tmpdir) / "frequency_responses.html"
         generate_interactive_chart(out_html=str(p_v), mode="voicings")
         assert p_v.exists()
-        assert "Voicing Comparisons" in p_v.read_text(encoding="utf-8")
+        assert "Allomorph Frequency Response Suite" in p_v.read_text(encoding="utf-8")
 
 
 def test_generate_voicings_page():
     with tempfile.TemporaryDirectory() as tmpdir:
-        target_html = Path(tmpdir) / "voicings.html"
+        target_html = Path(tmpdir) / "frequency_responses.html"
         res = generate_voicings_page(target_html)
         assert res.exists()
         content = res.read_text(encoding="utf-8")
@@ -87,6 +92,7 @@ def test_generate_voicings_page():
         assert "target-select" in content
         assert "btn-swap" in content
         assert "plot-div" in content
+        assert "<iframe" not in content
 
 
 def test_portal_html_scripts_valid():
@@ -96,8 +102,7 @@ def test_portal_html_scripts_valid():
         generate_all_charts(output_dir=out_dir)
 
         portal_files = [
-            out_dir / "index.html",
-            out_dir / "voicings.html",
+            out_dir / "frequency_responses.html",
         ]
         for p in portal_files:
             assert p.exists()
