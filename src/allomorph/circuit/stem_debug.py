@@ -89,7 +89,6 @@ def debug_voicing_stem(
         voicing=voicing,
         input_audio=x_sweep,
         return_audio=True,
-        normalize="none",
         preamps=preamps,
     )
 

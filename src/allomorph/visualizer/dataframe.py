@@ -73,7 +73,6 @@ def build_voice_dataframe(
             voicing=voicing,
             input_audio=x_sweep,
             return_audio=True,
-            normalize="none",
             dc_block=False,
             apply_saturation=False,
             apply_dither=False,
@@ -247,7 +246,7 @@ def build_voicings_comparison_dataframe(
     Constructs a 3-line Polars DataFrame comparing a Source Voicing and Target Voicing:
       1. Source Voicing (H_src)
       2. Target Voicing (H_tgt)
-      3. Normalized Difference (Norm. Diff = H_tgt,norm - H_src,norm)
+      3. Difference (H_diff = H_tgt - H_src)
     When source == target, the differential line evaluates to exact 0.00 dB.
     """
     freqs = np.asarray(log_freqs[::step], dtype=np.float64)

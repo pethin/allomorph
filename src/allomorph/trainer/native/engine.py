@@ -144,6 +144,7 @@ def train_voice_native(
     from allomorph.trainer.core import (
         find_sweep_input,
         get_hardware_device_name,
+        normalize_training_stem,
         resolve_hardware_batch_size,
         resolve_hardware_precision,
         setup_headless_environment,
@@ -357,7 +358,7 @@ def train_voice_native(
         print(f"  Loss Config:    MSE={mse_weight:.2f}, MRSTFT={mrstft_weight:.4f}")
         print("-------------------------------------------------------", flush=True)
 
-    # 9. In-VRAM Zero-Copy Audio Loading
+    # 9. In-VRAM Zero-Copy Audio Loading & Loudness Calibration (-20.50 LUFS)
     x_full, sr_x = load_audio_tensor(reference_path)
     y_full, sr_y = load_audio_tensor(output_path)
 
@@ -366,8 +367,12 @@ def train_voice_native(
     sample_rate = float(sr_x)
 
     n_samples = min(len(x_full), len(y_full))
-    x_full = x_full[:n_samples]
-    y_full = y_full[:n_samples]
+    x_full = torch.from_numpy(
+        normalize_training_stem(x_full[:n_samples].numpy(), sample_rate=sr_x).astype(np.float32)
+    )
+    y_full = torch.from_numpy(
+        normalize_training_stem(y_full[:n_samples].numpy(), sample_rate=sr_y).astype(np.float32)
+    )
 
     val_samples = min(432_000, max(48000, int(0.10 * n_samples)))
     train_samples = n_samples - val_samples
@@ -441,7 +446,6 @@ def train_voice_native(
                     inst_cfg,
                     src_v_reg,
                     apply_saturation=False,
-                    normalize="none",
                     apply_dither=False,
                 )
                 if src_v_reg is not None
@@ -452,7 +456,6 @@ def train_voice_native(
                 tgt_inst_reg,
                 tgt_v_reg,
                 apply_saturation=False,
-                normalize="none",
                 apply_dither=False,
             )
             rms_x_full = float(
@@ -492,7 +495,6 @@ def train_voice_native(
                             inst_cfg,
                             src_v_reg,
                             apply_saturation=False,
-                            normalize="none",
                             apply_dither=False,
                         )
                         if src_v_reg is not None
@@ -503,7 +505,6 @@ def train_voice_native(
                         tgt_inst_reg,
                         tgt_v_reg,
                         apply_saturation=False,
-                        normalize="none",
                         apply_dither=False,
                     )
                 c_out = c_out * probe_gain_correction
@@ -532,7 +533,6 @@ def train_voice_native(
                             inst_cfg,
                             src_v_reg,
                             apply_saturation=False,
-                            normalize="none",
                             apply_dither=False,
                         )
                         if src_v_reg is not None
@@ -543,7 +543,6 @@ def train_voice_native(
                         tgt_inst_reg,
                         tgt_v_reg,
                         apply_saturation=False,
-                        normalize="none",
                         apply_dither=False,
                     )
                     s_out = s_out * probe_gain_correction

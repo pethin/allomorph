@@ -14,6 +14,7 @@ from hypothesis import strategies as st
 
 from allomorph.circuit.forward import (
     CALIBRATION_PEAK_CEILING,
+    simulate_instrument_voicing,
     simulate_pickup_transducer_branch,
     simulate_voicing_dsp,
     synthesize_multi_pickup_spatial_blend,
@@ -62,7 +63,6 @@ def test_simulate_voicing_dsp_zero_latency() -> None:
         num_taps=256,
         apply_dither=False,
         dc_block=False,
-        normalize="none",
     )
     # Energy must be present at sample 0 (causal minimum phase)
     assert abs(out[0]) > 1e-4, f"Expected non-zero onset at sample 0, got {out[0]}"
@@ -73,18 +73,19 @@ def test_simulate_voicing_dsp_zero_latency() -> None:
     buf=st_audio_buffers(min_len=256, max_len=512, min_val=-1.0, max_val=1.0, dtype=np.float64),
     scale=st.floats(min_value=0.1, max_value=5.0, allow_nan=False),
 )
-def test_simulate_voicing_dsp_true_peak_ceiling(buf: np.ndarray, scale: float) -> None:
-    """Simulated output true peak never exceeds CALIBRATION_PEAK_CEILING under auto normalization."""
+def test_simulate_instrument_voicing_true_peak_ceiling(buf: np.ndarray, scale: float) -> None:
+    """Simulated wet stem true peak never exceeds CALIBRATION_PEAK_CEILING when apply_saturation=True."""
     inst = make_generic_instrument_config()
     voicing = inst.voicings["generic_voice"]
 
     input_audio = buf * scale
-    out = simulate_voicing_dsp(
-        raw_audio=input_audio,
+    out = simulate_instrument_voicing(
         instrument=inst,
         voicing=voicing,
+        input_audio=input_audio,
+        return_audio=True,
         num_taps=256,
-        normalize="auto",
+        apply_saturation=True,
     )
     tp = compute_true_peak(out)
     assert tp <= CALIBRATION_PEAK_CEILING + 1e-3, (

@@ -326,3 +326,23 @@ def test_native_default_hyperparameters_and_isolation() -> None:
     assert sig.parameters["sine_regularizer"].default == NATIVE_DEFAULT_SINE_REGULARIZER
     assert sig.parameters["sine_frequencies"].default == NATIVE_DEFAULT_SINE_FREQUENCIES
     assert sig.parameters["sine_amplitudes"].default == NATIVE_DEFAULT_SINE_AMPLITUDES
+
+
+def test_normalize_training_stem_calibrates_unnormalized_stems() -> None:
+    """Verifies normalize_training_stem calibrates arbitrary unnormalized stems to TARGET_LUFS (-20.50 LUFS)."""
+    from allomorph.dsp import TARGET_LUFS, compute_lufs, compute_true_peak
+    from allomorph.dsp.conditioning import CALIBRATION_PEAK_CEILING
+    from allomorph.trainer import normalize_training_stem
+
+    sr = 48000
+    t = np.linspace(0, 2.0, sr * 2, endpoint=False, dtype=np.float64)
+    quiet_stem = 0.02 * np.sin(2.0 * np.pi * 220.0 * t)
+    loud_stem = 0.60 * np.sin(2.0 * np.pi * 220.0 * t)
+
+    norm_quiet = normalize_training_stem(quiet_stem, sample_rate=sr)
+    norm_loud = normalize_training_stem(loud_stem, sample_rate=sr)
+
+    assert abs(compute_lufs(norm_quiet, sample_rate=sr) - TARGET_LUFS) < 0.05
+    assert abs(compute_lufs(norm_loud, sample_rate=sr) - TARGET_LUFS) < 0.05
+    assert compute_true_peak(norm_quiet, sample_rate=sr) <= CALIBRATION_PEAK_CEILING + 1e-4
+    assert compute_true_peak(norm_loud, sample_rate=sr) <= CALIBRATION_PEAK_CEILING + 1e-4

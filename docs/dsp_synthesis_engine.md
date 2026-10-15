@@ -94,7 +94,7 @@ The engine synthesizes five distinct playing techniques:
 
 ### 5.1 The NAM Training Loudness Reference Standard ($-20.50\text{ LUFS}$)
 
-All dry excitation tracks and target wet simulation stems are leveled to the official NAM reference standard:
+All dry excitation tracks (`audio/input.wav`) and NAM training stems (normalized at the start of training via `normalize_training_stem`) are leveled to the official NAM reference standard:
 $$\text{Target Integrated Loudness} = -20.50\text{ LUFS}$$
 $$\text{True-Peak Safety Ceiling} = 0.9900\text{ (}-0.09\text{ dBFS)}$$
 

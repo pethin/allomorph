@@ -13,6 +13,8 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+import numpy as np
+
 from allomorph.config import (
     InstrumentConfig,
     compute_effective_position,
@@ -332,6 +334,7 @@ def train_voice_stock(
     from allomorph.trainer.core import (
         find_sweep_input,
         get_hardware_device_name,
+        normalize_training_stem,
         resolve_hardware_batch_size,
         resolve_hardware_num_workers,
         resolve_hardware_precision,
@@ -474,11 +477,26 @@ def train_voice_stock(
         tone_type="clean",
     )
 
-    print("Validating dataset and calibration markers...")
+    print("Validating dataset and calibrating stems to -20.50 LUFS...")
+    from allomorph.dsp.io import read_wav, write_wav_24bit
+
+    ref_audio, ref_sr = read_wav(reference_path, dtype=np.float64)
+    out_audio, out_sr = read_wav(output_path, dtype=np.float64)
+    ref_mono = np.mean(ref_audio, axis=0) if ref_audio.ndim > 1 else ref_audio
+    out_mono = np.mean(out_audio, axis=0) if out_audio.ndim > 1 else out_audio
+
+    ref_norm = normalize_training_stem(ref_mono, sample_rate=ref_sr)
+    out_norm = normalize_training_stem(out_mono, sample_rate=out_sr)
+
+    norm_ref_path = train_work_dir / "source_norm.wav"
+    norm_out_path = train_work_dir / "target_norm.wav"
+    write_wav_24bit(norm_ref_path, ref_norm.astype(np.float32), sample_rate=ref_sr)
+    write_wav_24bit(norm_out_path, out_norm.astype(np.float32), sample_rate=out_sr)
+
     try:
         train_output = nam_core.train(
-            input_path=str(reference_path),
-            output_path=str(output_path),
+            input_path=str(norm_ref_path),
+            output_path=str(norm_out_path),
             train_path=str(train_work_dir),
             epochs=epochs,
             batch_size=resolved_batch_size,

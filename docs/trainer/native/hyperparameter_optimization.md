@@ -143,7 +143,7 @@ To achieve imperceptible studio linearity without sacrificing training throughpu
 | **Scheduler & Annealing** | Cosine ($T_{\max}=115, \eta_{\min}=10^{-6}$) | Deep annealing into tiny learning rates smoothly eliminates LeakyReLU zero-crossing slope kinks. |
 | **Highpass Regularizer** | 255-tap Blackman FIR ($w=2.5, f_c=1200\text{Hz}$) | Covers all chime upper harmonics (H2–H5) while providing $>78.9\text{ dB}$ stopband rejection at comb notches. |
 | **Convolution Padding** | `padding="valid"` | Eliminates the $0.24$ magnitude Gibbs boundary step transients caused by `padding="same"`. |
-| **Probe Normalization** | `normalize="none"` | Preserves exact physical transfer ratios ($H_{\text{tgt}} / H_{\text{src}}$); prevents comb notch and treble boost flattening. |
+| **Probe Normalization** | Unnormalized `simulate_voicing_dsp` | Preserves exact physical transfer ratios ($H_{\text{tgt}} / H_{\text{src}}$); prevents comb notch and treble boost flattening. |
 | **Probe Gain Alignment** | Dynamic `probe_gain_correction` | Aligns synthetic probe amplitudes with LUFS-matched stems, eliminating the $+8.22\text{ dB}$ gain conflict. |
 | **Batch Size & Precision** | $B=16$, native `bf16-mixed` | Locks within 64 MB Infinity Cache; guarantees continuous $98\%\text{--}101\%$ GPU compute saturation. |
 

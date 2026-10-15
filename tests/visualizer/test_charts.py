@@ -97,6 +97,11 @@ def test_generate_voicings_page():
         assert "btn-swap" in content
         assert "plot-div" in content
         assert "<iframe" not in content
+        assert "Broadband Level Delta" in content
+        assert "metric-level-delta" in content
+        assert "Magnitude / Difference (dB)" in content
+        assert "Normalized Transform" not in content
+        assert "Normalized Difference" not in content
 
 
 def test_portal_html_scripts_valid():

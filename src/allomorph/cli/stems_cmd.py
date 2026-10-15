@@ -27,7 +27,6 @@ from allomorph.config.schema import InstrumentConfig, VoicingConfig
 from allomorph.config.strings import STRINGS
 from allomorph.dsp import (
     check_dry_excitation_needs_regeneration,
-    compute_lufs,
     ensure_input_audio_wav,
     read_wav,
 )
@@ -206,17 +205,11 @@ def generate_stems(
             f"Stem audit: {cached_count} cached & fresh, {len(tasks_to_simulate)} queued for synthesis."
         )
         input_audio: np.ndarray | None = None
-        ref_lufs: float | None = None
         if input_wav is not None and input_wav.exists():
             try:
-                input_audio, input_sr = read_wav(
-                    input_wav, max_samples=max_samples, dtype=np.float64
-                )
-                input_mono = input_audio[0] if input_audio.ndim > 1 else input_audio
-                ref_lufs = compute_lufs(input_mono, sample_rate=input_sr)
+                input_audio, _ = read_wav(input_wav, max_samples=max_samples, dtype=np.float64)
             except Exception:  # noqa: BLE001
                 input_audio = None
-                ref_lufs = None
 
         eff_jobs = jobs if jobs is not None and jobs > 0 else min(os.cpu_count() or 4, 8)
 
@@ -236,7 +229,6 @@ def generate_stems(
                     force=force,
                     preamps=PREAMPS,
                     strings=STRINGS,
-                    ref_lufs=ref_lufs,
                 )
                 return (f"{t_inst.id}:{t_slug}", None)
             except Exception as e:  # noqa: BLE001

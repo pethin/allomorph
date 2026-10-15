@@ -38,6 +38,7 @@ from allomorph.dsp import (
     FS,
     NUM_TAPS,
     compute_lufs,
+    compute_true_peak,
     fft_convolve,
     read_wav,
     synthesize_minimum_phase_fir,
@@ -45,7 +46,6 @@ from allomorph.dsp import (
 )
 from allomorph.dsp.conditioning import (
     CALIBRATION_PEAK_CEILING,
-    apply_calibrated_normalization,
     apply_dc_block,
     apply_johnson_dither,
 )
@@ -285,12 +285,9 @@ def simulate_voicing_dsp(
     blend_pos: float | None = ...,
     cable_pf: float | None = ...,
     dc_block: bool = ...,
-    normalize: str = ...,
-    target_dbfs: float | None = ...,
     sample_rate: int = ...,
     preamps: Mapping[str, PreampConfig] | None = ...,
     strings: Mapping[str, StringPresetConfig] | None = ...,
-    ref_lufs: float | None = ...,
     return_metadata: Literal[False] = False,
 ) -> np.ndarray: ...
 
@@ -308,12 +305,9 @@ def simulate_voicing_dsp(
     blend_pos: float | None = ...,
     cable_pf: float | None = ...,
     dc_block: bool = ...,
-    normalize: str = ...,
-    target_dbfs: float | None = ...,
     sample_rate: int = ...,
     preamps: Mapping[str, PreampConfig] | None = ...,
     strings: Mapping[str, StringPresetConfig] | None = ...,
-    ref_lufs: float | None = ...,
     return_metadata: Literal[True] = ...,
 ) -> tuple[np.ndarray, dict[str, float]]: ...
 
@@ -330,12 +324,9 @@ def simulate_voicing_dsp(
     blend_pos: float | None = None,
     cable_pf: float | None = None,
     dc_block: bool = True,
-    normalize: str = "auto",
-    target_dbfs: float | None = None,
     sample_rate: int = FS,
     preamps: Mapping[str, PreampConfig] | None = None,
     strings: Mapping[str, StringPresetConfig] | None = None,
-    ref_lufs: float | None = None,
     return_metadata: bool = False,
 ) -> np.ndarray | tuple[np.ndarray, dict[str, float]]:
     """Pure in-memory DSP digital twin simulation: zero disk I/O, zero file creation.
@@ -348,10 +339,9 @@ def simulate_voicing_dsp(
       5. Onboard active preamp EQ contour H_preamp(f)
       6. Oversampled non-linear magnetic/piezo saturation across all physical parameters
       7. Sub-audible 8 Hz DC blocking and passive RLC-colored Johnson noise dither
-      8. Calibrated LUFS volume matching and true-peak ceiling limiting
 
     Returns:
-        np.ndarray: Simulated wet audio signal matching input length.
+        np.ndarray: Simulated wet audio signal matching input length (preserving raw physical transfer gain).
     """
     inst = instrument
     voicing_cfg = voicing
@@ -638,7 +628,7 @@ def simulate_voicing_dsp(
     else:
         filtered = composite_audio
 
-    # Post-Processing: DC Block, Thermal Dither, Calibrated Normalization
+    # Post-Processing: DC Block and Thermal Dither
     if dc_block:
         filtered = apply_dc_block(filtered, sample_rate=sample_rate)
 
@@ -646,26 +636,16 @@ def simulate_voicing_dsp(
         filtered = apply_johnson_dither(filtered, h_total=h_total)
 
     if return_metadata:
-        filtered, meta = apply_calibrated_normalization(
-            filtered,
-            reference_audio=input_mono,
-            mode=normalize,
-            target_dbfs=target_dbfs,
-            sample_rate=sample_rate,
-            ref_lufs=ref_lufs,
-            return_metadata=True,
-        )
-        return filtered, meta
+        tp = compute_true_peak(filtered, sample_rate=sample_rate) if len(filtered) > 0 else 0.0
+        tp_dbfs = 20.0 * math.log10(max(tp, 1e-12))
+        lufs_val = compute_lufs(filtered, sample_rate=sample_rate) if len(filtered) > 0 else -100.0
+        return filtered, {
+            "lufs": lufs_val,
+            "true_peak": tp,
+            "true_peak_dbfs": tp_dbfs,
+        }
 
-    return apply_calibrated_normalization(
-        filtered,
-        reference_audio=input_mono,
-        mode=normalize,
-        target_dbfs=target_dbfs,
-        sample_rate=sample_rate,
-        ref_lufs=ref_lufs,
-        return_metadata=False,
-    )
+    return filtered
 
 
 @overload
@@ -685,12 +665,9 @@ def simulate_instrument_voicing(
     blend_pos: float | None = ...,
     cable_pf: float | None = ...,
     dc_block: bool = ...,
-    normalize: str = ...,
-    target_dbfs: float | None = ...,
     force: bool = ...,
     preamps: Mapping[str, PreampConfig] | None = ...,
     strings: Mapping[str, StringPresetConfig] | None = ...,
-    ref_lufs: float | None = ...,
 ) -> Path: ...
 
 
@@ -711,12 +688,9 @@ def simulate_instrument_voicing(
     blend_pos: float | None = ...,
     cable_pf: float | None = ...,
     dc_block: bool = ...,
-    normalize: str = ...,
-    target_dbfs: float | None = ...,
     force: bool = ...,
     preamps: Mapping[str, PreampConfig] | None = ...,
     strings: Mapping[str, StringPresetConfig] | None = ...,
-    ref_lufs: float | None = ...,
 ) -> np.ndarray: ...
 
 
@@ -737,12 +711,9 @@ def simulate_instrument_voicing(
     blend_pos: float | None = ...,
     cable_pf: float | None = ...,
     dc_block: bool = ...,
-    normalize: str = ...,
-    target_dbfs: float | None = ...,
     force: bool = ...,
     preamps: Mapping[str, PreampConfig] | None = ...,
     strings: Mapping[str, StringPresetConfig] | None = ...,
-    ref_lufs: float | None = ...,
 ) -> tuple[Path, np.ndarray]: ...
 
 
@@ -762,12 +733,9 @@ def simulate_instrument_voicing(
     blend_pos: float | None = None,
     cable_pf: float | None = None,
     dc_block: bool = True,
-    normalize: str = "auto",
-    target_dbfs: float | None = None,
     force: bool = False,
     preamps: Mapping[str, PreampConfig] | None = None,
     strings: Mapping[str, StringPresetConfig] | None = None,
-    ref_lufs: float | None = None,
 ) -> Path | tuple[Path, np.ndarray] | np.ndarray:
     """Simulates a physical instrument voicing digital twin directly from dry string excitation.
 
@@ -779,7 +747,7 @@ def simulate_instrument_voicing(
       5. Oversampled non-linear transducer saturation and active pickup op-amp headroom dynamics
       6. Sub-audible 8 Hz DC blocking and passive RLC-colored Johnson noise dither
     Synthesizes a causal minimum-phase FIR starting at sample 0 (zero latency).
-    Exports 24-bit 48 kHz PCM audio with calibrated LUFS volume matching and 4x true-peak ceiling protection.
+    Exports 24-bit 48 kHz PCM audio preserving raw physical transfer levels with 4x true-peak ceiling protection.
     """
     inst = instrument
     voicing_cfg = voicing
@@ -845,7 +813,7 @@ def simulate_instrument_voicing(
             return out_path
 
     # Delegate core audio DSP to pure in-memory simulation
-    filtered, meta = simulate_voicing_dsp(
+    filtered = simulate_voicing_dsp(
         raw_audio=raw_audio,
         instrument=inst,
         voicing=voicing_cfg,
@@ -857,23 +825,30 @@ def simulate_instrument_voicing(
         blend_pos=blend_pos,
         cable_pf=cable_pf,
         dc_block=dc_block,
-        normalize=normalize,
-        target_dbfs=target_dbfs,
         sample_rate=sr,
         preamps=preamps,
         strings=strings,
-        ref_lufs=ref_lufs,
-        return_metadata=True,
+        return_metadata=False,
     )
+
+    final_tp_lin = 0.0
+    if apply_saturation and len(filtered) > 0:
+        tp = compute_true_peak(filtered, sample_rate=sr)
+        if tp > CALIBRATION_PEAK_CEILING and tp > 1e-9:
+            filtered = filtered * (CALIBRATION_PEAK_CEILING / tp)
+            final_tp_lin = CALIBRATION_PEAK_CEILING
+        else:
+            final_tp_lin = tp
+    elif out_path is not None and len(filtered) > 0:
+        final_tp_lin = compute_true_peak(filtered, sample_rate=sr)
 
     # 24-bit PCM Export, Logging & Manifest
     if out_path is not None:
         write_wav_24bit(out_path, filtered.astype(np.float32), sample_rate=sr)
 
-        final_tp_db = meta["true_peak_dbfs"]
-        final_tp_lin = meta["true_peak"]
+        final_tp_db = 20.0 * math.log10(max(final_tp_lin, 1e-12))
         final_rms_db = 20.0 * math.log10(max(float(np.sqrt(np.mean(filtered**2))), 1e-9))
-        final_lufs = meta["lufs"]
+        final_lufs = compute_lufs(filtered, sample_rate=sr) if len(filtered) > 0 else -100.0
         lufs_str = (
             f"{final_lufs:.2f} LUFS"
             if not (math.isinf(final_lufs) or math.isnan(final_lufs))

@@ -60,8 +60,8 @@ In physical multi-pickup bass systems (e.g. Jazz Bass neck + bridge, PJ, P/MM, D
           │
           ▼
 ┌────────────────────────────────────────────────────────┐
-│ 5. ITU-R BS.1770-4 Loudness & 4x True-Peak Staging     │
-│    • Gated loudness matching to -20.50 LUFS            │
+│ 5. 4x True-Peak Staging & 24-bit PCM WAV Export        │
+│    • Raw physical transfer level preserved             │
 │    • 4x oversampled true-peak ceiling (<= 0.9900)      │
 │      via transparent whole-file linear peak scaling    │
 │    • Vectorized 24-bit little-endian PCM WAV export    │

@@ -16,6 +16,8 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import Any, override
 
+import numpy as np
+
 from allomorph.config import InstrumentConfig
 from allomorph.naming import get_default_input_path
 from allomorph.trainer.constants import (
@@ -332,6 +334,29 @@ def find_sweep_input(
     return find_default_input_audio(version_tag=version_tag)
 
 
+def normalize_training_stem(
+    audio: np.ndarray,
+    sample_rate: int = 48000,
+) -> np.ndarray:
+    """Normalizes an unnormalized source or target training stem to TARGET_LUFS (-20.50 LUFS)
+    bounded by CALIBRATION_PEAK_CEILING (0.9900) for NAM training.
+    """
+    from allomorph.dsp.conditioning import (
+        CALIBRATION_PEAK_CEILING,
+        TARGET_LUFS,
+        apply_calibrated_normalization,
+    )
+
+    return apply_calibrated_normalization(
+        np.asarray(audio, dtype=np.float64),
+        mode="lufs",
+        target_dbfs=TARGET_LUFS,
+        sample_rate=sample_rate,
+        peak_ceiling=CALIBRATION_PEAK_CEILING,
+        return_metadata=False,
+    )
+
+
 def compute_baseline_delta_ratio(
     ref_wav: str | Path | None,
     tgt_wav: str | Path | None,
@@ -567,6 +592,7 @@ __all__ = [
     "configure_a2_architecture",
     "find_sweep_input",
     "get_hardware_device_name",
+    "normalize_training_stem",
     "resolve_hardware_batch_size",
     "resolve_hardware_num_workers",
     "resolve_hardware_precision",

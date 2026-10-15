@@ -470,8 +470,8 @@ def build_voicings_html(
           <div class="metric-val" id="metric-range">0.0 dB</div>
         </div>
         <div class="metric-card">
-          <div class="metric-name">Digital Twin Status</div>
-          <div class="metric-val identity" id="metric-status">Identity Match</div>
+          <div class="metric-name">Broadband Level Delta</div>
+          <div class="metric-val identity" id="metric-level-delta">0.0 dB (Identity)</div>
         </div>
       </div>
     </div>
@@ -607,8 +607,10 @@ def build_voicings_html(
       document.getElementById('metric-boost').textContent = (maxBoost >= 0 ? '+' : '') + maxBoost.toFixed(1) + ' dB @ ' + Math.round(maxBoostFreq) + ' Hz';
       document.getElementById('metric-cut').textContent = (maxCut >= 0 ? '+' : '') + maxCut.toFixed(1) + ' dB @ ' + Math.round(maxCutFreq) + ' Hz';
       document.getElementById('metric-range').textContent = isIdentity ? '0.0 dB (Flat)' : dynRange.toFixed(1) + ' dB';
-      document.getElementById('metric-status').textContent = isIdentity ? 'Identity Match (0.00 dB)' : 'Normalized Transform';
-      document.getElementById('metric-status').className = 'metric-val ' + (isIdentity ? 'identity' : 'boost');
+      const rmsDelta = Math.round((tgt.rms_db - src.rms_db) * 10) / 10;
+      const deltaSign = rmsDelta >= 0 ? '+' : '';
+      document.getElementById('metric-level-delta').textContent = isIdentity ? '0.0 dB (Identity)' : `${{deltaSign}}${{rmsDelta.toFixed(1)}} dB RMS`;
+      document.getElementById('metric-level-delta').className = 'metric-val ' + (isIdentity ? 'identity' : (rmsDelta >= 0 ? 'boost' : 'cut'));
 
       document.getElementById('src-spec-title').textContent = src.name;
       document.getElementById('src-spec-topo').textContent = (src.sensor_type || 'magnetic').toUpperCase();
@@ -679,7 +681,7 @@ def build_voicings_html(
           linecolor: '#30363d'
         }},
         yaxis: {{
-          title: {{ text: 'Magnitude / Normalized Difference (dB)', font: {{ color: '#8b949e', size: 11 }} }},
+          title: {{ text: 'Magnitude / Difference (dB)', font: {{ color: '#8b949e', size: 11 }} }},
           range: [-18, 18],
           tickvals: [-18, -12, -6, 0, 6, 12, 18],
           tickfont: {{ color: '#8b949e', size: 10 }},
@@ -808,7 +810,7 @@ def generate_interactive_chart(
         master_df = pl.concat(target_dfs)
         chart_title = "Allomorph Master Voices: Output Voice Frequency Responses"
         chart_subtitle = f"Target Passive Acoustic Apertures & SPICE Loaded RLC Resonances (Reference: {inst_name})"
-        y_title = "Normalized Output Magnitude (dB)"
+        y_title = "Output Magnitude (dB)"
         y_domain = [-18, 18]
     elif mode == "difference":
         master_df = pl.concat(diff_dfs)
@@ -820,7 +822,7 @@ def generate_interactive_chart(
         master_df = pl.concat(diff_dfs + target_dfs)
         chart_title = "Allomorph Master Voices: Acoustic & Electrical Response Curves"
         chart_subtitle = f"Interactive View ({inst_name}) — Switch between Input/Output Difference and Output Voice"
-        y_title = "Normalized Magnitude / Differential Gain (dB)"
+        y_title = "Magnitude / Differential Gain (dB)"
         y_domain = [-18, 18]
 
     print("Rendering interactive chart using Altair...")

@@ -48,36 +48,26 @@ def test_forward_simulation_multi_pickup_magnet_properties(
     assert np.all(np.isfinite(audio))
 
 
-def test_forward_auto_normalize_fallback_target_dbfs(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, generic_instrument_config: InstrumentConfig
+def test_calibrated_normalization_fallback_target_dbfs(
+    monkeypatch: pytest.MonkeyPatch,
 ):
-    """Bug 6 regression: when LUFS measurement falls back to RMS, target_dbfs must be respected."""
+    """When LUFS measurement falls back to RMS, target_dbfs must be respected in apply_calibrated_normalization."""
+    from allomorph.dsp.conditioning import apply_calibrated_normalization
 
-    # Force compute_lufs to return NaN to trigger RMS fallback branch
     def _mock_nan_lufs(*_args: Any, **_kwargs: Any) -> float:
         return float("nan")
 
-    monkeypatch.setattr("allomorph.circuit.forward.compute_lufs", _mock_nan_lufs)
     monkeypatch.setattr("allomorph.dsp.conditioning.compute_lufs", _mock_nan_lufs)
 
     sig = np.full(500, 0.05, dtype=np.float64)
-    short_in = tmp_path / "tiny.wav"
-    write_wav_24bit(short_in, sig.astype(np.float32), sample_rate=48000)
-    out_p = tmp_path / "tiny_out.wav"
-
-    inst = generic_instrument_config
     target_dbfs = -18.0
-    sim_path = simulate_instrument_voicing(
-        instrument=inst,
-        voicing=inst.voicings["generic_voice"],
-        input_wav=short_in,
-        output_wav=out_p,
-        max_samples=500,
-        normalize="lufs",  # Will fall back to RMS due to NaN
+    out_audio = apply_calibrated_normalization(
+        sig,
+        mode="lufs",  # Will fall back to RMS due to NaN
         target_dbfs=target_dbfs,
+        sample_rate=48000,
     )
 
-    out_audio, _ = read_wav(sim_path)
     out_rms = float(np.sqrt(np.mean(out_audio**2)))
     out_dbfs = 20.0 * math.log10(max(out_rms, 1e-9))
     # Target level must match target_dbfs (-18 dBFS) within 0.1 dB
@@ -140,7 +130,6 @@ def test_forward_simulation_upright_piezo(
         output_wav=small_out,
         max_samples=2400,
         apply_saturation=True,
-        normalize="none",
         dc_block=False,
     )
     small_audio, _ = read_wav(sim_small)
@@ -186,23 +175,37 @@ def test_forward_simulation_return_audio_and_in_memory(
     assert np.allclose(audio_cached, audio_cached2, atol=1e-4)
 
 
-def test_forward_simulation_normalization_modes(
-    test_audio_file: Path, tmp_path: Path, generic_instrument_config: InstrumentConfig
+def test_forward_simulation_preserves_unnormalized_physical_gain(
+    generic_instrument_config: InstrumentConfig,
 ):
-    """Verify peak and rms normalization modes in simulate_instrument_voicing."""
+    """Verify simulate_instrument_voicing preserves raw physical transfer gain differences."""
+    from allomorph.circuit.forward import simulate_voicing_dsp
+
     inst = generic_instrument_config
-    for mode in ("peak", "rms"):
-        out_p = tmp_path / f"norm_{mode}.wav"
-        res = simulate_instrument_voicing(
-            instrument=inst,
-            voicing=inst.voicings["generic_voice"],
-            input_wav=test_audio_file,
-            output_wav=out_p,
-            normalize=mode,
-            target_dbfs=-15.0,
-            max_samples=1200,
-        )
-        assert res.exists()
+    t = np.linspace(0, 0.05, 2400, endpoint=False)
+    sig_low = 0.02 * np.sin(2.0 * np.pi * 100.0 * t)
+    sig_high = 0.20 * np.sin(2.0 * np.pi * 100.0 * t)
+
+    out_low = simulate_instrument_voicing(
+        instrument=inst,
+        voicing=inst.voicings["generic_voice"],
+        input_audio=sig_low,
+        return_audio=True,
+        apply_saturation=False,
+        apply_dither=False,
+    )
+    out_high, meta = simulate_voicing_dsp(
+        raw_audio=sig_high,
+        instrument=inst,
+        voicing=inst.voicings["generic_voice"],
+        apply_saturation=False,
+        apply_dither=False,
+        return_metadata=True,
+    )
+    rms_low = float(np.sqrt(np.mean(out_low**2)))
+    rms_high = float(np.sqrt(np.mean(out_high**2)))
+    assert abs((rms_high / rms_low) - 10.0) < 0.05
+    assert "true_peak" in meta and "lufs" in meta
 
 
 def test_forward_multi_pickup_spatial_interference_and_coherence_decay_generic(
@@ -228,7 +231,6 @@ def test_forward_multi_pickup_spatial_interference_and_coherence_decay_generic(
         voicing=inst.voicings["blend"],
         input_audio=x_sweep,
         return_audio=True,
-        normalize="none",
         dc_block=False,
         apply_saturation=False,
         apply_dither=False,
@@ -316,7 +318,6 @@ def test_forward_multi_pickup_spatial_interference_and_coherence_decay_generic(
         voicing=inst_identical.voicings["blend"],
         input_audio=x_sweep,
         return_audio=True,
-        normalize="none",
         dc_block=False,
         apply_saturation=False,
         apply_dither=False,
