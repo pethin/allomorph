@@ -21,7 +21,6 @@ from typing import Any
 import numpy as np
 import torch
 import torch.nn.functional as F
-from nam._dependencies.auraloss.freq import MultiResolutionSTFTLoss
 from pedalboard.io import AudioFile
 
 from allomorph.config import (
@@ -39,6 +38,7 @@ from allomorph.pipeline.schema import (
     NamTrainingMetadata,
 )
 from allomorph.trainer.callbacks import (
+    compute_linear_slope,
     compute_pareto_quality_score,
     evaluate_plateau_stopping_condition,
 )
@@ -49,15 +49,16 @@ from allomorph.trainer.constants import (
     DEFAULT_NUM_WORKERS,
     DEFAULT_SEED,
     NATIVE_DEFAULT_BATCH_SIZE,
+    NATIVE_DEFAULT_EMA_DECAY,
     NATIVE_DEFAULT_FIR_HP_FC,
     NATIVE_DEFAULT_FIR_HP_WEIGHT,
+    NATIVE_DEFAULT_HOMOTOPY_TAU_INIT,
     NATIVE_DEFAULT_LITE_WEIGHT,
     NATIVE_DEFAULT_LR,
     NATIVE_DEFAULT_LR_SCHEDULER,
     NATIVE_DEFAULT_MAX_EPOCHS,
     NATIVE_DEFAULT_MIN_DELTA,
     NATIVE_DEFAULT_MIN_EPOCHS,
-    NATIVE_DEFAULT_MRSTFT_WEIGHT,
     NATIVE_DEFAULT_MSE_WEIGHT,
     NATIVE_DEFAULT_PATIENCE,
     NATIVE_DEFAULT_PRECISION,
@@ -66,6 +67,7 @@ from allomorph.trainer.constants import (
     NATIVE_DEFAULT_SINE_REGULARIZER,
     NATIVE_DEFAULT_SLICE_LEN,
     NATIVE_DEFAULT_VAL_INTERVAL,
+    NATIVE_DEFAULT_WARM_START,
     NATIVE_DEFAULT_WEIGHT_DECAY,
 )
 from allomorph.trainer.native.loss import design_sharp_fir_highpass
@@ -111,7 +113,6 @@ def train_voice_native(
     patience: int = NATIVE_DEFAULT_PATIENCE,
     min_delta: float = NATIVE_DEFAULT_MIN_DELTA,
     mse_weight: float = NATIVE_DEFAULT_MSE_WEIGHT,
-    mrstft_weight: float = NATIVE_DEFAULT_MRSTFT_WEIGHT,
     lr_scheduler: str = NATIVE_DEFAULT_LR_SCHEDULER,
     eta_min: float = DEFAULT_ETA_MIN,
     lr_t_max: int = DEFAULT_LR_T_MAX,
@@ -139,6 +140,9 @@ def train_voice_native(
     sine_amplitudes: Sequence[float] = NATIVE_DEFAULT_SINE_AMPLITUDES,
     fir_hp_weight: float = NATIVE_DEFAULT_FIR_HP_WEIGHT,
     fir_hp_fc: float = NATIVE_DEFAULT_FIR_HP_FC,
+    warm_start: bool = NATIVE_DEFAULT_WARM_START,
+    homotopy_tau_init: float = NATIVE_DEFAULT_HOMOTOPY_TAU_INIT,
+    ema_decay: float = NATIVE_DEFAULT_EMA_DECAY,
 ) -> bool:
     """Trains a Neural Amp Modeler (NAM) Architecture 2 model using Allomorph's Native PyTorch Engine."""
     from allomorph.trainer.core import (
@@ -355,7 +359,9 @@ def train_voice_native(
         print(f"  Hardware:       {device_name} ({hw_device})")
         print(f"  Batch Size:     {resolved_bs} | Precision: {resolved_precision}")
         print(f"  Schedule:       {lr_scheduler} (max_epochs={epochs}, warmup={min_epochs})")
-        print(f"  Loss Config:    MSE={mse_weight:.2f}, MRSTFT={mrstft_weight:.4f}")
+        print(
+            f"  Loss Config:    MSE={mse_weight:.2f}, FIR_HP={fir_hp_weight:.2f} (fc={fir_hp_fc:.0f}Hz)"
+        )
         print("-------------------------------------------------------", flush=True)
 
     # 9. In-VRAM Zero-Copy Audio Loading & Loudness Calibration (-20.50 LUFS)
@@ -421,6 +427,8 @@ def train_voice_native(
         y_val = y_val * y_scale_factor
 
     # 9c. Pre-Synthesize Linear Pure-Sine Probes & Tilted Log Chirps into Unified Training Buffer (Parseval Linearity Enforcement)
+    cal_chirp_x: np.ndarray | None = None
+    cal_chirp_y: np.ndarray | None = None
     if sine_regularizer and not fast_dev_run:
         try:
             from allomorph.circuit.forward import simulate_voicing_dsp
@@ -471,6 +479,9 @@ def train_voice_native(
             raw_dsp_gain_ratio = chirp_tgt_rms / max(chirp_src_rms, 1e-9)
 
             probe_gain_correction = stem_gain_ratio / max(raw_dsp_gain_ratio, 1e-9)
+
+            cal_chirp_x = c_src_ref.astype(np.float32)
+            cal_chirp_y = (c_tgt_ref * probe_gain_correction * y_scale_factor).astype(np.float32)
 
             # 9c.1 Multi-Amplitude Continuous Tilted Log Chirps (Dense High-Frequency Linear Supervision)
             chirp_xs: list[np.ndarray] = []
@@ -574,12 +585,39 @@ def train_voice_native(
     x_train_padded = torch.cat([torch.zeros(rf_pad, device=hw_device, dtype=vram_dtype), x_train])
     x_val_padded = torch.cat([torch.zeros(rf_pad, device=hw_device, dtype=vram_dtype), x_val])
 
-    # 10. Model & Loss Initialization
+    # 10. Model, Closed-Form Wiener Warm-Start, EMA & Loss Initialization
     model = AllomorphWaveNetA2().to(hw_device)
-    model.apply_weight_masks()
+    model.mask_weights()
 
-    optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay, foreach=True)
-    mrstft = MultiResolutionSTFTLoss().to(hw_device) if mrstft_weight > 0.0 else None
+    if warm_start:
+        if cal_chirp_x is not None and cal_chirp_y is not None and len(cal_chirp_y) >= 1024:
+            cal_len = min(32768, len(cal_chirp_y))
+            x_cal_t = torch.cat(
+                [
+                    torch.zeros(rf_pad, device=hw_device, dtype=torch.float32),
+                    torch.from_numpy(cal_chirp_x[:cal_len]).to(
+                        device=hw_device, dtype=torch.float32
+                    ),
+                ]
+            )
+            y_cal_t = torch.from_numpy(cal_chirp_y[:cal_len]).to(
+                device=hw_device, dtype=torch.float32
+            )
+            model.warm_start_head(x_cal_t, y_cal_t)
+        elif total_train_samples >= 1024:
+            cal_len = min(32768, total_train_samples)
+            model.warm_start_head(
+                x_train_padded[: cal_len + rf_pad].float(),
+                y_train[:cal_len].float(),
+            )
+
+    model_params: list[torch.Tensor] = list(model.parameters())
+    ema_params: list[torch.Tensor] = (
+        [p.detach().clone() for p in model_params] if ema_decay > 0.0 else []
+    )
+    global_step: int = 0
+
+    optimizer = torch.optim.Adam(model_params, lr=lr, weight_decay=weight_decay, foreach=True)
     hp_kernel: torch.Tensor | None = None
     if fir_hp_weight > 0.0:
         hp_kernel = design_sharp_fir_highpass(fc=fir_hp_fc, fs=float(sample_rate), num_taps=255).to(
@@ -614,7 +652,6 @@ def train_voice_native(
     best_val_loss = float("inf")
     best_val_esr = float("inf")
     best_val_esr_lite = float("inf")
-    best_val_mrstft: float | None = None
     best_state_dict: dict[str, torch.Tensor] | None = None
 
     val_loss_history: list[float] = []
@@ -630,9 +667,17 @@ def train_voice_native(
     t0 = time.time()
 
     # 12. Training Loop
+    homotopy_end_epoch = max(1, int(0.75 * min_epochs))
     for epoch in range(1, epochs + 1):
         epoch_t0 = time.time()
         model.train()
+
+        # C-infinity SiLU-gated LeakyReLU activation homotopy schedule (tau: 0.02 -> 0.0)
+        if homotopy_tau_init > 0.0 and epoch <= homotopy_end_epoch and not fast_dev_run:
+            prog = (epoch - 1) / max(1, homotopy_end_epoch)
+            model.activation_tau = 0.5 * homotopy_tau_init * (1.0 + math.cos(math.pi * prog))
+        else:
+            model.activation_tau = 0.0
 
         # Learning Rate Schedule (5-epoch linear warmup + decay)
         warmup_epochs = 5
@@ -699,9 +744,6 @@ def train_voice_native(
                         total_step_loss = total_step_loss + fir_hp_weight * (
                             l_hp_full + lite_weight * l_hp_lite
                         )
-                    if mrstft is not None:
-                        l_spec = mrstft(pred[:, 1:2, :].float(), y_batch.unsqueeze(1).float())
-                        total_step_loss = total_step_loss + mrstft_weight * l_spec
             else:
                 pred = model(x_batch)
                 l_full = F.mse_loss(pred[:, 1, :], y_batch)
@@ -716,20 +758,23 @@ def train_voice_native(
                     total_step_loss = total_step_loss + fir_hp_weight * (
                         l_hp_full + lite_weight * l_hp_lite
                     )
-                if mrstft is not None:
-                    l_spec = mrstft(pred[:, 1:2, :].float(), y_batch.unsqueeze(1).float())
-                    total_step_loss = total_step_loss + mrstft_weight * l_spec
 
             total_step_loss.backward()
-            model.apply_weight_masks()
+            model.mask_gradients()
             optimizer.step()
-            model.apply_weight_masks()
+            model.mask_weights()
+
+            global_step += 1
+            if ema_decay > 0.0 and ema_params:
+                step_ema_decay = min(ema_decay, (1.0 + global_step) / (10.0 + global_step))
+                with torch.no_grad():
+                    torch._foreach_lerp_(ema_params, model_params, 1.0 - step_ema_decay)
 
             train_loss_acc.add_(total_step_loss.detach())
 
         train_loss_epoch = float((train_loss_acc / steps_per_epoch).item())
 
-        # 13. Batched Full-Track Validation Pass
+        # 13. Batched Full-Track Validation Pass (with in-VRAM EMA shadow evaluation)
         is_val_epoch = (
             (epoch % val_interval == 0)
             or (epoch == 1)
@@ -738,6 +783,13 @@ def train_voice_native(
         )
         if is_val_epoch:
             model.eval()
+            use_ema_val = ema_decay > 0.0 and bool(ema_params) and epoch >= warmup_epochs
+            live_backup: list[torch.Tensor] = []
+            if use_ema_val:
+                with torch.no_grad():
+                    live_backup = [p.detach().clone() for p in model_params]
+                    torch._foreach_copy_(model_params, ema_params)
+
             val_autocast = (
                 torch.autocast(device_type=hw_device.type, dtype=autocast_dtype)
                 if use_autocast
@@ -748,7 +800,7 @@ def train_voice_native(
                     val_err_full_acc = torch.tensor(0.0, device=hw_device)
                     val_err_lite_acc = torch.tensor(0.0, device=hw_device)
                     val_tgt_acc = torch.tensor(0.0, device=hw_device)
-                    val_mrstft_acc = torch.tensor(0.0, device=hw_device)
+                    val_hp_full_acc = torch.tensor(0.0, device=hw_device)
 
                     for s in range(val_steps):
                         bs = min(val_bs, val_chunks - s * val_bs)
@@ -767,22 +819,29 @@ def train_voice_native(
                         val_err_full_acc.add_(torch.sum(c_err_full**2))
                         val_err_lite_acc.add_(torch.sum(c_err_lite**2))
                         val_tgt_acc.add_(torch.sum(c_by**2))
-                        if mrstft is not None:
-                            val_mrstft_acc.add_(
-                                mrstft(c_pred_full.unsqueeze(1).float(), c_by.unsqueeze(1).float())
-                                * bs
+                        if hp_kernel is not None and fir_hp_weight > 0.0 and ny >= 255:
+                            c_hp_full = F.conv1d(
+                                c_pred_full.unsqueeze(1), hp_kernel, padding="valid"
                             )
+                            c_hp_by = F.conv1d(c_by.unsqueeze(1), hp_kernel, padding="valid")
+                            val_hp_full_acc.add_(torch.sum((c_hp_full - c_hp_by) ** 2))
 
                     cur_esr_full = float((val_err_full_acc / (val_tgt_acc + 1e-12)).item())
                     cur_esr_lite = float((val_err_lite_acc / (val_tgt_acc + 1e-12)).item())
                     total_eval_samples = float(val_chunks * ny)
                     val_mse_full = float((val_err_full_acc / total_eval_samples).item())
                     mse_cur = val_mse_full
-                    val_mrstft = (
-                        float((val_mrstft_acc / val_chunks).item()) if mrstft is not None else 0.0
-                    )
-                    mb_val = mse_weight * mse_cur + mrstft_weight * val_mrstft
-                    metrics_full = {"mse": mse_cur, "mrstft": val_mrstft, "composite_loss": mb_val}
+                    if hp_kernel is not None and fir_hp_weight > 0.0 and ny >= 255:
+                        total_hp_samples = float(val_chunks * (ny - 254))
+                        val_hp_full = float((val_hp_full_acc / total_hp_samples).item())
+                    else:
+                        val_hp_full = 0.0
+                    mb_val = mse_weight * mse_cur + fir_hp_weight * val_hp_full
+                    metrics_full = {
+                        "mse": mse_cur,
+                        "fir_hp": val_hp_full,
+                        "composite_loss": mb_val,
+                    }
                 else:
                     y_val_hat = model(x_val_padded.unsqueeze(0))
                     y_full_pred = y_val_hat[0, 1, :val_samples]
@@ -793,18 +852,26 @@ def train_voice_native(
                     target_energy = float(torch.sum(y_val**2).item()) + 1e-12
                     cur_esr_full = float(torch.sum(err_full**2).item()) / target_energy
                     cur_esr_lite = float(torch.sum(err_lite**2).item()) / target_energy
-                    val_mrstft = (
-                        float(
-                            mrstft(
-                                y_full_pred.unsqueeze(0).unsqueeze(0).float(),
-                                y_val.unsqueeze(0).unsqueeze(0).float(),
-                            ).item()
+                    if (
+                        hp_kernel is not None
+                        and fir_hp_weight > 0.0
+                        and y_full_pred.shape[-1] >= 255
+                    ):
+                        v_hp_pred = F.conv1d(
+                            y_full_pred.unsqueeze(0).unsqueeze(0), hp_kernel, padding="valid"
                         )
-                        if mrstft is not None
-                        else 0.0
-                    )
-                    mb_val = mse_weight * mse_cur + mrstft_weight * val_mrstft
-                    metrics_full = {"mse": mse_cur, "mrstft": val_mrstft, "composite_loss": mb_val}
+                        v_hp_tgt = F.conv1d(
+                            y_val.unsqueeze(0).unsqueeze(0), hp_kernel, padding="valid"
+                        )
+                        val_hp_full = float(F.mse_loss(v_hp_pred, v_hp_tgt).item())
+                    else:
+                        val_hp_full = 0.0
+                    mb_val = mse_weight * mse_cur + fir_hp_weight * val_hp_full
+                    metrics_full = {
+                        "mse": mse_cur,
+                        "fir_hp": val_hp_full,
+                        "composite_loss": mb_val,
+                    }
 
             # 14. Anti-Drift Pareto Early Stopping Evaluation
             if epoch >= min_epochs:
@@ -819,7 +886,7 @@ def train_voice_native(
                 mse_drift = 0.0
 
             val_loss_history.append(mb_val)
-            hp_metric = metrics_full.get("mrstft", 0.0)
+            hp_metric = metrics_full.get("fir_hp", 0.0)
             hp_high_history.append(hp_metric)
 
             if min_mse_full < float("inf"):
@@ -827,8 +894,8 @@ def train_voice_native(
                     mb_full_loss=mb_val,
                     mse_full=mse_cur,
                     min_mse_full=min_mse_full,
-                    drift_tolerance=1.0,
-                    drift_penalty_gain=1.0,
+                    drift_tolerance=0.15,
+                    drift_penalty_gain=2.5,
                 )
             else:
                 pareto_score = mb_val
@@ -842,18 +909,24 @@ def train_voice_native(
                     best_val_loss = mb_val
                     best_val_esr = cur_esr_full
                     best_val_esr_lite = cur_esr_lite
-                    best_val_mrstft = metrics_full.get("mrstft") if mrstft is not None else None
                     best_state_dict = {k: v.cpu().clone() for k, v in model.state_dict().items()}
 
+            if use_ema_val and live_backup:
+                with torch.no_grad():
+                    torch._foreach_copy_(model_params, live_backup)
+
             # Compute trajectory slopes
-            k_eval = 4
-            if len(val_loss_history) >= k_eval:
-                x_ax = np.arange(k_eval)
-                val_slope = float(np.polyfit(x_ax, val_loss_history[-k_eval:], 1)[0])
-                hp_slope = float(np.polyfit(x_ax, hp_high_history[-k_eval:], 1)[0])
-            else:
-                val_slope = 0.0
-                hp_slope = 0.0
+            k_eval = max(patience, 4)
+            val_slope = (
+                compute_linear_slope(val_loss_history[-k_eval:])
+                if len(val_loss_history) >= 2
+                else 0.0
+            )
+            hp_slope = (
+                compute_linear_slope(hp_high_history[-k_eval:])
+                if len(hp_high_history) >= 2
+                else 0.0
+            )
 
             if epoch >= min_epochs:
                 should_stop, reason = evaluate_plateau_stopping_condition(
@@ -865,7 +938,7 @@ def train_voice_native(
                     min_delta=min_delta,
                     hp_high_slope=hp_slope,
                     mse_drift_ratio=mse_drift,
-                    drift_exit_threshold=1.50,
+                    drift_exit_threshold=0.25,
                 )
             else:
                 should_stop, reason = False, None
@@ -906,7 +979,9 @@ def train_voice_native(
 
     total_time = time.time() - t0
 
-    # 15. Restore Best Pareto Checkpoint
+    # 15. Restore Best Pareto Checkpoint (exact LeakyReLU(0.01) export mode)
+    model.activation_tau = 0.0
+    model.eval()
     if best_state_dict is not None and best_epoch > 0:
         if not silent:
             print(
@@ -919,7 +994,6 @@ def train_voice_native(
         best_val_loss = mb_val
         best_val_esr = cur_esr_full
         best_val_esr_lite = cur_esr_lite
-        best_val_mrstft = metrics_full.get("mrstft") if mrstft is not None else None
 
     # 16. Export Compliant A2 .nam Model with Full Provenance Metadata
     if src_vcfg is not None:
@@ -969,8 +1043,6 @@ def train_voice_native(
     }
     if stop_reason:
         raw_training_meta["stop_reason"] = stop_reason
-    if best_val_mrstft is not None:
-        raw_training_meta["mrstft_loss"] = float(best_val_mrstft)
 
     nam_meta = NamExportMetadata(
         training=NamTrainingMetadata.model_validate(raw_training_meta),
@@ -1027,8 +1099,6 @@ def train_voice_native(
     }
     if stop_reason:
         export_metadata["stop_reason"] = stop_reason
-    if best_val_mrstft is not None:
-        export_metadata["validation_mrstft"] = best_val_mrstft
 
     # Rescale head_scale to undo target RMS normalization
     if y_scale_factor != 1.0:
@@ -1080,8 +1150,6 @@ def train_voice_native(
                         )
                         if stop_reason:
                             m_entry["stop_reason"] = stop_reason
-                        if best_val_mrstft is not None:
-                            m_entry["mrstft_loss"] = float(best_val_mrstft)
                         with open(m_path, "w", encoding="utf-8") as mf:
                             json.dump(m_data, mf, indent=2)
                         updated_pack_manifest = True

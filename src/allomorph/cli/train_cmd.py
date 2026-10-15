@@ -44,7 +44,6 @@ from allomorph.trainer.constants import (
     NATIVE_DEFAULT_MAX_EPOCHS,
     NATIVE_DEFAULT_MIN_DELTA,
     NATIVE_DEFAULT_MIN_EPOCHS,
-    NATIVE_DEFAULT_MRSTFT_WEIGHT,
     NATIVE_DEFAULT_MSE_WEIGHT,
     NATIVE_DEFAULT_PATIENCE,
     NATIVE_DEFAULT_SINE_REGULARIZER,
@@ -69,7 +68,6 @@ NATIVE_PARAM_FLAGS = {
     "--lr",
     "--weight-decay",
     "--mse-weight",
-    "--mrstft-weight",
     "--lite-weight",
     "--fir-hp-weight",
     "--fir-hp-fc",
@@ -211,7 +209,6 @@ def train(
     lr: Annotated[float, Parameter(group=native_group)] = NATIVE_DEFAULT_LR,
     weight_decay: Annotated[float, Parameter(group=native_group)] = NATIVE_DEFAULT_WEIGHT_DECAY,
     mse_weight: Annotated[float, Parameter(group=native_group)] = NATIVE_DEFAULT_MSE_WEIGHT,
-    mrstft_weight: Annotated[float, Parameter(group=native_group)] = NATIVE_DEFAULT_MRSTFT_WEIGHT,
     lite_weight: Annotated[float, Parameter(group=native_group)] = NATIVE_DEFAULT_LITE_WEIGHT,
     fir_hp_weight: Annotated[float, Parameter(group=native_group)] = NATIVE_DEFAULT_FIR_HP_WEIGHT,
     fir_hp_fc: Annotated[float, Parameter(group=native_group)] = NATIVE_DEFAULT_FIR_HP_FC,
@@ -262,10 +259,6 @@ def train(
         if mse_weight != NATIVE_DEFAULT_MSE_WEIGHT:
             raise ValueError(
                 "Option '--mse-weight' is specific to the native engine and cannot be used with '--engine stock'."
-            )
-        if mrstft_weight != NATIVE_DEFAULT_MRSTFT_WEIGHT:
-            raise ValueError(
-                "Option '--mrstft-weight' is specific to the native engine and cannot be used with '--engine stock'."
             )
         if lite_weight != NATIVE_DEFAULT_LITE_WEIGHT:
             raise ValueError(
@@ -397,7 +390,6 @@ def train(
                     patience=patience,
                     min_delta=min_delta,
                     mse_weight=mse_weight,
-                    mrstft_weight=mrstft_weight,
                     batch_size=batch_size,
                     precision=precision,
                     num_workers=num_workers,
@@ -464,7 +456,6 @@ def train(
                     patience=patience,
                     min_delta=min_delta,
                     mse_weight=mse_weight,
-                    mrstft_weight=mrstft_weight,
                     lr_scheduler=lr_scheduler,
                     eta_min=eta_min,
                     lr_t_max=lr_t_max,

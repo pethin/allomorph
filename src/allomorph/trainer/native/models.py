@@ -112,12 +112,20 @@ class AllomorphWaveNetLayer(nn.Module):
         self.register_buffer("mask_1x1", mask_1x1)
 
         with torch.no_grad():
+            res_scale = 1.0 / math.sqrt(len(KERNEL_SIZES))
+            self.layer1x1.weight.mul_(res_scale)
+            if self.layer1x1.bias is not None:
+                self.layer1x1.bias.mul_(res_scale)
             self.conv.weight.mul_(self.mask_conv)
             self.layer1x1.weight.mul_(self.mask_1x1)
 
     @override
     def forward(
-        self, x: torch.Tensor, x_cond: torch.Tensor, target_head_len: int
+        self,
+        x: torch.Tensor,
+        x_cond: torch.Tensor,
+        target_head_len: int,
+        activation_tau: float = 0.0,
     ) -> tuple[torch.Tensor, torch.Tensor]:
         """Forward layer computation.
 
@@ -125,6 +133,8 @@ class AllomorphWaveNetLayer(nn.Module):
             x: Current residual tensor of shape (B, 11, L_in).
             x_cond: Input conditioning tensor of shape (B, 1, L_cond).
             target_head_len: Truncated sequence length for head accumulation.
+            activation_tau: Temperature parameter for C-infinity SiLU-gated LeakyReLU homotopy.
+                When activation_tau <= 0.0 (or in eval mode), evaluates exact LeakyReLU(0.01).
 
         Returns:
             Tuple of (residual_output, head_contribution).
@@ -133,9 +143,13 @@ class AllomorphWaveNetLayer(nn.Module):
 
         l_conv = zconv.shape[2]
         cond_slice = x_cond[:, :, -l_conv:]
-        zmix = self.input_mixer(cond_slice)
+        zconv.add_(self.input_mixer(cond_slice))
 
-        z = F.leaky_relu(zconv + zmix, negative_slope=0.01)
+        if self.training and activation_tau > 1e-7:
+            inv_tau = 1.0 / activation_tau
+            z = 0.01 * zconv + (0.99 * activation_tau) * F.silu(zconv * inv_tau)
+        else:
+            z = F.leaky_relu(zconv, negative_slope=0.01)
 
         z1x1 = self.layer1x1(z)
 
@@ -155,6 +169,7 @@ class AllomorphWaveNetA2(nn.Module):
     layers: nn.ModuleList
     head_rechannel: nn.Conv1d
     mask_head: torch.Tensor
+    activation_tau: float
 
     def __init__(self) -> None:
         super().__init__()
@@ -163,6 +178,7 @@ class AllomorphWaveNetA2(nn.Module):
         )
         self.receptive_field = self.receptive_field_layers + (HEAD_KERNEL_SIZE - 1)
         self.head_scale = HEAD_SCALE
+        self.activation_tau = 0.0
 
         self.rechannel = nn.Conv1d(1, CHANNELS_TOTAL, 1, bias=False)
         self.layers = nn.ModuleList(
@@ -179,16 +195,14 @@ class AllomorphWaveNetA2(nn.Module):
         with torch.no_grad():
             self.head_rechannel.weight.mul_(self.mask_head)
 
-    @override
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        """Forward pass across both slimmable submodels.
+    def extract_head_features(self, x: torch.Tensor) -> torch.Tensor:
+        """Computes accumulated 23-layer dilated residual head features prior to head_rechannel.
 
         Args:
             x: Input waveform tensor of shape (B, 1, L) or (B, L).
 
         Returns:
-            Output tensor of shape (B, 2, L_out) where channel 0 is A2 Lite (channels_3)
-            and channel 1 is A2 Full (channels_8). L_out = L - (receptive_field - 1).
+            Accumulated head tensor of shape (B, 11, L - receptive_field_layers + 1).
         """
         if x.ndim == 2:
             x = x.unsqueeze(1)
@@ -204,12 +218,27 @@ class AllomorphWaveNetA2(nn.Module):
             device=x.device,
             dtype=x.dtype,
         )
+        eff_tau = self.activation_tau if self.training else 0.0
 
         for layer in self.layers:
             layer_mod = cast(AllomorphWaveNetLayer, layer)
-            x_curr, head_term = layer_mod(x_curr, x_cond, target_head_len)
-            head_sum = head_sum + head_term
+            x_curr, head_term = layer_mod(x_curr, x_cond, target_head_len, activation_tau=eff_tau)
+            head_sum.add_(head_term)
 
+        return head_sum
+
+    @override
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """Forward pass across both slimmable submodels.
+
+        Args:
+            x: Input waveform tensor of shape (B, 1, L) or (B, L).
+
+        Returns:
+            Output tensor of shape (B, 2, L_out) where channel 0 is A2 Lite (channels_3)
+            and channel 1 is A2 Full (channels_8). L_out = L - (receptive_field - 1).
+        """
+        head_sum = self.extract_head_features(x)
         out = self.head_rechannel(head_sum)
         return out * self.head_scale
 
@@ -236,15 +265,125 @@ class AllomorphWaveNetA2(nn.Module):
         assert self._cached_mask_masks is not None
         return self._cached_mask_weights, self._cached_mask_masks
 
-    def apply_weight_masks(self) -> None:
-        """Enforces zeroing of off-block cross-chassis weights and gradients."""
+    def mask_weights(self) -> None:
+        """Enforces zeroing of off-block cross-chassis parameter weights in-place."""
         weights, masks = self._get_mask_tensors()
         with torch.no_grad():
             torch._foreach_mul_(weights, masks)
+
+    def mask_gradients(self) -> None:
+        """Enforces zeroing of off-block cross-chassis parameter gradients in-place."""
+        weights, masks = self._get_mask_tensors()
+        with torch.no_grad():
             grads = [w.grad for w in weights if w.grad is not None]
             if grads:
                 grad_masks = [m for w, m in zip(weights, masks, strict=True) if w.grad is not None]
                 torch._foreach_mul_(grads, grad_masks)
+
+    def apply_weight_masks(self) -> None:
+        """Enforces zeroing of off-block cross-chassis weights and gradients."""
+        self.mask_weights()
+        self.mask_gradients()
+
+    def warm_start_head(
+        self,
+        x_cal: torch.Tensor,
+        y_cal: torch.Tensor,
+        ridge_lambda: float = 1.0e-2,
+    ) -> None:
+        """Initializes head_rechannel via closed-form Tikhonov-regularized Wiener-Hopf regression.
+
+        Projects the target calibration waveform onto the 23-layer dilated convolutional basis
+        for both Submodel 0 (Lite, 49 parameters) and Submodel 1 (Full, 129 parameters) at Step 0,
+        eliminating the head_scale=0.01 cold-start attenuation bottleneck.
+
+        Args:
+            x_cal: Calibration input tensor of shape (L_in,), (1, L_in), or (1, 1, L_in)
+                where L_in >= receptive_field + 32.
+            y_cal: Calibration target tensor of shape (L_out,) or (1, L_out)
+                where L_out = L_in - (receptive_field - 1).
+            ridge_lambda: Relative Tikhonov regularization factor (default: 1e-2).
+        """
+        if x_cal.ndim == 1:
+            x_in = x_cal.unsqueeze(0).unsqueeze(0)
+        elif x_cal.ndim == 2:
+            x_in = x_cal.unsqueeze(1)
+        else:
+            x_in = x_cal
+
+        y_flat = y_cal.reshape(-1)
+        l_in = x_in.shape[2]
+        l_out_expected = l_in - (self.receptive_field - 1)
+        if l_out_expected < 32 or y_flat.numel() < l_out_expected:
+            return
+
+        was_training = self.training
+        prev_tau = self.activation_tau
+        self.eval()
+        self.activation_tau = 0.0
+
+        with torch.no_grad():
+            param_dev = self.head_rechannel.weight.device
+            param_dtype = self.head_rechannel.weight.dtype
+            x_f32 = x_in.to(device=param_dev, dtype=torch.float32)
+            head_feats = self.extract_head_features(x_f32)  # (1, 11, l_out + 15)
+
+            l_out = min(l_out_expected, int(y_flat.numel()))
+            y_target_scaled = y_flat[:l_out].to(device=param_dev, dtype=torch.float64) / float(
+                self.head_scale
+            )
+            ones_col = torch.ones((l_out, 1), device=param_dev, dtype=torch.float64)
+
+            submodel_specs = [
+                (0, slice(0, CHANNELS_LITE), CHANNELS_LITE),
+                (1, slice(CHANNELS_LITE, CHANNELS_TOTAL), CHANNELS_FULL),
+            ]
+            for h_idx, c_slice, c_count in submodel_specs:
+                # Unfold (1, C_sub, l_out + 15) -> (1, C_sub, l_out, 16) -> (l_out, C_sub * 16)
+                feat_sub = head_feats[:, c_slice, : l_out + HEAD_KERNEL_SIZE - 1]
+                unfolded = (
+                    feat_sub.unfold(2, HEAD_KERNEL_SIZE, 1)
+                    .squeeze(0)
+                    .permute(1, 0, 2)
+                    .reshape(l_out, c_count * HEAD_KERNEL_SIZE)
+                    .to(dtype=torch.float64)
+                )
+                phi = torch.cat([unfolded, ones_col], dim=1)  # (l_out, D)
+                d_dim = phi.shape[1]
+
+                gram = phi.T @ phi
+                rhs = phi.T @ y_target_scaled
+                diag_mean = float(torch.diagonal(gram).mean().clamp(min=1e-6).item())
+                reg = max(float(ridge_lambda) * diag_mean, 1.0e-4)
+                gram_reg = gram + reg * torch.eye(d_dim, device=param_dev, dtype=torch.float64)
+
+                try:
+                    sol = torch.linalg.solve(gram_reg, rhs)
+                except RuntimeError:
+                    sol = torch.linalg.lstsq(gram_reg, rhs).solution
+
+                if torch.isfinite(sol).all():
+                    w_taps = sol[:-1]
+                    b_val = sol[-1]
+                    # Order-4 C-infinity algebraic ceiling (w_max = 10.0) for numerical safety
+                    w_max = 10.0
+                    w_bounded = w_taps / torch.pow(
+                        1.0 + torch.pow(torch.abs(w_taps) / w_max, 4.0), 0.25
+                    )
+                    b_bounded = b_val / torch.pow(
+                        1.0 + torch.pow(torch.abs(b_val) / w_max, 4.0), 0.25
+                    )
+                    self.head_rechannel.weight[h_idx, c_slice, :].copy_(
+                        w_bounded.reshape(c_count, HEAD_KERNEL_SIZE).to(dtype=param_dtype)
+                    )
+                    if self.head_rechannel.bias is not None:
+                        self.head_rechannel.bias[h_idx].copy_(b_bounded.to(dtype=param_dtype))
+
+            self.mask_weights()
+
+        self.activation_tau = prev_tau
+        if was_training:
+            self.train()
 
     def export_submodel_weights(self, submodel_idx: int) -> list[float]:
         """Flattens sliced submodel weights into the 1D array expected by NAM C++ core.

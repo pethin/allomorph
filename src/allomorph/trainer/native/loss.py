@@ -12,7 +12,8 @@ import torch.nn.functional as F
 from torch import nn
 
 from allomorph.trainer.constants import (
-    NATIVE_DEFAULT_MRSTFT_WEIGHT,
+    NATIVE_DEFAULT_FIR_HP_FC,
+    NATIVE_DEFAULT_FIR_HP_WEIGHT,
     NATIVE_DEFAULT_MSE_WEIGHT,
 )
 
@@ -41,8 +42,8 @@ def design_sharp_fir_highpass(fc: float, fs: float, num_taps: int = 255) -> torc
 class MultiResolutionSTFTLoss(nn.Module):
     """Multi-Resolution STFT Loss combining spectral convergence and log-magnitude distance across multiple FFT window scales.
 
-    Standard audio ML loss (Yamamoto et al. 2019) providing uniform spectral gradient pressure across the audible bandwidth
-    without any small-signal denominator instability. Uses C-infinity power clamping (min=1e-8) for zero-gradient silence.
+    Standard audio ML loss (Yamamoto et al. 2019) for offline spectral evaluation.
+    Uses C-infinity power clamping (min=1e-8) for zero-gradient silence.
     """
 
     fft_sizes: tuple[int, ...]
@@ -127,32 +128,30 @@ class MultiResolutionSTFTLoss(nn.Module):
 
 
 class MultiBandSpectralLoss(nn.Module):
-    """Composite spectral loss combining full-band time-domain MSE and multi-resolution STFT."""
+    """Composite loss combining full-band time-domain MSE and 255-tap Blackman FIR high-pass MSE."""
 
     mse_weight: float
-    mrstft_weight: float
-    mrstft_loss: MultiResolutionSTFTLoss | None
+    fir_hp_weight: float
+    fir_hp_fc: float
+    num_taps: int
+    hp_kernel: torch.Tensor
 
     def __init__(
         self,
         mse_weight: float = NATIVE_DEFAULT_MSE_WEIGHT,
-        mrstft_weight: float = NATIVE_DEFAULT_MRSTFT_WEIGHT,
-        mrstft_fft_sizes: tuple[int, ...] = (1024, 2048, 512),
-        mrstft_hop_sizes: tuple[int, ...] = (120, 240, 50),
-        mrstft_win_lengths: tuple[int, ...] = (600, 1200, 240),
+        fir_hp_weight: float = NATIVE_DEFAULT_FIR_HP_WEIGHT,
+        fir_hp_fc: float = NATIVE_DEFAULT_FIR_HP_FC,
+        num_taps: int = 255,
         fs: float = 48000.0,
     ) -> None:
         super().__init__()
         self.mse_weight = float(mse_weight)
-        self.mrstft_weight = float(mrstft_weight)
-        self.mrstft_loss = (
-            MultiResolutionSTFTLoss(
-                fft_sizes=mrstft_fft_sizes,
-                hop_sizes=mrstft_hop_sizes,
-                win_lengths=mrstft_win_lengths,
-            )
-            if self.mrstft_weight > 0.0
-            else None
+        self.fir_hp_weight = float(fir_hp_weight)
+        self.fir_hp_fc = float(fir_hp_fc)
+        self.num_taps = int(num_taps)
+        self.register_buffer(
+            "hp_kernel",
+            design_sharp_fir_highpass(fc=self.fir_hp_fc, fs=float(fs), num_taps=self.num_taps),
         )
 
     @override
@@ -172,18 +171,21 @@ class MultiBandSpectralLoss(nn.Module):
         mse = F.mse_loss(pred, target)
         loss = self.mse_weight * mse
 
-        if self.mrstft_loss is not None:
-            mr_l = self.mrstft_loss(pred, target)
-            loss = loss + self.mrstft_weight * mr_l
+        if self.fir_hp_weight > 0.0 and pred.shape[-1] >= self.num_taps:
+            kernel = self.hp_kernel.to(device=pred.device, dtype=pred.dtype)
+            pred_hp = F.conv1d(pred, kernel, padding="valid")
+            target_hp = F.conv1d(target, kernel, padding="valid")
+            fir_hp = F.mse_loss(pred_hp, target_hp)
+            loss = loss + self.fir_hp_weight * fir_hp
         else:
-            mr_l = torch.tensor(0.0, device=pred.device, dtype=pred.dtype)
+            fir_hp = torch.tensor(0.0, device=pred.device, dtype=pred.dtype)
 
         if not return_metrics:
             return loss, {}
 
         metrics: dict[str, float] = {
             "mse": float(mse.detach().cpu().item()),
-            "mrstft": float(mr_l.detach().cpu().item()),
+            "fir_hp": float(fir_hp.detach().cpu().item()),
             "composite_loss": float(loss.detach().cpu().item()),
         }
         return loss, metrics

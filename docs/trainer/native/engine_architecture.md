@@ -77,28 +77,27 @@ $$\mathcal{M} = \begin{bmatrix}
 \mathbf{0}_{8 \times 3} & \mathbf{1}_{8 \times 8}
 \end{bmatrix}$$
 
-### 3.2 Weight Mask Application & Zero Cross-Talk Guarantee
+### 3.2 Split Gradient/Weight Masking, Residual Scaling & Zero Cross-Talk Guarantee
 
-During initialization and after every optimizer gradient step, `apply_weight_masks()` zeroes off-block parameters across all layer convolutions:
+At initialization, each residual `layer1x1` projection is scaled by $1/\sqrt{23}$ (`res_scale = 1.0 / math.sqrt(len(KERNEL_SIZES))`) to bound deep 23-layer signal variance at Step 0. During training, block-diagonal masking is split into two distinct zero-overhead `torch._foreach_mul_` passes:
+- **Pre-step (`mask_gradients()`):** Zeroes off-block gradients immediately after `loss.backward()` before `optimizer.step()`.
+- **Post-step (`mask_weights()`):** Zeroes off-block weights after `optimizer.step()` to prevent weight-decay or momentum leakage across the Lite/Full boundary.
 
-```python
-with torch.no_grad():
-    for layer in self.layers:
-        # Dilated Conv1D weight: (11, 11, kernel_size) with LeakyReLU(0.01)
-        layer.conv.weight[:3, 3:, :] = 0.0  # Lite inputs from Full
-        layer.conv.weight[3:11, :3, :] = 0.0  # Full inputs from Lite
+### 3.3 Closed-Form Tikhonov Wiener-Hopf Head Warm-Start & $C^\infty$ Activation Homotopy (CL-35)
 
-        # Residual 1x1 Conv1D: (11, 11, 1)
-        layer.layer1x1.weight[:3, 3:, :] = 0.0
-        layer.layer1x1.weight[3:11, :3, :] = 0.0
+Because the exported NAM A2 specification fixes `head_scale = 0.01`, naive Kaiming initialization attenuates initial predictions by $-40\text{ dB}$ ($\text{ESR} \approx 1.00$), wasting early epochs climbing out of a cold-start gain deficit. The native engine eliminates this bottleneck via three coupled mechanisms:
 
-    # Output head Conv1D (k=16): (2, 11, 16)
-    # Output 0 takes exclusively from Lite (0..2); Output 1 takes from Full (3..10)
-    self.head_rechannel.weight[0, 3:, :] = 0.0
-    self.head_rechannel.weight[1, :3, :] = 0.0
-```
+1. **Step-0 Closed-Form Wiener-Hopf Projection (`warm_start_head()`):**
+   Before Epoch 1, the stage-gain-aligned linear calibration chirp (`c_src_ref` $\to$ `c_tgt_ref`) is passed through the frozen 23-layer dilated basis to extract the 16-tap unfolded feature matrices $\mathbf{\Phi}_{\text{lite}} \in \mathbb{R}^{L \times 49}$ ($3 \times 16 + 1$) and $\mathbf{\Phi}_{\text{full}} \in \mathbb{R}^{L \times 129}$ ($8 \times 16 + 1$). Both `head_rechannel` submodels are solved in closed form in `float64` via Tikhonov-regularized Cholesky normal equations ($\lambda_{\text{rel}} = 10^{-2}$):
+   $$\mathbf{w}^* = \left(\mathbf{\Phi}^\top \mathbf{\Phi} + \lambda \mathbf{I}\right)^{-1} \mathbf{\Phi}^\top \left(\frac{\mathbf{y}_{\text{cal}}}{\text{head\_scale}}\right)$$
+2. **$C^\infty$ SiLU-Gated LeakyReLU Activation Homotopy:**
+   During training, `AllomorphWaveNetLayer.forward` replaces the $C^0$ slope discontinuity of `LeakyReLU(0.01)` at $x = 0$ with the zero-centered, asymptotically exact $C^\infty$ homotopy:
+   $$\psi_\tau(x) = 0.01 x + 0.99 \tau \, \text{silu}\left(\frac{x}{\tau}\right), \quad \psi_\tau(0) = 0$$
+   The temperature $\tau$ cosine-anneals from $\tau_0 = 0.02$ (`NATIVE_DEFAULT_HOMOTOPY_TAU_INIT`) down to $0.0$ over the first $75\%$ of `min_epochs`, and is strictly forced to $\tau = 0.0$ (exact `F.leaky_relu(x, 0.01)`) during `model.eval()` and `.nam` export.
+3. **In-VRAM Exponential Moving Average (`ema_params`):**
+   Maintains a shadow parameter list updated via `torch._foreach_lerp_` ($\beta = \min(0.995, \frac{1+t}{10+t})$) and swapped in-place into the model during post-warmup validation (`epoch >= warmup_epochs`).
 
-### 3.3 Verification of Submodel Slicing Parity
+### 3.4 Verification of Submodel Slicing Parity
 
 The weights of the submodels are verified to match official NAM specifications exactly:
 

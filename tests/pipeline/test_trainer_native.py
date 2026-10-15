@@ -71,7 +71,7 @@ def test_wavenet_a2_forward_shape() -> None:
 
 
 def test_wavenet_a2_weight_masks_and_counts() -> None:
-    """Verifies off-block channel mask enforcement and exact submodel weight counts."""
+    """Verifies off-block channel weight and gradient mask enforcement and exact submodel weight counts."""
     model = AllomorphWaveNetA2()
 
     # Deliberately pollute off-block weights
@@ -82,12 +82,25 @@ def test_wavenet_a2_weight_masks_and_counts() -> None:
         first_layer.layer1x1.weight[0, 5, :] = 99.0
         model.head_rechannel.weight[0, 5, :] = 99.0
 
-    model.apply_weight_masks()
+    model.mask_weights()
 
     with torch.no_grad():
         assert first_layer.conv.weight[0, 5, :].abs().max().item() == 0.0
         assert first_layer.layer1x1.weight[0, 5, :].abs().max().item() == 0.0
         assert model.head_rechannel.weight[0, 5, :].abs().max().item() == 0.0
+
+    # Verify gradient masking on off-block entries
+    x = torch.randn(1, 1, model.receptive_field + 64)
+    out = model(x)
+    loss = out.pow(2).mean()
+    loss.backward()
+    with torch.no_grad():
+        assert first_layer.conv.weight.grad is not None
+        first_layer.conv.weight.grad[0, 5, :] = 42.0
+    model.mask_gradients()
+    with torch.no_grad():
+        assert first_layer.conv.weight.grad is not None
+        assert first_layer.conv.weight.grad[0, 5, :].abs().max().item() == 0.0
 
     # Submodel 0: channels_3 Lite (exactly 1,871 weights)
     w_lite = model.export_submodel_weights(0)
@@ -96,6 +109,66 @@ def test_wavenet_a2_weight_masks_and_counts() -> None:
     # Submodel 1: channels_8 Full (exactly 12,146 weights)
     w_full = model.export_submodel_weights(1)
     assert len(w_full) == 12146
+
+
+def test_wavenet_a2_activation_homotopy() -> None:
+    """Verifies C-infinity SiLU-gated LeakyReLU activation homotopy and exact eval() convergence."""
+    model = AllomorphWaveNetA2()
+    x = torch.randn(1, 1, model.receptive_field + 128)
+
+    # 1. Exact baseline at tau = 0.0
+    model.train()
+    model.activation_tau = 0.0
+    with torch.no_grad():
+        out_exact = model(x)
+
+    # 2. Asymptotic convergence as tau -> 0+
+    model.activation_tau = 1e-4
+    with torch.no_grad():
+        out_tiny_tau = model(x)
+    assert torch.allclose(out_exact, out_tiny_tau, atol=1e-4)
+
+    # 3. Eval mode strictly enforces exact LeakyReLU(0.01) even if activation_tau > 0
+    model.activation_tau = 0.02
+    model.eval()
+    with torch.no_grad():
+        out_eval = model(x)
+    assert torch.allclose(out_exact, out_eval, atol=1e-6)
+
+
+def test_wavenet_a2_warm_start_head() -> None:
+    """Verifies closed-form Tikhonov-regularized warm-start reduces initial linear error and preserves masks."""
+    torch.manual_seed(42)
+    model = AllomorphWaveNetA2()
+    model.eval()
+
+    ny = 2048
+    rf_pad = model.receptive_field - 1
+    t = torch.linspace(0.0, 1.0, ny)
+    sig_in = 0.3 * torch.sin(2.0 * np.pi * 110.0 * t) + 0.15 * torch.sin(2.0 * np.pi * 440.0 * t)
+    sig_tgt = 0.25 * torch.sin(2.0 * np.pi * 110.0 * t + 0.2) + 0.08 * torch.sin(
+        2.0 * np.pi * 440.0 * t - 0.3
+    )
+    x_cal = torch.cat([torch.zeros(rf_pad), sig_in])
+
+    with torch.no_grad():
+        pred_before = model(x_cal.unsqueeze(0).unsqueeze(0))
+        mse_before_full = float(torch.mean((pred_before[0, 1] - sig_tgt) ** 2).item())
+        mse_before_lite = float(torch.mean((pred_before[0, 0] - sig_tgt) ** 2).item())
+
+    model.warm_start_head(x_cal, sig_tgt)
+
+    with torch.no_grad():
+        pred_after = model(x_cal.unsqueeze(0).unsqueeze(0))
+        mse_after_full = float(torch.mean((pred_after[0, 1] - sig_tgt) ** 2).item())
+        mse_after_lite = float(torch.mean((pred_after[0, 0] - sig_tgt) ** 2).item())
+
+        # Off-block head_rechannel weights must remain strictly zero
+        assert model.head_rechannel.weight[0, 3:, :].abs().max().item() == 0.0
+        assert model.head_rechannel.weight[1, :3, :].abs().max().item() == 0.0
+
+    assert mse_after_full < mse_before_full
+    assert mse_after_lite < mse_before_lite
 
 
 def test_wavenet_a2_export_nam(tmp_path: Path) -> None:
@@ -169,10 +242,11 @@ def test_multi_resolution_stft_loss() -> None:
 
 
 def test_multiband_spectral_loss() -> None:
-    """Verifies composite multi-band loss with MSE and MRSTFT."""
+    """Verifies composite multi-band loss with broadband MSE and 255-tap Blackman FIR high-pass MSE."""
     loss_fn = MultiBandSpectralLoss(
         mse_weight=1.0,
-        mrstft_weight=0.002,
+        fir_hp_weight=2.5,
+        fir_hp_fc=1200.0,
         fs=48000.0,
     )
 
@@ -181,8 +255,9 @@ def test_multiband_spectral_loss() -> None:
 
     # Exact equality should have ~0 loss
     loss_zero, metrics_zero = loss_fn(p, t)
-    assert loss_zero.item() < 1e-4
+    assert loss_zero.item() < 1e-7
     assert metrics_zero["mse"] < 1e-7
+    assert metrics_zero["fir_hp"] < 1e-7
 
     # Perturbed signal has positive loss and detailed metrics
     p_noisy = t + 0.1 * torch.randn_like(t)
@@ -190,8 +265,9 @@ def test_multiband_spectral_loss() -> None:
 
     assert loss_val.item() > 0.0
     assert "mse" in metrics
-    assert "mrstft" in metrics
+    assert "fir_hp" in metrics
     assert "composite_loss" in metrics
+    assert metrics["fir_hp"] > 0.0
 
 
 def test_train_voice_native_fast_dev_run(tmp_path: Path) -> None:
@@ -224,7 +300,6 @@ def test_train_voice_native_fast_dev_run(tmp_path: Path) -> None:
         models_dir=models_dir,
         epochs=1,
         min_epochs=1,
-        mrstft_weight=0.1,
         mse_weight=1.0,
         fast_dev_run=True,
         silent=True,
@@ -251,7 +326,10 @@ def test_train_voice_native_fast_dev_run(tmp_path: Path) -> None:
     assert export_meta.source_instrument.id == "30in_emg_mmtw"
     assert export_meta.source_instrument.voicing.id == "dual_mode"
     assert export_meta.target_voicing.id == "slab_dub"
-    assert export_meta.training.mrstft_loss is not None and export_meta.training.mrstft_loss > 0.0
+    assert (
+        export_meta.training.validation_esr is not None
+        and export_meta.training.validation_esr > 0.0
+    )
 
     # Finding 4.4: Verify standalone manifest.json is written in target instrument directory
     manifest_file = exported_models[0].parent / "manifest.json"
@@ -266,21 +344,23 @@ def test_native_default_hyperparameters_and_isolation() -> None:
         DEFAULT_MAX_EPOCHS,
         DEFAULT_MIN_EPOCHS,
         DEFAULT_PATIENCE,
+        NATIVE_DEFAULT_EMA_DECAY,
         NATIVE_DEFAULT_FIR_HP_FC,
         NATIVE_DEFAULT_FIR_HP_WEIGHT,
+        NATIVE_DEFAULT_HOMOTOPY_TAU_INIT,
         NATIVE_DEFAULT_LITE_WEIGHT,
         NATIVE_DEFAULT_LR,
         NATIVE_DEFAULT_LR_SCHEDULER,
         NATIVE_DEFAULT_MAX_EPOCHS,
         NATIVE_DEFAULT_MIN_DELTA,
         NATIVE_DEFAULT_MIN_EPOCHS,
-        NATIVE_DEFAULT_MRSTFT_WEIGHT,
         NATIVE_DEFAULT_PATIENCE,
         NATIVE_DEFAULT_SINE_AMPLITUDES,
         NATIVE_DEFAULT_SINE_FREQUENCIES,
         NATIVE_DEFAULT_SINE_REGULARIZER,
         NATIVE_DEFAULT_SLICE_LEN,
         NATIVE_DEFAULT_VAL_INTERVAL,
+        NATIVE_DEFAULT_WARM_START,
         NATIVE_DEFAULT_WEIGHT_DECAY,
         STOCK_DEFAULT_MAX_EPOCHS,
         train_voice_native,
@@ -299,12 +379,14 @@ def test_native_default_hyperparameters_and_isolation() -> None:
     assert NATIVE_DEFAULT_LITE_WEIGHT == 0.50
     assert NATIVE_DEFAULT_WEIGHT_DECAY == 3.17e-7
     assert NATIVE_DEFAULT_SLICE_LEN == 8192
-    assert NATIVE_DEFAULT_MRSTFT_WEIGHT == 0.0
     assert NATIVE_DEFAULT_FIR_HP_WEIGHT == 2.5
     assert NATIVE_DEFAULT_FIR_HP_FC == 1200.0
     assert NATIVE_DEFAULT_VAL_INTERVAL == 5
     assert NATIVE_DEFAULT_SINE_REGULARIZER is True
     assert NATIVE_DEFAULT_SINE_AMPLITUDES == (0.25, 0.10, 0.05, 0.03, 0.008)
+    assert NATIVE_DEFAULT_WARM_START is True
+    assert NATIVE_DEFAULT_HOMOTOPY_TAU_INIT == 0.02
+    assert NATIVE_DEFAULT_EMA_DECAY == 0.995
 
     # 3. Default platform hyperparameters match Native defaults
     assert DEFAULT_MAX_EPOCHS == NATIVE_DEFAULT_MAX_EPOCHS
@@ -320,12 +402,14 @@ def test_native_default_hyperparameters_and_isolation() -> None:
     assert sig.parameters["slice_len"].default == NATIVE_DEFAULT_SLICE_LEN
     assert sig.parameters["lite_weight"].default == NATIVE_DEFAULT_LITE_WEIGHT
     assert sig.parameters["val_interval"].default == NATIVE_DEFAULT_VAL_INTERVAL
-    assert sig.parameters["mrstft_weight"].default == NATIVE_DEFAULT_MRSTFT_WEIGHT
     assert sig.parameters["fir_hp_weight"].default == NATIVE_DEFAULT_FIR_HP_WEIGHT
     assert sig.parameters["fir_hp_fc"].default == NATIVE_DEFAULT_FIR_HP_FC
     assert sig.parameters["sine_regularizer"].default == NATIVE_DEFAULT_SINE_REGULARIZER
     assert sig.parameters["sine_frequencies"].default == NATIVE_DEFAULT_SINE_FREQUENCIES
     assert sig.parameters["sine_amplitudes"].default == NATIVE_DEFAULT_SINE_AMPLITUDES
+    assert sig.parameters["warm_start"].default == NATIVE_DEFAULT_WARM_START
+    assert sig.parameters["homotopy_tau_init"].default == NATIVE_DEFAULT_HOMOTOPY_TAU_INIT
+    assert sig.parameters["ema_decay"].default == NATIVE_DEFAULT_EMA_DECAY
 
 
 def test_normalize_training_stem_calibrates_unnormalized_stems() -> None:

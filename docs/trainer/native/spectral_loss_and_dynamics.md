@@ -102,13 +102,13 @@ Silence and sub-audible noise bins evaluate to mathematically exact **`0.0`** gr
 
 ### 3.4 Composite Loss Weighting Allocation & FIR Regularizer
 
-$$\mathcal{L}_{\text{total}} = w_{\text{mse}} \cdot \mathcal{L}_{\text{mse}} + w_{\text{fir}} \cdot \left( \mathcal{L}_{\text{fir\_full}} + w_{\text{lite}} \cdot \mathcal{L}_{\text{fir\_lite}} \right) + w_{\text{mrstft}} \cdot \mathcal{L}_{\text{mrstft}}$$
+$$\mathcal{L}_{\text{total}} = w_{\text{mse}} \cdot \left( \mathcal{L}_{\text{mse\_full}} + w_{\text{lite}} \cdot \mathcal{L}_{\text{mse\_lite}} \right) + w_{\text{fir}} \cdot \left( \mathcal{L}_{\text{fir\_full}} + w_{\text{lite}} \cdot \mathcal{L}_{\text{fir\_lite}} \right)$$
 
 | Component | Default Weight | Target Domain | Acoustic & Hardware Purpose |
 | :--- | :---: | :---: | :--- |
 | **Waveform MSE** | `1.00` | Time Domain | Anchors fundamental phase, sub-bass excursion, and DC stability |
-| **FIR Highpass GEMM** | `2.50` | Time Domain Conv1D | 255-tap Blackman FIR ($f_c = 1200\text{ Hz}$, `padding="valid"`). Forces WaveNet into linear subspaces across chime harmonics H2–H5 ($1318\text{--}3296\text{ Hz}$) without FFT launch bubbles. |
-| **MRSTFT Loss** | `0.00` (Bypassed) | Multi-Scale Log-STFT | **Bypassed:** When evaluated on pure sines, log-STFT crushes differentiator taps, muffling bright voices (presence $-6.9\text{ dB}$, treble $-4.3\text{ dB}$). Furthermore, `torch.stft` micro-kernels fragment ROCm GPU pipelines, dropping compute usage to $50\%$. |
+| **FIR Highpass GEMM** | `2.50` | Time Domain Conv1D | 255-tap Blackman FIR ($f_c = 1200\text{ Hz}$, `padding="valid"`). Evaluated identically in both training and validation (`mb_val`), forcing WaveNet into linear subspaces across chime harmonics H2–H5 ($1318\text{--}3296\text{ Hz}$) without FFT launch bubbles. |
+| **MRSTFT Loss** | Removed from training (`MultiResolutionSTFTLoss` offline only) | Multi-Scale Log-STFT | **Removed from training:** When evaluated on pure sines, log-STFT crushes differentiator taps, muffling bright voices (presence $-6.9\text{ dB}$, treble $-4.3\text{ dB}$). Retained strictly for offline `compute_baseline_mrstft` diagnostics and stock engine telemetry. |
 | **Pre-Emphasis MSE** | `0.00` (Bypassed) | Time Domain | Bypassed to prevent sub-bass phase distortion. |
 | **High-Pass ESR** | `0.00` (Bypassed) | Band-Passed ESR | Bypassed to prevent small-signal denominator singularities ($E \to 10^{-7}$) that force non-linear diode distortion. |
 
@@ -119,28 +119,27 @@ $$\mathcal{L}_{\text{total}} = w_{\text{mse}} \cdot \mathcal{L}_{\text{mse}} + w
 
 ## 4. Anti-Drift Pareto Early Stopping Architecture
 
-### 4.1 The Late-Epoch Waveform Drift Phenomenon
+### 4.1 Coupling Validation Loss with the 255-Tap Blackman FIR High-Pass Objective
 
-In long training schedules (e.g. 100–300 epochs), neural networks often over-fit subtle high-frequency residual noise at the expense of fundamental waveform phase alignment. This manifests as:
-- Deteriorating full-band waveform MSE ($>+10\%\text{ drift}$)
-- Flabby low-end response and phase incoherence
-- Unnatural transient blurring
+During validation, the native engine evaluates both broadband time-domain MSE ($\text{MSE}_{\text{val}}$) and the 255-tap Blackman FIR high-pass MSE ($\mathcal{L}_{\text{fir\_val}}$, `padding="valid"`, $f_c = 1200\text{ Hz}$), forming the composite validation objective:
+$$\mathcal{L}_{\text{val}}(t) = w_{\text{mse}} \cdot \text{MSE}_{\text{val}}(t) + w_{\text{fir}} \cdot \mathcal{L}_{\text{fir\_val}}(t)$$
 
 ### 4.2 Pareto Quality Metric
 
-The native engine continuously monitors multi-objective validation loss:
-$$\mathcal{Q}(t) = \mathcal{L}_{\text{val}}(t) \cdot \left( 1.0 + \max\left(0, \frac{\text{MSE}(t) - \text{MSE}_{\text{min}}}{\text{MSE}_{\text{min}}}\right) \right)$$
+The native engine continuously monitors multi-objective validation loss via `compute_pareto_quality_score` (`drift_tolerance=0.15`, `drift_penalty_gain=2.5`) and `evaluate_plateau_stopping_condition` (`drift_exit_threshold=0.25`):
+$$\mathcal{Q}(t) = \mathcal{L}_{\text{val}}(t) \cdot \left( 1.0 + 2.5 \cdot \max\left(0, \frac{\text{MSE}_{\text{val}}(t) - \text{MSE}_{\min}}{\text{MSE}_{\min}} - 0.15\right)^2 \right)$$
 
-If $\text{MSE}(t)$ drifts $>15\%$ above its historical minimum, the model incurs a quadratic Pareto penalty, halting training and triggering immediate checkpoint restoration.
+This allows the network up to $15\%$ broadband MSE trade-off post-warmup (`epoch >= min_epochs`) as it refines high-frequency differentiator taps on the 255-tap FIR high-pass objective, while quadratically penalizing excessive low-frequency waveform drift and halting if drift exceeds $25\%$.
 
 ### 4.3 In-Memory Checkpoint Restoration
 
-When early stopping engages, the trainer does not save degraded late-epoch weights. Instead, it restores the in-memory state dict corresponding to the optimal $\mathcal{Q}(t)$:
+When training completes or early stopping engages, the trainer restores the in-memory EMA-evaluated state dict corresponding to the optimal post-warmup Pareto score $\mathcal{Q}(t)$ with `model.activation_tau = 0.0` (exact `LeakyReLU(0.01)`):
 
 ```python
-if best_state_dict is not None:
+if best_state_dict is not None and best_epoch > 0:
     print(
-        f"\n[Native Trainer] Restoring optimal Pareto checkpoint from epoch {best_epoch:03d} (val_loss: {best_val_loss:.6f})"
+        f"\n[Native Trainer] Restoring optimal Pareto checkpoint from epoch {best_epoch:03d} "
+        f"(Val Loss: {best_val_loss:.5f}, Pareto Q: {best_pareto_score:.5f})"
     )
     model.load_state_dict(best_state_dict)
 ```

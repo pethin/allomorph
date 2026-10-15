@@ -90,7 +90,9 @@ src/allomorph/trainer/
 | **Loss Formulation** | Standard Upstream NAM (MSE/ESR) | Pure MSE + 255-tap Blackman FIR GEMM | Time-domain MSE with highpass regularizer ($w=2.5, f_c=1200\text{Hz}$) |
 | **Waveform MSE Weight** | N/A (Standard NAM) | `1.00` | Full-band time-domain MSE anchor weight |
 | **FIR Highpass Weight** | N/A | `2.50` | 255-tap Blackman FIR highpass regularizer ($f_c=1200\text{Hz}$, `padding="valid"`) |
-| **MRSTFT Weight** | N/A | `0.00` | Optional multi-scale STFT weight (bypassed by default for studio linearity) |
+| **Wiener Head Warm-Start** | N/A | `True` | Closed-form Tikhonov-regularized ($\lambda_{\text{rel}}=10^{-2}$) Step 0 `head_rechannel` solver |
+| **$C^\infty$ Activation Homotopy** | N/A | `0.02` ($\tau_0$) | Zero-centered SiLU-gated LeakyReLU homotopy ($\tau: 0.02 \to 0.0$ over $75\%$ of `min_epochs`) |
+| **In-VRAM EMA Shadow** | N/A | `0.995` | Exponential moving average (`torch._foreach_lerp_`) evaluated during post-warmup validation |
 | **Base Learning Rate** (`--lr`) | `1.0e-2` (Stock Adam) | `4.0e-3` (Native Adam) | Optimizer initial learning rate |
 | **Learning Rate Schedule** | Exponential ($0.994^t$) | Cosine Annealing ($T_{\max}=115, \eta_{\min}=10^{-6}$) | Smooth annealing extinguishing LeakyReLU zero-crossing buzz |
 | **Weight Decay** (`--weight-decay`) | `0.0` | `3.17e-7` | Optimizer L2 kernel regularization |

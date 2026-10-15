@@ -60,6 +60,11 @@ class NamTrainingMetadata(AllomorphBaseModel):
     validation_spectral_loss: float | None = None
     validation_spectral_loss_a2_full: float | None = None
     validation_spectral_loss_a2_lite: float | None = None
+    validation_esr: float | None = None
+    validation_esr_a2_full: float | None = None
+    validation_esr_a2_lite: float | None = None
+    validation_esr_ch8: float | None = None
+    validation_esr_ch3: float | None = None
     mrstft_loss: float | None = None
     mrstft_loss_ch3: float | None = None
     esr_pre_loss: float | None = None
