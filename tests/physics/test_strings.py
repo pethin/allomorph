@@ -97,12 +97,6 @@ def test_forward_sensor_compliance_bypass():
         damping_order=1.5,
     )
 
-    # Direct DI must evaluate bit-exact 1.0000 across all frequencies
-    h_direct = compute_forward_string_transfer(
-        freqs, s_clank, scale_length_inches=34.0, sensor_type="direct"
-    )
-    assert np.allclose(h_direct, 1.0, atol=1e-12)
-
     # Magnetic sensors apply wrap damping (passband <= 1.0, rolling off at high frequencies)
     h_mag = compute_forward_string_transfer(
         freqs, s_clank, scale_length_inches=34.0, sensor_type="magnetic"

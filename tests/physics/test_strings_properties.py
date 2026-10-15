@@ -52,10 +52,6 @@ def test_forward_string_transfer_invariants(
     diffs = np.diff(h_wrap)
     assert np.all(diffs <= 1e-8)
 
-    # Sensor type 'direct' must be exact 1.0 identity
-    h_direct = compute_forward_string_transfer(freqs, string_cfg, sensor_type="direct")
-    assert np.all(h_direct == 1.0)
-
 
 @given(
     st.floats(min_value=15.0, max_value=200.0, allow_nan=False, allow_infinity=False),

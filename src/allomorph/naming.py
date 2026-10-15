@@ -131,13 +131,12 @@ def get_t3k_basename(
     position_name: str | None = None,
     version_tag: str | None = None,
     max_length: int | None = None,
-    preserve_aperture: bool = False,
 ) -> str:
     """Generates a Tone3000 pack model basename.
 
     Format:
       - Multi-pickup instruments: `Tone Name [Pickup Position]` or `Tone Name [Pickup Position] v6.1.1`
-      - Single-pickup instruments or preserve_aperture tones: `Tone Name` or `Tone Name v6.1.1`
+      - Single-pickup instruments: `Tone Name` or `Tone Name v6.1.1`
 
     Enforces that the filename (excluding the `.nam` extension) does not exceed
     `max_length` (strict Tone3000 upload ceiling is 64 chars; unversioned legacy default is 34).
@@ -145,10 +144,9 @@ def get_t3k_basename(
     Sanitizes filesystem path separators ('/' and '\\') with Unicode Division Slash ('\u2215')
     to maintain a flat directory structure.
     """
-    pos = None if preserve_aperture else position_name
     return compose_zero_scroll_model_name(
         tone_name=tone_name,
-        position_tag=pos,
+        position_tag=position_name,
         version_tag=version_tag,
         max_len=max_length,
     )

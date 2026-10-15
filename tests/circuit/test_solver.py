@@ -1077,18 +1077,31 @@ def test_generic_floating_terminals_no_parasitic_ground_shunt():
         },
     )
 
-    v_floating = VoicingConfig(name="Floating Voicing", harness="active", controls={"blend": 0.5})
+    v_base = VoicingConfig(
+        name="Base Voicing (Neck Solo)", harness="active", controls={"blend": 0.0}
+    )
+    v_floating = VoicingConfig(
+        name="Floating Voicing (Center Detent with Floating Bridge In)",
+        harness="active",
+        controls={"blend": 0.5},
+    )
+    f_eval = np.array([100.0, 1000.0, 5000.0, 10000.0], dtype=np.float64)
+    curves_base = solve_mna_harness(
+        inst_with_floating, inst_with_floating.harnesses["active"], v_base, freqs=f_eval
+    )
+    mag_base = curves_base["test_p.c1"]
     curves_floating = solve_mna_harness(
         inst_with_floating, inst_with_floating.harnesses["active"], v_floating, freqs=f_eval
     )
     mag_floating = curves_floating["test_p.c1"]
 
-    # At 0.5 blend, neck_in connects to wiper through contact resistance.
+    # At 0.5 blend, neck_in and bridge_in both connect to wiper through 10-ohm contact resistance.
     # If bridge_in (floating) was mistakenly treated as GND, wiper would be shunted to GND by 10 ohms,
     # attenuating the signal by ~60 dB (gain dropping from ~0.98 to ~0.001).
-    # With the floating terminal fix, bridge_in is an open circuit and does not load wiper.
-    assert np.all(mag_floating > 0.90), f"Floating terminal caused parasitic shunt: {mag_floating}"
-    assert np.allclose(mag_floating, mag_base, rtol=0.02)
+    # With the floating terminal fix, bridge_in is an open circuit and does not load wiper,
+    # so blend=0.5 with floating bridge_in matches blend=0.0 identically.
+    assert np.all(mag_floating > 0.75), f"Floating terminal caused parasitic shunt: {mag_floating}"
+    assert np.allclose(mag_floating, mag_base, rtol=1e-6)
 
 
 def test_catalog_wide_active_voicings_transmission_integrity():
@@ -1181,3 +1194,120 @@ def test_fender_ultra2_mna_simulation():
     assert mag_325[idx_325] > mag_750[idx_325]
     # 750 Hz boost should be higher at 750 Hz than 325 Hz curve
     assert mag_750[idx_750] > mag_325[idx_750]
+
+
+def test_phase2_pickup_magnet_type_metallurgy_applied():
+    """Finding 2.1: solve_mna_harness must apply p_cfg.magnet_type core dispersion rather than alnico_v."""
+    from allomorph.config.instruments import load_instrument
+
+    inst = load_instrument("37in_multiscale_dingwall")
+    v = inst.voicings["bridge_clank"]
+    h = inst.harnesses[v.harness]
+    curves_neo = solve_mna_harness(inst, h, v, freqs=FREQS)
+
+    inst_alnico = inst.model_copy(deep=True)
+    inst_alnico.pickups["bridge"].magnet_type = "alnico_v"
+    curves_alnico = solve_mna_harness(inst_alnico, h, v, freqs=FREQS)
+
+    # Neodymium (k_core=0.04, k_skin=0.05) vs Alnico V (k_core=0.08, k_skin=0.12) must differ
+    assert not np.allclose(curves_neo["bridge"], curves_alnico["bridge"], rtol=1e-2)
+
+
+def test_phase2_preamp_band_control_binding_and_fail_fast():
+    """Finding 2.2: preamp_band controls must bind to band.id/name and raise KeyError on unknown bands."""
+    import pytest
+
+    from allomorph.config.instruments import load_instrument
+
+    # 1. Dingwall 3-band active EQ: boosting low_mid (500 Hz) vs high_mid (2800 Hz)
+    inst = load_instrument("37in_multiscale_dingwall")
+    h = inst.harnesses["active"]
+    v_flat = inst.voicings["bridge_clank"]
+    c_flat = solve_mna_harness(inst, h, v_flat, freqs=FREQS)["bridge"]
+
+    v_lmid = v_flat.model_copy(deep=True)
+    v_lmid.controls["low_mid"] = 1.0
+    c_lmid = solve_mna_harness(inst, h, v_lmid, freqs=FREQS)["bridge"]
+
+    f_arr = np.asarray(FREQS, dtype=float)
+    idx_500 = int(np.argmin(np.abs(f_arr - 500.0)))
+    assert np.abs(c_lmid[idx_500]) > np.abs(c_flat[idx_500]) * 2.0
+
+    # 2. Unknown preamp_band name must raise KeyError
+    h_bad = h.model_copy(deep=True)
+    h_bad.controls["bass"].band = "nonexistent_band"
+    with pytest.raises(KeyError, match="does not match any band"):
+        solve_mna_harness(inst, h_bad, v_flat, freqs=FREQS)
+
+
+def test_phase2_fail_fast_unknown_component_override_and_wiring():
+    """Finding 2.6: Unknown component overrides, wiring terminals, or string presets must raise errors."""
+    import pytest
+
+    from allomorph.circuit.forward import simulate_voicing_dsp
+    from allomorph.config.instruments import load_instrument
+
+    inst = load_instrument("34in_standard_p")
+    h = inst.harnesses["passive"]
+    v = inst.voicings["vintage_open"]
+
+    # 1. Unknown component override key in solve_mna_harness
+    v_bad_comp = v.model_copy(deep=True)
+    v_bad_comp.components["controls.nonexistent.Rtone"] = 100.0
+    with pytest.raises(KeyError, match="Unrecognized control component override"):
+        solve_mna_harness(inst, h, v_bad_comp, freqs=FREQS)
+
+    # 2. Unknown string_preset_override in simulate_voicing_dsp
+    v_bad_str = v.model_copy(deep=True)
+    v_bad_str.string_preset_override = "nonexistent_string_preset"
+    with pytest.raises(KeyError, match="unknown string_preset_override"):
+        simulate_voicing_dsp(np.zeros(256, dtype=np.float32), inst, v_bad_str)
+
+
+def test_phase2_active_pickup_coil_averaging_and_buffered_blend():
+    """Finding 2.8: Active buffered pickups average parallel sub-coils, and buffered mn_blend isolates passive coils."""
+    from allomorph.config.instruments import load_instrument
+
+    # 1. Active dual-coil MMTWX in dual_mode vs single_mode has identical passband level at 100 Hz (0.0 dB diff, not +6 dB)
+    inst_mmtw = load_instrument("30in_emg_mmtw")
+    h_mmtw = inst_mmtw.harnesses["active"]
+    c_dual = solve_mna_harness(inst_mmtw, h_mmtw, inst_mmtw.voicings["dual_mode"], freqs=FREQS)[
+        "mmtwx"
+    ]
+    c_single = solve_mna_harness(inst_mmtw, h_mmtw, inst_mmtw.voicings["single_mode"], freqs=FREQS)[
+        "mmtwx"
+    ]
+    f_arr = np.asarray(FREQS, dtype=float)
+    idx_100 = int(np.argmin(np.abs(f_arr - 100.0)))
+    diff_db_100 = abs(
+        20.0 * np.log10(float(np.abs(c_dual[idx_100])) / float(np.abs(c_single[idx_100])))
+    )
+    assert diff_db_100 < 0.10
+
+    # 2. Dual-buffered active blend (34in_active_pmm): P neck peak in pmm_parallel matches p_solo
+    inst_pmm = load_instrument("34in_active_pmm")
+    h_pmm = inst_pmm.harnesses["active"]
+    c_p_solo = solve_mna_harness(inst_pmm, h_pmm, inst_pmm.voicings["p_solo"], freqs=FREQS)[
+        "split_p"
+    ]
+    c_p_blend = solve_mna_harness(inst_pmm, h_pmm, inst_pmm.voicings["pmm_parallel"], freqs=FREQS)[
+        "split_p"
+    ]
+    np.testing.assert_allclose(np.abs(c_p_solo), np.abs(c_p_blend), rtol=1e-6)
+
+
+def test_phase2_forward_coil_split_spatial_filtering():
+    """Finding 2.9: simulate_voicing_dsp filters inactive coils on coil-split voicings."""
+    from allomorph.circuit.forward import _resolve_active_pickup_coils
+    from allomorph.config.instruments import load_instrument
+
+    inst = load_instrument("30in_emg_mmtw")
+    p_mmtwx = inst.pickups["mmtwx"]
+    coils_dual = _resolve_active_pickup_coils("mmtwx", p_mmtwx, inst, inst.voicings["dual_mode"])
+    coils_single = _resolve_active_pickup_coils(
+        "mmtwx", p_mmtwx, inst, inst.voicings["single_mode"]
+    )
+    assert len(coils_dual) == 2
+    assert len(coils_single) == 1
+    assert coils_single[0].id == "bridge"
+    assert np.isclose(coils_single[0].weight, 1.0)

@@ -10,7 +10,6 @@ from allomorph.config import (
     PREAMPS,
     PreampBandConfig,
     PreampConfig,
-    PreampOverrideConfig,
     get_preamp,
 )
 
@@ -22,6 +21,8 @@ def test_preamps_catalog_loading():
         "sadowsky_2band",
         "stingray_2band",
         "aguilar_3band",
+        "glockenklang_2band",
+        "lakland_lh3",
         "dingwall_active",
         "fender_ultra2_3band",
     ]
@@ -36,12 +37,13 @@ def test_preamps_catalog_loading():
 
         for b in cfg.bands:
             assert b.type in ["low_shelf", "high_shelf", "bell", "low_pass", "high_pass"]
+            assert b.id, f"Band in {pid} missing semantic id"
             assert 20.0 <= b.freq_hz <= 20000.0
             assert -20.0 <= b.gain_db <= 20.0
 
 
 def test_get_preamp_resolution():
-    """Verify get_preamp resolves presets, default fallbacks, and inline overrides."""
+    """Verify get_preamp resolves presets, default fallbacks, and inline PreampConfig models."""
     # 1. None/empty returns flat buffer
     default_pre = get_preamp(None)
     assert default_pre.name == "Flat Studio Active Buffer"
@@ -51,23 +53,20 @@ def test_get_preamp_resolution():
     sad = get_preamp("sadowsky_2band")
     assert sad.name == "Sadowsky 2-Band Boost-Only Preamp"
     assert len(sad.bands) == 2
+    assert sad.bands[0].id == "bass"
     assert sad.bands[0].freq_hz == 60.0
     assert sad.bands[0].gain_db == 3.5
+    assert sad.bands[1].id == "treble"
     assert sad.bands[1].freq_hz == 3500.0
     assert sad.bands[1].gain_db == 3.5
 
-    # 3. Model with preset override
-    overridden = get_preamp(PreampOverrideConfig(preset="sadowsky_2band", gain_db=2.0))
-    assert overridden.gain_db == 2.0
-    assert len(overridden.bands) == 2
-
-    # 4. Pure custom PreampConfig model
+    # 3. Pure custom PreampConfig model
     custom = get_preamp(
         PreampConfig(
             id="custom_1band",
             name="Custom 1-Band",
             output_impedance_ohm=150.0,
-            bands=[PreampBandConfig(type="low_shelf", freq_hz=50.0, gain_db=4.0)],
+            bands=[PreampBandConfig(id="bass", type="low_shelf", freq_hz=50.0, gain_db=4.0)],
         )
     )
     assert custom.name == "Custom 1-Band"
@@ -82,28 +81,9 @@ def test_get_preamp_edge_cases_and_errors(monkeypatch: pytest.MonkeyPatch) -> No
         p = get_preamp(spec)
         assert p.id == "flat_buffer"
 
-    # PreampOverrideConfig with all optional fields
-    override = PreampOverrideConfig(
-        preset="sadowsky_2band",
-        gain_db=1.5,
-        input_impedance_meg=2.0,
-        output_impedance_ohm=50.0,
-        bands=[PreampBandConfig(type="bell", freq_hz=500.0, gain_db=-3.0, q=0.7)],
-    )
-    res = get_preamp(override)
-    assert res.gain_db == 1.5
-    assert res.input_impedance_meg == 2.0
-    assert res.output_impedance_ohm == 50.0
-    assert len(res.bands) == 1
-    assert res.bands[0].freq_hz == 500.0
-
     # Unknown string preset raises KeyError
     with pytest.raises(KeyError, match="Unknown preamp preset 'non_existent_preset'"):
         get_preamp("non_existent_preset")
-
-    # Override with unknown preset raises KeyError
-    with pytest.raises(KeyError, match="Unknown preamp preset 'bad_preset'"):
-        get_preamp(PreampOverrideConfig(preset="bad_preset"))
 
     # Invalid specification type raises TypeError
     with pytest.raises(TypeError, match="Invalid preamp specification type"):

@@ -52,8 +52,8 @@ type = "split_coil"
 magnet_type = "neodymium"
 coils = [
     # Reverse split-P: treble strings (1, 2) forward half, bass strings (3, 4, 5) rearward half
-    { id = "forward", strings = [1, 2], position_from_bridge_m = 0.10425, aperture_width_in = 0.40, pole_type = "rod", L = 1.15, Rdc = 2200.0, Reddy = 150000.0, Ccoil = 6e-11, weight = 1.0 },
-    { id = "rearward", strings = [3, 4, 5], position_from_bridge_m = 0.08775, aperture_width_in = 0.40, pole_type = "rod", L = 1.15, Rdc = 2200.0, Reddy = 150000.0, Ccoil = 6e-11, weight = 1.0 },
+    { id = "forward", strings = [1, 2], position_from_bridge_m = 0.10425, aperture_width_in = 0.40, pole_type = "rod", L = 1.15, Rdc = 2200.0, Reddy = 150000.0, Ccoil = 2.4e-10, weight = 1.0 },
+    { id = "rearward", strings = [3, 4, 5], position_from_bridge_m = 0.08775, aperture_width_in = 0.40, pole_type = "rod", L = 1.15, Rdc = 2200.0, Reddy = 150000.0, Ccoil = 2.4e-10, weight = 1.0 },
 ]
 
 [pickups.bridge]
@@ -66,8 +66,8 @@ type = "split_coil"
 magnet_type = "neodymium"
 coils = [
     # Reverse split-P: treble strings (1, 2) forward half, bass strings (3, 4, 5) rearward half
-    { id = "forward", strings = [1, 2], position_from_bridge_m = 0.0575, aperture_width_in = 0.40, pole_type = "rod", L = 1.15, Rdc = 2200.0, Reddy = 150000.0, Ccoil = 6e-11, weight = 1.0 },
-    { id = "rearward", strings = [3, 4, 5], position_from_bridge_m = 0.0385, aperture_width_in = 0.40, pole_type = "rod", L = 1.15, Rdc = 2200.0, Reddy = 150000.0, Ccoil = 6e-11, weight = 1.0 },
+    { id = "forward", strings = [1, 2], position_from_bridge_m = 0.0575, aperture_width_in = 0.40, pole_type = "rod", L = 1.15, Rdc = 2200.0, Reddy = 150000.0, Ccoil = 2.4e-10, weight = 1.0 },
+    { id = "rearward", strings = [3, 4, 5], position_from_bridge_m = 0.0385, aperture_width_in = 0.40, pole_type = "rod", L = 1.15, Rdc = 2200.0, Reddy = 150000.0, Ccoil = 2.4e-10, weight = 1.0 },
 ]
 
 # ------------------------------------------------------------------------------
@@ -110,13 +110,13 @@ default = 0.5
 [harnesses.active.controls.low_mid]
 name = "Low-Mid Boost/Cut"
 type = "preamp_band"
-band = "bell"
+band = "low_mid"
 default = 0.5
 
 [harnesses.active.controls.high_mid]
 name = "High-Mid Boost/Cut"
 type = "preamp_band"
-band = "bell"
+band = "high_mid"
 default = 0.5
 
 [harnesses.active.switches.rotary]
@@ -162,7 +162,6 @@ tone_name = "Dingwall Bridge"
 harness = "active"
 switches = { rotary = "bridge" }
 controls = { vol = 1.0, bass = 0.5, low_mid = 0.5, high_mid = 0.5 }
-string_preset_override = "roundwound_stainless_clank"
 
 [voicings.middle_growl]
 version = 1
@@ -171,7 +170,6 @@ tone_name = "Dingwall Middle"
 harness = "active"
 switches = { rotary = "middle" }
 controls = { vol = 1.0, bass = 0.5, low_mid = 0.5, high_mid = 0.5 }
-string_preset_override = "roundwound_stainless_clank"
 
 [voicings.pair_parallel]
 version = 1
@@ -180,7 +178,6 @@ tone_name = "Dingwall Parallel"
 harness = "active"
 switches = { rotary = "parallel" }
 controls = { vol = 1.0, bass = 0.5, low_mid = 0.5, high_mid = 0.5 }
-string_preset_override = "roundwound_stainless_clank"
 
 [voicings.pair_series]
 version = 1
@@ -189,4 +186,3 @@ tone_name = "Dingwall Series"
 harness = "active"
 switches = { rotary = "series" }
 controls = { vol = 1.0, bass = 0.5, low_mid = 0.5, high_mid = 0.5 }
-string_preset_override = "roundwound_stainless_clank"

@@ -53,11 +53,9 @@ from allomorph.config.schema import (
     CoilConfig,
     InstrumentConfig,
     InstrumentStringsConfig,
-    PickupComponentConfig,
     PickupConfig,
     PreampBandConfig,
     PreampConfig,
-    PreampOverrideConfig,
     PreampsCatalog,
     ResolvedStringConfig,
     ScaleConfig,
@@ -83,6 +81,9 @@ from allomorph.config.voices import (
     VoiceRegistry,
     load_voice_config,
     load_voices_config,
+    resolve_voicing_active_coils,
+    resolve_voicing_active_pickups,
+    voicing_to_voice_config,
 )
 
 __all__ = [
@@ -104,11 +105,9 @@ __all__ = [
     "CoilConfig",
     "InstrumentConfig",
     "InstrumentStringsConfig",
-    "PickupComponentConfig",
     "PickupConfig",
     "PreampBandConfig",
     "PreampConfig",
-    "PreampOverrideConfig",
     "PreampsCatalog",
     "ResolvedStringConfig",
     "ScaleConfig",
@@ -151,4 +150,7 @@ __all__ = [
     "resolve_target_voicing",
     "resolve_voice_coils",
     "resolve_voice_pickups",
+    "resolve_voicing_active_coils",
+    "resolve_voicing_active_pickups",
+    "voicing_to_voice_config",
 ]

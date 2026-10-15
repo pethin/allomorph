@@ -197,7 +197,7 @@ def test_guardrail_5_3_active_preamp_dc_transmission():
 
 def test_guardrail_5_3_transducer_taxonomy():
     """Guardrail 5.3.4: All instruments and target voicings must declare a valid physical sensor_type."""
-    valid_sensors = {"magnetic", "bridge_force", "direct"}
+    valid_sensors = {"magnetic", "bridge_force"}
 
     for vid, v in VOICES.items():
         assert v.sensor_type in valid_sensors, (

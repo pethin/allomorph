@@ -28,6 +28,16 @@ scale_length_m = 0.762
 string_wave_speeds = [62.79, 83.82, 111.89, 149.35]
 
 # ------------------------------------------------------------------------------
+# 30.5" Vintage Short Scale (e.g. Gibson EB-0 / EB-3)
+# Character: Classic 30.5" Kalamazoo scale length; warm low-mid fundamental bloom.
+# ------------------------------------------------------------------------------
+[scales."30.5in"]
+name = "30.5\" Vintage Short Scale"
+scale_length_in = 30.5
+scale_length_m = 0.7747
+string_wave_speeds = [63.83, 85.22, 113.75, 151.84]
+
+# ------------------------------------------------------------------------------
 # 32" Medium Scale (e.g. Alembic, Fender Stu Hamm Urge, Custom P/MM)
 # Character: Balanced tension, sweet spot between punch and low-register articulation.
 # ------------------------------------------------------------------------------
@@ -38,7 +48,17 @@ scale_length_m = 0.8128
 string_wave_speeds = [66.98, 89.41, 119.35, 159.31]
 
 # ------------------------------------------------------------------------------
-# 34" Standard Long Scale (Fender P/J, Music Man StingRay, Rickenbacker 4003)
+# 33.25" Rickenbacker Scale (e.g. Rickenbacker 4001 / 4003)
+# Character: Signature 33.25" scale length; slightly lower tension than 34" with piano-like ring.
+# ------------------------------------------------------------------------------
+[scales."33.25in"]
+name = "33.25\" Rickenbacker Scale"
+scale_length_in = 33.25
+scale_length_m = 0.84455
+string_wave_speeds = [69.60, 92.90, 124.01, 165.53]
+
+# ------------------------------------------------------------------------------
+# 34" Standard Long Scale (Fender P/J, Music Man StingRay)
 # Character: The global industry standard for electric bass snap, tightness, and growl.
 # ------------------------------------------------------------------------------
 [scales.34in]
@@ -48,10 +68,20 @@ scale_length_m = 0.8636
 string_wave_speeds = [71.16, 95.00, 126.81, 169.27]
 
 # ------------------------------------------------------------------------------
-# 34"-37" Multi-Scale / Fanned Fret (e.g. Dingwall NG2/NG3, Combustion)
-# Character: 37" low B/E string produces massive tension, piano-like clarity,
+# 34" 5-String Long Scale (e.g. Ibanez SR505E, Yamaha TRBX505, Spector Euro 5, EMG 40DC/CS)
+# Character: Standard 34" 5-string extended low-B register (B0-E1-A1-D2-G2).
+# ------------------------------------------------------------------------------
+[scales.34in_5string]
+name = "34\" 5-String Long Scale"
+scale_length_in = 34.0
+scale_length_m = 0.8636
+string_wave_speeds = [53.31, 71.16, 95.00, 126.81, 169.27]
+
+# ------------------------------------------------------------------------------
+# 34"-37" Multi-Scale / Fanned Fret (e.g. Dingwall NG2/NG3, Combustion 5-String)
+# Character: 37" low B string produces massive tension, piano-like clarity,
 # and percussive metallic clank (3.2 kHz) with zero low-end mud.
-# Wave speeds evaluated at the angled bridge pickup line across strings.
+# Wave speeds evaluated across the 5-string fanned-fret register (37" B0 -> 34" G2).
 # ------------------------------------------------------------------------------
 [scales.multiscale]
 name = "34\"-37\" Multi-Scale (Fanned Fret)"
@@ -60,7 +90,7 @@ scale_length_m = 0.9398
 scale_min_in = 34.0
 scale_max_in = 37.0
 is_multiscale = true
-string_wave_speeds = [77.44, 98.50, 131.00, 169.27]
+string_wave_speeds = [58.02, 75.88, 99.19, 129.60, 169.27]
 
 # ------------------------------------------------------------------------------
 # 32"-35" Super Multi-Scale (e.g. Dingwall Super P / Super J / SP1 5-String)
@@ -76,16 +106,14 @@ scale_max_in = 35.0
 is_multiscale = true
 string_wave_speeds = [54.88, 71.69, 93.60, 122.14, 159.31]
 
-
-
 # ------------------------------------------------------------------------------
-# 41.5" Upright Acoustic Bass (Standard 3/4 Scale)
+# 41.25" Upright Acoustic Bass (Standard 3/4 Orchestral Mensur = 104.8 cm)
 # Character: High wave speed, long acoustic sustain, massive wood fundamental,
 # fast harmonic decay, and organic pizzicato attack envelope.
 # ------------------------------------------------------------------------------
 [scales.upright]
-name = "41.5\" Upright Bass (3/4 Scale)"
-scale_length_in = 41.5
-scale_length_m = 1.0541
-string_wave_speeds = [86.86, 115.95, 154.76, 206.59]
+name = "41.25\" Upright Bass (3/4 Scale)"
+scale_length_in = 41.25
+scale_length_m = 1.04775
+string_wave_speeds = [86.33, 115.25, 153.86, 205.36]
 

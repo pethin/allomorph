@@ -173,6 +173,33 @@ def solve_mna_harness(
             Y[:, ia, ib] -= y_val
             Y[:, ib, ia] -= y_val
 
+    # Precompute preamp spec and input admittance if active_preamp
+    preamp_spec: PreampConfig | None = None
+    eff_preamp_id = "flat_buffer"
+    y_preamp_in: np.ndarray | complex = 0.0
+    if harness.type == "active_preamp":
+        eff_preamp_id = (
+            getattr(voicing, "preamp", None)
+            or getattr(harness, "preamp", None)
+            or getattr(instrument, "preamp", None)
+            or "flat_buffer"
+        )
+        if preamps is not None and eff_preamp_id in preamps:
+            preamp_spec = preamps[eff_preamp_id]
+        else:
+            from allomorph.config.preamps import get_preamp
+
+            preamp_spec = get_preamp(eff_preamp_id)
+
+        c_in_pf = getattr(preamp_spec, "input_capacitance_pf", 30.0)
+        r_in_meg = getattr(preamp_spec, "input_impedance_meg", 1.0)
+        c_in_f = float(c_in_pf) * 1e-12
+        r_in_ohm = float(r_in_meg) * 1e6
+        y_preamp_in = (1.0 / r_in_ohm) + s * c_in_f
+
+    # Track dual-buffered active blend channels: list of (term_neck, g_neck, term_bridge, g_bridge)
+    buffered_blend_channels: list[tuple[str, float, str, float]] = []
+
     # 4. Stamp Potentiometers and Controls
     for ctrl_id, ctrl in harness.controls.items():
         pos = voicing.controls.get(ctrl_id)
@@ -212,7 +239,7 @@ def solve_mna_harness(
                     stamp_adm(term_in, "GND", Y_tone)
 
             elif ctrl.taper == "mn_blend":
-                # MN Blend Potentiometer
+                # MN Blend Potentiometer (center-detent dual-gang mixer)
                 term_wiper = f"controls.{ctrl_id}.wiper"
                 term_neck = f"controls.{ctrl_id}.neck_in"
                 term_bridge = f"controls.{ctrl_id}.bridge_in"
@@ -221,22 +248,43 @@ def solve_mna_harness(
                 if term_bridge not in ds.parent:
                     term_bridge = f"controls.{ctrl_id}.in_b"
 
-                g_contact = 1.0 / 10.0
-                if pos <= 0.5:
-                    g_neck = g_contact
-                    atten_b = (0.5 - pos) / 0.5
-                    t_b = eval_pot_taper(atten_b, "audio15")
-                    g_bridge = g_contact * max(1.0 - t_b, 0.0)
+                if ctrl.buffered and harness.type == "active_preamp":
+                    # Dual-buffered active blend: each pickup sees isolated FET buffer input + pot track load
+                    stamp_adm(term_neck, "GND", (1.0 / r_total) + y_preamp_in)
+                    stamp_adm(term_bridge, "GND", (1.0 / r_total) + y_preamp_in)
+                    if pos <= 0.5:
+                        g_n = 1.0
+                        g_b = 0.0 if pos <= 0.0 else eval_pot_taper(pos / 0.5, "audio_15")
+                    else:
+                        g_b = 1.0
+                        g_n = 0.0 if pos >= 1.0 else eval_pot_taper((1.0 - pos) / 0.5, "audio_15")
+                    buffered_blend_channels.append((term_neck, g_n, term_bridge, g_b))
                 else:
-                    g_bridge = g_contact
-                    atten_n = (pos - 0.5) / 0.5
-                    t_n = eval_pot_taper(atten_n, "audio15")
-                    g_neck = g_contact * max(1.0 - t_n, 0.0)
-
-                if g_neck > 0.0:
-                    stamp_adm(term_neck, term_wiper, g_neck)
-                if g_bridge > 0.0:
-                    stamp_adm(term_bridge, term_wiper, g_bridge)
+                    # Standard unbuffered MN-taper dual-gang blend pot
+                    g_contact = 1.0 / 10.0
+                    stamp_adm(term_neck, "GND", 1.0 / r_total)
+                    stamp_adm(term_bridge, "GND", 1.0 / r_total)
+                    if pos <= 0.0:
+                        stamp_adm(term_neck, term_wiper, g_contact)
+                    elif pos < 0.5:
+                        stamp_adm(term_neck, term_wiper, g_contact)
+                        r_frac_b = eval_pot_taper(pos / 0.5, "audio_15")
+                        r_top_b = max((1.0 - r_frac_b) * r_total, 10.0)
+                        r_bot_b = max(r_frac_b * r_total, 10.0)
+                        stamp_adm(term_bridge, term_wiper, 1.0 / r_top_b)
+                        stamp_adm(term_wiper, "GND", 1.0 / r_bot_b)
+                    elif pos == 0.5:
+                        stamp_adm(term_neck, term_wiper, g_contact)
+                        stamp_adm(term_bridge, term_wiper, g_contact)
+                    elif pos < 1.0:
+                        stamp_adm(term_bridge, term_wiper, g_contact)
+                        r_frac_n = eval_pot_taper((1.0 - pos) / 0.5, "audio_15")
+                        r_top_n = max((1.0 - r_frac_n) * r_total, 10.0)
+                        r_bot_n = max(r_frac_n * r_total, 10.0)
+                        stamp_adm(term_neck, term_wiper, 1.0 / r_top_n)
+                        stamp_adm(term_wiper, "GND", 1.0 / r_bot_n)
+                    else:
+                        stamp_adm(term_bridge, term_wiper, g_contact)
 
             else:
                 # Standard Volume Potentiometer (Voltage Divider)
@@ -249,14 +297,42 @@ def solve_mna_harness(
                 stamp_adm(term_in, term_wiper, 1.0 / r_top)
                 stamp_adm(term_wiper, term_gnd, 1.0 / r_bot)
 
-    # 5. Stamp Standalone Components (e.g. vintage_cap, treble bleed)
+    # 5. Validate & Stamp Standalone Components (e.g. vintage_cap, treble bleed)
     for comp_name, comp_val in active_components.items():
-        if comp_name.startswith("controls.") or comp_name in (
-            "cable_pf",
-            "load_resistance",
-            "k_mutual",
-        ):
+        if comp_name in ("cable_pf", "load_resistance", "k_mutual", "Rtone"):
             continue
+        if comp_name.startswith("controls."):
+            parts = comp_name.split(".")
+            if (
+                len(parts) == 3
+                and parts[1] in harness.controls
+                and parts[2] in ("resistance", "cap", "Rtone")
+            ):
+                continue
+            raise KeyError(
+                f"Unrecognized control component override '{comp_name}' in voicing '{voicing.id}' "
+                f"on instrument '{instrument.id}'."
+            )
+        if comp_name.startswith("pickups."):
+            parts = comp_name.split(".")
+            if (
+                len(parts) in (3, 4)
+                and parts[1] in instrument.pickups
+                and parts[-1] in ("L", "Rdc", "Reddy", "Ccoil")
+            ):
+                continue
+            raise KeyError(
+                f"Unrecognized pickup component override '{comp_name}' in voicing '{voicing.id}' "
+                f"on instrument '{instrument.id}'."
+            )
+        if comp_name.startswith("preamp."):
+            parts = comp_name.split(".")
+            if len(parts) >= 3 and parts[-1] == "freq_hz":
+                continue
+            raise KeyError(
+                f"Unrecognized preamp component override '{comp_name}' in voicing '{voicing.id}' "
+                f"on instrument '{instrument.id}'."
+            )
         c_val = float(comp_val)
         term_in = f"{comp_name}.in"
         term_out = f"{comp_name}.out"
@@ -265,6 +341,11 @@ def solve_mna_harness(
                 stamp_adm(term_in, term_out, s * c_val)
             else:
                 stamp_adm(term_in, term_out, 1.0 / c_val)
+        else:
+            raise KeyError(
+                f"Unrecognized or unconnected component override '{comp_name}' in voicing '{voicing.id}' "
+                f"on instrument '{instrument.id}'."
+            )
 
     # 6. Stamp Load & Cable Admittance
     cable_pf = float(active_components.get("cable_pf", harness.cable_pf))
@@ -280,25 +361,7 @@ def solve_mna_harness(
 
     if harness.type == "passive":
         stamp_adm("out", "GND", y_load_out)
-    elif harness.type == "active_preamp":
-        eff_preamp_id = (
-            getattr(voicing, "preamp", None)
-            or getattr(harness, "preamp", None)
-            or getattr(instrument, "preamp", None)
-            or "flat_buffer"
-        )
-        if preamps is not None and eff_preamp_id in preamps:
-            preamp_spec = preamps[eff_preamp_id]
-        else:
-            from allomorph.config.preamps import get_preamp
-
-            preamp_spec = get_preamp(eff_preamp_id)
-
-        c_in_pf = getattr(preamp_spec, "input_capacitance_pf", 30.0)
-        r_in_meg = getattr(preamp_spec, "input_impedance_meg", 1.0)
-        c_in_f = float(c_in_pf) * 1e-12
-        r_in_ohm = float(r_in_meg) * 1e6
-        y_preamp_in = (1.0 / r_in_ohm) + s * c_in_f
+    elif harness.type == "active_preamp" and not buffered_blend_channels:
         stamp_adm("preamp.in", "GND", y_preamp_in)
 
     # 7. Collect Coils and Compute Intrinsic Branch Impedances
@@ -315,6 +378,20 @@ def solve_mna_harness(
                 )
             ]
         )
+
+        # Count how many sub-coils of this pickup are connected in the active circuit netlist
+        n_conn_coils = 0
+        for c_chk in p_coils:
+            th_chk = f"pickups.{p_id}.{c_chk.id}.hot" if c_chk.id else f"pickups.{p_id}.hot"
+            if th_chk not in ds.parent and f"pickups.{p_id}.hot" in ds.parent:
+                th_chk = f"pickups.{p_id}.hot"
+            tc_chk = f"pickups.{p_id}.{c_chk.id}.cold" if c_chk.id else f"pickups.{p_id}.cold"
+            if tc_chk not in ds.parent and f"pickups.{p_id}.cold" in ds.parent:
+                tc_chk = f"pickups.{p_id}.cold"
+            if th_chk in ds.parent and tc_chk in ds.parent and ds.find(th_chk) != ds.find(tc_chk):
+                n_conn_coils += 1
+        n_conn_coils = max(n_conn_coils, 1)
+
         for c in p_coils:
             c_id = c.id or p_id
             coil_key = f"{p_id}.{c_id}"
@@ -368,7 +445,7 @@ def solve_mna_harness(
                 else (float(c.Ccoil) if c.Ccoil is not None else 80e-12)
             )
 
-            mag_type = c.pole_type or p_cfg.magnet_type or "alnico_v"
+            mag_type = p_cfg.magnet_type or "alnico_v"
             props = MAGNET_PROPERTIES.get(mag_type, MAGNET_PROPERTIES["alnico_v"])
             L_core = props.k_core * L if props.k_core > 0.0 else 0.0
             f_core = props.f_core
@@ -406,7 +483,7 @@ def solve_mna_harness(
                     y_ccoil_int = s * Ccoil
                 Y_shunt_int = y_ccoil_int + (1.0 / 1e6)
                 h_int = Y_br / (Y_br + Y_shunt_int)
-                r_buf = float(p_cfg.buffer_output_impedance)
+                r_buf = float(p_cfg.buffer_output_impedance) * float(n_conn_coils)
                 Z_br = np.full(n_freqs, r_buf, dtype=np.complex128)
                 Y_br = np.full(n_freqs, 1.0 / r_buf, dtype=np.complex128)
                 Ccoil = 0.0
@@ -562,7 +639,18 @@ def solve_mna_harness(
         # Solve system across all frequencies simultaneously
         V_sol = solve_mna_linear_system(Y, I_vec)
 
-        if target_idx >= 0:
+        if buffered_blend_channels:
+            H_coil = np.zeros(n_freqs, dtype=np.complex128)
+            for t_n, g_n, t_b, g_b in buffered_blend_channels:
+                rn = ds.find(t_n)
+                rb = ds.find(t_b)
+                in_idx = node_map.get(rn, -1) if rn not in gnd_names else -1
+                ib_idx = node_map.get(rb, -1) if rb not in gnd_names else -1
+                if in_idx >= 0 and g_n > 0.0:
+                    H_coil = H_coil + g_n * V_sol[:, in_idx]
+                if ib_idx >= 0 and g_b > 0.0:
+                    H_coil = H_coil + g_b * V_sol[:, ib_idx]
+        elif target_idx >= 0:
             H_coil = V_sol[:, target_idx]
         else:
             H_coil = np.zeros(n_freqs, dtype=np.complex128)
@@ -574,18 +662,20 @@ def solve_mna_harness(
         if voicing.preamp_bands:
             H_eq = compute_active_preamp_transfer(voicing.preamp_bands, s, gain_db=voicing.gain_db)
         else:
-            eff_preamp_id = (
-                getattr(voicing, "preamp", None)
-                or getattr(harness, "preamp", None)
-                or getattr(instrument, "preamp", None)
-                or "flat_buffer"
-            )
-            if preamps is not None and eff_preamp_id in preamps:
-                preamp_spec = preamps[eff_preamp_id]
-            else:
-                from allomorph.config.preamps import get_preamp
+            assert preamp_spec is not None
+            for ctrl_id, ctrl in harness.controls.items():
+                if ctrl.type == "preamp_band":
+                    target_band_key = ctrl.band if ctrl.band is not None else ctrl_id
+                    matched_any = any(
+                        getattr(b, "id", None) == target_band_key or b.type == target_band_key
+                        for b in preamp_spec.bands
+                    )
+                    if not matched_any:
+                        raise KeyError(
+                            f"Control '{ctrl_id}' (band='{ctrl.band}') on harness '{harness.name}' "
+                            f"does not match any band in preamp '{eff_preamp_id}'."
+                        )
 
-                preamp_spec = get_preamp(eff_preamp_id)
             adjusted_bands = []
             for idx, b in enumerate(preamp_spec.bands):
                 b_gain = b.gain_db
@@ -605,9 +695,15 @@ def solve_mna_harness(
 
                 for ctrl_id, ctrl in harness.controls.items():
                     if ctrl.type == "preamp_band":
+                        target_band_key = ctrl.band if ctrl.band is not None else ctrl_id
+                        has_id_match = any(
+                            getattr(pb, "id", None) == target_band_key for pb in preamp_spec.bands
+                        )
                         matches = (
-                            b_id is not None and (ctrl.band == b_id or ctrl_id == b_id)
-                        ) or ctrl.band == b.type
+                            (b_id == target_band_key)
+                            if has_id_match
+                            else (b.type == target_band_key)
+                        )
                         if matches:
                             ctrl_val = voicing.controls.get(
                                 ctrl_id,
@@ -616,7 +712,7 @@ def solve_mna_harness(
                                     voicing.controls.get(f"preamp.{ctrl_id}", ctrl.default),
                                 ),
                             )
-                            if ctrl.default == 0.5:
+                            if abs(b.gain_db) < 1e-9 and ctrl.default == 0.5:
                                 b_gain = (ctrl_val - 0.5) * 24.0
                             elif ctrl.default > 0.0:
                                 b_gain = b.gain_db * (ctrl_val / ctrl.default)
@@ -670,9 +766,10 @@ def solve_mna_harness(
         if p_id not in H_coils:
             sub_coils = [v for k, v in H_coils.items() if k.startswith(f"{p_id}.")]
             if sub_coils:
-                # For split coils (disjoint string coverage), each string only excites one coil half
-                if p_cfg.type == "split_coil" or any(
-                    c.strings and c.strings != ["all"] for c in p_cfg.coils
+                # For passive split coils (disjoint string coverage), each string only excites one coil half
+                if not p_cfg.has_internal_buffer and (
+                    p_cfg.type == "split_coil"
+                    or any(c.strings and c.strings != ["all"] for c in p_cfg.coils)
                 ):
                     H_coils[p_id] = np.mean(sub_coils, axis=0)
                 else:

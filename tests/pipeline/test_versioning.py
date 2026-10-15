@@ -98,7 +98,7 @@ def test_t3k_filename_length_ceiling():
     for inst_id, inst_cfg in INSTRUMENTS.items():
         for vid, vcfg in VOICES.items():
             tone_name = vcfg.tone_name or vcfg.name
-            if len(inst_cfg.pickups) <= 1 or vcfg.preserve_aperture:
+            if len(inst_cfg.pickups) <= 1:
                 pos_names = [None]
             else:
                 pos_names = [
@@ -111,7 +111,6 @@ def test_t3k_filename_length_ceiling():
                 basename = get_t3k_basename(
                     tone_name,
                     pos_name,
-                    preserve_aperture=vcfg.preserve_aperture,
                     version_tag=version_tag,
                 )
                 assert len(basename) <= 64, (

@@ -184,16 +184,26 @@ STANDARD_CATALOG_TARGETS: list[tuple[str, str]] = [
     ("41in_upright_bass", "bridge_piezo"),
 ]
 
+
+def _load_source_catalog_voicings() -> list[tuple[str, str]]:
+    vis_path = CONFIG_DIR / "visualizer.toml"
+    if vis_path.is_file():
+        with open(vis_path, "rb") as f:
+            data = tomllib.load(f)
+        entries = data.get("additional_source_voicings", [])
+        if isinstance(entries, list):
+            result: list[tuple[str, str]] = []
+            for item in entries:
+                if isinstance(item, str) and ":" in item:
+                    inst_id, vid = item.split(":", 1)
+                    result.append((inst_id, vid))
+            return result
+    return []
+
+
 # Additional source instrument voicings available in the visualizer suite
-# (for comparing physical source bass configurations against target voicings)
-SOURCE_CATALOG_VOICINGS: list[tuple[str, str]] = [
-    ("34in_preamp_soapbar", "pair_parallel"),
-    ("34in_preamp_soapbar", "neck_solo"),
-    ("34in_preamp_soapbar", "bridge_solo"),
-    ("34in_active_emg", "pair_parallel"),
-    ("34in_active_emg", "neck_solo"),
-    ("34in_active_emg", "bridge_solo"),
-]
+# (loaded from config/visualizer.toml additional_source_voicings as SSOT)
+SOURCE_CATALOG_VOICINGS: list[tuple[str, str]] = _load_source_catalog_voicings()
 
 
 @dataclass

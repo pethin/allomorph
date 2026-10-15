@@ -4,8 +4,6 @@ Tests for pickup and target voice coil geometry and coordinate resolution.
 
 import math
 
-import pytest
-
 from allomorph.config import (
     VOICES,
     compute_effective_position,
@@ -49,10 +47,10 @@ def test_resolve_voice_pickups():
     # 1. Multi-pickup: jazz_pair_active
     p_act = resolve_voice_pickups(VOICES["jazz_pair_active"])
     assert len(p_act) == 2
-    assert p_act[0].fr == 6764.9
-    assert p_act[0].Q == 0.69
-    assert p_act[1].fr == 7053.4
-    assert p_act[1].Q == 0.72
+    assert p_act[0].fr == 5120.0
+    assert p_act[0].Q == 1.03
+    assert p_act[1].fr == 5779.1
+    assert p_act[1].Q == 1.08
 
     # 2. Multi-pickup: jazz_pair_open
     p_jazz = resolve_voice_pickups(VOICES["jazz_pair_open"])
@@ -62,46 +60,46 @@ def test_resolve_voice_pickups():
     assert p_jazz[1].fr == 2902.6
     assert p_jazz[1].Q == 0.91
 
-    # 3. Multi-pickup: pj_active (Ultra II 3-band flat buffer: fr and Q are None)
+    # 3. Multi-pickup: pj_active (Ultra II 3-band active P/J)
     p_pj_act = resolve_voice_pickups(VOICES["pj_active"])
     assert len(p_pj_act) == 2
     assert p_pj_act[0].fr is None
     assert p_pj_act[0].Q is None
-    assert p_pj_act[0].weight == 0.5
+    assert math.isclose(p_pj_act[0].weight, 0.5498, abs_tol=1e-3)
     assert len(p_pj_act[0].coils) == 2  # P-split E/A + D/G
-    assert p_pj_act[1].fr == 5133.0
-    assert p_pj_act[1].Q == 0.96
-    assert p_pj_act[1].weight == 0.5
+    assert p_pj_act[1].fr == 5071.8
+    assert p_pj_act[1].Q == 1.09
+    assert math.isclose(p_pj_act[1].weight, 0.4502, abs_tol=1e-3)
     assert len(p_pj_act[1].coils) == 1  # J-bridge
 
     # 4. Multi-pickup: pj_passive
     p_pj_pas = resolve_voice_pickups(VOICES["pj_passive"])
     assert len(p_pj_pas) == 2
-    assert p_pj_pas[0].fr == 2520.4
-    assert p_pj_pas[0].Q == 0.99
-    assert p_pj_pas[1].fr is None
-    assert p_pj_pas[1].Q is None
+    assert p_pj_pas[0].fr == 2530.6
+    assert p_pj_pas[0].Q == 1.01
+    assert p_pj_pas[1].fr == 2769.5
+    assert p_pj_pas[1].Q == 0.80
 
-    # 5. Multi-pickup: p_mm_series & p_mm_parallel
+    # 5. Multi-pickup: p_mm_series & p_mm_parallel (dual-buffered active blend)
     p_pmm = resolve_voice_pickups(VOICES["p_mm_series"])
     assert len(p_pmm) == 2
-    assert p_pmm[0].fr == 4006.6
-    assert p_pmm[0].Q == 1.17
-    assert p_pmm[1].fr == 4077.8
-    assert p_pmm[1].Q == 1.23
+    assert p_pmm[0].fr == 2504.1
+    assert p_pmm[0].Q == 1.15
+    assert p_pmm[1].fr == 2430.7
+    assert p_pmm[1].Q == 1.06
 
     p_pmm_act = resolve_voice_pickups(VOICES["p_mm_parallel"])
     assert len(p_pmm_act) == 2
-    assert p_pmm_act[0].fr == 5375.2
-    assert p_pmm_act[0].Q == 0.90
-    assert p_pmm_act[1].fr == 5554.7
-    assert p_pmm_act[1].Q == 1.00
+    assert p_pmm_act[0].fr == 2504.1
+    assert p_pmm_act[0].Q == 1.15
+    assert p_pmm_act[1].fr == 4773.1
+    assert p_pmm_act[1].Q == 0.65
 
-    # 6. Single-pickup voice auto-wrapping: precision_active (Ultra II flat buffer: fr and Q are None)
+    # 6. Single-pickup voice auto-wrapping: precision_active (Ultra II 3-band active P)
     p_p = resolve_voice_pickups(VOICES["precision_active"])
     assert len(p_p) == 1
-    assert p_p[0].fr is None
-    assert p_p[0].Q is None
+    assert p_p[0].fr == 3985.1
+    assert p_p[0].Q == 0.93
     assert p_p[0].weight == 1.0
     assert len(p_p[0].coils) == 2
 
@@ -170,35 +168,6 @@ def test_resolve_voice_coils():
     assert c_custom[0].strings == ["all"]
 
 
-def test_resolve_pickup_coils_strict_errors():
-    """Verify that composite pickups with invalid references raise KeyError/ValueError."""
-    import pytest
-
-    from allomorph.config.schema import PickupComponentConfig, PickupConfig
-
-    inst = load_instrument("34in_standard_p")
-
-    # 1. References non-existent pickup
-    bad_composite = PickupConfig(
-        name="Bad Composite",
-        type="composite",
-        components=[PickupComponentConfig(pickup="non_existent_pickup")],
-    )
-    with pytest.raises(KeyError, match="references non-existent pickup 'non_existent_pickup'"):
-        resolve_pickup_coils(bad_composite, inst)
-
-    # 2. Component missing both 'pickup' and 'position_from_bridge_m'
-    empty_component = PickupConfig(
-        name="Empty Component",
-        type="composite",
-        components=[PickupComponentConfig(weight=1.0)],
-    )
-    with pytest.raises(
-        ValueError, match="must specify either 'pickup' or 'position_from_bridge_m'"
-    ):
-        resolve_pickup_coils(empty_component, inst)
-
-
 def test_infer_pole_type_and_geometry_branches():
     from allomorph.config.geometry import _infer_pole_type
     from allomorph.config.schema import CoilConfig, PickupConfig, VoiceConfig
@@ -238,28 +207,10 @@ def test_infer_pole_type_and_geometry_branches():
     assert _infer_pole_type(v_blade) == "blade"
 
 
-def test_resolve_pickup_coils_composite_direct_and_humbuckers():
-    from allomorph.config.schema import CoilConfig, PickupComponentConfig, PickupConfig
+def test_resolve_pickup_coils_explicit_and_single_fallback():
+    from allomorph.config.schema import CoilConfig, PickupConfig
 
-    # 1. Composite with explicit position_from_bridge_m component
-    comp_direct = PickupConfig(
-        name="Direct Composite",
-        type="composite",
-        components=[
-            PickupComponentConfig(
-                position_from_bridge_m=0.10,
-                aperture_width_in=0.75,
-                weight=1.0,
-                polarity=1.0,
-                strings=["all"],
-            )
-        ],
-    )
-    coils = resolve_pickup_coils(comp_direct)
-    assert len(coils) == 1
-    assert coils[0].position_from_bridge_m == 0.10
-
-    # 2. Explicit coils list on PickupConfig
+    # 1. Explicit coils list on PickupConfig
     explicit = PickupConfig(
         name="Explicit Coils",
         type="custom",
@@ -277,27 +228,12 @@ def test_resolve_pickup_coils_composite_direct_and_humbuckers():
     assert len(res_exp) == 1
     assert res_exp[0].position_from_bridge_m == 0.12
 
-    # 3. Dual coil humbucker via coil_spacing_in > 0
-    hb = PickupConfig(
-        name="Humbucker",
-        type="humbucker",
-        position_from_bridge_m=0.08,
-        aperture_width_in=1.5,
-        coil_spacing_in=0.75,
-    )
-    hb_coils = resolve_pickup_coils(hb)
-    assert len(hb_coils) == 2
-    d_m = 0.75 * 0.0254
-    assert hb_coils[0].position_from_bridge_m == pytest.approx(0.08 - d_m / 2.0)
-    assert hb_coils[1].position_from_bridge_m == pytest.approx(0.08 + d_m / 2.0)
-
-    # 4. Standard single coil fallback
+    # 2. Standard single coil fallback
     sc = PickupConfig(
         name="Single Coil",
         type="single",
         position_from_bridge_m=0.08,
         aperture_width_in=0.75,
-        coil_spacing_in=0.0,
     )
     sc_coils = resolve_pickup_coils(sc)
     assert len(sc_coils) == 1

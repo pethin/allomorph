@@ -347,10 +347,6 @@ def test_is_voice_matching_source_edge_cases(
     generic_voice_config: VoiceConfig,
 ):
     """Verify is_voice_matching_source edge cases and mismatch branches."""
-    # Preserve aperture
-    v_preserve = generic_voice_config.model_copy(update={"preserve_aperture": True})
-    assert is_voice_matching_source(generic_instrument_config, v_preserve)
-
     # Scale range mismatch (> 0.012 m)
     v_short = generic_voice_config.model_copy(update={"scale": "30in"})
     assert not is_voice_matching_source(generic_instrument_config, v_short)

@@ -58,9 +58,9 @@ active_variant = "x_series"
 buffer_output_impedance = 2000.0
 coils = [
     # Strings 1 & 2 see forward coil half (closer to neck for warm acoustic bloom)
-    { id = "forward", strings = [1, 2], position_from_bridge_m = 0.1544, aperture_width_in = 0.45, weight = 1.0, pole_type = "blade", L = 0.80, Rdc = 2800.0, Reddy = 150000.0, Ccoil = 4.65e-9 },
+    { id = "forward", strings = [1, 2], position_from_bridge_m = 0.1544, aperture_width_in = 0.45, weight = 1.0, pole_type = "blade", L = 0.80, Rdc = 2800.0, Reddy = 150000.0, Ccoil = 4.57e-9 },
     # Strings 3 & 4 see rearward coil half (closer to bridge for tight fundamental definition)
-    { id = "rearward", strings = [3, 4], position_from_bridge_m = 0.1264, aperture_width_in = 0.45, weight = 1.0, pole_type = "blade", L = 0.80, Rdc = 2800.0, Reddy = 150000.0, Ccoil = 4.65e-9 },
+    { id = "rearward", strings = [3, 4], position_from_bridge_m = 0.1264, aperture_width_in = 0.45, weight = 1.0, pole_type = "blade", L = 0.80, Rdc = 2800.0, Reddy = 150000.0, Ccoil = 4.57e-9 },
 ]
 
 # EMG MMTWX Active Dual-Mode Pickup (Bridge):
@@ -131,7 +131,7 @@ connect = [
     ["pickups.mmtwx.bridge.cold", "GND"],
 ]
 k_mutual = 0.20
-components = { "pickups.mmtwx.neck.Ccoil" = 4.86e-9, "pickups.mmtwx.bridge.Ccoil" = 4.86e-9 }
+components = { "pickups.mmtwx.neck.Ccoil" = 4.97e-9, "pickups.mmtwx.bridge.Ccoil" = 4.97e-9 }
 
 [harnesses.active.switches.coil_mode.positions.single]
 connect = [
@@ -140,7 +140,7 @@ connect = [
     ["pickups.mmtwx.neck.cold", "GND"],
 ]
 k_mutual = 0.0
-components = { "pickups.mmtwx.bridge.Ccoil" = 2.68e-9 }
+components = { "pickups.mmtwx.bridge.Ccoil" = 2.56e-9 }
 
 # ------------------------------------------------------------------------------
 # 3. NATIVE INSTRUMENT VOICINGS

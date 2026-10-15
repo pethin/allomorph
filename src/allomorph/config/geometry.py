@@ -8,7 +8,6 @@ from collections.abc import Sequence
 from allomorph.config.schema import (
     CoilConfig,
     InstrumentConfig,
-    PickupComponentConfig,
     PickupConfig,
     VoiceCoilConfig,
     VoiceConfig,
@@ -18,7 +17,7 @@ from allomorph.config.schema import (
 
 def _infer_pole_type(
     pickup_or_voice: PickupConfig | VoiceConfig | VoicePickupConfig | None = None,
-    coil: CoilConfig | VoiceCoilConfig | PickupComponentConfig | None = None,
+    coil: CoilConfig | VoiceCoilConfig | None = None,
 ) -> str:
     """
     Infers magnetic pole geometry: 'rod' (cylindrical Alnico rod, Airy/Bessel spatial window)
@@ -90,60 +89,17 @@ def resolve_pickup_coils(
     """
     Resolves an instrument pickup configuration into a canonical list of CoilConfig models.
     Handles:
-      - Composite pickups ('components' referencing other pickups with weights)
       - Explicit coil arrays ('coils' with per-string bindings)
       - Dual-coil humbuckers with coil spacing 'd'
       - Single-coil / split-coil fallbacks
     """
-    # 1. Composite blend / sum
-    comp_list = getattr(pickup, "components", None) or []
-    if pickup.type == "composite" or bool(comp_list):
-        resolved: list[CoilConfig] = []
-        pickups_map: dict[str, PickupConfig] = instrument.pickups if instrument else {}
-        for comp in comp_list:
-            p_ref = comp.pickup
-            c_weight = float(comp.weight)
-            c_pol = float(comp.polarity)
-            if p_ref:
-                if p_ref not in pickups_map:
-                    inst_id = instrument.id if instrument else "unknown"
-                    raise KeyError(
-                        f"Composite pickup references non-existent pickup '{p_ref}' in instrument "
-                        f"'{inst_id}'. Available pickups: {list(pickups_map.keys())}"
-                    )
-                sub_coils = resolve_pickup_coils(pickups_map[p_ref], instrument)
-                for sc in sub_coils:
-                    sc_copy = sc.model_copy(deep=True)
-                    sc_copy.weight = sc.weight * c_weight
-                    sc_copy.polarity = sc.polarity * c_pol
-                    if not sc_copy.pole_type:
-                        sc_copy.pole_type = _infer_pole_type(pickups_map[p_ref], sc)
-                    resolved.append(sc_copy)
-            elif comp.position_from_bridge_m is not None:
-                resolved.append(
-                    CoilConfig(
-                        position_from_bridge_m=float(comp.position_from_bridge_m),
-                        aperture_width_in=float(comp.aperture_width_in),
-                        weight=c_weight,
-                        polarity=c_pol,
-                        strings=list(comp.strings),
-                        pole_type=_infer_pole_type(pickup, comp),
-                    )
-                )
-            else:
-                inst_id = instrument.id if instrument else "unknown"
-                raise ValueError(
-                    f"Composite pickup component in '{inst_id}' "
-                    "must specify either 'pickup' or 'position_from_bridge_m'."
-                )
-        if resolved:
-            return resolved
+    _ = instrument
 
-    # 2. Explicit coils list
+    # 1. Explicit coils list
     if pickup.coils:
         return [c.model_copy(deep=True) for c in pickup.coils]
 
-    # 3. Dual-coil humbucker via coil_spacing_in
+    # 2. Dual-coil humbucker via coil_spacing_in
     pos_m = float(pickup.position_from_bridge_m or 0.08)
     w_in = float(pickup.aperture_width_in)
     d_in = float(pickup.coil_spacing_in)
@@ -175,7 +131,7 @@ def resolve_pickup_coils(
             ),
         ]
 
-    # 4. Standard single coil
+    # 3. Standard single coil
     single_w = w_in if (w_in > 0.0 and w_in != 0.75) else default_w
     return [
         CoilConfig(

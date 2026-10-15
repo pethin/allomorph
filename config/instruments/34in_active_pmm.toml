@@ -48,8 +48,8 @@ coil_spacing_in = 0.0
 type = "split_coil"
 magnet_type = "alnico_v"
 coils = [
-    { id = "forward", strings = [3, 4], position_from_bridge_m = 0.1390, aperture_width_in = 0.45, pole_type = "rod", L = 2.4, Rdc = 4750.0, Reddy = 110000.0, Ccoil = 4e-11, weight = 1.0 },
-    { id = "rearward", strings = [1, 2], position_from_bridge_m = 0.1110, aperture_width_in = 0.45, pole_type = "rod", L = 2.4, Rdc = 4750.0, Reddy = 110000.0, Ccoil = 4e-11, weight = 1.0 },
+    { id = "forward", strings = [3, 4], position_from_bridge_m = 0.1390, aperture_width_in = 0.45, pole_type = "rod", L = 2.4, Rdc = 4750.0, Reddy = 110000.0, Ccoil = 1.6e-10, weight = 1.0 },
+    { id = "rearward", strings = [1, 2], position_from_bridge_m = 0.1110, aperture_width_in = 0.45, pole_type = "rod", L = 2.4, Rdc = 4750.0, Reddy = 110000.0, Ccoil = 1.6e-10, weight = 1.0 },
 ]
 
 [pickups.mm]
@@ -73,7 +73,6 @@ coils = [
 name = "Active P/MM Blend Harness with Lakland LH-3 Preamp"
 type = "active_preamp"
 preamp = "lakland_lh3"
-preamp_gain = 1.0
 load_resistance = 1000000.0
 cable_pf = 30.0
 
@@ -95,6 +94,7 @@ type = "pot"
 taper = "mn_blend"
 resistance = 250000.0
 default = 0.5
+buffered = true
 
 [harnesses.active.controls.vol]
 name = "Master Volume"

@@ -162,9 +162,6 @@ def is_voice_matching_source(
     meaning zero spatial or acoustic transfer is required (identity transformation).
     Tuning- and string-count-agnostic: matches on physical scale length and coil geometry.
     """
-    if voice_cfg.preserve_aperture:
-        return True
-
     src_range = resolve_scale_range(instrument)
     tgt_range = resolve_scale_range(voice_cfg.scale)
 

@@ -45,9 +45,9 @@ type = "split_coil"
 magnet_type = "alnico_v"
 coils = [
     # Strings 3 & 4 see forward coil half (warmer, deeper fundamental)
-    { id = "forward", strings = [3, 4], position_from_bridge_m = 0.1390, aperture_width_in = 0.45, pole_type = "rod", L = 1.9, Rdc = 5250.0, Reddy = 90000.0, Ccoil = 3e-11, weight = 1.0 },
+    { id = "forward", strings = [3, 4], position_from_bridge_m = 0.1390, aperture_width_in = 0.45, pole_type = "rod", L = 1.9, Rdc = 5250.0, Reddy = 90000.0, Ccoil = 1.2e-10, weight = 1.0 },
     # Strings 1 & 2 see rearward coil half (tighter, punchier mid bite)
-    { id = "rearward", strings = [1, 2], position_from_bridge_m = 0.1110, aperture_width_in = 0.45, pole_type = "rod", L = 1.9, Rdc = 5250.0, Reddy = 90000.0, Ccoil = 3e-11, weight = 1.0 },
+    { id = "rearward", strings = [1, 2], position_from_bridge_m = 0.1110, aperture_width_in = 0.45, pole_type = "rod", L = 1.9, Rdc = 5250.0, Reddy = 90000.0, Ccoil = 1.2e-10, weight = 1.0 },
 ]
 
 # ------------------------------------------------------------------------------
@@ -94,7 +94,6 @@ name = "Vintage 1962 Open"
 tone_name = "Precision Vintage"
 harness = "passive"
 controls = { vol = 1.0, tone = 1.0 }
-string_preset_override = "roundwound_nickel_standard"
 
 [voicings.vintage_mids]
 version = 1
@@ -102,8 +101,7 @@ name = "Vintage 1962 Vocal Mids"
 tone_name = "Precision Mids"
 harness = "passive"
 controls = { vol = 1.0, tone = 0.0 }
-components = { "controls.tone.cap" = 2.2e-8 }
-string_preset_override = "roundwound_nickel_standard"
+components = { "controls.tone.cap" = 2.2e-8, "controls.tone.Rtone" = 3.3 }
 
 [voicings.vintage_warm]
 version = 1
@@ -111,7 +109,7 @@ name = "Vintage Motown Flatwound Warmth"
 tone_name = "Precision Warm"
 harness = "passive"
 controls = { vol = 1.0, tone = 0.0 }
-components = { "controls.tone.cap" = 4.7e-8 }
+components = { "controls.tone.cap" = 4.7e-8, "controls.tone.Rtone" = 3.3 }
 string_preset_override = "flatwound_vintage_heavy"
 
 [voicings.slab_dub]
@@ -120,6 +118,6 @@ name = "1951 Slab Sub-Bass Dub"
 tone_name = "Precision Dub"
 harness = "passive"
 controls = { vol = 1.0, tone = 0.0 }
-components = { "controls.tone.cap" = 1.0e-7 }
+components = { "controls.tone.cap" = 1.0e-7, "controls.tone.Rtone" = 3.3 }
 string_preset_override = "flatwound_vintage_heavy"
 

@@ -59,13 +59,19 @@ def determine_pickup_resonance_and_q(
     if base_mag <= 1e-9:
         base_mag = float(mag[0])
 
-    peak_idx = int(np.argmax(mag))
+    peak_idx = int(base_idx_lo + np.argmax(mag[base_idx_lo:]))
     peak_mag = float(mag[peak_idx])
 
     peak_db_above_base = 20.0 * np.log10(max(peak_mag / max(base_mag, 1e-9), 1e-9))
 
     # Reject if below +0.20 dB threshold or peak is at boundary (monotonic lowpass/highpass)
-    if peak_db_above_base < 0.20 or peak_idx == 0 or peak_idx >= len(mag) - 1:
+    if (
+        peak_db_above_base < 0.20
+        or peak_idx <= base_idx_lo
+        or peak_idx >= len(mag) - 1
+        or mag[peak_idx] < mag[peak_idx - 1]
+        or mag[peak_idx] < mag[peak_idx + 1]
+    ):
         return None, None
 
     # Sub-bin quadratic peak interpolation in log-frequency space
@@ -122,15 +128,27 @@ def build_voice_coils_for_pickup(
     instrument: InstrumentConfig | None = None,
 ) -> list[VoiceCoilConfig]:
     """Resolves individual physical coils for a pickup filtered by active coil IDs."""
-    raw_coils = resolve_pickup_coils(pickup, instrument=instrument)
+    all_coils = resolve_pickup_coils(pickup, instrument=instrument)
+    raw_coils = all_coils
     if active_coil_ids:
-        raw_coils = [c for c in raw_coils if c.id in active_coil_ids or not c.id]
+        filtered = [c for c in all_coils if c.id in active_coil_ids or not c.id]
+        if filtered:
+            raw_coils = filtered
+
+    # Re-normalize active coil weights when a full-string-bed multi-coil pickup is coil-split
+    scale_w = 1.0
+    if len(raw_coils) < len(all_coils) and all(
+        not c.strings or c.strings == ["all"] for c in raw_coils
+    ):
+        w_sum = sum(float(c.weight) for c in raw_coils)
+        if w_sum > 0.0:
+            scale_w = 1.0 / w_sum
 
     return [
         VoiceCoilConfig(
             position_from_bridge_m=c.position_from_bridge_m,
             aperture_width_in=c.aperture_width_in,
-            weight=c.weight,
+            weight=float(c.weight) * scale_w,
             polarity=c.polarity,
             strings=c.strings,
             pole_type=c.pole_type,

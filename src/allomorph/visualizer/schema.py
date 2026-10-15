@@ -64,7 +64,6 @@ class VisualizerConfig(AllomorphBaseModel):
     default_source: str = "precision_vintage"
     default_target: str = "jazz_bridge_growl"
     additional_source_voicings: list[str] = Field(default_factory=list)
-    additional_target_voicings: list[str] = Field(default_factory=list)
     chips: list[VisualizerChipConfig] = Field(default_factory=list)
 
 

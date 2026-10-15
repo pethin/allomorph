@@ -171,7 +171,7 @@ name = "60s Jazz Pair Vocal Mids"
 tone_name = "Jazz Pair Mids"
 harness = "passive"
 controls = { neck_vol = 1.0, bridge_vol = 1.0, tone = 0.0 }
-components = { "controls.tone.cap" = 2.2e-8 }
+components = { "controls.tone.cap" = 2.2e-8, "controls.tone.Rtone" = 3.3 }
 
 [voicings.bridge_growl]
 version = 1

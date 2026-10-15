@@ -29,11 +29,9 @@ __all__ = [
     "InstrumentConfig",
     "InstrumentStringsConfig",
     "PackBundleConfig",
-    "PickupComponentConfig",
     "PickupConfig",
     "PreampBandConfig",
     "PreampConfig",
-    "PreampOverrideConfig",
     "PreampsCatalog",
     "ResolvedStringConfig",
     "ScaleConfig",
@@ -198,24 +196,8 @@ class PreampsCatalog(AllomorphBaseModel):
     preamps: dict[str, PreampConfig] = Field(default_factory=dict)
 
 
-class PreampOverrideConfig(AllomorphBaseModel):
-    """Configuration model for inline or preset-based preamp overrides."""
-
-    preset: str
-    gain_db: float | None = None
-    input_impedance_meg: float | None = None
-    input_capacitance_pf: float | None = None
-    output_impedance_ohm: float | None = None
-    bands: list[PreampBandConfig] = Field(default_factory=list)
-
-
 # ==============================================================================
-# 5. COIL & PICKUP SCHEMAS
-# ==============================================================================
-
-
-# ==============================================================================
-# 5. COIL & PICKUP SCHEMAS
+# 4. COIL & PICKUP SCHEMAS
 # ==============================================================================
 
 
@@ -233,18 +215,6 @@ class CoilConfig(AllomorphBaseModel):
     Rdc: float | None = Field(None, gt=0.0, description="Coil DC resistance in Ohms")
     Reddy: float | None = Field(None, gt=0.0, description="Core eddy damping resistance in Ohms")
     Ccoil: float | None = Field(None, ge=0.0, description="Inter-turn coil capacitance in Farads")
-
-
-class PickupComponentConfig(AllomorphBaseModel):
-    """Component coil in a composite blended pickup configuration."""
-
-    pickup: str | None = None
-    position_from_bridge_m: float | None = None
-    aperture_width_in: float = 0.75
-    weight: float = 1.0
-    polarity: float = 1.0
-    strings: list[int | str] = Field(default_factory=lambda: ["all"])
-    pole_type: str | None = None
 
 
 class PickupConfig(AllomorphBaseModel):
@@ -265,11 +235,10 @@ class PickupConfig(AllomorphBaseModel):
     buffer_output_impedance: float = Field(2000.0, ge=0.0)
     active_variant: Literal["x_series", "classic"] | None = None
     coils: list[CoilConfig] = Field(default_factory=list)
-    components: list[PickupComponentConfig] = Field(default_factory=list)
 
 
 # ==============================================================================
-# 6. NODAL CONTROL HARNESS SCHEMAS
+# 5. NODAL CONTROL HARNESS SCHEMAS
 # ==============================================================================
 
 
@@ -285,6 +254,10 @@ class ControlElementConfig(AllomorphBaseModel):
     )
     band: str | None = Field(None, description="Preamp band name if type == 'preamp_band'")
     default: float = Field(1.0, ge=0.0, le=1.0, description="Default normalized wiper position")
+    buffered: bool = Field(
+        False,
+        description="True if blend channels have isolated dual-FET buffer inputs before summing",
+    )
 
 
 class SwitchPositionConfig(AllomorphBaseModel):
@@ -313,7 +286,6 @@ class HarnessConfig(AllomorphBaseModel):
     name: str = ""
     type: Literal["passive", "active_preamp", "direct"] = "passive"
     preamp: str | None = None
-    preamp_gain: float = Field(1.0, gt=0.0)
     wiring: list[list[str]] = Field(
         default_factory=list,
         description="Base permanent terminal-to-node netlist connections.",
@@ -326,7 +298,7 @@ class HarnessConfig(AllomorphBaseModel):
 
 
 # ==============================================================================
-# 7. SOURCE INSTRUMENT & VOICING SCHEMAS
+# 6. SOURCE INSTRUMENT & VOICING SCHEMAS
 # ==============================================================================
 
 
@@ -361,9 +333,8 @@ class VoicingConfig(AllomorphBaseModel):
         description="Strict dotted-path parameter overrides (e.g. 'controls.tone.cap' = 100e-9).",
     )
     string_preset_override: str | None = None
-    sensor_type: Literal["magnetic", "bridge_force", "direct"] = "magnetic"
+    sensor_type: Literal["magnetic", "bridge_force"] = "magnetic"
     gain_db: float = 0.0
-    preserve_aperture: bool = False
     preamp_bands: list[PreampBandConfig] = Field(default_factory=list)
     version: int = Field(1, ge=1, description="Instrument voicing configuration version")
 
@@ -397,6 +368,84 @@ class InstrumentConfig(AllomorphBaseModel):
         elif self.scale_length_m is None and self.scale_length_in is None:
             self.scale_length_in = 34.0
             self.scale_length_m = 0.8636
+
+        def _validate_terminal(term: str, h_name: str, h_cfg: HarnessConfig, ctx: str) -> None:
+            if term.startswith("pickups."):
+                parts = term.split(".")
+                if len(parts) < 3 or parts[1] not in self.pickups:
+                    raise KeyError(
+                        f"Terminal '{term}' in {ctx} on instrument '{self.id}' (harness '{h_name}') "
+                        f"references unknown pickup '{parts[1] if len(parts) > 1 else term}'. "
+                        f"Available pickups: {list(self.pickups.keys())}"
+                    )
+                p_cfg = self.pickups[parts[1]]
+                if len(parts) == 4 and p_cfg.coils:
+                    coil_ids = {c.id for c in p_cfg.coils if c.id}
+                    if coil_ids and parts[2] not in coil_ids and parts[2] != parts[1]:
+                        raise KeyError(
+                            f"Terminal '{term}' in {ctx} on instrument '{self.id}' (harness '{h_name}') "
+                            f"references unknown coil '{parts[2]}' on pickup '{parts[1]}'. "
+                            f"Available coils: {sorted(coil_ids)}"
+                        )
+            elif term.startswith("controls."):
+                parts = term.split(".")
+                if len(parts) < 3 or parts[1] not in h_cfg.controls:
+                    raise KeyError(
+                        f"Terminal '{term}' in {ctx} on instrument '{self.id}' (harness '{h_name}') "
+                        f"references unknown control '{parts[1] if len(parts) > 1 else term}'. "
+                        f"Available controls: {list(h_cfg.controls.keys())}"
+                    )
+
+        def _validate_component_key(key: str, h_name: str, h_cfg: HarnessConfig, ctx: str) -> None:
+            if key.startswith("controls."):
+                parts = key.split(".")
+                if len(parts) != 3 or parts[1] not in h_cfg.controls:
+                    raise KeyError(
+                        f"Component override '{key}' in {ctx} on instrument '{self.id}' (harness '{h_name}') "
+                        f"references unknown control '{parts[1] if len(parts) > 1 else key}'. "
+                        f"Available controls: {list(h_cfg.controls.keys())}"
+                    )
+                if parts[2] not in ("resistance", "cap", "Rtone"):
+                    raise KeyError(
+                        f"Component override '{key}' in {ctx} on instrument '{self.id}' (harness '{h_name}') "
+                        f"sets unsupported control property '{parts[2]}'."
+                    )
+            elif key.startswith("pickups."):
+                parts = key.split(".")
+                if len(parts) not in (3, 4) or parts[1] not in self.pickups:
+                    raise KeyError(
+                        f"Component override '{key}' in {ctx} on instrument '{self.id}' (harness '{h_name}') "
+                        f"references unknown pickup '{parts[1] if len(parts) > 1 else key}'. "
+                        f"Available pickups: {list(self.pickups.keys())}"
+                    )
+                if parts[-1] not in ("L", "Rdc", "Reddy", "Ccoil"):
+                    raise KeyError(
+                        f"Component override '{key}' in {ctx} on instrument '{self.id}' (harness '{h_name}') "
+                        f"sets unsupported pickup property '{parts[-1]}'."
+                    )
+
+        # Validate harnesses wiring and switches
+        for h_name, h_cfg in self.harnesses.items():
+            for conn in h_cfg.wiring:
+                for term in conn:
+                    _validate_terminal(term, h_name, h_cfg, f"harness '{h_name}' wiring")
+            for sw_name, sw_cfg in h_cfg.switches.items():
+                for pos_name, pos_cfg in sw_cfg.positions.items():
+                    for conn in pos_cfg.connect:
+                        for term in conn:
+                            _validate_terminal(
+                                term,
+                                h_name,
+                                h_cfg,
+                                f"switch '{sw_name}' position '{pos_name}'",
+                            )
+                    for comp_key in pos_cfg.components:
+                        _validate_component_key(
+                            comp_key,
+                            h_name,
+                            h_cfg,
+                            f"switch '{sw_name}' position '{pos_name}'",
+                        )
 
         # Validate harnesses and voicings
         for vid, v in self.voicings.items():
@@ -449,6 +498,8 @@ class InstrumentConfig(AllomorphBaseModel):
                             f"Voicing '{vid}' sets unknown position '{pos_name}' for switch '{sw_name}'. "
                             f"Available positions: {list(h_cfg.switches[sw_name].positions.keys())}"
                         )
+                for comp_key in v.components:
+                    _validate_component_key(comp_key, h_name, h_cfg, f"voicing '{vid}'")
 
         return self
 
@@ -622,7 +673,7 @@ class VoiceConfig(AllomorphBaseModel):
     tone_name: str | None = None
     description: str
     magnet_type: str | None = None
-    sensor_type: Literal["magnetic", "bridge_force", "direct"] = "magnetic"
+    sensor_type: Literal["magnetic", "bridge_force"] = "magnetic"
     target_string: str | None = None
     alpha: float = 0.0
     vsat: float | None = None
@@ -630,7 +681,6 @@ class VoiceConfig(AllomorphBaseModel):
     Q: float | None = Field(default=None, gt=0.0)
     gain_db: float = 0.0
     scale: str = "34in"
-    preserve_aperture: bool = False
     coils: list[VoiceCoilConfig] = Field(default_factory=list)
     pickups: list[VoicePickupConfig] | None = None
     instrument_id: str | None = None

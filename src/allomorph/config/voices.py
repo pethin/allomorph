@@ -184,7 +184,21 @@ def voicing_to_voice_config(
 
     voice_pickups: list[VoicePickupConfig] = []
     if len(active_pickup_keys) >= 2:
-        for p_key in active_pickup_keys:
+        idx_100 = int(np.argmin(np.abs(np.asarray(FREQS, dtype=float) - 100.0)))
+        raw_weights = [
+            float(np.abs(curves_dict[p_key][idx_100]))
+            if (p_key in curves_dict and len(curves_dict[p_key]) > idx_100)
+            else 1.0
+            for p_key in active_pickup_keys
+        ]
+        w_total = sum(raw_weights)
+        norm_weights = (
+            [w / w_total for w in raw_weights]
+            if w_total > 1e-9
+            else [1.0 / len(active_pickup_keys)] * len(active_pickup_keys)
+        )
+
+        for idx, p_key in enumerate(active_pickup_keys):
             p = instrument.pickups[p_key]
             active_c_ids = resolve_voicing_active_coils(instrument, voicing, p_key)
             sub_coils = build_voice_coils_for_pickup(p, active_c_ids, instrument=instrument)
@@ -199,7 +213,7 @@ def voicing_to_voice_config(
                     alpha=getattr(p, "alpha", None) or 0.25,
                     fr=fr_val,
                     Q=q_val,
-                    weight=1.0 / len(active_pickup_keys),
+                    weight=norm_weights[idx],
                     polarity=1.0,
                     coils=sub_coils,
                 )
@@ -233,8 +247,8 @@ def voicing_to_voice_config(
         if primary_key_val in instrument.pickups
         else next(iter(instrument.pickups.values()))
     )
-    if voicing.sensor_type == "direct":
-        fr, Q = None, None
+    if voicing.sensor_type == "bridge_force":
+        fr, Q = 800.0, 1.8
     elif len(active_pickup_keys) >= 2 and any(k in curves_dict for k in active_pickup_keys):
         active_curves = [curves_dict[k] for k in active_pickup_keys if k in curves_dict]
         compound_curve: np.ndarray = np.sum(active_curves, axis=0)
@@ -265,10 +279,16 @@ def voicing_to_voice_config(
         )
     elif instrument.scale_length_in is not None and instrument.scale_length_in >= 40.0:
         scale = "upright"
+    elif instrument.scale_length_in is not None and abs(instrument.scale_length_in - 30.5) < 0.2:
+        scale = "30.5in"
     elif instrument.scale_length_in is not None and instrument.scale_length_in <= 31.0:
         scale = "30in"
-    elif instrument.scale_length_in is not None and instrument.scale_length_in <= 33.0:
+    elif instrument.scale_length_in is not None and instrument.scale_length_in <= 32.5:
         scale = "32in"
+    elif instrument.scale_length_in is not None and abs(instrument.scale_length_in - 33.25) < 0.3:
+        scale = "33.25in"
+    elif len(instrument.string_wave_speeds) == 5:
+        scale = "34in_5string"
     else:
         scale = "34in"
 
@@ -292,7 +312,6 @@ def voicing_to_voice_config(
         gain_db=gain_db,
         scale=scale,
         target_string=target_string,
-        preserve_aperture=voicing.preserve_aperture,
         sensor_type=voicing.sensor_type,
         coils=coils,
         pickups=voice_pickups if len(voice_pickups) >= 2 else [],

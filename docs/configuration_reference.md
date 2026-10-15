@@ -1,370 +1,217 @@
 # Allomorph Configuration Reference
 
-This guide provides a comprehensive specification of all configuration files in **Allomorph**, their schemas, data types, physical units, mathematical implications, and constraints.
+This guide provides a comprehensive specification of all configuration files in **Allomorph**, their schemas, data types, physical units, mathematical implications, and fail-fast validation constraints.
 
 ---
 
 ## 1. Overview of Configuration Files
 
-Allomorph organizes instrument models, target voices, and physical scale wave speeds under the `config/` directory:
+Allomorph organizes instrument models, target voices, active preamps, physical scale wave speeds, string metallurgy presets, and visualizer settings under the `config/` directory:
 
 ```
 config/
-├── instruments/              # Unified instrument catalog & native target voicings
-│   ├── 30in_emg_mmtw.toml    # 30" Short scale with EMG MMTWX dual-mode pickup
-│   ├── 30in_mustang_pj.toml  # 30" Short scale Fender Mustang Bass PJ (passive split-P + single J)
-│   ├── 32in_custom_pmm.toml  # 32" Medium scale with Reverse PX + MMTWX + ABCX active blend
-│   ├── 32in_fretless_pmm.toml # 32" Fretless Medium scale with PCSX + MMTWX
-│   ├── 33in_rickenbacker_4003.toml # 33.25" Rickenbacker 4003 stereo Rick-O-Sound
-│   ├── 34in_standard_p.toml  # 34" Standard Fender Precision Bass (passive datum)
-│   ├── 34in_standard_jazz.toml # 34" Standard Fender Jazz Bass (passive datum)
-│   ├── 34in_standard_pj.toml # 34" Standard P/J Bass (Fender PJ / Yamaha BB style)
-│   ├── 34in_active_stingray.toml # 34" Standard Active StingRay (Music Man MM)
-│   ├── 34in_preamp_soapbar.toml  # 34" Standard Preamp Dual-Soapbar (Ibanez SR / Yamaha TRBX / Sire F10)
-│   ├── 34in_active_emg.toml      # 34" Standard Active EMG Bass (Option C Baseline)
-│   ├── 34in_dingwall_sp1.toml    # 32"-35" Dingwall SP1 5-String (Dual-P + FD3n)
-│   ├── 37in_multiscale_dingwall.toml # 34"-37" Multi-Scale Dingwall 5-String Combustion / NG (FD3n)
-│   └── 41in_upright_bass.toml    # 41.5" Orchestral 3/4 Double Bass (Piezo Bridge Transducer)
-├── preamps.toml              # Reusable active preamp catalog (Sadowsky, StingRay, Aguilar, Dingwall)
-├── scales.toml               # Physical scale lengths, wave speeds, and string dispersion
-└── strings.toml              # Physical string core/wrap presets
+├── instruments/                        # Unified instrument catalog & native voicings (16 instruments)
+│   ├── 30in_emg_mmtw.toml              # 30.0" Short scale with EMG MMTWX dual-mode pickup
+│   ├── 30in_gibson_eb0.toml            # 30.5" Short scale 1960s Gibson EB-0 Sidewinder Mudbucker
+│   ├── 30in_mustang_pj.toml            # 30.0" Short scale Fender Mustang Bass PJ
+│   ├── 32in_custom_pmm.toml            # 32.0" Medium scale with Reverse EMG PX + MMTWX + ABCX blend
+│   ├── 32in_fretless_pmm.toml          # 32.0" Fretless Medium scale with EMG PCSX + MMTWX + ABCX blend
+│   ├── 33in_rickenbacker_4003.toml     # 33.25" Rickenbacker 4003 with Vintage Tone Push-Pull
+│   ├── 34in_active_emg.toml            # 34.0" 5-String Active EMG 40DC Dual-Soapbar
+│   ├── 34in_active_pmm.toml            # 34.0" Modern Active P/MM (Lakland 44-02 / Sandberg VM4)
+│   ├── 34in_active_stingray.toml       # 34.0" Music Man StingRay (2-Band Preamp)
+│   ├── 34in_dingwall_sp1.toml          # 32.0"-35.0" Multi-scale Dingwall SP1 5-String
+│   ├── 34in_preamp_soapbar.toml        # 34.0" 5-String Passive Soapbar + Aguilar OBP-3
+│   ├── 34in_standard_jazz.toml         # 34.0" Standard 1960s Fender Jazz Bass
+│   ├── 34in_standard_p.toml            # 34.0" Standard 1962 Fender Precision Bass
+│   ├── 34in_standard_pj.toml           # 34.0" Standard P/J & Fender American Ultra II Active P/J
+│   ├── 37in_multiscale_dingwall.toml   # 34.0"-37.0" Multi-scale Dingwall Combustion / NG3 5-String
+│   └── 41in_upright_bass.toml          # 41.25" Orchestral 3/4 Double Bass (Piezo Bridge Transducer)
+├── packs/                              # Storefront pack manifests & affinity bundle definitions
+├── naming.toml                         # Tone naming vocabulary & pedalboard character budgets
+├── preamps.toml                        # Reusable active preamp catalog (8 preamps)
+├── scales.toml                         # Physical scale lengths, wave speeds, and multiscale spans (9 scales)
+├── strings.toml                        # Physical string core/wrap metallurgy presets (7 presets)
+└── visualizer.toml                     # Visualizer storefront catalog & source comparison baselines
 ```
 
 ---
 
 ## 2. Instrument Configuration Schema (`config/instruments/*.toml`)
 
-An instrument configuration represents a **physical source bass** whose active signal is fed into Allomorph. It defines the instrument's vibrating scale length, string wave speeds, onboard pickups, physical coil locations, and the mapping from target voices to physical switch positions.
+Each file in `config/instruments/*.toml` defines a complete **Physical & Digital Twin** (`InstrumentConfig`): its vibrating scale length, string wave speeds, onboard pickups (`[pickups.<id>]`), physical sub-coil apertures (`coils = [...]`), electrical MNA harnesses (`[harnesses.<id>]`), and playable switch/potentiometer voicings (`[voicings.<id>]`).
 
-### Root Table Parameters
-
-| Field | Type | Units | Required | Description |
-| :--- | :--- | :--- | :---: | :--- |
-| `id` | `string` | — | **Yes** | Unique identifier (e.g. `"30in_emg_mmtw"`). Used by CLI `--instrument <id>`. |
-| `name` | `string` | — | **Yes** | Human-readable label (e.g. `"30\" Short Scale MM (EMG MMTWX)"`). Embedded in NAM metadata. |
-| `scale_length_in` | `float` | Inches | **Yes** | Vibrating string scale length in inches (e.g. `30.0`, `32.0`, `34.0`). |
-| `scale_length_m` | `float` | Meters | **Yes** | Scale length in meters ($L_{\text{m}} = L_{\text{in}} \times 0.0254$). |
-| `string_wave_speeds`| `array[float]`| m/s | **Yes** | Array of 4 (or 5) wave speeds from low to high string ($v = 2 \cdot L \cdot f_0$). |
-| `default_pickup` | `string` | — | **Yes** | Pickup key within `[pickups]` used when no voice mapping or override is provided. |
-
-#### Example:
-```toml
-id = "30in_emg_mmtw"
-name = "30\" Short Scale MM (EMG MMTWX)"
-scale_length_in = 30.0
-scale_length_m = 0.762
-string_wave_speeds = [62.79, 83.82, 111.89, 149.35]
-default_pickup = "mmtw_dual"
-```
-
----
-
-### Pickup Definitions (`[pickups.<pickup_id>]`)
-
-Each entry defines a **physically selectable state** on the instrument (e.g., solo neck pickup, solo bridge dual-coil, single-coil split mode, or center-detent active blend).
-
-> [!IMPORTANT]
-> **Active Electronics Constraint:**
-> All defined pickups must reflect **physically real switch/potentiometer states** on the actual instrument. For example:
-> * Active pickups (EMG) cannot be wired in series. Active blends (e.g. EMG ABCX) operate strictly in **parallel**.
-> * An EMG MMTWX push/pull switch activates coils **L1 + L2** (dual-coil) or **L2 + L3** (bridge single-coil). There is no neck-coil-only mode.
+### 2.1 Root Table Parameters (`InstrumentConfig`)
 
 | Field | Type | Units | Default | Description |
 | :--- | :--- | :--- | :---: | :--- |
-| `name` | `string` | — | Required | Descriptive label of the pickup / switch mode. |
-| `position_from_bridge_m` | `float` | Meters | Required | Centerline distance from bridge saddle ($x = \text{datum}_{\text{mm}} / 1000$). |
-| `aperture_width_in` | `float` | Inches | Required | Total magnetic sensing aperture width ($w$). |
-| `coil_spacing_in` | `float` | Inches | `0.0` | Center-to-center distance ($d$) between dual coils. `0.0` for single-coils. |
-| `type` | `string` | — | Required | Pickup architecture: `"single_coil"`, `"dual_coil_parallel"`, `"split_coil"`, or `"composite"`. |
+| `id` | `string` | — | **Required** | Unique identifier matching filename stem (e.g. `"30in_emg_mmtw"`). |
+| `name` | `string` | — | **Required** | Human-readable instrument label embedded in NAM metadata and charts. |
+| `scale_length_in` | `float` | Inches | **Required** | Vibrating string scale length (longest string on multiscale basses). |
+| `scale_length_m` | `float` | Meters | **Required** | Vibrating scale length in meters ($L_{\text{m}} = L_{\text{in}} \times 0.0254$). |
+| `multiscale` | `bool` | — | `false` | Set `true` for fanned-fret multiscale instruments. |
+| `scale_length_short_in` | `float` | Inches | `None` | Treble-side (G-string) scale length in inches when `multiscale = true`. |
+| `scale_length_long_in` | `float` | Inches | `None` | Bass-side (B/E-string) scale length in inches when `multiscale = true`. |
+| `string_wave_speeds` | `array[float]` | m/s | **Required** | Array of 4 or 5 string wave speeds from lowest to highest string ($v_s = 2 L_s f_{0,s}$). |
+| `string_preset` | `string` | Key | `"roundwound_nickel_standard"` | Default string preset key in `config/strings.toml`. |
+| `string` | `table` | — | `None` | Optional inline custom string physics block (`CustomStringConfig`). |
+| `preamp` | `string` | Key | `None` | Optional instrument-level active preamp preset key from `config/preamps.toml`. |
+
+---
+
+### 2.2 Pickup Definitions (`[pickups.<pickup_id>]` — `PickupConfig`)
+
+Each entry in `[pickups.<id>]` represents a physical transducer mounted on the instrument body.
+
+| Field | Type | Units | Default | Description |
+| :--- | :--- | :--- | :---: | :--- |
+| `name` | `string` | — | **Required** | Descriptive label of the physical pickup. |
+| `type` | `string` | — | **Required** | Pickup architecture: `"single_coil"`, `"split_coil"`, `"dual_coil_parallel"`, `"dual_coil_series"`, `"humbucker"`, or `"piezo"`. |
+| `position_from_bridge_m` | `float` | Meters | `None` | Centerline distance from bridge saddle ($x = \text{datum}_{\text{mm}} / 1000$). |
+| `aperture_width_in` | `float` | Inches | `1.0` | Total magnetic sensing aperture width ($w$). |
 | `pole_type` | `string` | — | `"rod"` | Spatial pole geometry: `"rod"` (2D cylindrical pole disc) or `"blade"` (1D bar slit). |
-| `magnet_type` | `string` | — | `"alnico_v"` | Core magnet alloy: `"alnico_v"`, `"alnico_ii"`, `"alnico_iii"`, `"ceramic"`, `"hybrid"`, `"neodymium"`, `"piezo"`, `"active"`, or `"ideal"` (pure linear reference). |
-| `circuit` | `table` | — | Optional | Embedded declarative SPICE netlist table (`[pickups.<id>.circuit]`) defining RLC parameters. |
-| `resonant_frequency_hz` | `float` | Hz | Optional | Internal electrical resonant peak frequency ($f_r$) of the active preamp. |
-| `q_factor` | `float` | — | `1.35` | Quality factor ($Q$) of the internal active resonant bump. |
-| `coils` | `array[table]`| — | Optional | Array of individual physical coils for precise multi-coil/staggered acoustic modeling. |
-| `components` | `array[table]`| — | Optional | Array of sub-pickups for active parallel blends (used when `type = "composite"`). |
+| `magnet_type` | `string` | — | `None` | Core metallurgy key in `MAGNET_PROPERTIES`: `"alnico_v"`, `"alnico_ii"`, `"alnico_iii"`, `"ceramic"`, `"ceramic_steel"`, `"neodymium"`, `"piezo"`, `"active"`, or `"ideal"`. Validated fail-fast at load time. |
+| `alpha` | `float` | — | `None` | Optional non-linear asymmetric flux quadratic coefficient override. |
+| `has_internal_buffer` | `bool` | — | `false` | Set `true` for active pickups with an internal differential op-amp buffer (e.g., EMG X-series / DC series). Isolates internal coil RLC resonance from external cable/pot loading and divides coil EMF by $N_{\text{coils}}$ before summing. |
+| `buffer_topology` | `string` | — | `"x_series"` | Internal active op-amp headroom architecture: `"x_series"` (18V high-headroom) or `"classic"` (9V standard). |
+| `buffer_rout` | `float` | $\Omega$ | `10000.0` | Output impedance of the internal active pickup buffer ($10\text{ k}\Omega$ for EMG). |
+| `V_sat` | `float` | Volts | `None` | Optional pickup saturation threshold override. |
+| `tau_th` | `float` | Seconds | `None` | Optional thermal recovery time constant override. |
+| `c_th` | `float` | — | `None` | Optional thermal compression depth override. |
+| `k_var` | `float` | — | `None` | Optional nonlinear varactor capacitance modulation override. |
+| `coils` | `array[table]` | — | `[]` | Array of physical sub-coils (`CoilConfig`) with individual positions, apertures, and RLC parameters. |
 
 ---
 
-### Sub-Coil Modeling (`coils = [...]`)
+### 2.3 Sub-Coil Modeling (`coils = [...]` — `CoilConfig`)
 
-When a pickup consists of multiple or staggered coils (such as a split-coil Precision Bass or a dual-coil Music Man), the `coils` array models the spatial standing-wave envelope for each coil individually.
+Every pickup defines one or more physical sub-coils with exact mechanical coordinates and electrical RLC parameters:
 
 | Field | Type | Units | Default | Description |
 | :--- | :--- | :--- | :---: | :--- |
-| `strings` | `array[string\|int]` | — | `["all"]` | String bindings for this coil half: `["all"]`, `["E", "A"]`, `["D", "G"]`, or register halves `[1, 2]` (treble) and `[3, 4]` (bass). |
-| `position_from_bridge_m` | `float` | Meters | Required | Physical distance from bridge saddle to this individual coil center. |
-| `aperture_width_in` | `float` | Inches | Required | Magnetic aperture width of this specific coil. |
-| `weight` | `float` | — | `1.0` | Amplitude contribution (e.g. `0.5` for two coils in parallel). |
-| `polarity` | `float` | — | `1.0` | Phase polarity (`1.0` for in-phase, `-1.0` for reverse phase). |
-| `pole_type` | `string` | — | `"rod"` | Coil-specific spatial geometry override: `"rod"` or `"blade"`. |
-
-#### Example: EMG MMTWX Dual-Coil vs. Single-Coil
-```toml
-[pickups.mmtw_dual]
-name = "EMG MMTWX Dual-Coil (Centerline)"
-position_from_bridge_m = 0.0775
-aperture_width_in = 1.50
-coil_spacing_in = 0.90
-type = "dual_coil_parallel"
-resonant_frequency_hz = 2500.0
-q_factor = 1.35
-coils = [
-    { strings = ["all"], position_from_bridge_m = 0.08893, aperture_width_in = 0.75, weight = 0.5 },
-    { strings = ["all"], position_from_bridge_m = 0.06607, aperture_width_in = 0.75, weight = 0.5 }
-]
-
-[pickups.mmtw_single]
-name = "EMG MMTWX Single-Coil (Bridge Coil)"
-position_from_bridge_m = 0.06607
-aperture_width_in = 0.75
-coil_spacing_in = 0.0
-type = "single_coil"
-resonant_frequency_hz = 3500.0
-q_factor = 1.40
-coils = [
-    { strings = ["all"], position_from_bridge_m = 0.06607, aperture_width_in = 0.75, weight = 1.0 }
-]
-```
-
-#### Example: Reverse Split-Coil Precision Pickup
-```toml
-[pickups.px]
-name = "Reverse EMG PX Split-Coil (Neck)"
-position_from_bridge_m = 0.1228
-aperture_width_in = 1.10
-coil_spacing_in = 0.0
-type = "split_coil"
-resonant_frequency_hz = 3200.0
-q_factor = 1.40
-coils = [
-    # D/G coil is staggered further towards the neck (136.8mm)
-    { strings = ["D", "G"], position_from_bridge_m = 0.1368, aperture_width_in = 1.10, weight = 1.0 },
-    # E/A coil is staggered closer towards the bridge (108.8mm)
-    { strings = ["E", "A"], position_from_bridge_m = 0.1088, aperture_width_in = 1.10, weight = 1.0 }
-]
-```
+| `id` | `string` | — | `""` | Coil terminal identifier (e.g. `"forward"`, `"rearward"`, `"neck"`, `"bridge"`), addressed in harness netlists as `pickups.<pickup_id>.<coil_id>.hot` / `.cold`. |
+| `strings` | `array[string\|int]` | — | `["all"]` | String bindings for split/staggered coils: `["all"]`, `["E", "A"]`, `["D", "G"]`, or register indices `[1, 2]` / `[3, 4]` / `[3, 4, 5]`. |
+| `position_from_bridge_m` | `float` | Meters | **Required** | Physical distance from bridge saddle to this coil's sensing centerline. |
+| `aperture_width_in` | `float` | Inches | **Required** | Magnetic sensing window width of this specific coil. |
+| `weight` | `float` | — | `1.0` | Spatial amplitude contribution weight. Automatically re-normalized to sum to `1.0` when a full-string-bed multi-coil pickup is coil-split to a single active coil. |
+| `polarity` | `float` | — | `1.0` | Magnetic/electrical polarity (`1.0` in-phase, `-1.0` reverse phase). |
+| `pole_type` | `string` | — | `"rod"` | Spatial sensing geometry: `"rod"` or `"blade"`. |
+| `L` | `float` | Henries | `None` | Coil inductance ($L$). |
+| `Rdc` | `float` | $\Omega$ | `None` | Coil DC winding resistance ($R_{\text{dc}}$). |
+| `Reddy` | `float` | $\Omega$ | `None` | Parallel core/pole eddy-current loss resistance ($R_{\text{eddy}}$). |
+| `Ccoil` | `float` | Farads | `None` | Parasitic inter-winding turn-to-turn capacitance ($C_{\text{coil}}$). |
 
 ---
 
-### Composite Active Blends (`type = "composite"`)
+### 2.4 Electrical Harnesses (`[harnesses.<harness_id>]` — `HarnessConfig`)
 
-For instruments with an active blend control (like the **EMG ABCX**), the blend is modeled as an active parallel mix of individual pickups defined within the same file.
+Harnesses define the complete Modified Nodal Analysis (MNA) netlist connecting pickup coils, potentiometers, switches, tone capacitors, cable capacitance, and active preamps:
 
-| Field | Type | Description |
-| :--- | :--- | :--- |
-| `components` | `array[table]` | List of sub-pickups and their blend proportions. |
-| `components[i].pickup` | `string` | ID of the sub-pickup defined in `[pickups]`. |
-| `components[i].weight` | `float` | Weighting factor (e.g. `0.5` for center detent). |
+| Field | Type | Units | Default | Description |
+| :--- | :--- | :--- | :---: | :--- |
+| `type` | `string` | — | `"passive"` | Circuit architecture: `"passive"`, `"active_preamp"`, or `"direct"`. |
+| `preamp` | `string` | Key | `None` | Preamp preset key in `config/preamps.toml` when `type = "active_preamp"`. |
+| `cable_pf` | `float` | pF | `750.0` | Instrument cable shunt capacitance in picofarads ($C_{\text{cable}}$). |
+| `load_resistance` | `float` | $\Omega$ | `1000000.0` | Downstream amplifier / Darkglass Anagram input impedance ($R_{\text{load}} = 1\text{ M}\Omega$). |
+| `k_mutual` | `float` | — | `0.0` | Default mutual inductive coupling coefficient ($k \in [0, 1)$) between coils of the same pickup. |
+| `wiring` | `array[array[string]]` | — | `[]` | Always-connected node pairs `[["node_a", "node_b"], ...]`. All terminal paths are validated fail-fast against declared pickups and controls. |
+| `controls` | `table[ControlElementConfig]` | — | `{}` | Potentiometers and active preamp EQ band controls (`[harnesses.<h>.controls.<c>]`). |
+| `switches` | `table[SwitchConfig]` | — | `{}` | Multi-position switches (`[harnesses.<h>.switches.<s>]`) with position-specific `connect`, `components`, and `k_mutual`. |
 
-#### Example:
-```toml
-[pickups.blend_parallel]
-name = "EMG PX + MMTWX Parallel (Center Detent)"
-position_from_bridge_m = 0.0868
-aperture_width_in = 0.88
-coil_spacing_in = 0.0
-type = "composite"
-components = [
-    { pickup = "px", weight = 0.5 },
-    { pickup = "mmtwx_dual", weight = 0.5 }
-]
-```
+#### Control Elements (`ControlElementConfig`)
+
+| Field | Type | Units | Default | Description |
+| :--- | :--- | :--- | :---: | :--- |
+| `type` | `string` | — | `"pot"` | `"pot"` (passive volume, tone, or MN blend potentiometer) or `"preamp_band"` (active EQ shelf/bell knob). |
+| `resistance` | `float` | $\Omega$ | `250000.0` | Total potentiometer track resistance ($R_{\text{pot}}$). |
+| `taper` | `string` | — | `"audio_15"` | Resistance taper law: `"linear"`, `"audio_15"`, `"audio_10"`, `"audio_30"`, `"reverse_audio"`, or `"mn_blend"`. |
+| `cap` | `float` | Farads | `None` | Series tone capacitor ($C_{\text{tone}}$) when the pot acts as a variable RC tone shunt. |
+| `buffered` | `bool` | — | `false` | When `true` on an `mn_blend` pot in an `active_preamp` harness (e.g., Lakland LH-3 active pan pot), each pickup feeds an isolated high-$Z$ FET buffer input prior to panning, eliminating passive coil-to-coil loading. |
+| `band` | `string` | — | `None` | Target band name in `PreampConfig.bands` when `type = "preamp_band"` (validated fail-fast). |
+| `max_boost_db` | `float` | dB | `12.0` | Full-throw (`pos = 1.0`) boost (or $\pm$ boost/cut range for center-detent bands) when `type = "preamp_band"`. |
+| `default` | `float` | $[0.0, 1.0]$ | `1.0` | Default knob wiper position (`0.5` = center detent). For `preamp_band` controls: if `band.gain_db == 0.0` in `preamps.toml` (center-detent boost/cut preamp), `pos = 0.5` yields $0.0\text{ dB}$; if `band.gain_db != 0.0` (boost-only or sweet-spot preset), `pos = 0.5` yields `band.gain_db`. |
 
 ---
 
-### Pickup Affinity Routing (`[pickup_mapping]`)
+### 2.5 Native Voicing Definitions (`[voicings.<voicing_id>]` — `VoicingConfig`)
 
-The `[pickup_mapping]` table routes the 4 canonical position affinities (`neck`, `bridge`, `parallel`, `direct`) to the optimal physical pickup switch position on the player's instrument:
+Every playable tone on an instrument is declared under `[voicings.<id>]`:
 
-```toml
-[pickup_mapping]
-neck = "split_p"
-bridge = "split_p"
-parallel = "split_p"
-direct = "split_p"
-```
-
-For multi-pickup instruments (such as a Jazz Bass or P/MM), each affinity maps to the corresponding physical coil configuration:
-```toml
-[pickup_mapping]
-neck = "neck"
-bridge = "bridge"
-parallel = "pair_parallel"
-direct = "neck"
-```
+| Field | Type | Units | Default | Description |
+| :--- | :--- | :--- | :---: | :--- |
+| `name` | `string` | — | **Required** | Descriptive title (e.g. `"Vintage 1962 Open"`). |
+| `tone_name` | `string` | — | **Required** | Standardized 2-to-3 token musician label (e.g. `"Precision Vintage"`). |
+| `slug` | `string` | — | `None` | Optional canonical slug override in the global `VOICES` registry. |
+| `affinity` | `string` | — | `"neck"` | Position affinity for Tone3000 bundle partitioning: `"neck"`, `"bridge"`, or `"parallel"`. |
+| `harness` | `string` | Key | `""` | Active harness key in `[harnesses]`. |
+| `controls` | `table[float]` | $[0.0, 1.0]$ | `{}` | Map of control IDs to knob positions (e.g. `{ neck_vol = 0.99, bridge_vol = 1.0, tone = 1.0 }`). |
+| `switch` | `string` | Key | `None` | Shorthand switch position name when the harness has a single switch. |
+| `switches` | `table[string]` | Key | `{}` | Map of switch IDs to position names (e.g. `{ selector = "p_mm", coil_split = "parallel" }`). |
+| `components` | `table[float]` | SI | `{}` | Validated component value overrides (`"cable_pf"`, `"load_resistance"`, `"k_mutual"`, `"Rtone"`, `"controls.<id>.resistance\|cap\|Rtone"`, `"pickups.<id>[.<coil>].L\|Rdc\|Reddy\|Ccoil"`, `"preamp.<band>.freq_hz"`). Unknown keys raise `KeyError`. |
+| `preamp` | `string` | Key | `None` | Optional voicing-level preamp preset override from `config/preamps.toml`. |
+| `gain_db` | `float` | dB | `0.0` | Drive offset in dB into non-linear magnetic saturation and visualizer vertical display offset. |
+| `string_preset_override` | `string` | Key | `None` | Optional string preset override from `config/strings.toml` (e.g. `"flatwound_vintage_heavy"`). Unknown keys raise `KeyError`. |
+| `sensor_type` | `string` | — | `"magnetic"` | Physical transducer taxonomy: `"magnetic"` or `"bridge_force"`. |
 
 ---
 
 ## 3. Scale Lengths & Wave Speeds (`config/scales.toml`)
 
-`config/scales.toml` defines the standard physical scales used for target acoustic scaling and wave speed calculations:
+`config/scales.toml` defines the 9 physical scale standards used across all 16 instruments ($v_s = 2 L_s f_{0,s}$):
 
-$$v_s = 2 \cdot L \cdot f_{0,s}$$
-
-| Key | Type | Units | Description |
-| :--- | :--- | :--- | :--- |
-| `name` | `string` | — | Display label of the scale standard. |
-| `scale_length_in` | `float` | Inches | Vibrating string length. |
-| `scale_length_m` | `float` | Meters | Vibrating string length in meters. |
-| `string_wave_speeds` | `array[float]` | m/s | Array of wave speeds for standard bass tuning ($E_1=41.2\text{ Hz}$, $A_1=55.0\text{ Hz}$, $D_2=73.4\text{ Hz}$, $G_2=98.0\text{ Hz}$). |
-
-#### Supported Scales:
-* **`30in`:** Short scale ($L = 0.762\text{ m}$, $v = [62.79, 83.82, 111.89, 149.35]\text{ m/s}$)
-* **`32in`:** Medium scale ($L = 0.8128\text{ m}$, $v = [66.98, 89.41, 119.35, 159.31]\text{ m/s}$)
-* **`34in`:** Standard long scale ($L = 0.8636\text{ m}$, $v = [71.16, 95.00, 126.81, 169.27]\text{ m/s}$)
-* **`multiscale`:** Fanned-fret Dingwall scale ($34''\text{--}37''$, $L = 0.9398\text{ m}$, $v = [77.44, 98.50, 131.00, 169.27]\text{ m/s}$)
-* **`multiscale_super`:** Compact fanned-fret Dingwall SP1 5-string ($32''\text{--}35''$, $L = 0.889\text{ m}$, $v = [54.88, 71.69, 93.60, 122.14, 159.31]\text{ m/s}$)
-* **`upright`:** Standard 3/4 acoustic double bass ($41.5'' = 1.0541\text{ m}$, $v = [86.86, 115.95, 154.76, 206.59]\text{ m/s}$)
+| Scale Key | Scale Length ($L_{\text{in}}$) | Metric ($L_{\text{m}}$) | Multi-Scale Span | String Wave Speeds ($v_s$, m/s) | Representative Instruments |
+| :--- | :--- | :--- | :---: | :--- | :--- |
+| **`30in`** | $30.0''$ | $0.76200\text{ m}$ | Fixed | $[62.79, 83.82, 111.89, 149.35]$ | `30in_emg_mmtw`, `30in_mustang_pj` |
+| **`30.5in`** | $30.5''$ | $0.77470\text{ m}$ | Fixed | $[63.83, 85.22, 113.75, 151.84]$ | `30in_gibson_eb0` |
+| **`32in`** | $32.0''$ | $0.81280\text{ m}$ | Fixed | $[66.98, 89.41, 119.35, 159.31]$ | `32in_custom_pmm`, `32in_fretless_pmm` |
+| **`33.25in`** | $33.25''$ | $0.84455\text{ m}$ | Fixed | $[69.60, 92.90, 124.01, 165.53]$ | `33in_rickenbacker_4003` |
+| **`34in`** | $34.0''$ | $0.86360\text{ m}$ | Fixed | $[71.16, 95.00, 126.81, 169.27]$ | `34in_standard_p`, `34in_standard_jazz`, `34in_standard_pj`, `34in_active_stingray`, `34in_active_pmm` |
+| **`34in_5string`** | $34.0''$ | $0.86360\text{ m}$ | Fixed (5-str) | $[53.31, 71.16, 95.00, 126.81, 169.27]$ | `34in_active_emg`, `34in_preamp_soapbar` |
+| **`multiscale_super`** | $35.0''$ | $0.88900\text{ m}$ | $32.0''\text{--}35.0''$ (5-str) | $[54.88, 71.69, 93.60, 122.14, 159.31]$ | `34in_dingwall_sp1` |
+| **`multiscale`** | $37.0''$ | $0.93980\text{ m}$ | $34.0''\text{--}37.0''$ (5-str) | $[58.02, 75.88, 99.19, 129.60, 169.27]$ | `37in_multiscale_dingwall` |
+| **`upright`** | $41.25''$ | $1.04775\text{ m}$ | Fixed | $[86.33, 115.25, 153.86, 205.36]$ | `41in_upright_bass` |
 
 ---
 
-## 4. Target Voice Definitions (Native Instrument Voicings & Global VOICES Registry)
+## 4. Active Preamp Catalog (`config/preamps.toml`)
 
-In modern Allomorph v0.5.x, target voices are defined directly within the Unified Instrument Catalog (`config/instruments/*.toml`) under `[voicings.<id>]`. The `allomorph.config.voices` registry dynamically resolves these into validated `VoiceConfig` models. This ensures every target voice is rooted in an authentic, physically verified instrument with declarative SPICE circuits, precise coil apertures, and string setups:
+`config/preamps.toml` defines reusable active onboard preamps (`PreampConfig`) with FET/op-amp input impedance ($R_{\text{in}} \parallel C_{\text{in}}$), output impedance ($R_{\text{out}}$), and analog EQ bands (`PreampBandConfig`):
 
-| Field | Type | Units | Description |
-| :--- | :--- | :--- | :--- |
-| `name` | `string` | — | Descriptive title (e.g. `"Vintage 1962 Open"`). |
-| `tone_name` | `string` | — | Standardized 2-to-3 token musician label (e.g. `"Precision Vintage"`). |
-| `pickup` | `string` | Key | Physical pickup on this instrument generating the voice (`"split_p"`, `"bridge"`, etc.). |
-| `affinity` | `string` | — | Position affinity for bundle partitioning: `"neck"`, `"bridge"`, `"parallel"`, or `"direct"`. |
-| `circuit` | `table` | — | *(Optional)* Embedded declarative SPICE netlist override (e.g. pots, tone cap, active buffer). |
-| `vol_pos` | `float` | $[0.0, 1.0]$ | Volume potentiometer wiper position (default: `1.0`). |
-| `tone_pos` | `float` | $[0.0, 1.0]$ | Tone potentiometer wiper position (default: `1.0`). |
-| `tone_cap_f` | `float` | Farads | Tone capacitor value in Farads (e.g. `4.7e-8` for 47nF). |
-| `string_preset_override` | `string` | Key | Goal string preset from `config/strings.toml` (e.g. `"flatwound_vintage_heavy"`). |
-| `gain_db` | `float` | dB | Saturation drive boost/cut in dB into non-linear magnetic saturation/compression, and informational visualizer vertical offset. Does not alter training level normalization. |
-| `sensor_type` | `string` | `"magnetic"` | Physical sensor taxonomy: `"magnetic"`, `"bridge_force"`, or `"direct"`. |
-| `preserve_aperture` | `bool` | `false` | Set `true` to preserve source instrument physical aperture (e.g. Studio Voicings). |
-
-### Native Voicing Examples
-
-#### 1. Standard P-Bass Vintage Open (`config/instruments/34in_standard_p.toml`) & Active P/J (`config/instruments/34in_standard_pj.toml`)
-```toml
-[voicings.vintage_open]
-name = "Vintage 1962 Open"
-tone_name = "Precision Vintage"
-pickup = "split_p"
-affinity = "neck"
-vol_pos = 1.0
-tone_pos = 1.0
-tone_cap_f = 4.7e-08
-string_preset_override = "roundwound_nickel_standard"
-
-# In config/instruments/34in_standard_pj.toml:
-[voicings.neck_active]
-name = "Solo Modern Active Split P"
-tone_name = "Precision Active"
-pickup = "p_active"
-affinity = "neck"
-vol_pos = 1.0
-tone_pos = 1.0
-gain_db = 1.5
-preamp_preset = "sadowsky_2band"
-```
-
-#### 2. Jazz Bass Pair Active & Open (`config/instruments/34in_standard_jazz.toml`)
-```toml
-[voicings.pair_open]
-name = "Vintage 1960s Pair Open"
-tone_name = "Jazz Pair Open"
-pickup = "pair_parallel"
-affinity = "parallel"
-vol_pos = 1.0
-tone_pos = 1.0
-tone_cap_f = 4.7e-08
-string_preset_override = "roundwound_nickel_standard"
-
-[voicings.pair_active]
-name = "Modern Active Jazz Pair"
-tone_name = "Jazz Pair Active"
-pickup = "pair_parallel"
-affinity = "parallel"
-magnet_type = "alnico_v"
-gain_db = 1.0
-
-[voicings.pair_active.circuit]
-topology = "parallel"
-active = true
-preamp = "sadowsky_2band"
-Rvol = 500000.0
-```
+| Preamp Key | Archetype | $R_{\text{in}}$ | $C_{\text{in}}$ | $R_{\text{out}}$ | Default EQ Contour |
+| :--- | :--- | :---: | :---: | :---: | :--- |
+| **`sadowsky_2band`** | Sadowsky NYC 2-Band Boost-Only | $1.0\text{ M}\Omega$ | $150\text{ pF}$ | $100\,\Omega$ | $+3.5\text{ dB}$ @ $60\text{ Hz}$ low shelf, $+3.5\text{ dB}$ @ $3.5\text{ kHz}$ high shelf |
+| **`stingray_2band`** | Music Man StingRay 2-Band | $1.0\text{ M}\Omega$ | $850\text{ pF}$ | $100\,\Omega$ | $+1.8\text{ dB}$ @ $80\text{ Hz}$ low shelf, $+2.2\text{ dB}$ @ $4.0\text{ kHz}$ high shelf |
+| **`aguilar_3band`** | Aguilar OBP-3 18V 3-Band | $1.0\text{ M}\Omega$ | $100\text{ pF}$ | $100\,\Omega$ | $+2.0\text{ dB}$ @ $40\text{ Hz}$ low shelf, $-2.0\text{ dB}$ @ $800\text{ Hz}$ bell, $+2.0\text{ dB}$ @ $6.5\text{ kHz}$ high shelf |
+| **`glockenklang_2band`** | Glockenklang 2-Band | $1.0\text{ M}\Omega$ | $470\text{ pF}$ | $100\,\Omega$ | $+2.0\text{ dB}$ @ $40\text{ Hz}$ low shelf, $+2.0\text{ dB}$ @ $4.0\text{ kHz}$ high shelf |
+| **`lakland_lh3`** | Lakland LH-3 3-Band Hybrid | $1.0\text{ M}\Omega$ | $470\text{ pF}$ | $100\,\Omega$ | $+1.5\text{ dB}$ @ $50\text{ Hz}$ low shelf, $+1.0\text{ dB}$ @ $600\text{ Hz}$ bell, $+2.0\text{ dB}$ @ $7.0\text{ kHz}$ high shelf |
+| **`fender_ultra2_3band`** | Fender American Ultra II 18V 3-Band | $1.0\text{ M}\Omega$ | $100\text{ pF}$ | $100\,\Omega$ | Flat center detent ($0.0\text{ dB}$ @ $40\text{ Hz}$, $325/750\text{ Hz}$, $8.0\text{ kHz}$) |
+| **`dingwall_active`** | Dingwall / Glockenklang 3-Band | $0.5\text{ M}\Omega$ | $100\text{ pF}$ | $1,000\,\Omega$ | Flat center detent ($0.0\text{ dB}$ @ $70\text{ Hz}$ bell, $500\text{ Hz}$ bell, $2.8\text{ kHz}$ bell) |
+| **`flat_buffer`** | Transparent Unity FET Buffer | $1.0\text{ M}\Omega$ | $30\text{ pF}$ | $100\,\Omega$ | Unity passband ($0.0\text{ dB}$) |
 
 ---
 
 ## 5. Physical String Catalog Reference (`config/strings.toml`)
 
-`config/strings.toml` defines the mechanical, viscoelastic, and acoustic properties of physical string sets. These parameters govern high-frequency mechanical damping, inharmonicity/tension class, dynamic bridge compliance, and low-frequency body bloom:
+`config/strings.toml` defines the viscoelastic wrap damping ($f_d, n$), tension compliance, core geometry, and longitudinal clank coupling ($k_{\text{long}}$) for 7 physical string sets:
 
-| Field | Type | Units | Description |
-| :--- | :--- | :--- | :--- |
-| `name` | `string` | — | Full human-readable display label (e.g. `"La Bella Low Tension Flats LTF-4A"`). |
-| `type` | `string` | — | Construction classification: `"roundwound"`, `"flatwound"`, `"double_bass"`. |
-| `wrap` | `string` | — | Outer wrap alloy: `"nickel"`, `"stainless"`, `"stainless_flat"`, `"chrome_steel"`. |
-| `core` | `string` | — | Core wire geometry: `"hex"`, `"round"`, `"spiral_rope"`. |
-| `tension_lbs` | `float` | lbs | Total 4-string set tension at pitch. |
-| `damping_cutoff_hz` | `float` | Hz | Viscoelastic high-frequency mechanical roll-off corner frequency ($f_d$). |
-| `damping_order` | `float` | — | High-frequency damping filter order ($n$). |
-| `k_long` | `float` | — | Longitudinal core wire percussive clank coupling factor ($0.00\text{ to }0.35$). |
-
-### Built-In String Presets:
-
-1. **`roundwound_nickel_standard` (Global Default Baseline):**
-   * Standard D'Addario EXL / Ernie Ball Slinky $.045\text{--}.105$.
-   * $155.0\text{ lbs}$ tension, $f_d = 8500\text{ Hz}, n = 1.0, k_{\text{long}} = 0.20$.
-2. **`roundwound_nickel_6string` (Extended 6-String Baseline):**
-   * Universal 6-string D'Addario EXL170-6 / Ernie Ball Slinky $.032\text{--}.130$.
-   * $230.0\text{ lbs}$ tension, $f_d = 8500\text{ Hz}, n = 1.0, k_{\text{long}} = 0.20$.
-3. **`roundwound_stainless_clank` (Multi-Scale / Dingwall):**
-   * Dingwall Custom $.045\text{--}.130$ high-tension stainless steel.
-   * $180.0\text{ lbs}$ tension, $f_d = 12000\text{ Hz}, n = 1.0, k_{\text{long}} = 0.35$ (massive metallic clank).
-4. **`flatwound_low_tension` (Smooth Fretless Thump):**
-   * La Bella Low Tension Flats LTF-4A $.043\text{--}.100$ round core.
-   * $132.0\text{ lbs}$ low tension, $f_d = 2800\text{ Hz}, n = 1.8$ (lower tension causes $+1.39\text{ dB}$ higher plucking compliance).
-5. **`flatwound_vintage_heavy` (Motown / Jamerson 1954 Spec):**
-   * La Bella 760M $.052\text{--}.110$ heavy hex core.
-   * $195.0\text{ lbs}$ heavy tension, $f_d = 1800\text{ Hz}, n = 2.0, k_{\text{long}} = 0.05$ (massive ribbon shear damping rolls off highs above $1.8\text{ kHz}$).
-6. **`double_bass_spirocore` (3/4 Upright Orchestral/Pizz):**
-   * Thomastik-Infeld Spirocore / D'Addario Helicore Pizzicato $41.5''$ spiral rope core.
-   * $265.0\text{ lbs}$ massive tension, $f_d = 3800\text{ Hz}, n = 2.0, k_{\text{long}} = 0.02$.
+| Preset Key | Archetype | Type / Wrap / Core | Tension | Cutoff $f_d$ | Order $n$ | $k_{\text{long}}$ |
+| :--- | :--- | :--- | :---: | :---: | :---: | :---: |
+| **`roundwound_nickel_standard`** | D'Addario EXL165 / Ernie Ball Slinky ($.045\text{--}.105$) | Roundwound / Nickel / Hex | $155.0\text{ lbs}$ | $8,500\text{ Hz}$ | $1.5$ | $0.20$ |
+| **`roundwound_short_scale`** | D'Addario EXL160S Short Scale ($.050\text{--}.105$) | Roundwound / Nickel / Hex | $138.0\text{ lbs}$ | $8,500\text{ Hz}$ | $1.5$ | $0.18$ |
+| **`roundwound_nickel_6string`** | D'Addario EXL170-6 / Slinky 6-String ($.032\text{--}.130$) | Roundwound / Nickel / Hex | $230.0\text{ lbs}$ | $8,500\text{ Hz}$ | $1.5$ | $0.20$ |
+| **`roundwound_stainless_clank`** | Dingwall Custom Stainless Steel ($.045\text{--}.130$) | Roundwound / Stainless / Hex | $180.0\text{ lbs}$ | $12,000\text{ Hz}$ | $1.5$ | $0.35$ |
+| **`flatwound_low_tension`** | La Bella Low Tension Flats LTF-4A ($.042\text{--}.100$) | Flatwound / Stainless Flat / Round | $132.0\text{ lbs}$ | $2,800\text{ Hz}$ | $1.8$ | $0.08$ |
+| **`flatwound_vintage_heavy`** | La Bella 760M 1954 Jamerson Heavy Flats ($.052\text{--}.110$) | Flatwound / Stainless Flat / Hex | $195.0\text{ lbs}$ | $1,800\text{ Hz}$ | $2.0$ | $0.05$ |
+| **`double_bass_spirocore`** | Thomastik-Infeld Spirocore 3/4 Orchestral | Double Bass / Chrome Steel / Spiral Rope | $265.0\text{ lbs}$ | $3,200\text{ Hz}$ | $2.0$ | $0.02$ |
 
 ---
 
 ## 6. How to Add a Custom Instrument
 
-To model your own bass in Allomorph:
-
-1. Create a new file: `config/instruments/my_bass.toml`.
-2. Measure:
-   * Scale length ($L_{\text{in}}$).
-   * Pickup centerline distances from the bridge saddle in millimeters ($x_{\text{mm}}$).
-   * Active pickup resonant frequency ($f_r$) from manufacturer spec sheets (if active).
-3. Fill out the schema:
-   ```toml
-   id = "my_custom_5str"
-   name = "Custom 35\" 5-String Soapbar"
-   scale_length_in = 35.0
-   scale_length_m = 0.889
-   string_wave_speeds = [53.28, 71.16, 95.00, 126.81, 169.27]
-   default_pickup = "bridge_dual"
-
-   [pickups.bridge_dual]
-   name = "Dual-Coil Soapbar (Bridge)"
-   position_from_bridge_m = 0.055
-   aperture_width_in = 1.25
-   coil_spacing_in = 0.75
-   type = "dual_coil_parallel"
-   pole_type = "blade"
-   magnet_type = "ceramic"
-   resonant_frequency_hz = 2800.0
-   q_factor = 1.35
-   coils = [
-       { strings = ["all"], position_from_bridge_m = 0.0645, aperture_width_in = 0.60, weight = 0.5, pole_type = "blade" },
-       { strings = ["all"], position_from_bridge_m = 0.0455, aperture_width_in = 0.60, weight = 0.5, pole_type = "blade" }
-   ]
-   ```
-4. Run validation and preview:
+1. Create `config/instruments/<id>.toml` with `scale_length_in`, `scale_length_m`, `string_wave_speeds`, `[pickups.<id>]`, `[harnesses.<id>]`, and `[voicings.<id>]`.
+2. Ensure all pickup `magnet_type` keys exist in `MAGNET_PROPERTIES`, all harness `wiring`/`connect` terminals match declared pickups and controls, and all `preamp_band` controls reference valid band names in `config/preamps.toml`.
+3. Run the test suite and visualizer to verify:
    ```bash
-   uv run allomorph viz my_custom_5str
+   uv run pytest
+   uv run allomorph-viz
    ```

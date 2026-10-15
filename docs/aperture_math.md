@@ -184,9 +184,9 @@ $$|H_{\text{elec}}(f)| = \frac{1}{\sqrt{\left(1 - \left(\frac{f}{f_r}\right)^2\r
 | **EMG PA-X** | Split-Coil | Alnico V | **$2,610\text{ Hz}$** ($2.61\text{ kHz}$) | $1.35$ | $2.0\text{V} / 8.5\text{V}$ |
 | **EMG P-CS-X** | Split-Coil | Ceramic / Steel | **$2,610\text{ Hz}$** ($2.61\text{ kHz}$) | $1.35$ | $2.0\text{V} / 8.5\text{V}$ |
 
-### Active Buffered Blends (EMG ABCX)
-Because the EMG ABCX active blend potentiometer buffers each pickup input with dedicated op-amp stages prior to summing, there is zero passive mutual loading. The compound response is the linear weighted superposition of the active branches:
-$$H_{\text{blend, elec}}(f) = \frac{\sum_i w_i \cdot H_{\text{elec}, i}(f)}{\sum_i w_i}$$
+### Active Buffered Blends (`has_internal_buffer = true` & `buffered = true`)
+Active pickups with onboard differential op-amp buffers (`has_internal_buffer = true`, e.g., EMG X-series with $R_{\text{out}} = 10\text{ k}\Omega$ driving an EMG ABCX blend control) and passive pickups feeding dual-buffered active blend preamps (`taper = "mn_blend", buffered = true`, e.g., Lakland LH-3 active pan pot with dedicated high-$Z$ FET input buffers ahead of the blend mixer) prevent passive coil-to-coil loading across the blend sweep. Each pickup branch preserves its isolated resonant peak $f_r$, and the blended output is the weighted superposition of the buffered channels:
+$$H_{\text{blend, elec}}(f) = \sum_i g_i \cdot H_{\text{elec}, i}(f)$$
 
 ---
 

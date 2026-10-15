@@ -104,7 +104,7 @@ k_long = 0.05
 # ------------------------------------------------------------------------------
 # 5. Upright 3/4 Double Bass Strings (Spirocore / Helicore Orchestral/Pizz)
 # ------------------------------------------------------------------------------
-# 41.5" Scale spiral steel rope-core double bass strings (Thomastik-Infeld
+# 41.25" Scale spiral steel rope-core double bass strings (Thomastik-Infeld
 # Spirocore Medium / D'Addario Helicore Pizzicato). Massive tension, coupled maple bridge
 # mechanical damping, high wave speed, and pure harmonicity.
 [strings.double_bass_spirocore]
@@ -112,7 +112,7 @@ name = "3/4 Double Bass Spiral Rope-Core (Spirocore / Helicore Pizzicato)"
 type = "double_bass"
 wrap = "chrome_steel"
 core = "spiral_rope"
-tension_lbs = 265.0              # Massive 41.5" acoustic string tension
+tension_lbs = 265.0              # Massive 41.25" acoustic string tension
 damping_cutoff_hz = 3200.0       # Coupled spruce soundboard acoustic damping
 damping_order = 2.0
 k_long = 0.02

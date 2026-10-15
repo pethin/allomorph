@@ -1,258 +1,162 @@
 # Allomorph Master Voice Catalog (Target Voicings & Transducers)
 
-This catalog details the physical parameters, equivalent RLC circuit values, acoustic apertures, control harnesses, and electrical characteristics for the **Allomorph Digital Twin Profiles**.
+This catalog details the physical parameters, equivalent RLC circuit values, acoustic apertures, control harnesses, and MNA-verified electrical characteristics for the **Allomorph Digital Twin Profiles**.
 
 ---
 
 ## Quick Reference Summary
 
-| # | Profile ID | Pickup Architecture | Topology | Harness / Controls | $L_{\text{eq}}$ | $R_{\text{dc}}$ | $f_r$ (Peak) | Acoustic & Circuit Character |
-| :- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| **01** | `jazz_pair_active` | Modern Active Jazz | Active 2-Band | Sadowsky 2-Band Preamp ($R_{\text{in}}=1\text{M}\Omega, R_{\text{out}}=100\,\Omega$) | $1.69\text{ H}$ (isolated) | $3.69\text{ k}\Omega$ | $7.8\text{ kHz}$ | Sadowsky-style active 2-band boost with isolated 60s J-pair ($92.1\text{ mm}$ aperture scoop), wideband hi-fi sparkle, punchy active bass and treble shelving. |
-| **02** | `jazz_pair_open` | Vintage 60s J-Bass Pair | Dual Parallel | Vintage 60s $2\times 250\text{k}\Omega$ Vol ($125\text{k}\Omega$ net), $250\text{k}\Omega$ Tone, $47\text{nF}$ Cap | $1.69\text{ H}$ | $3.69\text{ k}\Omega$ | $2.7\text{ kHz}$ | Dual narrow single-coils in parallel; authentic 60s $92.1\text{ mm}$ ($3\frac{5}{8}''$) aperture scoop with natural woody low-mid resonance. |
-| **02b**| `jazz_pair_mids` | 60s J-Bass Pair (22nF ToneStyler)| Dual Parallel | Vintage 60s $2\times 250\text{k}\Omega$ Vol, 22nF ToneStyler Pure Shunt ($R_{\text{tone}}=3.3\,\Omega$) | $1.69\text{ H}$ | $3.69\text{ k}\Omega$ | $762\text{ Hz}$ | Vocal midrange honk ($762\text{ Hz}$ resonant peak, $-3\text{ dB}$ at $1225\text{ Hz}$); pure capacitive shunt preserves punchy Jaco bridge growl with zero wiper mud. |
-| **02c**| `jazz_bridge_growl` | 60s J-Bass Pair (Jaco Bias)| Dual Parallel | Vintage dual $250\text{k}\Omega$ Vol (Bridge 100%, Neck decoupled by $8.8\text{ k}\Omega$), $250\text{k}\Omega$ Tone | $1.69\text{ H}$ | $3.69\text{ k}\Omega$ | $3.2\text{ kHz}$ | Classic Jaco Pastorius fingerstyle vocal bridge growl; neck volume backed off slightly adds $8.8\text{ k}\Omega$ series wiper isolation into loaded bus, shifting comb scoop to vocal $500\text{--}750\text{ Hz}$ while keeping punchy low-end body. |
-| **03** | `jazz_bridge_open` | 60s J-Bass Bridge | Single Coil | Vintage $250\text{k}\Omega$ Vol, $250\text{k}\Omega$ Tone, $47\text{nF}$ Cap | $3.60\text{ H}$ | $7.80\text{ k}\Omega$ | $2.8\text{ kHz}$ | Narrow single-coil placed in 60s bridge position ($63.5\text{ mm}$ from bridge); focused midrange growl with articulate transient snap. |
-| **04** | `precision_active` | Modern Active Split P | Single Split | Sadowsky 2-Band Active Preamp ($R_{\text{in}}=1\text{M}\Omega, R_{\text{out}}=100\,\Omega$), $500\text{k}\Omega$ Vol | $4.80\text{ H}$ (isolated) | $9.50\text{ k}\Omega$ | $4.8\text{ kHz}$ | Ceramic split-coil with active 2-band preamp buffer isolating coils from cable loading; extended high-end air, punchy low-mids, and wide dynamic headroom. |
-| **05** | `precision_vintage` | Vintage '62 P (Tone Open)| Single Split | Vintage 1962 CTS $250\text{k}\Omega$ Vol, $250\text{k}\Omega$ Tone Open, $47\text{nF}$ Cap | $3.80\text{ H}$ | $10.50\text{ k}\Omega$ | $2.1\text{ kHz}$ | Alnico V split-coil wide open; touch-sensitive dynamic response, woody organic bloom ($4.0\text{ kHz}$ cutoff). |
-| **05b**| `precision_mids` | Vintage '62 P (22nF ToneStyler)| Single Split | 22nF ToneStyler Pure Shunt ($R_{\text{tone}}=3.3\,\Omega$) | $3.80\text{ H}$ | $10.50\text{ k}\Omega$ | $440\text{ Hz}$ | Modern Fender spec; punchy $440\text{ Hz}$ low-mid resonant focus (+1.5 dB), $-3\text{ dB}$ cutoff at $750\text{ Hz}$, eliminates fret clatter while retaining punch. |
-| **05c**| `precision_warm` | Vintage '62 P (47nF ToneStyler)| Single Split | 47nF ToneStyler Pure Shunt ($R_{\text{tone}}=3.3\,\Omega$), Flatwound Heavy | $3.80\text{ H}$ | $10.50\text{ k}\Omega$ | $450\text{ Hz}$ | Authentic Jamerson Motown flatwound thump with 47nF ToneStyler pure capacitive shunt; low-tension bloom and deep pillowy warmth. |
-| **05d**| `precision_dub` | Vintage '50s P (100nF ToneStyler)| Single Split | 100nF ToneStyler Pure Shunt ($R_{\text{tone}}=3.3\,\Omega$) | $3.80\text{ H}$ | $10.50\text{ k}\Omega$ | Sub-bass | Original 1951–1959 Fullerton factory paper-in-oil spec; massive sub-bass shelf rolloff ($-3\text{ dB}$ at $240\text{ Hz}$, deep Motown / reggae dub thump). |
-| **07** | `pj_active` | Modern Active P/J | Active 2-Band | Sadowsky/Spector 2-Band Preamp ($R_{\text{in}}=1\text{M}\Omega, R_{\text{out}}=100\,\Omega$) | $2.06\text{ H}$ (isolated) | $4.28\text{ k}\Omega$ | $7.6\text{ kHz}$ | Active 2-band boost with isolated ceramic P/J coils ($139/111\text{ mm}$ P + $63.5\text{ mm}$ J); punchy sub-bass fundamental, wideband sparkle, and aggressive bridge clank. |
-| **08** | `pj_passive` | Vintage '80s Passive P/J| Parallel Sum | Dual $250\text{k}\Omega$ Vol ($125\text{k}\Omega$ net), $250\text{k}\Omega$ Tone, $47\text{nF}$ Cap | $1.85\text{ H}$ | $4.48\text{ k}\Omega$ | $2.8\text{ kHz}$ | Vintage Alnico V split-P and 60s J-bridge in parallel; authentic '80s Fender Special / Yamaha BB thump with woody mid-punch. |
-| **09** | `stingray_parallel` | MM Humbucker Active | Active 2-Band | Music Man 2-Band Preamp ($R_{\text{in}}=1\text{M}\Omega, R_{\text{out}}=100\,\Omega$) | $1.20\text{ H}$ (isolated) | $2.20\text{ k}\Omega$ | $8.5\text{ kHz}$ | Dual-coil parallel humbucker with authentic active MM preamp buffer isolating coils from cable loading; comb notch at $2.5\text{ kHz}$ and clank peak at $8.5\text{ kHz}$. |
-| **09b**| `stingray_series` | MM Series Humbucker Active | Active 2-Band | Music Man 2-Band Preamp ($R_{\text{in}}=1\text{M}\Omega, R_{\text{out}}=100\,\Omega$) | $4.80\text{ H}$ (isolated) | $8.80\text{ k}\Omega$ | $4.1\text{ kHz}$ | Dual-coil series humbucker with active 2-band buffer; physical $4:1$ impedance scaling ($L_{\text{ser}}=4 L_{\text{par}}$), $+5.6\text{ dB}$ open-circuit EMF surge, and focused $4.1\text{ kHz}$ active series resonance (StingRay 5 / Sterling series switch). |
-| **10** | `rickenbacker_clank` | 4003 Bridge HPF | Series HPF | Factory Rickenbacker $330\text{k}\Omega$ Vol, $330\text{k}\Omega$ Tone, $4.7\text{nF}$ Series HPF | $3.80\text{ H}$ | $8.40\text{ k}\Omega$ | $2.2\text{ kHz}$ | High-output single-coil with vintage $4.7\text{ nF}$ series HPF; removes low-end mud below $150\text{ Hz}$, delivering aggressive pick grit and clang. |
-| **11** | `p_mm_parallel` | Modern Active P/MM | Active 3-Band | Lakland LH-3 Preamp ($R_{\text{in}}=1\text{M}\Omega, C_{\text{in}}=470\text{pF}, R_{\text{out}}=100\,\Omega$) | $1.44\text{ H}$ (bridge) | $2.20\text{ k}\Omega$ | $5.5\text{ kHz}$ | Authentic Lakland 44-02 / Sandberg California VM active P/MM; Split-P neck and MM bridge in parallel mode into LH-3 3-band preamp; articulate punch and modern slap growl. |
-| **11b**| `p_mm_series` | Modern Active P/MM (Series)| Active 3-Band | Lakland LH-3 Preamp ($R_{\text{in}}=1\text{M}\Omega, C_{\text{in}}=470\text{pF}, R_{\text{out}}=100\,\Omega$) | $5.76\text{ H}$ (bridge) | $8.80\text{ k}\Omega$ | $4.1\text{ kHz}$ | Lakland 44-02 / Sandberg VM bridge humbucker switched to series coils into LH-3 3-band preamp; hot mid-forward humbucker bite and muscular authority. |
-| **12** | `mudbucker_deep` | Overwound Series| Ultra Series | Gibson $500\text{k}\Omega$ Vol, $500\text{k}\Omega$ Tone, $22\text{nF}$ Cap | $14.40\text{ H}$| $27.90\text{ k}\Omega$ | $1.2\text{ kHz}$ | Extreme dual-coil series network; subterranean low-end focus, steep natural top-end rolloff. |
-| **13** | `dingwall_bridge` | Multi-Scale MM | Angled Parallel | Dingwall Active Onboard Buffer ($1\text{ M}\Omega \parallel 25\text{ pF}$, low-Z out) | $2.30\text{ H}$ (isolated)| $4.40\text{ k}\Omega$ | $7.3\text{ kHz}$ | 34"-37" fanned-fret bridge position ($48.0\text{ mm}$) with high-tension wave speeds and active buffered FD3n neodymium reverse split-P sparkle. |
-| **14** | `upright_piezo` | Upright Bridge Piezo | Transducer | High-Z Piezo Buffer ($R_{\text{in}}=100\text{ M}\Omega$) | $0.00\text{ H}$ | $100.0\text{ M}\Omega$ | Woody Acoustic | Authentic double bass bridge-wing piezo sensor; captures bridge rocking resonance, Spirocore string damping, and pizzicato attack bite. |
+| # | Profile ID | Canonical Voicing | Pickup Architecture | Topology | Harness / Controls | $L_{\text{eq}}$ | $R_{\text{dc}}$ | $f_r$ (MNA Peak) | Acoustic & Circuit Character |
+| :- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| **01** | `jazz_pair_active` | `34in_standard_jazz:pair_active` | Modern Active Jazz | Active 2-Band | Sadowsky 2-Band Preamp ($R_{\text{in}}=1\text{M}\Omega, C_{\text{in}}=150\text{pF}, R_{\text{out}}=100\,\Omega$) | $1.74\text{ H}$ | $3.67\text{ k}\Omega$ | $5.44\text{ kHz}$ ($Q=1.06$) | Sadowsky-style active 2-band boost ($+3.5\text{ dB}$ @ $60\text{ Hz}$ & $3.5\text{ kHz}$) with 60s J-pair ($92.1\text{ mm}$ spacing), wideband hi-fi sparkle, and punchy low-end weight. |
+| **02** | `jazz_pair_open` | `34in_standard_jazz:pair_open` | Vintage 60s J-Bass Pair | Dual Parallel | Vintage 60s $2\times 250\text{k}\Omega$ Vol ($125\text{k}\Omega$ net), $250\text{k}\Omega$ Tone, $47\text{nF}$ Cap | $1.74\text{ H}$ | $3.67\text{ k}\Omega$ | $2.82\text{ kHz}$ ($Q=0.92$) | Dual narrow single-coils in parallel ($3.20\text{ H}$ neck, $3.80\text{ H}$ bridge); authentic 60s $92.1\text{ mm}$ ($3\frac{5}{8}''$) aperture scoop with natural woody low-mid resonance. |
+| **02b**| `jazz_pair_mids` | `34in_standard_jazz:pair_mids` | 60s J-Bass Pair (22nF ToneStyler) | Dual Parallel | Vintage 60s $2\times 250\text{k}\Omega$ Vol, 22nF ToneStyler Shunt ($R_{\text{tone}}=3.3\,\Omega$) | $1.74\text{ H}$ | $3.67\text{ k}\Omega$ | $727.9\text{ Hz}$ ($Q=1.12$) | Vocal midrange honk ($727.9\text{ Hz}$ resonant peak); low-ESR capacitive shunt preserves punchy midrange peak with zero wiper mud. |
+| **02c**| `jazz_bridge_growl` | `34in_standard_jazz:bridge_growl` | 60s J-Bass Pair (Jaco Bias) | Dual Parallel | Vintage dual $250\text{k}\Omega$ Vol (Bridge 100%, Neck @ 99% / $8.80\text{ k}\Omega$ series isolation), $250\text{k}\Omega$ Tone | $1.74\text{ H}$ | $3.67\text{ k}\Omega$ | $2.62\text{ kHz}$ ($Q=0.88$) | Classic Jaco Pastorius fingerstyle vocal bridge growl; neck volume backed off slightly adds $8.80\text{ k}\Omega$ series wiper resistance ($-6.43\text{ dB}$ neck attenuation, $67.7\% / 32.3\%$ bridge/neck blend), shifting comb scoop into the vocal midrange while keeping low-end body. |
+| **03** | `jazz_bridge_open` | `34in_standard_jazz:bridge_open` | 60s J-Bass Bridge | Single Coil | Vintage $2\times 250\text{k}\Omega$ Vol (Neck @ 0%), $250\text{k}\Omega$ Tone, $47\text{nF}$ Cap | $3.80\text{ H}$ | $7.50\text{ k}\Omega$ | Overdamped | Narrow single-coil placed in 60s bridge position ($63.5\text{ mm}$ from bridge); focused midrange growl with articulate transient snap. |
+| **04** | `precision_active` | `34in_standard_pj:neck_active` | Fender Ultra II Active P | Single Split | Fender Ultra II 18V 3-Band Preamp ($R_{\text{in}}=1\text{M}\Omega, C_{\text{in}}=100\text{pF}, R_{\text{out}}=100\,\Omega$), $250\text{k}\Omega$ Passive Tone | $4.00\text{ H}$ | $10.50\text{ k}\Omega$ | $3.99\text{ kHz}$ ($Q=0.93$) | Ultra II Noiseless Vintage P split-coil ($2\times 2.0\text{ H}$ series) with 18V 3-band active preamp isolating coils from cable capacitance; extended clarity and punchy low-mids. |
+| **05** | `precision_vintage` | `34in_standard_p:vintage_open` | Vintage '62 P (Tone Open) | Single Split | Vintage 1962 CTS $250\text{k}\Omega$ Vol, $250\text{k}\Omega$ Tone Open, $47\text{nF}$ Cap | $3.80\text{ H}$ | $10.50\text{ k}\Omega$ | $2.06\text{ kHz}$ ($Q=0.95$) | Alnico V split-coil wide open ($2\times 1.90\text{ H}$ series); touch-sensitive dynamic response and woody organic bloom. |
+| **05b**| `precision_mids` | `34in_standard_p:vintage_mids` | Vintage '62 P (22nF ToneStyler) | Single Split | 22nF ToneStyler Shunt ($R_{\text{tone}}=3.3\,\Omega$) | $3.80\text{ H}$ | $10.50\text{ k}\Omega$ | $418.1\text{ Hz}$ ($Q=1.00$) | Punchy $418.1\text{ Hz}$ low-mid resonant focus; eliminates fret clatter while retaining authoritative midrange punch. |
+| **05c**| `precision_warm` | `34in_standard_p:vintage_warm` | Vintage '62 P (Motown Warm) | Single Split | $47\text{nF}$ Damped Tone Roll-Off ($R_{\text{tone}}=15\text{k}\Omega$), Heavy Flatwounds | $3.80\text{ H}$ | $10.50\text{ k}\Omega$ | Overdamped | Authentic Jamerson Motown flatwound thump (`flatwound_vintage_heavy`, $1.8\text{ kHz}$ wrap damping) with smooth damped $47\text{ nF}$ tone roll-off. |
+| **05d**| `precision_dub` | `34in_standard_p:slab_dub` | Vintage '50s P (100nF Dub) | Single Split | $100\text{nF}$ Damped Tone Roll-Off ($R_{\text{tone}}=18\text{k}\Omega$), Heavy Flatwounds | $3.80\text{ H}$ | $10.50\text{ k}\Omega$ | Overdamped | Original 1950s Fullerton $0.1\,\mu\text{F}$ paper-in-oil spec with heavy flatwounds; deep sub-bass reggae/dub thump. |
+| **07** | `pj_active` | `34in_standard_pj:pair_active` | Fender Ultra II Active P/J | Active 3-Band | Fender Ultra II 18V 3-Band Preamp ($R_{\text{in}}=1\text{M}\Omega, C_{\text{in}}=100\text{pF}, R_{\text{out}}=100\,\Omega$), $250\text{k}\Omega$ MN Pan & Tone | $1.78\text{ H}$ | $4.60\text{ k}\Omega$ | $3.66\text{ kHz}$ ($Q=0.83$) | Fender American Ultra II active P/J combining Ultra II Noiseless split-P ($4.00\text{ H}$) and Noiseless bridge J ($3.20\text{ H}$) through the 18V 3-band active preamp. |
+| **08** | `pj_passive` | `34in_standard_pj:pair_parallel` | Vintage '80s Passive P/J | Parallel Sum | Dual $250\text{k}\Omega$ Vol ($125\text{k}\Omega$ net), $250\text{k}\Omega$ Tone, $47\text{nF}$ Cap | $1.90\text{ H}$ | $4.38\text{ k}\Omega$ | $2.66\text{ kHz}$ ($Q=0.90$) | Vintage Alnico V split-P ($3.80\text{ H}, 10.50\text{ k}\Omega$) and 60s J-bridge ($3.80\text{ H}, 7.50\text{ k}\Omega$) in parallel; authentic '80s Fender Special / Yamaha BB punch. |
+| **09** | `stingray_parallel` | `34in_active_stingray:parallel_classic` | MM Humbucker Active | Active 2-Band | Music Man 2-Band Preamp ($R_{\text{in}}=1\text{M}\Omega, C_{\text{in}}=850\text{pF}, R_{\text{out}}=100\,\Omega$) | $1.34\text{ H}$ | $2.20\text{ k}\Omega$ | $4.03\text{ kHz}$ ($Q=1.18$) | Dual-coil parallel humbucker ($2.40\text{ H} \parallel 2.40\text{ H}, k=0.12$) into Music Man 2-band preamp ($+1.8\text{ dB}$ @ $80\text{ Hz}$, $+2.2\text{ dB}$ @ $4\text{ kHz}$); iconic slap clank and mid scoop. |
+| **09b**| `stingray_series` | `34in_active_stingray:series_punch` | MM Series Humbucker Active | Active 2-Band | Music Man 2-Band Preamp ($R_{\text{in}}=1\text{M}\Omega, C_{\text{in}}=850\text{pF}, R_{\text{out}}=100\,\Omega$) | $5.38\text{ H}$ | $8.80\text{ k}\Omega$ | $2.19\text{ kHz}$ ($Q=1.47$) | Dual-coil series humbucker ($2\times 2.40\text{ H}, k=0.12$) into Music Man 2-band preamp; $+6.0\text{ dB}$ series inductive surge and punchy $2.19\text{ kHz}$ rock bark. |
+| **10** | `rickenbacker_clank` | `33in_rickenbacker_4003:bridge_clank` | 4003 Bridge HPF | Series HPF | Factory Rickenbacker $330\text{k}\Omega$ Vol, $330\text{k}\Omega$ Tone, $4.7\text{nF}$ Series HPF | $3.80\text{ H}$ | $8.40\text{ k}\Omega$ | $2.28\text{ kHz}$ ($Q=0.64$) | High-output ceramic single-coil at $108.0\text{ mm}$ with vintage $4.7\text{ nF}$ series HPF; rolls off sub-bass below $150\text{ Hz}$ for aggressive pick clang. |
+| **11** | `p_mm_parallel` | `34in_active_pmm:pmm_parallel` | Modern Active P/MM | Active 3-Band | Lakland LH-3 Preamp ($R_{\text{in}}=1\text{M}\Omega, C_{\text{in}}=470\text{pF}, R_{\text{out}}=100\,\Omega$), Buffered Blend | $4.80 / 1.61\text{ H}$ | $9.50 / 2.20\text{ k}\Omega$ | $2.85\text{ kHz}$ ($Q=1.11$) | Lakland 44-02 / Sandberg VM4 active P/MM; Split-P neck ($4.80\text{ H}$) and parallel MM bridge ($1.61\text{ H}$) isolated by dual-buffered active blend (`buffered = true`) into LH-3 3-band preamp. |
+| **11b**| `p_mm_series` | `34in_active_pmm:pmm_series` | Modern Active P/MM (Series) | Active 3-Band | Lakland LH-3 Preamp ($R_{\text{in}}=1\text{M}\Omega, C_{\text{in}}=470\text{pF}, R_{\text{out}}=100\,\Omega$), Buffered Blend | $4.80 / 6.45\text{ H}$ | $9.50 / 8.80\text{ k}\Omega$ | $2.46\text{ kHz}$ ($Q=1.09$) | Lakland 44-02 / Sandberg VM4 with bridge humbucker in series ($6.45\text{ H}$) isolated by dual-buffered active blend into LH-3 3-band preamp; muscular mid-forward authority. |
+| **12** | `mudbucker_deep` | `30in_gibson_eb0:neck_deep` | Overwound Series | Ultra Series | Gibson $500\text{k}\Omega$ Vol, $500\text{k}\Omega$ Tone, $22\text{nF}$ Cap | $18.0\text{ H}$ ($k=0.25$) | $27.90\text{ k}\Omega$ | $1.05\text{ kHz}$ ($Q=0.98$) | Extreme dual-coil series Sidewinder ($2\times 7.20\text{ H}, k=0.25$) at $266.8\text{ mm}$ on $30.5''$ scale; subterranean low-end focus and steep natural top-end roll-off. |
+| **13** | `dingwall_bridge` | `37in_multiscale_dingwall:bridge_clank` | Multi-Scale FD3n | Angled Series | Dingwall / Glockenklang 3-Band Preamp ($R_{\text{in}}=0.5\text{M}\Omega, C_{\text{in}}=100\text{pF}, R_{\text{out}}=1\text{k}\Omega$) | $2.30\text{ H}$ | $4.40\text{ k}\Omega$ | $6.62\text{ kHz}$ ($Q=1.40$) | $34''\text{--}37''$ fanned-fret bridge position ($48.0\text{ mm}$) with high-tension stainless wave speeds and active buffered FD-3n neodymium sparkle. |
+| **14** | `upright_piezo` | `41in_upright_bass:bridge_piezo` | Upright Bridge Piezo | Transducer | Direct Bridge Force Sensor (`sensor_type = "bridge_force"`) | — | — | $800.0\text{ Hz}$ ($Q=1.80$) | Authentic $41.25''$ 3/4 double bass bridge-wing piezo force sensor; captures $800\text{ Hz}$ maple bridge rocking resonance, $3.2\text{ kHz}$ wood mass roll-off, and Spirocore damping. |
 
 ---
 
 ## Detailed Profile Specifications
 
-### 01. `jazz_pair_active` (Modern Active Jazz Bass Pair)
-* **Archetype:** Sadowsky / Modern NYC Active Jazz Bass (Dual Single-Coil with 2-Band Boost Preamp)
-* **Pickup Architecture:** Dual parallel single coils (Neck: $3.20\text{ H}$, Bridge: $3.60\text{ H}$ in 60s spacing, $92.1\text{ mm}$ coil spacing)
-* **Control Harness:** Sadowsky-style active 2-band preamp buffer ($R_{\text{in}} = 1.0\text{ M}\Omega$, $C_{\text{in}} = 25\text{ pF}$, low-impedance $R_{\text{out}} = 100\,\Omega$). Preamp active EQ provides $+4.0\text{ dB}$ bass boost ($40\text{ Hz}$ shelf) and $+4.0\text{ dB}$ treble boost ($4.0\text{ kHz}$ shelf).
-* **Electrical Parameters:** The active buffer completely isolates the high-impedance pickup coils from cable capacitance ($750\text{ pF}$). The coils resonate with only $C_{\text{coil}} + C_{\text{in}} \approx 170\text{ pF}$, shifting the raw coil resonance up to $\sim 7.8\text{ kHz}$.
-* **Acoustic Character:** Modern hi-fi sparkle, punchy extended low-end weight, tight transient response, and transparent scooped midrange.
-* **32" Bass Setting:** ABCX Blend at **Center Detent (50/50)** (MMTWX in Single-Coil Mode - Push/Pull Down).
+### 01. `jazz_pair_active` (`34in_standard_jazz:pair_active` — Modern Active Jazz Bass Pair)
+* **Archetype:** Sadowsky NYC Active Jazz Bass (Dual Single-Coil with 2-Band Boost-Only Preamp)
+* **Pickup Architecture:** Dual parallel Alnico V single coils (Neck: $L = 3.20\text{ H}, R_{\text{dc}} = 7.20\text{ k}\Omega$ @ $155.6\text{ mm}$; Bridge: $L = 3.80\text{ H}, R_{\text{dc}} = 7.50\text{ k}\Omega$ @ $63.5\text{ mm}$; $92.1\text{ mm}$ spacing)
+* **Control Harness:** Active harness with $250\text{k}\Omega$ master volume, $250\text{k}\Omega$ MN blend pot at center detent (`0.5`), and Sadowsky 2-band boost-only preamp (`sadowsky_2band`, $R_{\text{in}} = 1.0\text{ M}\Omega, C_{\text{in}} = 150\text{ pF}, R_{\text{out}} = 100\,\Omega$) providing $+3.5\text{ dB}$ @ $60\text{ Hz}$ low shelf and $+3.5\text{ dB}$ @ $3.5\text{ kHz}$ high shelf.
+* **Electrical Parameters:** Parallel $L_{\text{eq}} = 1.74\text{ H}, R_{\text{dc}} = 3.67\text{ k}\Omega$. The preamp buffer isolates the coils from external cable capacitance, placing the compound loaded resonant peak at **$5,441.0\text{ Hz}$** ($Q = 1.06$).
+* **Acoustic Character:** Modern NYC active slap sparkle, tight extended sub-bass weight, and scooped midrange clarity.
 
-### 02. `jazz_pair_open` (Vintage 60s Jazz Bass Pair)
+### 02. `jazz_pair_open` (`34in_standard_jazz:pair_open` — Vintage 60s Jazz Bass Pair)
 * **Archetype:** Standard 1960s Fender Jazz Bass Dual Single-Coil Pair (Tone Wide Open)
-* **Pickup Architecture:** Dual parallel single coils (Neck: $3.20\text{ H}$; Bridge: $3.60\text{ H}$) spaced $92.1\text{ mm}$ ($3\frac{5}{8}''$) apart ($155.6\text{ mm}$ neck, $63.5\text{ mm}$ bridge)
-* **Control Harness:** Authentic vintage dual $250\text{k}\Omega$ volume pots in parallel ($125\text{k}\Omega$ net load resistance), single $250\text{k}\Omega$ tone pot, $47\text{ nF}$ capacitor, no treble bleed.
-* **Electrical Parameters:** Dual parallel SPICE branches; combined $L_{\text{eq}} = 1.69\text{ H}$, $R_{\text{dc}} = 3.69\text{ k}\Omega$, $R_{\text{eddy}} = 65\text{ k}\Omega$, $C_{\text{coil}} = 145\text{ pF}$. When loaded by $125\text{k}\Omega$ volume, $250\text{k}\Omega$ tone, and $750\text{ pF}$ cable, the composite loaded resonance sits at $2.7\text{ kHz}$.
-* **Acoustic Character:** Symmetrical dual-aperture phase cancellation produces a hollow mid-scoop at $1\text{ kHz}$ with classic woody low-mid resonance and open high-end.
-* **32" Bass Setting:** ABCX Blend at **Center Detent (50/50)** (MMTWX in Single-Coil Mode - Push/Pull Down).
+* **Pickup Architecture:** Dual parallel Alnico V single coils (Neck: $3.20\text{ H}, 7.20\text{ k}\Omega$ @ $155.6\text{ mm}$; Bridge: $3.80\text{ H}, 7.50\text{ k}\Omega$ @ $63.5\text{ mm}$)
+* **Control Harness:** Authentic vintage dual $250\text{k}\Omega$ volume pots in parallel ($125\text{k}\Omega$ net load), single $250\text{k}\Omega$ tone pot wide open, $47\text{ nF}$ paper-in-oil capacitor, $750\text{ pF}$ cable.
+* **Electrical Parameters:** Combined $L_{\text{eq}} = 1.74\text{ H}, R_{\text{dc}} = 3.67\text{ k}\Omega$. MNA loaded resonance sits at **$2,817.2\text{ Hz}$** ($Q = 0.92$).
+* **Acoustic Character:** Symmetrical dual-aperture phase cancellation produces a hollow mid-scoop around $1\text{ kHz}$ with classic woody low-mid bloom and open top-end.
 
-### 02b. `jazz_pair_mids` (Vintage 60s Jazz Bass Pair - 22nF ToneStyler)
-* **Archetype:** Standard 1960s Fender Jazz Bass Dual Single-Coil Pair with Stellartone ToneStyler (22nF Pure Capacitive Shunt)
-* **Pickup Architecture:** Dual parallel single coils (Neck: $3.20\text{ H}$; Bridge: $3.60\text{ H}$) spaced $92.1\text{ mm}$ ($3\frac{5}{8}''$) apart ($155.6\text{ mm}$ neck, $63.5\text{ mm}$ bridge)
-* **Control Harness:** Authentic vintage dual $250\text{k}\Omega$ volume pots in parallel ($125\text{k}\Omega$ net load), Stellartone ToneStyler rotary switch selecting a precision $22\text{ nF}$ capacitor shunt to ground ($R_{\text{tone}} = 3.3\,\Omega$ switch/lead ESR, zero variable wiper damping).
-* **Electrical Parameters:** Combined $L_{\text{eq}} = 1.69\text{ H}$, $R_{\text{dc}} = 3.69\text{ k}\Omega$, $R_{\text{tone}} = 3.3\,\Omega$, $C_{\text{tone}} = 22\text{ nF}$. Undamped resonant peak at **$762\text{ Hz}$**, $-3\text{ dB}$ cutoff at **$1225\text{ Hz}$**.
-* **Acoustic Character:** The iconic Jaco Pastorius / Marcus Miller fingerstyle vocal bridge burp: by eliminating variable potentiometer wiper resistance, the high-$Q$ resonant bump (+4.8 dB above standard 50% pot) is preserved directly in the vocal $760\text{ Hz}$ register, filtering out fret click and pick noise while maintaining commanding midrange articulation and punch.
-* **32" Bass Setting:** ABCX Blend at **Center Detent (50/50)** (MMTWX in Single-Coil Mode - Push/Pull Down).
+### 02b. `jazz_pair_mids` (`34in_standard_jazz:pair_mids` — Vintage 60s Jazz Bass Pair with 22nF ToneStyler)
+* **Archetype:** 1960s Fender Jazz Bass Dual Single-Coil Pair with Stellartone ToneStyler ($22\text{ nF}$ Pure Capacitive Shunt)
+* **Control Harness:** Dual $250\text{k}\Omega$ volume pots wide open, $22\text{ nF}$ capacitor shunt to ground ($R_{\text{tone}} = 3.3\,\Omega$ lead ESR, zero wiper resistance damping).
+* **Electrical Parameters:** Combined $L_{\text{eq}} = 1.74\text{ H}, R_{\text{dc}} = 3.67\text{ k}\Omega$. Undamped resonant peak at **$727.9\text{ Hz}$** ($Q = 1.12$).
+* **Acoustic Character:** Eliminating variable potentiometer wiper resistance preserves a vocal $+2.5\text{ dB}$ resonant bump at $727.9\text{ Hz}$ while filtering out upper-frequency fret clank.
 
-### 02c. `jazz_bridge_growl` (60s Jazz Bass Pair - Bridge Growl Bias / Jaco Setting)
-* **Archetype:** 1960s Fender Jazz Bass Dual Single-Coil Pair with Bridge-Biased Decoupled Volume Pots (Bridge @ 100%, Neck @ 75%)
-* **Pickup Architecture:** Dual parallel single coils (Neck: $3.20\text{ H}$; Bridge: $3.60\text{ H}$) spaced $92.1\text{ mm}$ ($3\frac{5}{8}''$) apart ($155.6\text{ mm}$ neck, $63.5\text{ mm}$ bridge)
-* **Control Harness:** Authentic vintage dual $250\text{k}\Omega$ audio volume pots wired in independent/decoupled configuration with master $250\text{k}\Omega$ tone pot ($47\text{ nF}$ paper-in-oil cap). Bridge volume at 100% ($R_{\text{wiper,b}} = 0\,\Omega$), Neck volume backed off slightly ($R_{\text{wiper,n}} \approx 8.8\text{ k}\Omega$, $R_{\text{bot,n}} \approx 241.2\text{ k}\Omega$).
-* **Electrical & Acoustic Physics:** Backing off the neck volume introduces $8.8\text{ k}\Omega$ of series wiper resistance on the neck branch. Because the output bus is loaded by the low impedance of the bridge pickup ($\sim 7.8\text{ k}\Omega$), this voltage division attenuates the neck pickup by $\sim 3\text{ dB}$ relative to the bridge. This asymmetric summing shifts the phase cancellation comb notch from the traditional 1 kHz scoop into the vocal $500\text{--}750\text{ Hz}$ frequency zone, while preserving $+2.7\text{ dB}$ of punchy low-end body over the solo bridge pickup.
-* **Acoustic Character:** The signature Jaco Pastorius / fingerstyle vocal bridge growl: punchier and fuller than the solo bridge pickup, but with sharper, more vocal midrange articulation and burp than both pickups wide open.
-* **32" Bass Setting:** ABCX Blend at **~65% Bridge / 35% Neck** (MMTWX in Single-Coil Mode - Push/Pull Down).
+### 02c. `jazz_bridge_growl` (`34in_standard_jazz:bridge_growl` — 60s Jazz Bass Pair, Jaco Bridge Bias)
+* **Archetype:** 1960s Fender Jazz Bass Dual Single-Coil Pair with Bridge-Biased Volume Pots (`bridge_vol = 1.0`, `neck_vol = 0.99`)
+* **Control Harness:** Standard Fender Jazz VVT harness where each pickup feeds the outer lug of its $250\text{k}\Omega$ audio-taper volume pot and both wipers tie to the shared output bus. Backing `neck_vol` off slightly to `0.99` inserts $R_{\text{top,n}} = 8.80\text{ k}\Omega$ of series wiper resistance between the neck pickup and the shared output bus ($R_{\text{bot,n}} = 241.20\text{ k}\Omega$).
+* **Electrical & Acoustic Physics:** Because the output bus is loaded by the low impedance of the bridge pickup ($L = 3.80\text{ H}, R_{\text{dc}} = 7.50\text{ k}\Omega$), the $8.80\text{ k}\Omega$ series resistance attenuates the neck pickup by $-6.43\text{ dB}$ relative to the bridge at $100\text{ Hz}$ (normalized MNA pickup weights: $67.7\%$ bridge / $32.3\%$ neck, effective acoustic center $x_{\text{tgt}} = 93.2\text{ mm}$, loaded $f_r = 2,620.3\text{ Hz}, Q = 0.88$). This asymmetric summing softens the deep $1\text{ kHz}$ phase cancellation notch into a vocal midrange growl while retaining low-end body.
 
-### 03. `jazz_bridge_open` (60s Jazz Bass Bridge Single-Coil)
-* **Archetype:** 1960s Fender Jazz Bass Bridge Single Coil
-* **Coil Model:** Single coil ($w = 0.75''$) positioned $2.5''$ ($63.5\text{ mm}$) from the bridge
-* **Control Harness:** Authentic $250\text{k}\Omega$ volume pot, $250\text{k}\Omega$ tone pot, $47\text{ nF}$ tone capacitor, no treble bleed.
-* **Electrical Parameters:** $L = 3.60\text{ H}$, $R_{\text{dc}} = 7.80\text{ k}\Omega$, $R_{\text{eddy}} = 125\text{ k}\Omega$, $C_{\text{coil}} = 70\text{ pF}$. Loaded $f_r = 2.8\text{ kHz}$.
-* **Acoustic Character:** Focused harmonic bite centered in the $800\text{ Hz}\text{--}1.6\text{ kHz}$ range with solid, articulate low-end punch. Accentuates fingerstyle definition and classic Jaco growl.
-* **32" Bass Setting:** ABCX Blend **100% Bridge** (MMTWX in Single-Coil Mode - Push/Pull Down).
+### 03. `jazz_bridge_open` (`34in_standard_jazz:bridge_open` — 60s Jazz Bass Bridge Single-Coil)
+* **Archetype:** 1960s Fender Jazz Bass Solo Bridge Single Coil
+* **Coil Model:** Alnico V single coil ($w = 0.75''$) positioned at $63.5\text{ mm}$ ($2.5''$) from the bridge saddle.
+* **Electrical Parameters:** $L = 3.80\text{ H}, R_{\text{dc}} = 7.50\text{ k}\Omega, R_{\text{eddy}} = 120\text{ k}\Omega, C_{\text{coil}} = 70\text{ pF}$. Loaded by the VVT passive harness and $750\text{ pF}$ cable, the passband response is smooth and slightly overdamped ($f_r = \text{None (overdamped)}$; un-damped open-bus coil resonance $\sim 2.46\text{ kHz}$).
 
-### 04. `precision_active` (Fender American Ultra II Precision Active)
+### 04. `precision_active` (`34in_standard_pj:neck_active` — Fender American Ultra II Precision Active)
 * **Archetype:** Fender American Ultra II Precision Bass (Active Solo P with 18V 3-Band Preamp)
-* **Coil Model:** Ultra II Noiseless Vintage P split-coil ($w = 1.00''$, E/A at $139.0\text{ mm}$, D/G at $111.0\text{ mm}$, Alnico V stacked hum-cancelling)
-* **Control Harness:** Fender American Ultra II active harness: 250k MN pan pot (P soloed), global 250k passive tone pot with 47nF capacitor loading high-Z pickup before FET input buffer ($R_{\text{in}} = 1\text{ M}\Omega$, $C_{\text{in}} = 100\text{ pF}$, $R_{\text{out}} = 100\,\Omega$), 18V 3-band active EQ with 2-way mini-toggle midrange frequency selector ($325\text{ Hz}$ / $750\text{ Hz}$), 25k audio master volume.
-* **Electrical Parameters:** $L = 4.20\text{ H}$, $R_{\text{dc}} = 11.20\text{ k}\Omega$, $R_{\text{eddy}} = 140\text{ k}\Omega$, $C_{\text{coil}} = 75\text{ pF}$, $V_{\text{sat}} = 0.45\text{ V}$. Preamp provides $\pm 12\text{ dB} @ 40\text{ Hz}$ bass shelf, $\pm 10\text{ dB} @ 325/750\text{ Hz}$ bell, $\pm 10\text{ dB} @ 8\text{ kHz}$ treble shelf (voicing set to center detents / flat). Loaded $f_r = 4.5\text{ kHz}$.
-* **Acoustic Character:** Wide dynamic headroom and studio-grade clarity powered by 18V rails. The Ultra II Noiseless split-coil retains authentic vintage Alnico V woody bloom while the high-input-impedance FET buffer eliminates cable capacitance loss. The global passive tone control allows organic top-end contouring before the active EQ stage.
-* **32" Bass Setting:** ABCX Blend **100% Neck (PX/PCSX)**.
+* **Coil Model:** Ultra II Noiseless Vintage P split-coil (`ultra2_split_p`, $w = 1.00''$, E/A at $139.0\text{ mm}$, D/G at $111.0\text{ mm}$, centerline $125.0\text{ mm}$, Alnico V)
+* **Control Harness:** Fender American Ultra II active harness (`active` in `config/instruments/34in_standard_pj.toml`): $250\text{k}\Omega$ MN pan pot (`pan = 0.0` soloing neck P), global $250\text{k}\Omega$ passive tone pot wide open ($47\text{ nF}$ cap) ahead of the `fender_ultra2_3band` 18V 3-band active preamp ($R_{\text{in}} = 1.0\text{ M}\Omega, C_{\text{in}} = 100\text{ pF}, R_{\text{out}} = 100\,\Omega$, EQ controls at `0.5` flat center detent).
+* **Electrical Parameters:** Series split-coil $L_{\text{eq}} = 4.00\text{ H}$ ($2\times 2.00\text{ H}$), $R_{\text{dc}} = 10.50\text{ k}\Omega$ ($2\times 5.25\text{ k}\Omega$), $R_{\text{eddy}} = 180\text{ k}\Omega$ ($2\times 90\text{ k}\Omega$), $C_{\text{coil}} = 35\text{ pF}$ net series. MNA loaded resonant peak at **$3,985.1\text{ Hz}$** ($Q = 0.93$).
 
-### 05. `precision_vintage` (Vintage '62 Split-Coil Alnico V - Tone Open)
-* **Archetype:** 1962 Fender Precision with Alnico V Pole Pieces (Tone Wide Open)
-* **Coil Model:** Alnico V split-coil ($w = 1.00''$)
-* **Control Harness:** Vintage 1962 CTS $250\text{k}\Omega$ volume pot, $250\text{k}\Omega$ tone pot wide open, $47\text{ nF}$ paper-in-oil tone capacitor, no treble bleed.
-* **Electrical Parameters:** $L = 3.80\text{ H}$, $R_{\text{dc}} = 10.50\text{ k}\Omega$, $R_{\text{eddy}} = 180\text{ k}\Omega$, $C_{\text{coil}} = 60\text{ pF}$. Loaded $f_r = 2.1\text{ kHz}$, $-3\text{ dB}$ cutoff at $4.0\text{ kHz}$.
-* **Acoustic Character:** Lower core eddy-current damping yields an open, touch-sensitive, uncompressed response with organic woody upper-mid bloom and complete harmonic extension.
-* **32" Bass Setting:** ABCX Blend **100% Neck (PX/PCSX)**.
+### 05. `precision_vintage` (`34in_standard_p:vintage_open` — Vintage '62 Split-Coil Alnico V, Tone Open)
+* **Archetype:** 1962 Fender Precision Bass with Alnico V Pole Pieces (Tone Wide Open)
+* **Electrical Parameters:** Series split-coil $L_{\text{eq}} = 3.80\text{ H}$ ($2\times 1.90\text{ H}$), $R_{\text{dc}} = 10.50\text{ k}\Omega$ ($2\times 5.25\text{ k}\Omega$), $R_{\text{eddy}} = 180\text{ k}\Omega$, $C_{\text{coil}} = 60\text{ pF}$ net series, CTS $250\text{k}\Omega$ volume and tone pots wide open ($47\text{ nF}$ cap, $750\text{ pF}$ cable). MNA loaded resonant peak at **$2,061.7\text{ Hz}$** ($Q = 0.95$).
 
-### 05b. `precision_mids` (Vintage '62 Split-P - 22nF ToneStyler)
-* **Archetype:** 1962 Fender Precision with Stellartone ToneStyler (22nF Pure Capacitive Shunt)
-* **Coil Model:** Alnico V split-coil ($w = 1.00''$)
-* **Control Harness:** Vintage 1962 CTS $250\text{k}\Omega$ volume pot, Stellartone ToneStyler rotary switch selecting a precision $22\text{ nF}$ capacitor shunt to ground ($R_{\text{tone}} = 3.3\,\Omega$, zero series wiper damping).
-* **Electrical Parameters:** $L = 3.80\text{ H}$, $R_{\text{dc}} = 10.50\text{ k}\Omega$, $R_{\text{tone}} = 3.3\,\Omega$, $C_{\text{tone}} = 22\text{ nF}$. Undamped resonant peak at **$440\text{ Hz}$** (+1.5 dB), $-3\text{ dB}$ cutoff at **$750\text{ Hz}$**.
-* **Acoustic Character:** Modern Fender tone capacitor spec: eliminates fret clatter and pick click while preserving high-$Q$ punch in the punchy $440\text{ Hz}$ low-mid register.
-* **32" Bass Setting:** ABCX Blend **100% Neck (PX/PCSX)**.
+### 05b. `precision_mids` (`34in_standard_p:vintage_mids` — Vintage '62 Split-P, 22nF ToneStyler)
+* **Archetype:** 1962 Fender Precision Bass with $22\text{ nF}$ ToneStyler Shunt ($R_{\text{tone}} = 3.3\,\Omega$)
+* **Electrical Parameters:** $L_{\text{eq}} = 3.80\text{ H}, R_{\text{dc}} = 10.50\text{ k}\Omega, C_{\text{tone}} = 22\text{ nF}, R_{\text{tone}} = 3.3\,\Omega$. MNA loaded resonant peak at **$418.1\text{ Hz}$** ($Q = 1.00$).
 
-### 05c. `precision_warm` (Vintage '62 Split-P - 47nF ToneStyler Motown)
-* **Archetype:** Vintage 1960s Precision Bass with Stellartone ToneStyler 47nF Pure Capacitive Shunt & Heavy Flatwounds (Jamerson / Motown style)
-* **Coil Model:** Alnico V split-coil ($w = 1.00''$)
-* **Control Harness:** Vintage CTS $250\text{k}\Omega$ volume pot, Stellartone ToneStyler rotary switch selecting a precision $47\text{ nF}$ paper-in-oil capacitor shunt to ground ($R_{\text{tone}} = 3.3\,\Omega$ contact/lead ESR, zero series wiper resistance damping).
-* **Electrical Parameters:** $L = 3.80\text{ H}$, $R_{\text{dc}} = 10.50\text{ k}\Omega$, $R_{\text{eddy}} = 180\text{ k}\Omega$, $C_{\text{coil}} = 60\text{ pF}$, $R_{\text{tone}} = 3.3\,\Omega$, $C_{\text{tone}} = 47\text{ nF}$. Loaded resonant peak at **$450\text{ Hz}$** (+1.2 dB), steep rolloff above $800\text{ Hz}$.
-* **Acoustic Character:** Removes fret clatter and transient click above $800\text{ Hz}$ while preserving a punchy resonant low-mid bump at $450\text{ Hz}$. Paired with heavy flatwound string acoustic damping, delivers iconic pillowy Motown thump.
-* **32" Bass Setting:** ABCX Blend **100% Neck (PX/PCSX)**.
+### 05c. `precision_warm` (`34in_standard_p:vintage_warm` — Vintage '62 Split-P Motown Flatwound Warm)
+* **Archetype:** 1962 Fender Precision Bass with Damped $47\text{ nF}$ Tone Roll-Off & Jamerson Heavy Flatwounds (`flatwound_vintage_heavy`)
+* **Electrical Parameters:** $L_{\text{eq}} = 3.80\text{ H}, R_{\text{dc}} = 10.50\text{ k}\Omega, C_{\text{tone}} = 47\text{ nF}, R_{\text{tone}} = 15,000\,\Omega$. Overdamped low-pass roll-off ($f_r = \text{None (overdamped)}$) paired with $1,800\text{ Hz}$ order-$2.0$ flatwound wrap damping.
 
-### 05d. `precision_dub` (Vintage '50s Split-P - 100nF ToneStyler)
-* **Archetype:** Early 1950s Fender Precision with Stellartone ToneStyler (100nF / 0.1µF Pure Capacitive Shunt)
-* **Coil Model:** Alnico V split-coil ($w = 1.00''$)
-* **Control Harness:** Vintage 1962 CTS $250\text{k}\Omega$ volume pot, Stellartone ToneStyler rotary switch selecting a precision $100\text{ nF}$ (0.1µF) paper-in-oil / ceramic disc capacitor shunt to ground ($R_{\text{tone}} = 3.3\,\Omega$).
-* **Electrical Parameters:** $L = 3.80\text{ H}$, $R_{\text{dc}} = 10.50\text{ k}\Omega$, $R_{\text{tone}} = 3.3\,\Omega$, $C_{\text{tone}} = 100\text{ nF}$. Sub-bass shelf, $-3\text{ dB}$ cutoff at **$240\text{ Hz}$**.
-* **Acoustic Character:** Original 1951–1959 Fullerton factory 0.1µF spec: massive low-pass filter concentrating all energy into the sub-bass register, yielding deep Motown / reggae dub thump.
-* **32" Bass Setting:** ABCX Blend **100% Neck (PX/PCSX)**.
+### 05d. `precision_dub` (`34in_standard_p:slab_dub` — Vintage '50s Split-P 100nF Dub)
+* **Archetype:** 1950s Fender Precision Bass with $100\text{ nF}$ Tone Roll-Off & Heavy Flatwounds (`flatwound_vintage_heavy`)
+* **Electrical Parameters:** $L_{\text{eq}} = 3.80\text{ H}, R_{\text{dc}} = 10.50\text{ k}\Omega, C_{\text{tone}} = 100\text{ nF}, R_{\text{tone}} = 18,000\,\Omega$. Overdamped sub-bass roll-off ($f_r = \text{None (overdamped)}$).
 
-*(Note: Slot 06 is currently reserved / unassigned.)*
+### 07. `pj_active` (`34in_standard_pj:pair_active` — Fender American Ultra II Active P/J)
+* **Archetype:** Fender American Ultra II Precision Bass Active P/J (18V 3-Band Preamp)
+* **Pickup Architecture:** Dual Ultra II Noiseless Alnico V pickups blended at center detent (`pan = 0.5`):
+  * **Neck Split-P (`ultra2_split_p`):** $L = 4.00\text{ H}$ ($2\times 2.00\text{ H}$ series), $R_{\text{dc}} = 10.50\text{ k}\Omega$ (E/A @ $139.0\text{ mm}$, D/G @ $111.0\text{ mm}$)
+  * **Bridge Single-J (`ultra2_bridge_j`):** $L = 3.20\text{ H}, R_{\text{dc}} = 8.20\text{ k}\Omega$ (@ $63.5\text{ mm}$)
+* **Control Harness:** Fender American Ultra II active harness: $250\text{k}\Omega$ MN pan pot at `0.5`, global $250\text{k}\Omega$ passive tone pot wide open ($47\text{ nF}$ cap), and `fender_ultra2_3band` 18V 3-band active preamp ($R_{\text{in}} = 1.0\text{ M}\Omega, C_{\text{in}} = 100\text{ pF}, R_{\text{out}} = 100\,\Omega$, flat center detent).
+* **Electrical Parameters:** Parallel $L_{\text{eq}} = 1.78\text{ H}, R_{\text{dc}} = 4.60\text{ k}\Omega$. MNA loaded compound resonant peak at **$3,658.7\text{ Hz}$** ($Q = 0.83$), MNA-weighted acoustic center $x_{\text{tgt}} = 107.1\text{ mm}$.
 
-### 07. `pj_active` (Modern Active P/J Bass)
-* **Archetype:** Sadowsky P/J / Spector NS-2 Active 2-Band P/J
-* **Pickup Architecture:** Dual parallel pickups:
-  * **Precision Neck:** Modern ceramic split-coil Bartolini 8CBP ($L = 4.80\text{ H}$, E/A @ $139\text{ mm}$, D/G @ $111\text{ mm}$)
-  * **Jazz Bridge:** Modern ceramic single-coil Bartolini 9CBJS1 ($L = 3.60\text{ H}$, @ $63.5\text{ mm}$)
-* **Control Harness:** Sadowsky/Spector active 2-band preamp buffer ($R_{\text{in}} = 1.0\text{ M}\Omega$, $C_{\text{in}} = 25\text{ pF}$, low-impedance $R_{\text{out}} = 100\,\Omega$). Active EQ provides $+4.0\text{ dB}$ bass boost ($40\text{ Hz}$ shelf) and $+4.0\text{ dB}$ treble boost ($4.0\text{ kHz}$ shelf).
-* **Electrical Parameters:** Active buffer isolates both pickups from cable capacitance ($750\text{ pF}$). Raw ceramic resonance sits in the high-clarity $7.6\text{ kHz}$ region.
-* **Acoustic Character:** Thunderous modern low-end weight with zero muddiness, balanced against articulate, clanky bridge bite. Cuts through dense modern pop, gospel, and metal mixes.
-* **32" Bass Setting:** ABCX Blend at **Center Detent (50/50)** (MMTWX in Single-Coil Mode - Push/Pull Down).
+### 08. `pj_passive` (`34in_standard_pj:pair_parallel` — Vintage '80s Passive P/J Bass)
+* **Archetype:** 1980s Fender Precision Special / Yamaha BB3000 Passive P/J
+* **Pickup Architecture:** Vintage '62 Alnico V Split-P ($L = 3.80\text{ H}, R_{\text{dc}} = 10.50\text{ k}\Omega$) + Vintage '60s Alnico V Bridge J ($L = 3.80\text{ H}, R_{\text{dc}} = 7.50\text{ k}\Omega$) in parallel ($L_{\text{eq}} = 1.90\text{ H}, R_{\text{dc}} = 4.38\text{ k}\Omega$).
+* **Electrical Parameters:** Dual $250\text{k}\Omega$ volume pots and $250\text{k}\Omega$ tone pot wide open ($47\text{ nF}$ cap, $750\text{ pF}$ cable). MNA loaded compound resonant peak at **$2,661.7\text{ Hz}$** ($Q = 0.90$), MNA-weighted acoustic center $x_{\text{tgt}} = 100.4\text{ mm}$.
 
-### 08. `pj_passive` (Vintage '80s Passive P/J Bass)
-* **Archetype:** 1980s Fender Jazz Bass Special / Yamaha BB3000 Style Passive P/J
-* **Pickup Architecture:** Dual parallel pickups:
-  * **Precision Neck:** Vintage '62 Alnico V split-coil ($L = 3.80\text{ H}, R_{\text{dc}} = 10.50\text{ k}\Omega$, E/A @ $139\text{ mm}$, D/G @ $111\text{ mm}$)
-  * **Jazz Bridge:** Vintage 60s Alnico V single-coil ($L = 3.60\text{ H}, R_{\text{dc}} = 7.80\text{ k}\Omega$, @ $63.5\text{ mm}$)
-* **Control Harness:** Authentic passive dual volume harness ($2\times 250\text{k}\Omega$ pots in parallel = $125\text{k}\Omega$ net load), $250\text{k}\Omega$ tone pot, $47\text{ nF}$ capacitor, no treble bleed.
-* **Electrical Parameters:** Dual parallel SPICE branches; composite $L_{\text{eq}} = 1.85\text{ H}$, $R_{\text{dc}} = 4.48\text{ k}\Omega$, $R_{\text{eddy}} = 74\text{ k}\Omega$, $C_{\text{coil}} = 130\text{ pF}$. Loaded $f_r = 2.8\text{ kHz}$.
-* **Acoustic Character:** Classic '80s rock/punk/funk thump (Duff McKagan / Michael Anthony style). Warm, woody, mid-forward punch with gentle high-end roll-off.
-* **32" Bass Setting:** ABCX Blend at **Center Detent (50/50)** (MMTWX in Single-Coil Mode - Push/Pull Down).
+### 09. `stingray_parallel` (`34in_active_stingray:parallel_classic` — Music Man Active Dual-Coil Parallel)
+* **Archetype:** Music Man StingRay 4-String Active Dual-Coil Humbucker (Parallel)
+* **Electrical Parameters:** Two Alnico V coils ($L = 2.40\text{ H}, R_{\text{dc}} = 4.40\text{ k}\Omega$ each @ $77.1\text{ mm}$ and $54.9\text{ mm}$, centerline $66.0\text{ mm}$) wired in parallel with $k_{\text{mutual}} = 0.12$ ($L_{\text{eq}} = 1.34\text{ H}, R_{\text{dc}} = 2.20\text{ k}\Omega$) into `stingray_2band` ($R_{\text{in}} = 1.0\text{ M}\Omega, C_{\text{in}} = 850\text{ pF}, R_{\text{out}} = 100\,\Omega$, $+1.8\text{ dB}$ @ $80\text{ Hz}$, $+2.2\text{ dB}$ @ $4.0\text{ kHz}$). MNA loaded resonant peak at **$4,032.9\text{ Hz}$** ($Q = 1.18$).
 
-### 09. `stingray_parallel` (Music Man Active Dual-Coil Parallel)
-* **Archetype:** Music Man StingRay 4-String Active Dual-Coil Humbucker
-* **Coil Model:** Dual-coil humbucker ($w = 1.50''$, $d = 0.75''$) wired in parallel
-* **Control Harness:** Authentic Music Man active 2-band op-amp preamp buffer ($R_{\text{in}} = 1.0\text{ M}\Omega$, $C_{\text{in}} = 25\text{ pF}$, low-impedance $R_{\text{out}} = 100\,\Omega$). Active EQ provides $+1.8\text{ dB}$ bass boost ($50\text{ Hz}$ shelf) and $+2.2\text{ dB}$ treble boost ($4\text{--}7\text{ kHz}$ shelf).
-* **Electrical Parameters:** The active buffer isolates the coils from the $750\text{ pF}$ instrument cable. Parallel equivalent $L = 1.20\text{ H}$, $R_{\text{dc}} = 2.20\text{ k}\Omega$, $R_{\text{eddy}} = 75\text{ k}\Omega$, $C_{\text{coil}} = 180\text{ pF}$. Isolated from cable capacitance, peak resonance sits at $8.5\text{ kHz}$.
-* **Acoustic Character:** Dual-coil phase comb cancellation notch at $2.5\text{ kHz}$ combined with authoritative active bass punch and signature metallic treble clank.
-* **32" Bass Setting:** ABCX Blend **100% Bridge** (MMTWX in Dual-Coil Mode - Push/Pull Up).
+### 09b. `stingray_series` (`34in_active_stingray:series_punch` — Music Man Active Dual-Coil Series)
+* **Archetype:** Music Man StingRay 5 / Sterling Series Humbucker
+* **Electrical Parameters:** Two Alnico V coils ($L = 2.40\text{ H}, R_{\text{dc}} = 4.40\text{ k}\Omega$ each) wired in series with $k_{\text{mutual}} = 0.12$ ($L_{\text{eq}} = 5.38\text{ H}, R_{\text{dc}} = 8.80\text{ k}\Omega$) into `stingray_2band`. MNA loaded resonant peak at **$2,185.0\text{ Hz}$** ($Q = 1.47$) with $+6.0\text{ dB}$ series inductive voltage doubling.
 
-### 09b. `stingray_series` (Music Man Active Dual-Coil Series)
-* **Archetype:** Music Man StingRay 5 / Sterling 4-String Series Humbucker (3-Way Switch Position 1)
-* **Coil Model:** Dual-coil humbucker ($w = 1.50''$, $d = 0.75''$) wired in series
-* **Control Harness:** Authentic Music Man active 2-band op-amp preamp buffer ($R_{\text{in}} = 1.0\text{ M}\Omega$, $C_{\text{in}} = 25\text{ pF}$, low-impedance $R_{\text{out}} = 100\,\Omega$). Active EQ provides $+1.8\text{ dB}$ bass boost ($50\text{ Hz}$ shelf) and $+2.2\text{ dB}$ treble shelf ($4\text{--}7\text{ kHz}$).
-* **Electrical Parameters:** Two coils wired in series satisfying physical $4:1$ impedance scaling; combined $L = 4.80\text{ H}$ ($4\times 1.20\text{ H}$), $R_{\text{dc}} = 8.80\text{ k}\Omega$ ($4\times 2.20\text{ k}\Omega$), $R_{\text{eddy}} = 150\text{ k}\Omega$, $C_{\text{coil}} = 210\text{ pF}$. Isolated from cable capacitance, the authentic active series resonance sits at $4.1\text{ kHz}$.
-* **Acoustic Character:** The series coil connection adds $+5.6\text{ dB}$ open-circuit voltage doubling, filling the midrange with commanding $4.1\text{ kHz}$ bark while naturally softening extreme $>7\text{ kHz}$ treble clank. The definitive punchy, cut-through-the-mix voice favored for heavy rock, slap thumb punch, and modern gospel.
-* **32" Bass Setting:** ABCX Blend **100% Bridge** (MMTWX in Dual-Coil Mode - Push/Pull Up).
+### 10. `rickenbacker_clank` (`33in_rickenbacker_4003:bridge_clank` — Rickenbacker 4003 Bridge with 4.7nF HPF)
+* **Archetype:** Rickenbacker 4001/4003 Bridge Pickup with Vintage $4.7\text{ nF}$ Series High-Pass Capacitor
+* **Electrical Parameters:** Ceramic single-coil ($L = 3.80\text{ H}, R_{\text{dc}} = 8.40\text{ k}\Omega$) at $108.0\text{ mm}$ on $33.25''$ scale ($844.55\text{ mm}$), factory $330\text{k}\Omega$ pots, $4.7\text{ nF}$ series capacitor. MNA loaded resonant peak at **$2,282.2\text{ Hz}$** ($Q = 0.64$).
 
-### 10. `rickenbacker_clank` (Rickenbacker 4003 Bridge with 4.7nF HPF)
-* **Archetype:** Rickenbacker 4001/4003 Bridge Pickup with Vintage High-Pass Push-Pull
-* **Coil Model:** High-output single coil located $108.0\text{ mm}$ ($4.25''$) from bridge with $4.7\text{ nF}$ series capacitor
-* **Control Harness:** Factory Rickenbacker $330\text{k}\Omega$ volume pot, $330\text{k}\Omega$ tone pot, $47\text{ nF}$ tone cap, $4.7\text{ nF}$ vintage series capacitor.
-* **Electrical Parameters:** $L = 3.80\text{ H}$, $R_{\text{dc}} = 8.40\text{ k}\Omega$, $C_{\text{series}} = 4.7\text{ nF}$, $C_{\text{coil}} = 90\text{ pF}$. Loaded $f_r = 2.2\text{ kHz}$.
-* **Acoustic Character:** Positioned at $108.0\text{ mm}$ ($4.25''$) from the bridge (the $2.5$-fret harmonic node), capturing punchy low-mids before the vintage $4.7\text{ nF}$ series capacitor rolls off sub-bass below $150\text{ Hz}$. Produces the aggressive, gritty pick clang favored by Chris Squire and Geddy Lee.
-* **32" Bass Setting:** ABCX Blend **100% Bridge** (MMTWX in Single-Coil Mode - Push/Pull Down).
+### 11. `p_mm_parallel` (`34in_active_pmm:pmm_parallel` — Modern Active P/MM Bass, Parallel Bridge)
+* **Archetype:** Lakland 44-02 / Sandberg California VM4 Active P/MM (Parallel Bridge Mode)
+* **Pickup Architecture & Control Harness:** Split-P neck ($2\times 2.40\text{ H} = 4.80\text{ H}, R_{\text{dc}} = 9.50\text{ k}\Omega$ @ $125.0\text{ mm}$) and MM bridge in parallel ($2.88\text{ H} \parallel 2.88\text{ H}, k = 0.12 \implies L_{\text{eq}} = 1.61\text{ H}, R_{\text{dc}} = 2.20\text{ k}\Omega$ @ $66.0\text{ mm}$) feeding a dual-buffered active blend pot (`taper = "mn_blend", buffered = true`) and `lakland_lh3` 3-band preamp ($R_{\text{in}} = 1.0\text{ M}\Omega, C_{\text{in}} = 470\text{ pF}, R_{\text{out}} = 100\,\Omega$).
+* **Electrical Parameters:** Dual FET input buffers prevent coil-to-coil loading (individual pickup peaks at $2,504.1\text{ Hz}$ neck and $4,773.1\text{ Hz}$ bridge; compound MNA peak at **$2,848.0\text{ Hz}$**, $Q = 1.11$, weighted acoustic center $x_{\text{tgt}} = 104.9\text{ mm}$).
 
-### 11. `p_mm_parallel` (Modern Active P/MM Bass)
-* **Archetype:** Lakland 44-02 / Sandberg California VM4 Style Active P/MM (Parallel Bridge Mode)
-* **Pickup Architecture:** Dual pickups with Bridge MM in Parallel:
-  * **Precision Neck:** Split-coil Alnico V ($L = 4.80\text{ H}, R_{\text{dc}} = 9.50\text{ k}\Omega$) @ $125.0\text{ mm}$
-  * **Music Man Bridge:** Dual-coil parallel humbucker ($L = 1.44\text{ H}, R_{\text{dc}} = 2.20\text{ k}\Omega$) @ $66.0\text{ mm}$
-* **Control Harness:** Lakland LH-3 Active 3-Band Preamp ($R_{\text{in}} = 1\text{ M}\Omega, C_{\text{in}} = 470\text{ pF}$, sweet-spot active contour with $+1.5\text{ dB}$ @ $50\text{ Hz}$ bass, $+1.0\text{ dB}$ @ $600\text{ Hz}$ mid, $+2.0\text{ dB}$ @ $7\text{ kHz}$ treble).
-* **Electrical Parameters:** Loaded resonant peak $f_r = 5.5\text{ kHz}$ ($Q = 0.99$).
-* **Acoustic Character:** Woody Split-P low-end body combined with the laser-focused attack, scooped mid-bark, and sparkling slap snap of the Music Man sweet spot. The quintessential modern session active slap and fingerstyle tone.
-* **32" Bass Setting:** ABCX Blend at **Center Detent (50/50)** (MMTWX in Dual-Coil Mode - Push/Pull Up).
+### 11b. `p_mm_series` (`34in_active_pmm:pmm_series` — Modern Active P/MM Bass, Series Bridge)
+* **Archetype:** Lakland 44-02 / Sandberg California VM4 Active P/MM (Series Bridge Mode)
+* **Electrical Parameters:** Split-P neck ($4.80\text{ H}, 9.50\text{ k}\Omega$) and MM bridge in series ($2\times 2.88\text{ H}, k = 0.12 \implies L_{\text{eq}} = 6.45\text{ H}, R_{\text{dc}} = 8.80\text{ k}\Omega$) isolated by the dual-buffered active blend pot into `lakland_lh3`. Compound MNA resonant peak at **$2,461.1\text{ Hz}$** ($Q = 1.09$, weighted acoustic center $x_{\text{tgt}} = 95.4\text{ mm}$).
 
-### 11b. `p_mm_series` (Modern Active P/MM Bass - Series)
-* **Archetype:** Lakland 44-02 / Sandberg California VM4 Style Active P/MM (Series Bridge Mode)
-* **Pickup Architecture:** Dual pickups with Bridge MM in Series:
-  * **Precision Neck:** Split-coil Alnico V ($L = 4.80\text{ H}, R_{\text{dc}} = 9.50\text{ k}\Omega$) @ $125.0\text{ mm}$
-  * **Music Man Bridge:** Dual-coil series humbucker ($L = 5.76\text{ H}, R_{\text{dc}} = 8.80\text{ k}\Omega$) @ $66.0\text{ mm}$
-* **Control Harness:** Lakland LH-3 Active 3-Band Preamp ($R_{\text{in}} = 1\text{ M}\Omega, C_{\text{in}} = 470\text{ pF}$, sweet-spot active contour with $+1.5\text{ dB}$ @ $50\text{ Hz}$ bass, $+1.0\text{ dB}$ @ $600\text{ Hz}$ mid, $+2.0\text{ dB}$ @ $7\text{ kHz}$ treble).
-* **Electrical Parameters:** Loaded resonant peak $f_r = 4.1\text{ kHz}$ ($Q = 1.22$).
-* **Acoustic Character:** Flipping the bridge coil mode switch to series delivers a muscular mid-forward punch with $+2.2\text{ dB}$ in the 2–4 kHz range and a focused top end, providing massive rock authority in dense mixes.
-* **32" Bass Setting:** ABCX Blend at **Center Detent (50/50)** (MMTWX in Dual-Coil Mode - Push/Pull Up).
+### 12. `mudbucker_deep` (`30in_gibson_eb0:neck_deep` — Gibson EB-0 Sidewinder Mudbucker)
+* **Archetype:** 1960s Gibson EB-0 Sidewinder Dual-Coil Series Humbucker ($30.5'' = 774.7\text{ mm}$ Scale)
+* **Electrical Parameters:** Two overwound ceramic coils ($L = 7.20\text{ H}, R_{\text{dc}} = 13.95\text{ k}\Omega$ each) in series with mutual coupling $k_{\text{mutual}} = 0.25$ ($L_{\text{eq}} = 18.0\text{ H}$ coupled / $14.40\text{ H}$ uncoupled, $R_{\text{dc}} = 27.90\text{ k}\Omega$) at $266.8\text{ mm}$ from bridge, $500\text{k}\Omega$ volume/tone pots ($22\text{ nF}$ cap). MNA loaded resonant peak at **$1,053.0\text{ Hz}$** ($Q = 0.98$).
 
-### 12. `mudbucker_deep` (Ultra-High Inductance Overwound Series)
-* **Archetype:** Gibson EB-0 Mudbucker / Overwound Series Dual-Coil
-* **Coil Model:** Extreme dual-coil overwound series network
-* **Physical Placement:** Mounted directly against the 20th-fret neck heel ($266.8\text{ mm}$ from bridge / $165.0\text{ mm}$ forward from the 12th fret datum).
-* **Control Harness:** Gibson-spec $500\text{k}\Omega$ volume pot, $500\text{k}\Omega$ tone pot, $22\text{ nF}$ tone capacitor.
-* **Electrical Parameters:** $L = 14.40\text{ H}$, $R_{\text{dc}} = 27.90\text{ k}\Omega$, $R_{\text{eddy}} = 450\text{ k}\Omega$, $C_{\text{coil}} = 80\text{ pF}$. Loaded $f_r = 1.2\text{ kHz}$.
-* **Acoustic Character:** Resonant peak pulls down to $1.2\text{ kHz}$, naturally rolling off high frequencies with steep second-order attenuation. Deep, subterranean low end with zero high-frequency fizz, ideal for heavy fuzz and saturated drive stages.
-* **32" Bass Setting:** ABCX Blend **100% Neck (PX/PCSX)**.
+### 13. `dingwall_bridge` (`37in_multiscale_dingwall:bridge_clank` — Fanned-Fret Multi-Scale Bridge)
+* **Archetype:** Dingwall Combustion / NG3 $34''\text{--}37''$ Multi-Scale Angled Bridge FD-3n
+* **Electrical Parameters:** Neodymium reverse split-coil humbucker ($2\times 1.15\text{ H} = 2.30\text{ H}$ series, $R_{\text{dc}} = 4.40\text{ k}\Omega$ @ $48.0\text{ mm}$ centerline) into `dingwall_active` Glockenklang 3-band preamp ($R_{\text{in}} = 0.5\text{ M}\Omega, C_{\text{in}} = 100\text{ pF}, R_{\text{out}} = 1.0\text{ k}\Omega$, flat center detent). MNA loaded resonant peak at **$6,616.9\text{ Hz}$** ($Q = 1.40$).
 
-### 13. `dingwall_bridge` (Fanned-Fret Multi-Scale Bridge)
-* **Archetype:** Dingwall NG Multi-Scale Angled Bridge Position
-* **Coil Model:** Neodymium reverse split-P pickup positioned $48.0\text{ mm}$ from bridge (treble strings forward $57.5\text{ mm}$, bass strings rearward $38.5\text{ mm}$)
-* **Control Harness:** Dingwall Combustion/NG active onboard buffer ($1\text{ M}\Omega \parallel 25\text{ pF}$ input, $100\,\Omega$ low-Z output driver isolating coils from cable capacitance).
-* **Electrical Parameters:** $L = 2.30\text{ H}$, $R_{\text{dc}} = 4.40\text{ k}\Omega$, $R_{\text{eddy}} = 150\text{ k}\Omega$, $C_{\text{coil}} = 120\text{ pF}$. Active buffered $f_r = 7.3\text{ kHz}$.
-* **Acoustic Character:** 34"-37" fanned-fret wave-speed scaling with high string tension, angled bridge sweet spot ($48.0\text{ mm}$), active buffered FD3n reverse split-P sparkle ($7.3\text{ kHz}$), and stainless-steel string harmonic extension.
-* **32" Bass Setting:** ABCX Blend **100% Bridge** (MMTWX in Dual-Coil Mode - Push/Pull Up).
-
-### 14. `upright_piezo` (Upright Piezo Bridge Transducer)
-* **Archetype:** Direct Bridge Force Transducer on 3/4 Double Bass (41.25" Scale, Underwood / David Gage Realist style)
-* **Target String Archetype:** 3/4 Double Bass spiral rope-core strings (`double_bass_spirocore`, $265\text{ lbs}$ tension, coupled maple bridge damping)
-* **Sensor Model:** Direct bridge saddle force sensor ($x = 5.0\text{ mm}$) sensing boundary shear force ($F(0, t)$) with zero magnetic comb filtering notches ($\cos(k \cdot 0) = 1$).
-* **Bridge Mechanics ($H_{\text{bridge}}$):** Formulates in-plane maple bridge rocking resonance ($f_{\text{rock}} = 800\text{ Hz}$, $Q = 1.8$, peak gain $+2.5\text{ dB}$) and bridge wood mass inertial roll-off above $3.2\text{ kHz}$ with exact $0.00\text{ dB}$ DC transmission. Boundary shear force tension cancellation ($F(0, t) = F_p(1 - x_p/L)$, $\beta = 0.0$, $\kappa = 0.0$) eliminates displacement compliance cuts and electric tension snap clank. Deliberately omits acoustic body/soundboard modes ($A_0$, $T_1$) to prevent double-body muddiness when paired with downstream IRs.
-* **Dynamic Piezo Strain Compliance:** Soft-knee PZT compressive strain saturation ($V_{\text{sat}} \cdot \tanh(v / V_{\text{sat}})$ with $V_{\text{sat}} = 0.42\text{ V}$, $\alpha_p = 0.15$) and small-signal linear bypass ($\le 0.10$).
-* **Differential String Mechanics:** Automatically evaluates differential damping and tension compliance between source strings and Spirocore spiral rope-core strings. When evaluated on flatwound instruments, prevents double-muffling while taming electric roundwound clank.
-* **Electrical Parameters:** Pure capacitive piezo sensor ($C_{\text{piezo}} = 1.2\text{ nF}$), direct $100\text{ M}\Omega$ buffer, transparent sub-audible $8\text{ Hz}$ DC blocking.
-* **Acoustic Character:** Eliminates magnetic pickup comb filtering; delivers smooth, woody double-bass pizzicato bloom with authentic bridge bite.
-* **Downstream Acoustic Soundboard Radiation (Recommended AST IRs):** Upright Piezo synthesizes the authentic mechanical force directly at the bridge saddle. To radiate this raw transducer signal into realistic 3/4 double bass acoustic body and soundboard resonance, it is **strongly recommended to pair this model with 3 Sigma Audio Upright Bass AST (Acoustic Sound Technology) IRs** in Block 3 (Cab IR loader) or your DAW host. Specifically, select impulses from the **`Acoustic Upright Standard`** folder (identified by the **`AST`** file tag), which 3 Sigma Audio designed specifically for acoustic upright basses with a standard piezo pickup.
-* **Source Instrument Routing:** Multi-pickup instruments route to the **Neck pickup** (e.g. Reverse PX on 32" P/MM, Neck single on Jazz Bass, Split-coil on PJ) for maximum fundamental wave excursion and single-window phase coherence.
+### 14. `upright_piezo` (`41in_upright_bass:bridge_piezo` — Upright Piezo Bridge Transducer)
+* **Archetype:** Direct Bridge Force Transducer on 3/4 Orchestral Double Bass ($41.25'' = 1,047.75\text{ mm}$ Scale)
+* **Target String Archetype:** Thomastik-Infeld Spirocore 3/4 Double Bass spiral rope-core strings (`double_bass_spirocore`, $265\text{ lbs}$ tension, $f_d = 3,200\text{ Hz}$, order $2.0$).
+* **Sensor & Bridge Mechanics:** Direct bridge saddle force sensor (`sensor_type = "bridge_force"`, $x = 5.0\text{ mm}$) with in-plane maple bridge rocking resonance ($f_r = 800.0\text{ Hz}, Q = 1.8$, $+2.5\text{ dB}$ peak), $3,200\text{ Hz}$ wood mass roll-off, $8.0\text{ Hz}$ sub-audible DC block, and PZT compressive strain saturation ($V_{\text{sat}} = 0.42\text{ V}, \alpha_p = 0.15$).
 
 ---
 
 ## Geometry & Scale-Normalized Displacement Mapping (30" EMG MM $\to$ Target Datums)
 
-When running Allomorph from a **30" short-scale bass with a single 18V EMG MM pickup**, the software compensates for spatial aperture, standing-wave bridge proximity, and physical scale differences using **scale-normalized fractional coordinates** ($\eta = x / L$) rather than raw millimeter subtractions (adhering strictly to Architectural Guardrail §1.5):
+When pairing a **30" short-scale bass ($L_{\text{src}} = 30.0'' = 762.0\text{ mm}, x_{\text{src}} = 77.5\text{ mm}, \eta_{\text{src}} = 10.17\%$)** with target voicings, standing-wave bridge proximity is governed by scale-normalized fractional coordinates ($\eta = x / L$):
 
-### Physical Datums:
-* **Source Instrument (30" Short Scale Bass):**
-  * Vibrating Scale Length: $L_{\text{src}} = 30.0'' = 762.0\text{ mm}$
-  * 12th Fret Datum: $381.0\text{ mm}$ from nut
-  * Pickup Center Datum: $303.5\text{ mm}$ from 12th fret toward bridge
-  * **Pickup Center from Bridge Saddle ($x_{\text{src}}$):** $381.0 - 303.5 = \mathbf{77.5\text{ mm}}\ (3.051'')$
-  * **Source Fractional Position ($\eta_{\text{src}}$):** $\eta_{\text{src}} = \frac{77.5\text{ mm}}{762.0\text{ mm}} \approx \mathbf{0.1017}\ (10.17\%)$
-  * Pickup Architecture: Fixed Dual-Coil Humbucker ($w = 1.50''$, $d = 0.75''$)
-
-* **Target Reference Instruments:**
-  * **Standard 34" Scale ($L = 863.6\text{ mm}$):** Standard Fender ($125.0\text{ mm}$ P, $155.6\text{ mm}$ 60s J neck, $63.5\text{ mm}$ 60s J bridge), Music Man ($66.0\text{ mm}$ StingRay), and Rickenbacker ($50.8\text{ mm}$ 4003 bridge).
-  * **37" Multi-Scale ($L = 939.8\text{ mm}$):** Dingwall NG angled bridge sweet spot ($48.0\text{ mm}$).
-  * **41.5" Upright ($L = 1054.1\text{ mm}$):** 3/4 Double Bass acoustic bridge transducer ($5.0\text{ mm}$).
-
-### Scale-Normalized Displacement & Proximity Tilt Formulation:
-$$\eta_{\text{tgt}} = \frac{x_{\text{tgt}}}{L_{\text{tgt}}}, \quad \Delta\eta = \eta_{\text{tgt}} - \eta_{\text{src}}$$
-$$\Delta x_{\text{norm\_in}} = \Delta\eta \times 34.0'', \quad \text{tilt}_{\text{dB}} = \Delta x_{\text{norm\_in}} \times 1.5\text{ dB/in}$$
-
-| Profile ID | Target Location | Target $x$ | Target Scale | Fractional $\eta_{\text{tgt}}$ | Norm Offset $\Delta x_{\text{norm\_in}}$ | Proximity Tilt & Acoustic Compensation |
-| :--- | :--- | :--- | :--- | :---: | :---: | :--- |
-| **`jazz_pair_active`** | 60s J-Pair Center | $109.6\text{ mm}$ | $34.0''$ | $12.69\%$ | $+0.86''$ | $+1.3\text{ dB}$ forward tilt, de-humbuck, active 2-band boost |
-| **`jazz_pair_open`** | 60s J-Pair Center | $109.6\text{ mm}$ | $34.0''$ | $12.69\%$ | $+0.86''$ | $+1.3\text{ dB}$ forward tilt, dual-volume $125\text{k}\Omega$ loading |
-| **`jazz_pair_mids`** | 60s J-Pair Center | $109.6\text{ mm}$ | $34.0''$ | $12.69\%$ | $+0.86''$ | $+1.3\text{ dB}$ forward tilt, 22nF ToneStyler undamped peak |
-| **`jazz_bridge_growl`** | Bridge-Biased J-Pair | $86.5\text{ mm}$ | $34.0''$ | $10.02\%$ | $-0.05''$ | $-0.1\text{ dB}$ neutral tilt, 75% bridge / 25% neck Jaco growl |
-| **`jazz_bridge_open`** | 60s J Bridge Single | $63.5\text{ mm}$ | $34.0''$ | $7.35\%$ | $-0.96''$ | $-1.4\text{ dB}$ bridge bite tilt, narrow single-coil aperture |
-| **`precision_active`** | Split-P Centerline | $125.0\text{ mm}$ | $34.0''$ | $14.47\%$ | $+1.46''$ | $+2.2\text{ dB}$ forward tilt, active 2-band preamp buffer |
-| **`precision_vintage`** | Split-P Centerline | $125.0\text{ mm}$ | $34.0''$ | $14.47\%$ | $+1.46''$ | $+2.2\text{ dB}$ forward tilt, vintage 250k Alnico V bloom |
-| **`precision_mids`** | Split-P Centerline | $125.0\text{ mm}$ | $34.0''$ | $14.47\%$ | $+1.46''$ | $+2.2\text{ dB}$ forward tilt, 22nF ToneStyler 440 Hz punch |
-| **`precision_warm`** | Split-P Centerline | $125.0\text{ mm}$ | $34.0''$ | $14.47\%$ | $+1.46''$ | $+2.2\text{ dB}$ forward tilt, 47nF Motown flatwound thump |
-| **`precision_dub`** | Split-P Centerline | $125.0\text{ mm}$ | $34.0''$ | $14.47\%$ | $+1.46''$ | $+2.2\text{ dB}$ forward tilt, 100nF deep reggae sub-thump |
-| **`pj_active`** | P/J Parallel Center | $94.3\text{ mm}$ | $34.0''$ | $10.91\%$ | $+0.25''$ | $+0.4\text{ dB}$ forward tilt, active 2-band boost, shimmer |
-| **`pj_passive`** | P/J Parallel Center | $94.3\text{ mm}$ | $34.0''$ | $10.91\%$ | $+0.25''$ | $+0.4\text{ dB}$ forward tilt, vintage dual-volume warmth |
-| **`stingray_parallel`** | StingRay Centerline| $66.0\text{ mm}$ | $34.0''$ | $7.64\%$ | $-0.86''$ | $-1.3\text{ dB}$ bridge bite, active 2-band boost, comb notch |
-| **`stingray_series`** | StingRay Centerline| $66.0\text{ mm}$ | $34.0''$ | $7.64\%$ | $-0.86''$ | $-1.3\text{ dB}$ bridge bite, $+4.5\text{ dB}$ series inductive surge |
-| **`rickenbacker_clank`** | 4003 Bridge Coil | $108.0\text{ mm}$ | $33.25''$ | $12.79\%$ | $+0.80''$ | $+1.4\text{ dB}$ low-mid foundation, 4.7nF series HPF clank bite |
-| **`p_mm_parallel`** | P + MM Parallel Center| $95.5\text{ mm}$ | $34.0''$ | $11.06\%$ | $+0.30''$ | $+0.5\text{ dB}$ forward tilt, active buffer cable isolation, slap punch |
-| **`p_mm_series`** | P + MM Series Center| $95.5\text{ mm}$ | $34.0''$ | $11.06\%$ | $+0.30''$ | $+0.5\text{ dB}$ forward tilt, active series surge and buffer clarity |
-| **`mudbucker_deep`** | Neck Heel Sidewinder| $266.8\text{ mm}$ | $30.5''$ | $34.44\%$ | $+7.45''$ | Extreme $14.4\text{ H}$ series foundation, $1.25''$ aperture |
-| **`dingwall_bridge`** | Angled Sweet Spot | $48.0\text{ mm}$ | $37.0''$ | $5.11\%$ | $-1.72''$ | $-2.6\text{ dB}$ bite tilt, multiscale continuum clank |
-
-
-
+| Profile ID | Canonical Voicing | Target $x_{\text{tgt}}$ | Target Scale | Fractional $\eta_{\text{tgt}}$ | MNA Peak $f_r$ ($Q$) |
+| :--- | :--- | :---: | :---: | :---: | :---: |
+| **`jazz_pair_active`** | `34in_standard_jazz:pair_active` | $111.3\text{ mm}$ | $34.0''$ | $12.89\%$ | $5,441.0\text{ Hz}$ ($1.06$) |
+| **`jazz_pair_open`** | `34in_standard_jazz:pair_open` | $111.3\text{ mm}$ | $34.0''$ | $12.89\%$ | $2,817.2\text{ Hz}$ ($0.92$) |
+| **`jazz_pair_mids`** | `34in_standard_jazz:pair_mids` | $111.3\text{ mm}$ | $34.0''$ | $12.89\%$ | $727.9\text{ Hz}$ ($1.12$) |
+| **`jazz_bridge_growl`** | `34in_standard_jazz:bridge_growl` | $93.2\text{ mm}$ | $34.0''$ | $10.79\%$ | $2,620.3\text{ Hz}$ ($0.88$) |
+| **`jazz_bridge_open`** | `34in_standard_jazz:bridge_open` | $63.5\text{ mm}$ | $34.0''$ | $7.35\%$ | Overdamped |
+| **`precision_active`** | `34in_standard_pj:neck_active` | $125.0\text{ mm}$ | $34.0''$ | $14.47\%$ | $3,985.1\text{ Hz}$ ($0.93$) |
+| **`precision_vintage`** | `34in_standard_p:vintage_open` | $125.0\text{ mm}$ | $34.0''$ | $14.47\%$ | $2,061.7\text{ Hz}$ ($0.95$) |
+| **`precision_mids`** | `34in_standard_p:vintage_mids` | $125.0\text{ mm}$ | $34.0''$ | $14.47\%$ | $418.1\text{ Hz}$ ($1.00$) |
+| **`precision_warm`** | `34in_standard_p:vintage_warm` | $125.0\text{ mm}$ | $34.0''$ | $14.47\%$ | Overdamped |
+| **`precision_dub`** | `34in_standard_p:slab_dub` | $125.0\text{ mm}$ | $34.0''$ | $14.47\%$ | Overdamped |
+| **`pj_active`** | `34in_standard_pj:pair_active` | $107.1\text{ mm}$ | $34.0''$ | $12.40\%$ | $3,658.7\text{ Hz}$ ($0.83$) |
+| **`pj_passive`** | `34in_standard_pj:pair_parallel` | $100.4\text{ mm}$ | $34.0''$ | $11.63\%$ | $2,661.7\text{ Hz}$ ($0.90$) |
+| **`stingray_parallel`** | `34in_active_stingray:parallel_classic` | $66.0\text{ mm}$ | $34.0''$ | $7.64\%$ | $4,032.9\text{ Hz}$ ($1.18$) |
+| **`stingray_series`** | `34in_active_stingray:series_punch` | $66.0\text{ mm}$ | $34.0''$ | $7.64\%$ | $2,185.0\text{ Hz}$ ($1.47$) |
+| **`rickenbacker_clank`** | `33in_rickenbacker_4003:bridge_clank` | $108.0\text{ mm}$ | $33.25''$ | $12.79\%$ | $2,282.2\text{ Hz}$ ($0.64$) |
+| **`p_mm_parallel`** | `34in_active_pmm:pmm_parallel` | $104.9\text{ mm}$ | $34.0''$ | $12.15\%$ | $2,848.0\text{ Hz}$ ($1.11$) |
+| **`p_mm_series`** | `34in_active_pmm:pmm_series` | $95.4\text{ mm}$ | $34.0''$ | $11.05\%$ | $2,461.1\text{ Hz}$ ($1.09$) |
+| **`mudbucker_deep`** | `30in_gibson_eb0:neck_deep` | $266.8\text{ mm}$ | $30.5''$ | $34.44\%$ | $1,053.0\text{ Hz}$ ($0.98$) |
+| **`dingwall_bridge`** | `37in_multiscale_dingwall:bridge_clank` | $48.0\text{ mm}$ | $37.0''$ | $5.11\%$ | $6,616.9\text{ Hz}$ ($1.40$) |
+| **`upright_piezo`** | `41in_upright_bass:bridge_piezo` | $5.0\text{ mm}$ | $41.25''$ | $0.48\%$ | $800.0\text{ Hz}$ ($1.80$) |

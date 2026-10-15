@@ -385,10 +385,13 @@ def apply_sweep_parameter_override(
 
     elif p in ("tone_cap", "ctone", "cap", "tone_capacitance", "tone_cap_nf"):
         c_val = v * 1e-9 if v > 1e-6 else v
+        matched_tone_ctrl = False
         for cid, ctrl in harness.controls.items():
             if "tone" in cid.lower() or ctrl.cap is not None:
                 v_iter.components[f"controls.{cid}.cap"] = c_val
-        v_iter.components["tone_cap"] = c_val
+                matched_tone_ctrl = True
+        if not matched_tone_ctrl:
+            v_iter.components["tone_cap"] = c_val
 
     elif p in ("bass_boost", "preamp_bass", "bass"):
         h_iter.type = "active_preamp"

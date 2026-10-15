@@ -89,4 +89,3 @@ tone_name = "Mudbucker Dub"
 harness = "passive"
 controls = { vol = 1.0, tone = 0.0 }
 components = { "controls.tone.cap" = 4.7e-8 }
-string_preset_override = "flatwound_vintage_heavy"

@@ -38,17 +38,6 @@ def test_get_t3k_basename_multi_pickup():
     assert name == "Jazz Growl [Bridge] v2.1.1"
 
 
-def test_get_t3k_basename_preserve_aperture():
-    """Verify character tone with preserve_aperture=True omits position bracket."""
-    name = get_t3k_basename(
-        tone_name="Acoustic Upright",
-        position_name="Bridge",
-        version_tag="v2.1.1",
-        preserve_aperture=True,
-    )
-    assert name == "Acoustic Upright v2.1.1"
-
-
 def test_get_t3k_basename_slash_sanitization():
     """Verify slashes and backslashes are replaced with Unicode Division Slash."""
     name = get_t3k_basename(tone_name="P/MM Parallel", position_name=r"Bridge\Solo")

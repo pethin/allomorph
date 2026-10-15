@@ -16,20 +16,20 @@ def test_voice_parameter_validity():
     for vid, cfg in VOICES.items():
         assert isinstance(cfg, VoiceConfig), f"{vid} is not a VoiceConfig instance"
         assert cfg.name and cfg.description
-        if cfg.sensor_type == "direct":
-            assert cfg.fr is None
-            assert cfg.Q is None
-        elif cfg.fr is not None:
+        if cfg.fr is not None:
             assert cfg.fr > 0
             is_active = (
                 bool(
                     cfg.instrument_id
-                    and ("active" in cfg.instrument_id or "dingwall" in cfg.instrument_id)
+                    and (
+                        "active" in cfg.instrument_id
+                        or "dingwall" in cfg.instrument_id
+                        or "preamp" in cfg.instrument_id
+                    )
                 )
-                or cfg.sensor_type == "direct"
                 or "active" in vid
             )
-            max_fr = 20000.0 if (cfg.preserve_aperture or is_active) else 6000.0
+            max_fr = 20000.0 if is_active else 6000.0
             assert 200.0 <= cfg.fr <= max_fr, f"{vid} fr outside audible musical range: {cfg.fr}"
             assert cfg.Q is not None and cfg.Q > 0
         assert len(cfg.coils) >= 1
@@ -109,3 +109,99 @@ def test_voice_aliases_resolution():
     assert VOICES["j_active"].id == "jazz_pair_active"
     assert "pj_pair_active" in VOICES
     assert VOICES["pj_pair_active"].id == "pj_active"
+
+
+def test_phase2_determine_pickup_resonance_ignores_dc_shelf():
+    """Finding 2.3: determine_pickup_resonance_and_q must ignore sub-100 Hz bass shelf peaks."""
+    from allomorph.config.resolvers import determine_pickup_resonance_and_q
+
+    # Precision Active and PJ Active must resolve valid 3.5-4.5 kHz resonant peaks
+    p_act = VOICES["precision_active"]
+    assert p_act.fr is not None and 3500.0 <= p_act.fr <= 4500.0
+    assert p_act.Q is not None and 0.7 <= p_act.Q <= 1.5
+
+    pj_act = VOICES["pj_active"]
+    assert pj_act.fr is not None and 3200.0 <= pj_act.fr <= 4200.0
+    assert pj_act.Q is not None and 0.7 <= pj_act.Q <= 1.5
+
+    # Synthetic curve with +6 dB sub-100 Hz DC shelf and a resonant peak at 3000 Hz
+    f_arr = np.asarray(FREQS, dtype=float)
+    dc_shelf = 1.0 + 1.0 / (1.0 + (f_arr / 25.0) ** 4)
+    rlc_peak = 1.0 / np.sqrt((1.0 - (f_arr / 3000.0) ** 2) ** 2 + (f_arr / (1.5 * 3000.0)) ** 2)
+    synthetic = dc_shelf * rlc_peak
+    fr_det, q_det = determine_pickup_resonance_and_q(synthetic, f_arr)
+    assert fr_det is not None and 2600.0 <= fr_det <= 3100.0
+    assert q_det is not None and 1.0 <= q_det <= 1.8
+
+
+def test_phase2_voicing_to_voice_config_mna_weights_and_bridge_force():
+    """Finding 2.4: voicing_to_voice_config computes MNA 100 Hz weights and sets bridge_force fr/Q."""
+    from allomorph.config.geometry import compute_effective_position
+
+    # Jazz Bridge Growl (neck_vol=0.99, bridge_vol=1.0) weights bridge > neck
+    j_growl = VOICES["jazz_bridge_growl"]
+    assert j_growl.pickups is not None and len(j_growl.pickups) == 2
+    w_neck = j_growl.pickups[0].weight
+    w_bridge = j_growl.pickups[1].weight
+    assert w_bridge > 2.0 * w_neck
+    eff_pos = compute_effective_position(j_growl.coils)
+    assert 0.088 <= eff_pos <= 0.098  # ~93.2 mm (closer to 63.5mm bridge than 111.3mm center)
+
+    # Upright Piezo (sensor_type == 'bridge_force') sets maple bridge rocking resonance (800 Hz, Q=1.8)
+    upright = VOICES["upright_piezo"]
+    assert upright.sensor_type == "bridge_force"
+    assert upright.fr == 800.0
+    assert upright.Q == 1.8
+
+
+def test_phase2_exact_scales_mapping_for_all_instruments():
+    """Finding 2.5: Every instrument maps to its exact physical scale in SCALES."""
+    from allomorph.config.instruments import load_all_instruments
+    from allomorph.config.scales import SCALES
+    from allomorph.config.voices import voicing_to_voice_config
+
+    expected_scales = {
+        "30in_gibson_eb0": "30.5in",
+        "33in_rickenbacker_4003": "33.25in",
+        "34in_active_emg": "34in_5string",
+        "34in_preamp_soapbar": "34in_5string",
+        "34in_dingwall_sp1": "multiscale_super",
+        "37in_multiscale_dingwall": "multiscale",
+        "41in_upright_bass": "upright",
+    }
+    all_insts = load_all_instruments()
+    for inst_id, expected_scale in expected_scales.items():
+        inst = all_insts[inst_id]
+        v0 = next(iter(inst.voicings.values()))
+        vcfg = voicing_to_voice_config(inst, v0)
+        assert vcfg.scale == expected_scale
+        sc = SCALES[vcfg.scale]
+        assert sc.scale_length_in is not None and inst.scale_length_in is not None
+        assert np.isclose(sc.scale_length_in, inst.scale_length_in)
+        assert len(sc.string_wave_speeds) == len(inst.string_wave_speeds)
+
+
+def test_phase2_coil_split_weight_renormalization():
+    """Finding 2.9: Coil-splitting a dual-coil pickup re-normalizes active coil weight to 1.0."""
+    from allomorph.config.voices import voicing_to_voice_config
+
+    for inst_id, v_id in [
+        ("30in_emg_mmtw", "single_mode"),
+        ("32in_custom_pmm", "mm_single"),
+        ("32in_fretless_pmm", "jaco_growl"),
+        ("34in_active_pmm", "mm_single_solo"),
+    ]:
+        inst = load_instrument(inst_id)
+        vcfg = voicing_to_voice_config(inst, inst.voicings[v_id])
+        assert len(vcfg.coils) == 1
+        assert np.isclose(vcfg.coils[0].weight, 1.0)
+
+
+def test_phase2_source_catalog_voicings_ssot():
+    """Finding 2.7: SOURCE_CATALOG_VOICINGS is loaded directly from config/visualizer.toml."""
+    from allomorph.config.instruments import SOURCE_CATALOG_VOICINGS
+    from allomorph.visualizer.schema import load_visualizer_config
+
+    viz_cfg = load_visualizer_config()
+    expected = [tuple(s.split(":", 1)) for s in viz_cfg.additional_source_voicings]
+    assert expected == SOURCE_CATALOG_VOICINGS

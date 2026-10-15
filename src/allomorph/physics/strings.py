@@ -66,13 +66,11 @@ def compute_forward_string_transfer(
 ) -> np.ndarray:
     """Computes absolute forward viscoelastic string wrap damping transfer function H_wrap(f).
 
-    Direct DI sensors define flat unity transfer (H_wrap = 1.0).
     Longitudinal core compression clank is an instantaneous mechanical attack transient,
     not a static linear frequency-domain filter, preserving pure aperture comb filtering.
     """
+    _ = scale_length_inches, sensor_type
     f = np.asarray(freqs, dtype=np.float64)
-    if sensor_type == "direct":
-        return np.ones_like(f)
 
     # Forward Wrap Damping
     f_damp = float(string_cfg.damping_cutoff_hz)

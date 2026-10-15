@@ -84,7 +84,7 @@ connect = [
     ["pickups.mmtwx.bridge.cold", "GND"],
 ]
 k_mutual = 0.20
-components = { "pickups.mmtwx.neck.Ccoil" = 4.86e-9, "pickups.mmtwx.bridge.Ccoil" = 4.86e-9 }
+components = { "pickups.mmtwx.neck.Ccoil" = 4.97e-9, "pickups.mmtwx.bridge.Ccoil" = 4.97e-9 }
 
 [harnesses.active.switches.coil_mode.positions.single]
 connect = [
@@ -93,7 +93,7 @@ connect = [
     ["pickups.mmtwx.neck.cold", "GND"],
 ]
 k_mutual = 0.0
-components = { "pickups.mmtwx.bridge.Ccoil" = 2.68e-9 }
+components = { "pickups.mmtwx.bridge.Ccoil" = 2.56e-9 }
 
 # ------------------------------------------------------------------------------
 # 3. NATIVE INSTRUMENT VOICINGS

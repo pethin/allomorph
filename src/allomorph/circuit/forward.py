@@ -21,6 +21,7 @@ from allomorph.circuit.solver import solve_mna_harness
 from allomorph.config.geometry import compute_effective_position, resolve_pickup_coils
 from allomorph.config.scales import REPO_ROOT, resolve_scale_range
 from allomorph.config.schema import (
+    CoilConfig,
     InstrumentConfig,
     PickupConfig,
     PreampConfig,
@@ -29,6 +30,7 @@ from allomorph.config.schema import (
 )
 from allomorph.config.strings import get_instrument_string
 from allomorph.config.voices import (
+    resolve_voicing_active_coils,
     resolve_voicing_active_pickups,
 )
 from allomorph.dsp import (
@@ -82,6 +84,32 @@ __all__ = [
 ]
 
 
+def _resolve_active_pickup_coils(
+    p_id: str,
+    p_cfg: PickupConfig,
+    inst: InstrumentConfig,
+    voicing_cfg: VoicingConfig,
+) -> list[CoilConfig]:
+    """Resolves active coils for a pickup in a specific voicing, re-normalizing weights when coil-split."""
+    all_coils = resolve_pickup_coils(p_cfg, inst)
+    active_c_ids = resolve_voicing_active_coils(inst, voicing_cfg, p_id)
+    raw_coils = all_coils
+    if active_c_ids:
+        filtered = [c for c in all_coils if c.id in active_c_ids or not c.id]
+        if filtered:
+            raw_coils = filtered
+    if len(raw_coils) < len(all_coils) and all(
+        not c.strings or c.strings == ["all"] for c in raw_coils
+    ):
+        w_sum = sum(float(c.weight) for c in raw_coils)
+        if w_sum > 0.0:
+            scale_w = 1.0 / w_sum
+            raw_coils = [
+                c.model_copy(update={"weight": float(c.weight) * scale_w}) for c in raw_coils
+            ]
+    return raw_coils
+
+
 def simulate_pickup_transducer_branch(
     input_mono: np.ndarray,
     fir_ac: np.ndarray | Sequence[float],
@@ -102,11 +130,8 @@ def simulate_pickup_transducer_branch(
     v_ac = fft_convolve(input_mono, np.asarray(fir_ac, dtype=np.float64), mode="causal")[:n_samples]
 
     sensor_type = voicing.sensor_type
-    has_direct_dynamics = sensor_type == "direct" and (
-        pickup is not None and pickup.vsat is not None
-    )
 
-    if apply_saturation and (sensor_type == "magnetic" or has_direct_dynamics):
+    if apply_saturation and sensor_type == "magnetic":
         sp_mag = (
             pickup.magnet_type if (pickup is not None and pickup.magnet_type) else default_magnet
         )
@@ -400,49 +425,32 @@ def simulate_voicing_dsp(
 
     # Viscoelastic String Wrap Damping H_wrap(f)
     inst_string = get_instrument_string(inst, strings=strings)
-    target_string = (
-        strings[voicing_cfg.string_preset_override]
-        if (
-            voicing_cfg.string_preset_override
-            and strings
-            and voicing_cfg.string_preset_override in strings
-        )
-        else inst_string
-    )
-    if voicing_cfg.sensor_type == "direct":
-        h_wrap = np.ones_like(f, dtype=np.float64)
+    if voicing_cfg.string_preset_override:
+        if voicing_cfg.string_preset_override not in strings:
+            raise KeyError(
+                f"Voicing '{voicing_cfg.id}' on instrument '{inst.id}' references unknown "
+                f"string_preset_override '{voicing_cfg.string_preset_override}'. "
+                f"Available presets: {list(strings.keys())}"
+            )
+        if voicing_cfg.string_preset_override == inst.strings.preset:
+            target_string: StringPresetConfig = inst_string
+        else:
+            target_string = strings[voicing_cfg.string_preset_override]
     else:
-        h_wrap = compute_forward_string_transfer(
-            f,
-            target_string,
-            scale_length_inches=scale_in,
-            sensor_type=voicing_cfg.sensor_type,
-        )
+        target_string = inst_string
+
+    h_wrap = compute_forward_string_transfer(
+        f,
+        target_string,
+        scale_length_inches=scale_in,
+        sensor_type=voicing_cfg.sensor_type,
+    )
 
     H_downstream = np.maximum(h_preamp * h_wrap, 1e-6)
     fused_downstream = False
     default_magnet = "active" if getattr(inst, "electronics", "") == "active" else "alnico_v"
 
-    if voicing_cfg.sensor_type == "direct":
-        fir_ac = np.zeros(num_taps, dtype=np.float64)
-        fir_ac[0] = 1.0
-        h_elec = np.asarray(curves[0], dtype=np.float64) if curves is not None else np.ones_like(f)
-        h_base = h_elec
-        h_elec_total = h_elec * H_downstream
-        fir_elec = synthesize_minimum_phase_fir(h_elec_total, num_taps=num_taps, normalize=False)
-        fused_downstream = True
-        composite_audio = simulate_pickup_transducer_branch(
-            input_mono=input_mono,
-            fir_ac=fir_ac,
-            fir_circ=fir_elec,
-            pickup=pickup_cfg,
-            voicing=voicing_cfg,
-            apply_saturation=apply_saturation,
-            sample_rate=sample_rate,
-            default_magnet=default_magnet,
-        )
-
-    elif voicing_cfg.sensor_type == "bridge_force":
+    if voicing_cfg.sensor_type == "bridge_force":
         f_rock = 800.0
         q_rock = 1.8
         g_rock = 10.0 ** (2.5 / 20.0)
@@ -475,45 +483,26 @@ def simulate_voicing_dsp(
 
     else:
         # Magnetic sensor: determine single pickup vs multi-pickup composite
-        p_components = getattr(pickup_cfg, "components", None) or []
-        is_composite = (
-            len(active_pickups) >= 2
-            or pickup_cfg.type == "composite"
-            or bool(p_components)
-            or (curves is not None and len(curves) > 1)
-        )
+        is_composite = len(active_pickups) >= 2 or (curves is not None and len(curves) > 1)
 
         single_positions = [
             float(p.position_from_bridge_m)
             for p in inst.pickups.values()
-            if not getattr(p, "components", None) and p.position_from_bridge_m is not None
+            if p.position_from_bridge_m is not None
         ]
         ref_pos = max(single_positions) if len(single_positions) > 1 else None
 
-        if is_composite and (p_components or len(active_pickups) >= 2):
+        if is_composite and len(active_pickups) >= 2:
             N = max(16384, num_taps * 4)
             f_bins = np.fft.rfftfreq(N, 1.0 / 48000.0)
             c_mean = 2.0 * scale_m * MEAN_BASS_F0
 
-            branch_sub_pickups = []
-            if p_components:
-                for comp in p_components:
-                    if comp.pickup and comp.pickup in inst.pickups:
-                        branch_sub_pickups.append(
-                            (
-                                inst.pickups[comp.pickup],
-                                float(comp.weight),
-                                float(comp.polarity),
-                            )
-                        )
-            else:
-                for p_id in active_pickups:
-                    branch_sub_pickups.append((inst.pickups[p_id], 1.0, 1.0))
+            branch_sub_pickups = [(p_id, inst.pickups[p_id], 1.0, 1.0) for p_id in active_pickups]
 
             branch_coils_list = []
             branch_positions = []
-            for sp, w_comp, pol_comp in branch_sub_pickups:
-                b_coils = resolve_pickup_coils(sp, inst)
+            for p_id, sp, w_comp, pol_comp in branch_sub_pickups:
+                b_coils = _resolve_active_pickup_coils(p_id, sp, inst, voicing_cfg)
                 branch_coils_list.append((b_coils, w_comp, pol_comp))
                 branch_positions.append(compute_effective_position(b_coils))
 
@@ -566,7 +555,7 @@ def simulate_voicing_dsp(
                 H_channels_delayed.append(H_ac_del_fft * H_circ_fft)
                 peaks.append(delay_samples)
 
-                sp = branch_sub_pickups[i][0]
+                sp = branch_sub_pickups[i][1]
                 b_audio = simulate_pickup_transducer_branch(
                     input_mono=input_mono,
                     fir_ac=fir_ac,
@@ -594,7 +583,7 @@ def simulate_voicing_dsp(
 
         else:
             # Single pickup or unified coil aperture
-            coils = resolve_pickup_coils(pickup_cfg, inst)
+            coils = _resolve_active_pickup_coils(pickup_key, pickup_cfg, inst, voicing_cfg)
             eff_pos = compute_effective_position(coils)
             h_ac_raw = numpy_pickup_acoustic_response(f, coils, scale_length_m=scale_range)
             h_ac = np.asarray(h_ac_raw, dtype=np.float64)

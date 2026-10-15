@@ -240,9 +240,7 @@ def test_tone3000_t3k_pack_basename_alignment():
                 else:
                     vcfg = tgt_ref.voicing
                     tone = vcfg.tone_name or vcfg.name
-                    valid_basenames.add(
-                        get_t3k_basename(tone, pos, preserve_aperture=vcfg.preserve_aperture)
-                    )
+                    valid_basenames.add(get_t3k_basename(tone, pos))
 
         for idx, vline in enumerate(voicing_lines, 1):
             expected_prefix = f"{idx:02d}. "

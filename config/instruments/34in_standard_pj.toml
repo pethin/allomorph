@@ -48,9 +48,9 @@ type = "split_coil"
 magnet_type = "alnico_v"
 coils = [
     # Strings 3 & 4 see forward coil half (warmer, deeper fundamental)
-    { id = "forward", strings = [3, 4], position_from_bridge_m = 0.1390, aperture_width_in = 0.45, pole_type = "rod", L = 1.9, Rdc = 5250.0, Reddy = 90000.0, Ccoil = 3e-11, weight = 1.0 },
+    { id = "forward", strings = [3, 4], position_from_bridge_m = 0.1390, aperture_width_in = 0.45, pole_type = "rod", L = 1.9, Rdc = 5250.0, Reddy = 90000.0, Ccoil = 1.2e-10, weight = 1.0 },
     # Strings 1 & 2 see rearward coil half (tighter, punchier mid bite)
-    { id = "rearward", strings = [1, 2], position_from_bridge_m = 0.1110, aperture_width_in = 0.45, pole_type = "rod", L = 1.9, Rdc = 5250.0, Reddy = 90000.0, Ccoil = 3e-11, weight = 1.0 },
+    { id = "rearward", strings = [1, 2], position_from_bridge_m = 0.1110, aperture_width_in = 0.45, pole_type = "rod", L = 1.9, Rdc = 5250.0, Reddy = 90000.0, Ccoil = 1.2e-10, weight = 1.0 },
 ]
 
 [pickups.bridge_j]
@@ -75,9 +75,9 @@ type = "split_coil"
 magnet_type = "alnico_v"
 coils = [
     # Strings 3 & 4 see forward coil half (warmer, deeper fundamental)
-    { id = "forward", strings = [3, 4], position_from_bridge_m = 0.1390, aperture_width_in = 0.45, pole_type = "rod", L = 2.4, Rdc = 6000.0, Reddy = 95000.0, Ccoil = 3.5e-11, weight = 1.0 },
+    { id = "forward", strings = [3, 4], position_from_bridge_m = 0.1390, aperture_width_in = 0.45, pole_type = "rod", L = 2.1, Rdc = 5600.0, Reddy = 220000.0, Ccoil = 2.2e-10, weight = 1.0 },
     # Strings 1 & 2 see rearward coil half (tighter, punchier mid bite)
-    { id = "rearward", strings = [1, 2], position_from_bridge_m = 0.1110, aperture_width_in = 0.45, pole_type = "rod", L = 2.4, Rdc = 6000.0, Reddy = 95000.0, Ccoil = 3.5e-11, weight = 1.0 },
+    { id = "rearward", strings = [1, 2], position_from_bridge_m = 0.1110, aperture_width_in = 0.45, pole_type = "rod", L = 2.1, Rdc = 5600.0, Reddy = 220000.0, Ccoil = 2.2e-10, weight = 1.0 },
 ]
 
 [pickups.ultra2_bridge_j]
@@ -180,7 +180,7 @@ wiring = [
 name = "Pickup Blend"
 type = "pot"
 taper = "mn_blend"
-resistance = 250000.0
+resistance = 500000.0
 default = 0.5
 
 [harnesses.active.controls.vol]
@@ -194,7 +194,7 @@ default = 1.0
 name = "Passive Tone"
 type = "pot"
 taper = "audio_15"
-resistance = 250000.0
+resistance = 500000.0
 cap = 4.7e-8
 default = 1.0
 

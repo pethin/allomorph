@@ -91,16 +91,7 @@ def build_voice_dataframe(
         if cache_key is not None:
             _VOICING_CURVE_CACHE[cache_key] = mag_db
 
-    sensor_type = "magnetic"
-    if (
-        voicing.harness in instrument.harnesses
-        and instrument.harnesses[voicing.harness].type == "direct"
-    ):
-        sensor_type = "direct"
-    elif any(
-        "piezo" in (p.type.lower() + (p.id or "").lower()) for p in instrument.pickups.values()
-    ):
-        sensor_type = "bridge_force"
+    sensor_type = voicing.sensor_type
 
     voice_id = voicing.id or "default_voicing"
     vname = voicing.name or voice_id
@@ -268,7 +259,6 @@ def build_voicings_comparison_data(
         "PJ",
         "Mudbucker",
         "Upright",
-        "Studio",
     ]
     sorted_families = [f for f in family_order if f in families_set] + sorted(
         families_set - set(family_order)
@@ -371,7 +361,9 @@ def build_voicings_comparison_dataframe(
             "line_type": line_type_col,
             "voice_id": vid_col,
             "voice_name": vname_col,
-            "sensor_type": ["magnetic"] * (n_pts * 3),
+            "sensor_type": [source_voicing.sensor_type] * n_pts
+            + [target_voicing.sensor_type] * n_pts
+            + [target_voicing.sensor_type] * n_pts,
             "description": [src_name] * n_pts
             + [tgt_name] * n_pts
             + [f"{tgt_name} - {src_name}"] * n_pts,
