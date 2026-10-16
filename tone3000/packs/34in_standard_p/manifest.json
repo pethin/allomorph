@@ -5,20 +5,50 @@
   "version": "v7.1.1",
   "allomorph_version": "0.5.0",
   "dsp_generation": 7,
-  "recipe_token": "alo_pck_d040b86eec882303249678f44e99075d717037f3fdc946057371229f70d1d218",
+  "recipe_token": "alo_pck_e5be566e90c5bdc76d98651a0be876cceee050796f9afbb7a2a09e4aef232a96",
   "bundles": {
     "split": {
-      "recipe_token": "alo_bun_943afc598ab2bab0b86fecdd51a2c5d1283f5998f8584dcffce0b3e867f2887c",
+      "recipe_token": "alo_bun_41dc7cf15c10f4c4958638a3a014733a5fc3ce107ab05e985be5da313d76408d",
       "source": "34in_standard_p:vintage_open",
       "position_name": "Split",
       "base_dry_file": "input.wav",
       "base_dry_token": "alo_dry_891a0d5650ab0e9d897d36e584180a6a2dd4c0652a252ebe5ad6cf589d62dd37",
       "dry_file": "dry v7.1.1.wav",
       "dry_version": "v7.1.1",
-      "dry_recipe_token": "alo_rec_ed7d5adb63876f3d591ef5d27fe8669a63a1636442c63ca4f63e72da1974440f",
+      "dry_recipe_token": "alo_rec_bc7f0778d15130bcf6714f3bcd7b1b63ab7aa5fcf0498ecdd5fa895766b311df",
       "dry_digest_token": "alo_stem_79f5bfc2b1f7f729438b6c4cf5477c81abc5cd9982d3e7824d05620226390062",
       "source_voicing_version": 1,
       "stem_count": 25
+    }
+  },
+  "models": {
+    "Jazz Pair Active v7.1.1.nam": {
+      "filename": "Jazz Pair Active v7.1.1.nam",
+      "bundle": "split",
+      "target": "34in_standard_jazz:pair_active",
+      "target_instrument_version": 1,
+      "target_voicing_version": 1,
+      "version": "v7.1.1",
+      "tone_name": "Jazz Pair Active",
+      "sha256": "d3c997bb0d3adf99b5c758fa27fe0e0bff205f17af121c0916bef8b34a8aac84",
+      "dry_file": "dry v7.1.1.wav",
+      "dry_recipe_token": "alo_rec_bc7f0778d15130bcf6714f3bcd7b1b63ab7aa5fcf0498ecdd5fa895766b311df",
+      "dry_digest_token": "alo_stem_79f5bfc2b1f7f729438b6c4cf5477c81abc5cd9982d3e7824d05620226390062",
+      "wet_file": "Jazz Pair Active v7.1.1.wav",
+      "wet_recipe_token": "alo_rec_083bf32c9fdf08d183678d87a3666a8611145f5f88bced9b134a8ca66086ea4a",
+      "wet_digest_token": "alo_stem_c295c2bd3bdfeac233dd3a1a4e6d5775a68227282aede88ea6572462e135b504",
+      "validation_esr": 0.00011623545287875459,
+      "validation_esr_a2_full": 0.00011623545287875459,
+      "validation_esr_a2_lite": 0.00023276061983779073,
+      "validation_esr_ch8": 0.00011623545287875459,
+      "validation_esr_ch3": 0.00023276061983779073,
+      "epochs_trained": 106,
+      "stop_reason": "diminishing_returns_plateau",
+      "batch_size": 16,
+      "precision": "bf16-mixed",
+      "device_name": "AMD Radeon RX 9070 XT",
+      "engine": "native",
+      "training_time_seconds": 576.21
     }
   }
 }

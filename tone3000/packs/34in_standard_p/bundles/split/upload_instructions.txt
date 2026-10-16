@@ -12,9 +12,8 @@ STEP-BY-STEP UPLOAD INSTRUCTIONS (Tone3000 Studio Trainer):
 3. DRAG WET STEMS: Select and drag the following 25 .wav files into the 'Wet Stems' slot:
    • Jazz Pair Active v7.1.1.wav
    • Jazz Pair Open v7.1.1.wav
+   • Jazz Pair Series v7.1.1.wav
    • Jazz Bridge Growl v7.1.1.wav
-   • Jazz Bridge Open v7.1.1.wav
-   • Jazz Bridge 70s v7.1.1.wav
    • Jazz Neck Warm v7.1.1.wav
    • StingRay Parallel v7.1.1.wav
    • StingRay Series v7.1.1.wav
@@ -26,15 +25,16 @@ STEP-BY-STEP UPLOAD INSTRUCTIONS (Tone3000 Studio Trainer):
    • Rickenbacker Vintage v7.1.1.wav
    • Rickenbacker Neck v7.1.1.wav
    • Dingwall Bridge v7.1.1.wav
-   • Dingwall Middle v7.1.1.wav
+   • Dingwall Series v7.1.1.wav
    • Dingwall Parallel v7.1.1.wav
    • Mudbucker Deep v7.1.1.wav
+   • Mudbucker Hollow v7.1.1.wav
    • Mudbucker Baritone v7.1.1.wav
+   • Hofner Violin Warm v7.1.1.wav
    • Upright Piezo v7.1.1.wav
-   • Precision 51 Slab v7.1.1.wav
    • Precision Active v7.1.1.wav
+   • Dingwall Super P v7.1.1.wav
    • Precision Warm v7.1.1.wav
-   • Precision Dub v7.1.1.wav
 
 4. START TRAINING: Tone3000 will batch-train all models against this single dry baseline.
 ==============================================================================

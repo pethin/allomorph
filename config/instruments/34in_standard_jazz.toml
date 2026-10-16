@@ -121,53 +121,8 @@ resistance = 250000.0
 cap = 4.7e-8
 default = 1.0
 
-[harnesses.passive_70s]
-name = "70s Jazz Bass 2V/1T Passive Harness"
-type = "passive"
-load_resistance = 1000000.0
-cable_pf = 750.0
-k_mutual = 0.04
-
-wiring = [
-    ["pickups.neck.hot", "controls.neck_vol.wiper"],
-    ["controls.neck_vol.in", "bus"],
-    ["controls.neck_vol.gnd", "GND"],
-    ["pickups.neck.cold", "GND"],
-
-    ["pickups.bridge_70s.hot", "controls.bridge_vol.wiper"],
-    ["controls.bridge_vol.in", "bus"],
-    ["controls.bridge_vol.gnd", "GND"],
-    ["pickups.bridge_70s.cold", "GND"],
-
-    ["bus", "controls.tone.in"],
-    ["controls.tone.gnd", "GND"],
-    ["bus", "out"],
-]
-
-[harnesses.passive_70s.controls.neck_vol]
-name = "Neck Volume"
-type = "pot"
-taper = "audio_15"
-resistance = 250000.0
-default = 1.0
-
-[harnesses.passive_70s.controls.bridge_vol]
-name = "Bridge Volume"
-type = "pot"
-taper = "audio_15"
-resistance = 250000.0
-default = 1.0
-
-[harnesses.passive_70s.controls.tone]
-name = "Master Tone"
-type = "pot"
-taper = "audio_15"
-resistance = 250000.0
-cap = 4.7e-8
-default = 1.0
-
 [harnesses.active]
-name = "Sadowsky 2-Band Active Preamp"
+name = "Sadowsky 2-Band Active Preamp (70s Spacing)"
 type = "active_preamp"
 preamp = "sadowsky_2band"
 load_resistance = 1000000.0
@@ -177,8 +132,8 @@ k_mutual = 0.04
 wiring = [
     ["pickups.neck.hot", "controls.blend.neck_in"],
     ["pickups.neck.cold", "GND"],
-    ["pickups.bridge.hot", "controls.blend.bridge_in"],
-    ["pickups.bridge.cold", "GND"],
+    ["pickups.bridge_70s.hot", "controls.blend.bridge_in"],
+    ["pickups.bridge_70s.cold", "GND"],
     ["controls.blend.wiper", "preamp.in"],
     ["preamp.out", "controls.vol.in"],
     ["controls.vol.wiper", "out"],
@@ -211,6 +166,38 @@ type = "preamp_band"
 band = "treble"
 default = 0.5
 
+[harnesses.series]
+name = "Jazz Bass S-1 Series Humbucking Harness"
+type = "passive"
+load_resistance = 1000000.0
+cable_pf = 750.0
+k_mutual = 0.04
+
+wiring = [
+    ["pickups.bridge.cold", "GND"],
+    ["pickups.bridge.hot", "pickups.neck.cold"],
+    ["pickups.neck.hot", "controls.vol.in"],
+    ["controls.vol.wiper", "out"],
+    ["controls.vol.gnd", "GND"],
+    ["controls.vol.in", "controls.tone.in"],
+    ["controls.tone.gnd", "GND"],
+]
+
+[harnesses.series.controls.vol]
+name = "Master Volume"
+type = "pot"
+taper = "audio_15"
+resistance = 250000.0
+default = 1.0
+
+[harnesses.series.controls.tone]
+name = "Master Tone"
+type = "pot"
+taper = "audio_15"
+resistance = 250000.0
+cap = 4.7e-8
+default = 1.0
+
 # ------------------------------------------------------------------------------
 # 3. NATIVE INSTRUMENT VOICINGS
 # ------------------------------------------------------------------------------
@@ -222,25 +209,25 @@ tone_name = "Jazz Pair Open"
 harness = "passive"
 controls = { neck_vol = 1.0, bridge_vol = 1.0, tone = 1.0 }
 
+[voicings.pair_series]
+version = 1
+name = "Jazz Pair S-1 Series Humbucking Punch"
+tone_name = "Jazz Pair Series"
+harness = "series"
+controls = { vol = 1.0, tone = 1.0 }
+
 [voicings.bridge_growl]
 version = 1
 name = "60s Jazz Bridge Growl"
 tone_name = "Jazz Bridge Growl"
 harness = "passive"
-controls = { neck_vol = 0.99, bridge_vol = 1.0, tone = 1.0 }
+controls = { neck_vol = 0.97, bridge_vol = 1.0, tone = 1.0 }
 
 [voicings.bridge_open]
 version = 1
 name = "60s Jazz Bridge Open"
 tone_name = "Jazz Bridge Open"
 harness = "passive"
-controls = { neck_vol = 0.0, bridge_vol = 1.0, tone = 1.0 }
-
-[voicings.bridge_70s]
-version = 1
-name = "70s Jazz Bridge Single-Coil"
-tone_name = "Jazz Bridge 70s"
-harness = "passive_70s"
 controls = { neck_vol = 0.0, bridge_vol = 1.0, tone = 1.0 }
 
 [voicings.neck_warm]
@@ -252,7 +239,7 @@ controls = { neck_vol = 1.0, bridge_vol = 0.0, tone = 1.0 }
 
 [voicings.pair_active]
 version = 1
-name = "Modern Sadowsky Active Jazz Pair"
+name = "Modern Sadowsky 70s Active Jazz Pair"
 tone_name = "Jazz Pair Active"
 harness = "active"
 controls = { vol = 1.0, blend = 0.5, bass = 0.5, treble = 0.5 }

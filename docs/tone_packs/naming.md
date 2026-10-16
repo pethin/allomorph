@@ -86,8 +86,9 @@ Identifies the bass instrument/pickup archetype:
 | `PJ` | Precision split-neck + Jazz bridge single-coil | Standard abbreviation without slash |
 | `P∕MM` | Precision split-neck + Music Man bridge humbucker | Uses Unicode Division Slash (`∕`, `\u2215`) |
 | `Rickenbacker` | Rickenbacker 4001/4003 bridge single-coil | Never abbreviate to `Rick` |
-| `Mudbucker` | Gibson EB-0 sidewinder neck humbucker | Iconic bassist term for the 14.4H neck pickup |
-| `Dingwall` | Multiscale fanned-fret angled dual-coil bridge | Represents progressive multiscale clarity |
+| `Mudbucker` | Gibson EB-0 / EB-2 Sidewinder neck humbucker | Iconic bassist term for the 18.0H coupled neck pickup |
+| `Hofner` | Höfner 500/1 fully hollow Violin Bass Staple humbuckers | ASCII-safe spelling of Höfner for LCD & filesystem compatibility |
+| `Dingwall` | Multiscale fanned-fret angled dual-coil humbuckers | Represents progressive multiscale clarity |
 | `Upright` | Double bass acoustic bridge piezo force transducer | Replaces generic `Piezo` |
 
 ### 3.2 Configuration Tokens (`[Configuration]`)
@@ -95,12 +96,13 @@ Specifies the active coil topology or pickup selection on the modeled target ins
 
 | Configuration Token | Meaning | When to Use |
 | :--- | :--- | :--- |
-| `Pair` | Both pickups engaged in parallel | Used for dual-pickup basses (`Jazz Pair`) |
+| `Pair` | Both pickups engaged in parallel or series | Used for dual-pickup basses (`Jazz Pair`, `Hofner Pair`) |
 | `Bridge` | Solo bridge pickup | Used when isolating the bridge coil (`Jazz Bridge`, `Dingwall Bridge`) |
-| `Neck` | Solo neck pickup | Used when isolating the neck coil (`Mudbucker Neck`) |
-| `Parallel` | Dual-coil humbucker wired in parallel | Used for dual-coil models (`StingRay Parallel`, `P∕MM Parallel`) |
-| `Series` | Dual-coil humbucker wired in series | Used for high-output series models (`StingRay Series`, `P∕MM Series`) |
-| *(Omitted)* | Inherent single-pickup architecture | Inherent for `Precision` (always split-coil) and `Upright` (always bridge piezo) |
+| `Neck` | Solo neck pickup | Used when isolating the neck coil (`Jazz Neck`, `Rickenbacker Neck`) |
+| `Violin` | Höfner 500/1 hollow violin archtop neck Staple | Used for `Hofner Violin Warm` |
+| `Parallel` | Dual-coil or dual-pickup wired in parallel | Used for dual-coil models (`StingRay Parallel`, `P∕MM Parallel`, `Dingwall Parallel`) |
+| `Series` | Dual-coil or dual-pickup wired in series | Used for high-output series models (`StingRay Series`, `P∕MM Series`, `Dingwall Series`, `Jazz Pair Series`) |
+| *(Omitted)* | Inherent single-pickup architecture | Inherent for `Precision` (always split-coil), `Mudbucker` (always neck Sidewinder), and `Upright` (always bridge piezo) |
 
 ### 3.3 Voicing Modifier Tokens (`[Voicing Modifier]`)
 Describes the musical tone contour or circuit state. Replaces all raw electronic component values (`22nF`, `47nF`, `100nF`) and artist nicknames with musician terms:
@@ -108,9 +110,9 @@ Describes the musical tone contour or circuit state. Replaces all raw electronic
 | Modifier Token | Musical Sonic Function | Replaced Legacy Terms | Analog / Physical Basis |
 | :--- | :--- | :--- | :--- |
 | `Open` | Wide-open tone control with full harmonic air | `Pair`, `60s` | CTS 250k/500k pot wide open |
-| `70s` | 1970s closer-to-bridge pickup placement ($53.3\text{ mm}$) | `70s Spacing` | 1970s Fender $0.4''$ bridge-shifted single-coil datum |
-| `51 Slab` | 1951–1956 single-coil Precision pickup | `Tele P`, `51 P` | 2.4H Alnico V single-coil on roundwound strings |
-| `Warm` | Classic rolled-off flatwound / Motown thump | `47nF`, `ToneStyler 47nF` | 47nF shunt capacitor creates smooth, woody low-mids |
+| `Series` | Series coil summation for thick humbucker roar | `S-1`, `4-Way` | Series-wired dual coils (`Jazz Pair Series`, `Dingwall Series`) |
+| `51 Slab` | 1951–1956 single-coil Precision pickup | `Tele P`, `51 P` | 2.8H Alnico V single-coil on roundwound strings |
+| `Warm` | Classic rolled-off flatwound / Motown or Beatle thump | `47nF`, `ToneStyler 47nF` | 47nF shunt cap + flatwounds (`Precision Warm`) or hollow Staple + flatwounds (`Hofner Violin Warm`) |
 | `Dub` | Ultra-deep sub-bass roll-off; reggae/dub | `100nF`, `ToneStyler 100nF` | 100nF shunt capacitor removes all top-end for massive sub |
 | `Vintage` | Alnico V vintage winding or 4001 cap-in pair | `Vintage 62`, `4001 Pair` | Alnico V split-coil or 4001 dual-pickup with 4.7nF bridge HPF |
 | `Modern` | Ceramic magnet / high output; crisp bite | `Ceramic`, `Modern P` | High-inductance ceramic coil with 500k harness |
@@ -118,9 +120,10 @@ Describes the musical tone contour or circuit state. Replaces all raw electronic
 | `Passive` | Passive high-impedance RLC loading feel | `Vintage PJ` | Authentic passive RLC network with 250k pots & 750pF cable |
 | `Growl` | Bridge-biased blend for singing fretless tone | `Jaco Bridge Growl` | Decoupled volume pot blend (100% bridge, 99% neck) |
 | `Clank` | Aggressive pick bite and high-pass clank | `4.7nF HPF`, `4003` | In-line series 4.7nF capacitor rolling off sub-bass |
-| `Deep` | Maximum low-end sidewinder sub resonance | `Ultra Series` | 14.4H high-inductance sidewinder coil |
-| `Baritone` | Gibson 2.5H choke + 22nF high-pass mid snarl | `EB-2 Baritone`, `Choke` | 2.5H shunt inductor + 22nF series cap cutting sub-bass mud |
-| `Piezo` | Bridge force response & rocking compliance | `Transducer`, `Wing` | Bridge force sensor simulation on 41.25" upright scale |
+| `Deep` | Maximum low-end solid-body sidewinder sub resonance | `Ultra Series` | 18.0H coupled sidewinder coil on solid-body EB-0 |
+| `Hollow` | Semi-hollow maple archtop Sidewinder resonance | `EB-2 Deep` | 18.0H Sidewinder coupled with 165 Hz semi-hollow body bloom & sustain sink |
+| `Baritone` | Gibson choke + series cap high-pass mid snarl | `EB-2 Baritone`, `Choke` | 15.0H `GA-90C-1` shunt choke + 20nF series cap on semi-hollow EB-2 |
+| `Piezo` | Bridge force response & rocking compliance | `Transducer`, `Wing` | Bridge force sensor simulation on 41.25" hollow upright scale |
 | `Direct` | Pure, transparent studio DI transmission | `DI`, `Studio DI` | Transparent bypass preserving source aperture |
 
 ---
@@ -143,36 +146,36 @@ Every Allomorph tone name must satisfy two physical and software thresholds:
 
 ## 5. Complete 26-Voicing Storefront Target Reference Table
 
-Below is the definitive table of the 26 curated storefront target voicings across the 16 catalog instruments, showing character lengths and screen viewport status:
+Below is the definitive table of the 26 curated utilitarian & mix-ready storefront target voicings across the 18 catalog instruments, showing character lengths and screen viewport status:
 
 | Target (`<inst_id>:<voicing_id>`) | Declarative `tone_name` | Source Pos Tag | Full Model Basename (`.nam`) | Unversioned / Versioned Chars | Screen Status | Musical Personality / Bassist Context |
 | :--- | :--- | :---: | :--- | :---: | :--- | :--- |
-| `34in_standard_jazz:pair_active` | `Jazz Pair Active` | `[Parallel]` | `Jazz Pair Active [Parallel] v7.1.1` | 27 / 34 | **Zero-Scroll** | Active 2-band EQ slap scoop; scooped mids |
-| `34in_standard_jazz:pair_open` | `Jazz Pair Open` | `[Parallel]` | `Jazz Pair Open [Parallel] v7.1.1` | 25 / 32 | **Zero-Scroll** | Classic 60s dual single-coils, tone wide open |
-| `34in_standard_jazz:bridge_growl` | `Jazz Bridge Growl` | `[Bridge]` | `Jazz Bridge Growl [Bridge] v7.1.1` | 26 / 33 | **Zero-Scroll** | Singing Jaco bridge burp & vocal growl |
-| `34in_standard_jazz:bridge_open` | `Jazz Bridge Open` | `[Bridge]` | `Jazz Bridge Open [Bridge] v7.1.1` | 25 / 32 | **Zero-Scroll** | Tight, biting 60s bridge single-coil ($63.5\text{ mm}$) |
-| `34in_standard_jazz:bridge_70s` | `Jazz Bridge 70s` | `[Bridge]` | `Jazz Bridge 70s [Bridge] v7.1.1` | 24 / 31 | **Zero-Scroll** | 70s bridge single-coil ($53.3\text{ mm}$); Geddy/Marcus bite |
-| `34in_standard_jazz:neck_warm` | `Jazz Neck Warm` | `[Neck]` | `Jazz Neck Warm [Neck] v7.1.1` | 21 / 28 | **Zero-Scroll** | Warm, woody 60s jazz neck single-coil bloom |
+| `34in_standard_jazz:pair_active` | `Jazz Pair Active` | `[Parallel]` | `Jazz Pair Active [Parallel] v7.1.1` | 27 / 34 | **Zero-Scroll** | Active 2-band EQ '70s-spacing slap scoop; hi-fi lows & highs |
+| `34in_standard_jazz:pair_open` | `Jazz Pair Open` | `[Parallel]` | `Jazz Pair Open [Parallel] v7.1.1` | 25 / 32 | **Zero-Scroll** | Classic '60s dual single-coils ($63.5\text{ mm}$ bridge), tone open |
+| `34in_standard_jazz:pair_series` | `Jazz Pair Series` | `[Parallel]` | `Jazz Pair Series [Parallel] v7.1.1` | 27 / 34 | **Zero-Scroll** | Fender S-1 series-wired Jazz coils ($7.0\text{ H}$); thick humbucker roar |
+| `34in_standard_jazz:bridge_growl` | `Jazz Bridge Growl` | `[Bridge]` | `Jazz Bridge Growl [Bridge] v7.1.1` | 26 / 33 | **Zero-Scroll** | Singing Jaco bridge burp & vocal growl with neck-pot decoupling |
+| `34in_standard_jazz:neck_warm` | `Jazz Neck Warm` | `[Neck]` | `Jazz Neck Warm [Neck] v7.1.1` | 21 / 28 | **Zero-Scroll** | Warm, woody '60s jazz neck single-coil bloom |
 | `34in_standard_p:vintage_open` | `Precision Vintage` | `[Neck]` | `Precision Vintage [Neck] v7.1.1` | 24 / 31 | **Zero-Scroll** | Classic '62 Alnico V split-P, CTS 250k open |
-| `34in_standard_p:slab_51` | `Precision 51 Slab` | `[Neck]` | `Precision 51 Slab [Neck] v7.1.1` | 24 / 31 | **Zero-Scroll** | 1951 single-coil Precision on roundwounds; raw snap |
 | `34in_standard_pj:neck_active` | `Precision Active` | `[Neck]` | `Precision Active [Neck] v7.1.1` | 23 / 30 | **Zero-Scroll** | Fender Ultra II active split-P with 18V 3-band preamp |
-| `34in_standard_p:vintage_warm` | `Precision Warm` | `[Neck]` | `Precision Warm [Neck] v7.1.1` | 21 / 28 | **Zero-Scroll** | Classic Motown / flatwound woody thump |
-| `34in_standard_p:slab_dub` | `Precision Dub` | `[Neck]` | `Precision Dub [Neck] v7.1.1` | 20 / 27 | **Zero-Scroll** | Deep 1950s sub-bass dub thump |
+| `34in_dingwall_sp1:super_p_solo` | `Dingwall Super P` | `[Neck]` | `Dingwall Super P [Neck] v7.1.1` | 23 / 30 | **Zero-Scroll** | Dingwall SP1 $32''\text{--}35''$ passive Neodymium Dual-P ($3.0\text{ kHz}$ peak) |
+| `34in_standard_p:vintage_warm` | `Precision Warm` | `[Neck]` | `Precision Warm [Neck] v7.1.1` | 21 / 28 | **Zero-Scroll** | Classic Motown / Jamerson heavy flatwound woody thump |
 | `34in_standard_pj:pair_active` | `PJ Active` | `[Parallel]` | `PJ Active [Parallel] v7.1.1` | 20 / 27 | **Zero-Scroll** | Ultra II Split-P + J-bridge with 18V 3-band preamp |
 | `34in_standard_pj:pair_parallel` | `PJ Passive` | `[Parallel]` | `PJ Passive [Parallel] v7.1.1` | 21 / 28 | **Zero-Scroll** | Organic P-thump with J-bridge articulation |
 | `34in_active_stingray:parallel_classic` | `StingRay Parallel` | `[Bridge]` | `StingRay Parallel [Bridge] v7.1.1` | 26 / 33 | **Zero-Scroll** | Classic 2-band active Music Man authority |
 | `34in_active_stingray:series_punch` | `StingRay Series` | `[Bridge]` | `StingRay Series [Bridge] v7.1.1` | 24 / 31 | **Zero-Scroll** | Muscular, mid-forward high-output MM series bark |
 | `33in_rickenbacker_4003:bridge_clank` | `Rickenbacker Clank` | `[Bridge]` | `Rickenbacker Clank [Bridge] v7.1.1` | 27 / 34 | **Zero-Scroll** | Classic 4003 bridge coil with 4.7nF high-pass clank |
 | `33in_rickenbacker_4003:pair_vintage` | `Rickenbacker Vintage` | `[Parallel]` | `Rickenbacker Vintage [Parallel] v7.1.1` | 31 / 38 | **Zero-Scroll** | Vintage 4001 dual pair with 4.7nF bridge HPF |
-| `33in_rickenbacker_4003:neck_warm` | `Rickenbacker Neck` | `[Neck]` | `Rickenbacker Neck [Neck] v7.1.1` | 24 / 31 | **Zero-Scroll** | Solo 210mm neck single-coil at 24th-fret node |
+| `33in_rickenbacker_4003:neck_warm` | `Rickenbacker Neck` | `[Neck]` | `Rickenbacker Neck [Neck] v7.1.1` | 24 / 31 | **Zero-Scroll** | Solo 4003 Toaster/Hi-Gain neck at 24th-fret node ($210\text{ mm}$, $2.34\text{ kHz}$ peak) |
 | `34in_active_pmm:pmm_parallel` | `P∕MM Parallel` | `[Parallel]` | `P∕MM Parallel [Parallel] v7.1.1` | 24 / 31 | **Zero-Scroll** | Split-P + MM bridge (parallel coils) with LH-3 preamp |
 | `34in_active_pmm:pmm_series` | `P∕MM Series` | `[Parallel]` | `P∕MM Series [Parallel] v7.1.1` | 22 / 29 | **Zero-Scroll** | Split-P + MM bridge (series coils) with LH-3 preamp |
-| `30in_gibson_eb0:neck_deep` | `Mudbucker Deep` | `[Neck]` | `Mudbucker Deep [Neck] v7.1.1` | 21 / 28 | **Zero-Scroll** | Massive 18.0H coupled sidewinder neck sub-bass rumble |
-| `30in_gibson_eb0:neck_baritone` | `Mudbucker Baritone` | `[Neck]` | `Mudbucker Baritone [Neck] v7.1.1` | 25 / 32 | **Zero-Scroll** | Gibson 2.5H choke + 22nF series cap midrange rock bark |
+| `30in_gibson_eb0:neck_deep` | `Mudbucker Deep` | `[Neck]` | `Mudbucker Deep [Neck] v7.1.1` | 21 / 28 | **Zero-Scroll** | Solid-body EB-0 18.0H coupled Sidewinder sub-bass rumble |
+| `30in_gibson_eb2:neck_deep` | `Mudbucker Hollow` | `[Neck]` | `Mudbucker Hollow [Neck] v7.1.1` | 23 / 30 | **Zero-Scroll** | Semi-hollow EB-2 Sidewinder with 165 Hz cavity bloom & woody decay |
+| `30in_gibson_eb2:neck_baritone` | `Mudbucker Baritone` | `[Neck]` | `Mudbucker Baritone [Neck] v7.1.1` | 25 / 32 | **Zero-Scroll** | Semi-hollow EB-2 Baritone choke + cap midrange rock bark |
+| `30in_hofner_500_1:neck_warm` | `Hofner Violin Warm` | `[Neck]` | `Hofner Violin Warm [Neck] v7.1.1` | 25 / 32 | **Zero-Scroll** | 1962 Höfner 500/1 hollow Violin Bass neck Staple Beatle thump |
 | `37in_multiscale_dingwall:bridge_clank` | `Dingwall Bridge` | `[Bridge]` | `Dingwall Bridge [Bridge] v7.1.1` | 24 / 31 | **Zero-Scroll** | High-tension fanned-fret progressive clarity |
-| `37in_multiscale_dingwall:middle_growl` | `Dingwall Middle` | `[Neck]` | `Dingwall Middle [Neck] v7.1.1` | 22 / 29 | **Zero-Scroll** | Focused aggressive low-mid punch & vocal growl |
 | `37in_multiscale_dingwall:pair_parallel` | `Dingwall Parallel` | `[Parallel]` | `Dingwall Parallel [Parallel] v7.1.1` | 28 / 35 | **Zero-Scroll** | Modern scooped aggression, ultra-fast transients |
-| `41in_upright_bass:bridge_piezo` | `Upright Piezo` | `[Neck]` | `Upright Piezo [Neck] v7.1.1` | 20 / 27 | **Zero-Scroll** | Woody double-bass piezo bridge force transducer |
+| `37in_multiscale_dingwall:pair_series` | `Dingwall Series` | `[Parallel]` | `Dingwall Series [Parallel] v7.1.1` | 26 / 33 | **Zero-Scroll** | Rotary Pos 3 Bridge + Middle in series; massive fanned-fret wall of sound |
+| `41in_upright_bass:bridge_piezo` | `Upright Piezo` | `[Neck]` | `Upright Piezo [Neck] v7.1.1` | 20 / 27 | **Zero-Scroll** | Woody double-bass piezo bridge force sensor with hollow sustain decay |
 
 ---
 

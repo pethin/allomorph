@@ -105,6 +105,8 @@ def is_identity_voicing(
         else target_inst.voicings.get(target_voicing)
     )
     if src_v is not None and tgt_v is not None:
+        src_body = src_v.body_type_override or source_inst.body_type
+        tgt_body = tgt_v.body_type_override or target_inst.body_type
         if (
             src_v.harness == tgt_v.harness
             and src_v.controls == tgt_v.controls
@@ -113,6 +115,7 @@ def is_identity_voicing(
             and src_v.components == tgt_v.components
             and src_v.gain_db == tgt_v.gain_db
             and src_v.string_preset_override == tgt_v.string_preset_override
+            and src_body == tgt_body
         ):
             return True
     elif isinstance(source_voicing, str) and isinstance(target_voicing, str):

@@ -7,6 +7,7 @@ id = "41in_upright_bass"
 name = "41.25\" Acoustic Double Bass"
 scale_length_in = 41.25
 scale_length_m = 1.04775
+body_type = "hollow_archtop"
 electronics = "piezo"
 version = 1
 

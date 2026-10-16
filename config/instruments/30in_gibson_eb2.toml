@@ -1,0 +1,150 @@
+# ==============================================================================
+# ALLOMORPH SOURCE INSTRUMENT CONFIGURATION
+# 30.5" 1961 Gibson EB-2 Semi-Hollow Archtop Bass (Laminated Maple Body)
+# ==============================================================================
+# Physical Datums:
+#   - Scale Length: 30.5" (774.7mm Kalamazoo short scale)
+#   - Body Construction: Double-bound 16" laminated maple semi-hollow archtop
+#     with spruce center block and rosewood/maple bridge saddle (body_type = "semi_hollow")
+#   - Hardware Transducer: Gibson 30k Sidewinder Neck Humbucker (266.8mm from bridge)
+#   - Harnesses:
+#       1. Un-choked 500k 1V/1T passive circuit ("Deep" mode)
+#       2. 1961 CPA-657 / GA-90C-1 Baritone choke network (15.0H shunt choke + 20nF cap + 220k resistor)
+
+id = "30in_gibson_eb2"
+name = "30.5\" Gibson EB-2 Semi-Hollow"
+scale_length_in = 30.5
+scale_length_m = 0.7747
+body_type = "semi_hollow"
+electronics = "passive"
+version = 1
+
+string_wave_speeds = [63.83, 85.22, 113.75, 151.84]
+
+[strings]
+preset = "flatwound_vintage_heavy"
+brand = "Gibson"
+model = "Vintage Flatwound"
+gauge = "50-105"
+core = "round"
+wrap = "monel_flat"
+tension_lbs = 152.0
+
+# ------------------------------------------------------------------------------
+# 1. HARDWARE TRANSDUCER (Gibson 30k Sidewinder Neck Humbucker)
+# ------------------------------------------------------------------------------
+
+[pickups.mudbucker]
+name = "Gibson 30k Sidewinder Neck Humbucker (Mudbucker)"
+position_name = "Neck"
+position_from_bridge_m = 0.2668  # Neck heel datum (266.8mm)
+aperture_width_in = 1.25
+coil_spacing_in = 0.0
+type = "sidewinder"
+magnet_type = "ceramic"
+coils = [
+    { id = "sidewinder", strings = ["all"], position_from_bridge_m = 0.2668, aperture_width_in = 1.25, pole_type = "rod", L = 14.4, Rdc = 27900.0, Reddy = 450000.0, Ccoil = 8e-11, weight = 1.0 },
+]
+
+# ------------------------------------------------------------------------------
+# 2. CONTROL HARNESSES (1961 EB-2 Deep & CPA-657 Baritone Choke)
+# ------------------------------------------------------------------------------
+
+[harnesses.passive]
+name = "EB-2 500k 1V/1T Passive Harness (Deep Mode)"
+type = "passive"
+load_resistance = 1000000.0
+cable_pf = 750.0
+
+wiring = [
+    ["pickups.mudbucker.sidewinder.cold", "GND"],
+    ["pickups.mudbucker.sidewinder.hot", "controls.vol.in"],
+    ["controls.vol.wiper", "out"],
+    ["controls.vol.gnd", "GND"],
+    ["controls.vol.in", "controls.tone.in"],
+    ["controls.tone.gnd", "GND"],
+]
+
+[harnesses.passive.controls.vol]
+name = "Master Volume"
+type = "pot"
+taper = "audio_15"
+resistance = 500000.0
+default = 1.0
+
+[harnesses.passive.controls.tone]
+name = "Master Tone"
+type = "pot"
+taper = "audio_15"
+resistance = 500000.0
+cap = 2.2e-8
+default = 1.0
+
+[harnesses.baritone]
+name = "EB-2 CPA-657 Baritone Choke Harness"
+type = "passive"
+load_resistance = 1000000.0
+cable_pf = 750.0
+
+wiring = [
+    ["pickups.mudbucker.sidewinder.cold", "GND"],
+    ["pickups.mudbucker.sidewinder.hot", "controls.tone.in"],
+    ["controls.tone.gnd", "GND"],
+    ["controls.vol.wiper", "out"],
+    ["controls.vol.gnd", "GND"],
+]
+
+[harnesses.baritone.controls.vol]
+name = "Master Volume"
+type = "pot"
+taper = "audio_15"
+resistance = 500000.0
+default = 1.0
+
+[harnesses.baritone.controls.tone]
+name = "Master Tone"
+type = "pot"
+taper = "audio_15"
+resistance = 250000.0
+cap = 4.7e-8
+default = 1.0
+
+[harnesses.baritone.switches.mode]
+name = "Baritone Push-Button Switch"
+type = "toggle"
+default = "baritone"
+
+[harnesses.baritone.switches.mode.positions.deep]
+connect = [
+    ["pickups.mudbucker.sidewinder.hot", "controls.vol.in"],
+]
+
+[harnesses.baritone.switches.mode.positions.baritone]
+connect = [
+    ["pickups.mudbucker.sidewinder.hot", "baritone_cap.in"],
+    ["baritone_cap.out", "controls.vol.in"],
+    ["pickups.mudbucker.sidewinder.hot", "baritone_res.in"],
+    ["baritone_res.out", "controls.vol.in"],
+    ["baritone_choke.in", "controls.vol.in"],
+    ["baritone_choke.out", "GND"],
+]
+components = { "baritone_cap" = 2.0e-8, "baritone_res" = 220000.0, "baritone_choke" = 15.0, "baritone_choke.Rdc" = 650.0 }
+
+# ------------------------------------------------------------------------------
+# 3. NATIVE INSTRUMENT VOICINGS
+# ------------------------------------------------------------------------------
+
+[voicings.neck_deep]
+version = 1
+name = "1961 EB-2 Semi-Hollow Sidewinder Thump"
+tone_name = "Mudbucker Hollow"
+harness = "passive"
+controls = { vol = 1.0, tone = 1.0 }
+
+[voicings.neck_baritone]
+version = 1
+name = "1961 EB-2 Semi-Hollow Baritone Choke Bark"
+tone_name = "Mudbucker Baritone"
+harness = "baritone"
+switches = { mode = "baritone" }
+controls = { vol = 1.0, tone = 1.0 }

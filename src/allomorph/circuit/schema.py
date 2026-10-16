@@ -94,6 +94,7 @@ class SaturationConfig(AllomorphBaseModel):
     lambda_L: float = Field(default=0.0, ge=0.0)
     k_core: float = Field(default=0.0, ge=0.0)
     kappa_ap: float = Field(default=0.0, ge=0.0)
+    k_body_sink: float = Field(default=0.0, ge=0.0, le=1.0)
     k_level: float = Field(default=0.0, ge=0.0, le=1.0)
     active_variant: Literal["x_series", "classic"] | None = None
     slew_limit: bool = True

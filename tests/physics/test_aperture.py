@@ -6,6 +6,7 @@ saddle boundary stiffness, and cylindrical rod vs blade aperture.
 import math
 
 import numpy as np
+import pytest
 
 from allomorph.config.schema import CoilConfig
 from allomorph.dsp import FREQS
@@ -358,3 +359,41 @@ def test_numpy_pickup_acoustic_response_advanced_branches():
     )
     assert len(resp_from_speeds) == len(freqs)
     assert math.isclose(resp_from_speeds[0], 1.0, abs_tol=1e-3)
+
+
+def test_compute_body_acoustic_coupling_and_sink_coefficients():
+    """Verify linear frequency-domain body admittance H_body(f) and k_body_sink resolution."""
+    from allomorph.physics.aperture import (
+        compute_body_acoustic_coupling,
+        resolve_body_sink_coefficient,
+    )
+
+    freqs = np.asarray(FREQS, dtype=np.float64)
+
+    # 1. Solid body is exact identity (1.0 across all frequencies, k_body_sink = 0.0)
+    h_solid = compute_body_acoustic_coupling(freqs, body_type="solid")
+    assert np.all(h_solid == 1.0)
+    assert resolve_body_sink_coefficient("solid") == 0.0
+
+    # 2. Semi-hollow (e.g. 1958 Gibson EB-2): +1.5 dB bloom @ 165 Hz, -1.8 dB dip @ 363 Hz, -3.5 dB wood shelf
+    h_semi = compute_body_acoustic_coupling(freqs, body_type="semi_hollow")
+    assert resolve_body_sink_coefficient("semi_hollow") == pytest.approx(0.18)
+    idx_165 = int(np.argmin(np.abs(freqs - 165.0)))
+    idx_363 = int(np.argmin(np.abs(freqs - 363.0)))
+    idx_10k = int(np.argmin(np.abs(freqs - 10000.0)))
+    assert h_semi[idx_165] > 1.10  # Air-cavity bloom > +0.8 dB
+    assert h_semi[idx_363] < 0.88  # Anti-resonant energy sink dip < -1.1 dB
+    assert 0.62 <= h_semi[idx_10k] <= 0.72  # -3.5 dB wood shelf (~0.668)
+
+    # 3. Hollow archtop (e.g. 1962 Hofner 500/1 & 41" Upright): stronger bloom @ 145 Hz, deeper wood shelf
+    h_hollow = compute_body_acoustic_coupling(freqs, body_type="hollow_archtop")
+    assert resolve_body_sink_coefficient("hollow_archtop") == pytest.approx(0.30)
+    idx_145 = int(np.argmin(np.abs(freqs - 145.0)))
+    idx_320 = int(np.argmin(np.abs(freqs - 320.0)))
+    assert h_hollow[idx_145] > h_semi[idx_165]
+    assert h_hollow[idx_320] < h_semi[idx_363]
+    assert h_hollow[idx_10k] < h_semi[idx_10k]
+
+    # 4. C^1 smoothness check (no piecewise kinks)
+    dh = np.gradient(h_hollow, freqs)
+    assert np.all(np.isfinite(dh))

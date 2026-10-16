@@ -8,6 +8,7 @@ from allomorph.physics.aperture import (
     FRACTIONAL_EXCURSION_CALIBRATION_ETA,
     build_wave_speed_continuum_partitions,
     combine_coherent_incoherent_aperture,
+    compute_body_acoustic_coupling,
     compute_coil_aperture,
     compute_coil_aperture_sinc,
     compute_displacement_proximity_shelf,
@@ -17,6 +18,7 @@ from allomorph.physics.aperture import (
     get_coil_register,
     numpy_pickup_acoustic_response,
     pickup_acoustic_response,
+    resolve_body_sink_coefficient,
     soft_clamp_displacement_ratio,
 )
 from allomorph.physics.strings import (
@@ -45,6 +47,7 @@ __all__ = [
     "STRING_FUNDAMENTALS",
     "build_wave_speed_continuum_partitions",
     "combine_coherent_incoherent_aperture",
+    "compute_body_acoustic_coupling",
     "compute_coil_aperture",
     "compute_coil_aperture_sinc",
     "compute_dispersive_wave_speed",
@@ -60,6 +63,7 @@ __all__ = [
     "numpy_pickup_acoustic_response",
     "pickup_acoustic_response",
     "pitch_to_note_name",
+    "resolve_body_sink_coefficient",
     "resolve_scale_length",
     "resolve_scale_range",
     "soft_clamp_displacement_ratio",

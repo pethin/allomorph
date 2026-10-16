@@ -1067,3 +1067,50 @@ def test_saturation_numba_core_kernels():
     level_py = _py(_active_preamp_leveling_core)(x_test, env_test, vsat=0.4, k_level=0.5)
     level_jit = _active_preamp_leveling_core(x_test, env_test, vsat=0.4, k_level=0.5)
     assert np.allclose(level_py, level_jit)
+
+
+def test_body_sustain_sink_dynamics():
+    """Verify dynamic time-domain body sustain energy sink (CL-36):
+    1. Preserves initial attack transient (< 15 ms) while absorbing sustained tail (> 80 ms).
+    2. Hollow archtop (k_body_sink=0.30) absorbs more sustain energy than semi-hollow (k_body_sink=0.18).
+    3. Small signals (peak <= 0.10) and k_body_sink <= 0.0 bypass with bit-exact identity (CL-10).
+    """
+    from allomorph.circuit.saturation import _body_sustain_sink_core, apply_body_sustain_sink
+
+    sr = 48000.0
+    n = int(sr * 0.25)  # 250 ms
+    t = np.arange(n, dtype=np.float64) / sr
+    # Sustained 110 Hz bass note at forte level (0.60 peak)
+    sig = (0.60 * np.sin(2.0 * np.pi * 110.0 * t)).astype(np.float32)
+
+    # 1. Solid body (k_body_sink = 0.0) and small signal (<= 0.10) bypass identically
+    assert np.array_equal(apply_body_sustain_sink(sig, k_body_sink=0.0, sr=sr), sig)
+    small_sig = (0.08 * np.sin(2.0 * np.pi * 110.0 * t)).astype(np.float32)
+    assert np.array_equal(apply_body_sustain_sink(small_sig, k_body_sink=0.30, sr=sr), small_sig)
+
+    # 2. Semi-hollow (0.18) vs Hollow archtop (0.30)
+    out_semi = apply_body_sustain_sink(sig, k_body_sink=0.18, sr=sr)
+    out_hollow = apply_body_sustain_sink(sig, k_body_sink=0.30, sr=sr)
+
+    # Initial 10 ms transient window retains > 91% of attack energy (vs < 80% in sustained tail)
+    idx_10ms = int(sr * 0.010)
+    rms_in_att = float(np.sqrt(np.mean(sig[:idx_10ms] ** 2)))
+    rms_hollow_att = float(np.sqrt(np.mean(out_hollow[:idx_10ms] ** 2)))
+    assert rms_hollow_att / rms_in_att > 0.91
+
+    # Sustained window (100 ms to 250 ms) experiences significant sustain absorption
+    idx_100ms = int(sr * 0.100)
+    rms_in_sus = float(np.sqrt(np.mean(sig[idx_100ms:] ** 2)))
+    rms_semi_sus = float(np.sqrt(np.mean(out_semi[idx_100ms:] ** 2)))
+    rms_hollow_sus = float(np.sqrt(np.mean(out_hollow[idx_100ms:] ** 2)))
+    assert rms_hollow_sus < rms_semi_sus < rms_in_sus * 0.90
+    assert (rms_hollow_att / rms_in_att) > (rms_hollow_sus / rms_in_sus) + 0.10
+
+    # 3. Direct kernel coverage (py_func & jitted parity + empty/zero bypass)
+    py_core = getattr(_body_sustain_sink_core, "py_func", _body_sustain_sink_core)
+    x64 = sig[:2000].astype(np.float64)
+    assert np.allclose(
+        py_core(x64, 0.30, 0.001, 0.0002, 0.035),
+        _body_sustain_sink_core(x64, 0.30, 0.001, 0.0002, 0.035),
+    )
+    assert np.array_equal(py_core(x64, 0.0, 0.001, 0.0002, 0.035), x64)

@@ -43,19 +43,25 @@ def test_resolve_pickup_coils():
 
 
 def test_resolve_voicing_electroacoustics_pickups_and_coils():
-    # 1. Multi-pickup: 34in_standard_jazz:pair_active
+    # 1. Multi-pickup: 34in_standard_jazz:pair_active (70s spacing: bridge_70s @ 0.0533m)
     inst_j = load_instrument("34in_standard_jazz")
     ea_act = resolve_voicing_electroacoustics(inst_j, inst_j.voicings["pair_active"])
     assert len(ea_act.coils) == 2
     assert ea_act.coils[0].position_from_bridge_m == 0.1556
-    assert ea_act.coils[1].position_from_bridge_m == 0.0635
+    assert ea_act.coils[1].position_from_bridge_m == 0.0533
     assert ea_act.coils[0].strings == ["all"]
     eff01 = compute_effective_position(ea_act.coils)
-    assert 0.10 < eff01 < 0.12  # Average of 0.1556 and 0.0635 is 0.10955
+    assert 0.10 < eff01 < 0.12  # Weighted average of 0.1556 and 0.0533
 
-    # 2. Multi-pickup: 34in_standard_jazz:pair_open
+    # 2. Multi-pickup: 34in_standard_jazz:pair_open (60s spacing: bridge @ 0.0635m)
     ea_jazz = resolve_voicing_electroacoustics(inst_j, inst_j.voicings["pair_open"])
     assert len(ea_jazz.coils) == 2
+    assert ea_jazz.coils[0].position_from_bridge_m == 0.1556
+    assert ea_jazz.coils[1].position_from_bridge_m == 0.0635
+
+    # 2b. Multi-pickup: 34in_standard_jazz:pair_series
+    ea_jser = resolve_voicing_electroacoustics(inst_j, inst_j.voicings["pair_series"])
+    assert len(ea_jser.coils) == 2
 
     # 3. Multi-pickup: 34in_standard_pj:pair_active (Ultra II 3-band active P/J)
     inst_pj = load_instrument("34in_standard_pj")

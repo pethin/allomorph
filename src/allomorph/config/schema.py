@@ -309,6 +309,8 @@ class HarnessConfig(AllomorphBaseModel):
 # 6. SOURCE INSTRUMENT & VOICING SCHEMAS
 # ==============================================================================
 
+BodyType = Literal["solid", "semi_hollow", "hollow_archtop"]
+
 
 class VoicingConfig(AllomorphBaseModel):
     """
@@ -341,6 +343,7 @@ class VoicingConfig(AllomorphBaseModel):
         description="Strict dotted-path parameter overrides (e.g. 'controls.tone.cap' = 100e-9).",
     )
     string_preset_override: str | None = None
+    body_type_override: BodyType | None = None
     sensor_type: Literal["magnetic", "bridge_force"] = "magnetic"
     gain_db: float = 0.0
     preamp_bands: list[PreampBandConfig] = Field(default_factory=list)
@@ -357,6 +360,7 @@ class InstrumentConfig(AllomorphBaseModel):
     scale_min_in: float | None = None
     scale_max_in: float | None = None
     is_multiscale: bool = False
+    body_type: BodyType = "solid"
     electronics: str = "passive"
     version: int = Field(1, ge=1, description="Instrument physical datum configuration version")
     string_wave_speeds: list[float] = Field(default_factory=list)

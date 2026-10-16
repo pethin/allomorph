@@ -5,17 +5,17 @@
   "version": "v7.1.1",
   "allomorph_version": "0.5.0",
   "dsp_generation": 7,
-  "recipe_token": "alo_pck_d317c021f27c943e9200b8d70eeb24e718350658b0bb3651d1d5823e42e582af",
+  "recipe_token": "alo_pck_08232004d12277f7a33c95aa50b434242fba9b0a4c2f452d2a1d69220f529ebc",
   "bundles": {
     "bridge": {
-      "recipe_token": "alo_bun_6a16f0c9f899a4959878543096dff4fe459f9b193b1c97a913ab4bfda5e51154",
+      "recipe_token": "alo_bun_d2e41d7c3beb1e9ae0bc5c9126981138045518cab5bd90058f2c9085525f7975",
       "source": "34in_active_stingray:parallel_classic",
       "position_name": "Bridge",
       "base_dry_file": "input.wav",
       "base_dry_token": "alo_dry_891a0d5650ab0e9d897d36e584180a6a2dd4c0652a252ebe5ad6cf589d62dd37",
       "dry_file": "dry v7.1.1.wav",
       "dry_version": "v7.1.1",
-      "dry_recipe_token": "alo_rec_86e05026ad0df87b1db06ba86016c6024d50dda625b9cdbc802a46f41e7eb406",
+      "dry_recipe_token": "alo_rec_57a7909e9bc2a3611737d68aadfdcfa554dfb8c4c784c5063cea7e81af393947",
       "dry_digest_token": "alo_stem_330666f319dc6d8d48a722aa924fbcdc812e3533bc6b6ea9223ee7dd089386a9",
       "source_voicing_version": 1,
       "stem_count": 25

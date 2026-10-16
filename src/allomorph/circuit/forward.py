@@ -15,6 +15,7 @@ from allomorph.circuit.audio import find_default_input_audio
 from allomorph.circuit.parser import MAGNET_PROPERTIES
 from allomorph.circuit.saturation import (
     apply_active_pickup_dynamics,
+    apply_body_sustain_sink,
     apply_oversampled_saturation,
 )
 from allomorph.circuit.solver import solve_mna_harness
@@ -51,10 +52,12 @@ from allomorph.dsp.conditioning import (
 )
 from allomorph.physics import MEAN_BASS_F0
 from allomorph.physics.aperture import (
+    compute_body_acoustic_coupling,
     compute_displacement_proximity_shelf,
     compute_pickup_isolation_leveling,
     compute_saddle_boundary_coupling,
     numpy_pickup_acoustic_response,
+    resolve_body_sink_coefficient,
 )
 from allomorph.physics.strings import (
     compute_forward_string_transfer,
@@ -119,6 +122,7 @@ def simulate_pickup_transducer_branch(
     apply_saturation: bool = True,
     sample_rate: int = FS,
     default_magnet: str = "alnico_v",
+    k_body_sink: float = 0.0,
 ) -> np.ndarray:
     """Simulates a single pickup/transducer branch through its acoustic aperture,
 
@@ -165,6 +169,7 @@ def simulate_pickup_transducer_branch(
             k_emf=float(sp_props.k_emf),
             lambda_L=float(sp_props.lambda_L),
             kappa_ap=float(sp_props.kappa_ap),
+            k_body_sink=float(k_body_sink),
             slew_limit=True,
             f_slew=16000.0,
             oversample=2,
@@ -175,10 +180,15 @@ def simulate_pickup_transducer_branch(
         p_vsat = float(pickup.vsat) if (pickup is not None and pickup.vsat is not None) else 2.00
         max_in = float(np.max(np.abs(v_ac))) if len(v_ac) > 0 else 0.0
         if max_in > 0.10 and p_vsat > 0.0:
+            v_body = (
+                apply_body_sustain_sink(v_ac, k_body_sink=float(k_body_sink), sr=float(sample_rate))
+                if k_body_sink > 0.0
+                else v_ac
+            )
             alpha_p = (
                 float(pickup.alpha) if (pickup is not None and pickup.alpha is not None) else 0.08
             )
-            v_piezo = v_ac * (1.0 + alpha_p * np.tanh(v_ac / p_vsat))
+            v_piezo = v_body * (1.0 + alpha_p * np.tanh(v_body / p_vsat))
             emf = (p_vsat * np.tanh(v_piezo / p_vsat)).astype(np.float64)
         else:
             emf = v_ac
@@ -439,6 +449,8 @@ def simulate_voicing_dsp(
     H_downstream = np.maximum(h_preamp * h_wrap, 1e-6)
     fused_downstream = False
     default_magnet = "alnico_v"
+    eff_body_type = voicing_cfg.body_type_override or inst.body_type
+    k_body_sink = resolve_body_sink_coefficient(eff_body_type)
 
     if voicing_cfg.sensor_type == "bridge_force":
         f_rock = 800.0
@@ -469,6 +481,7 @@ def simulate_voicing_dsp(
             apply_saturation=apply_saturation,
             sample_rate=sample_rate,
             default_magnet=default_magnet,
+            k_body_sink=k_body_sink,
         )
 
     else:
@@ -486,6 +499,7 @@ def simulate_voicing_dsp(
             N = max(16384, num_taps * 4)
             f_bins = np.fft.rfftfreq(N, 1.0 / 48000.0)
             c_mean = 2.0 * scale_m * MEAN_BASS_F0
+            h_body_bins = compute_body_acoustic_coupling(f_bins, body_type=eff_body_type)
 
             branch_sub_pickups = [(p_id, inst.pickups[p_id], 1.0, 1.0) for p_id in active_pickups]
 
@@ -523,7 +537,7 @@ def simulate_voicing_dsp(
                 b_pos = branch_positions[i]
                 h_pos = compute_displacement_proximity_shelf(f_bins, b_pos, scale_m=scale_m)
                 k_iso = k_iso_raw[i] / max(k_iso_mean, 1e-6)
-                ac = ac_raw * h_pos * k_iso
+                ac = ac_raw * h_pos * k_iso * h_body_bins
 
                 min_pos = min((c.position_from_bridge_m for c in b_coils), default=0.10)
                 if min_pos < 0.075:
@@ -555,6 +569,7 @@ def simulate_voicing_dsp(
                     apply_saturation=apply_saturation,
                     sample_rate=sample_rate,
                     default_magnet=default_magnet,
+                    k_body_sink=k_body_sink,
                 )
                 branch_audios.append(b_audio)
 
@@ -579,7 +594,8 @@ def simulate_voicing_dsp(
             h_ac = np.asarray(h_ac_raw, dtype=np.float64)
 
             h_pos = compute_displacement_proximity_shelf(f, eff_pos, scale_m=scale_m)
-            h_ac = h_ac * h_pos
+            h_body = compute_body_acoustic_coupling(f, body_type=eff_body_type)
+            h_ac = h_ac * h_pos * h_body
 
             min_pos = min((c.position_from_bridge_m for c in coils), default=0.10)
             if min_pos < 0.075:
@@ -615,6 +631,7 @@ def simulate_voicing_dsp(
                 apply_saturation=apply_saturation,
                 sample_rate=sample_rate,
                 default_magnet=default_magnet,
+                k_body_sink=k_body_sink,
             )
 
     # Downstream Electronics & Viscoelastic String Mechanics Stage

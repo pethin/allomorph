@@ -11,6 +11,7 @@ from collections.abc import Sequence
 import numpy as np
 
 from allomorph.config.schema import (
+    BodyType,
     CoilConfig,
     InstrumentConfig,
     ScaleConfig,
@@ -22,6 +23,66 @@ from allomorph.physics.strings import (
     get_inharmonicity_for_f0,
     resolve_scale_range,
 )
+
+# Physical Bridge-Body Termination Admittance Parameters:
+# Maps body_type -> (f_bloom, q_bloom, g_bloom_db, f_dip, q_dip, g_dip_db, f_wood, g_wood_db, k_body_sink)
+_BODY_ACOUSTIC_PARAMS: dict[
+    str, tuple[float, float, float, float, float, float, float, float, float]
+] = {
+    "solid": (165.0, 1.6, 0.0, 363.0, 1.4, 0.0, 3800.0, 0.0, 0.00),
+    "semi_hollow": (165.0, 1.6, 1.5, 363.0, 1.4, -1.8, 3800.0, -3.5, 0.18),
+    "hollow_archtop": (145.0, 1.8, 2.2, 320.0, 1.5, -2.5, 2800.0, -5.5, 0.30),
+}
+
+
+def resolve_body_sink_coefficient(body_type: BodyType | str = "solid") -> float:
+    """Resolves the dynamic time-domain mechanical energy absorption coefficient (k_body_sink)
+    for the specified body construction type. Raises ValueError on unknown body_type.
+    """
+    if body_type not in _BODY_ACOUSTIC_PARAMS:
+        raise ValueError(
+            f"Unrecognized body_type: '{body_type}'. "
+            f"Available body types: {list(_BODY_ACOUSTIC_PARAMS.keys())}"
+        )
+    return float(_BODY_ACOUSTIC_PARAMS[body_type][8])
+
+
+def compute_body_acoustic_coupling(
+    freqs: Sequence[float] | np.ndarray,
+    body_type: BodyType | str = "solid",
+) -> np.ndarray:
+    """Computes the linear bridge-body termination admittance transfer function H_body(f)
+    for solid, semi-hollow, and hollow archtop bass bodies.
+
+    Models:
+      1. Coupled archtop low-mid fundamental bloom (f_b, Q_b, G_bloom)
+      2. Coupled upper-harmonic modal energy absorption dip (f_d, Q_d, G_dip)
+      3. Floating wooden bridge / compliant spruce-maple top high-frequency roll-off (f_wood, G_wood)
+    Evaluates with exact 1.0000 (0.00 dB) identity across all frequencies for 'solid' bodies
+    and at f = 0 Hz for all body types. Raises ValueError on unknown body_type.
+    """
+    if body_type not in _BODY_ACOUSTIC_PARAMS:
+        raise ValueError(
+            f"Unrecognized body_type: '{body_type}'. "
+            f"Available body types: {list(_BODY_ACOUSTIC_PARAMS.keys())}"
+        )
+    f = np.asarray(freqs, dtype=np.float64)
+    if body_type == "solid":
+        return np.ones_like(f)
+
+    fb, qb, gb_db, fd, qd, gd_db, fw, gw_db, _ = _BODY_ACOUSTIC_PARAMS[body_type]
+    gb = 10.0 ** (gb_db / 20.0)
+    gd = 10.0 ** (gd_db / 20.0)
+    gw = 10.0 ** (gw_db / 20.0)
+
+    s = 1j * 2.0 * np.pi * f
+    wb = 2.0 * math.pi * fb
+    wd = 2.0 * math.pi * fd
+
+    h_bloom = (s**2 + (gb * wb / qb) * s + wb**2) / (s**2 + (wb / qb) * s + wb**2)
+    h_dip = (s**2 + (gd * wd / qd) * s + wd**2) / (s**2 + (wd / qd) * s + wd**2)
+    h_wood = np.sqrt((1.0 + (gw**2) * (f / fw) ** 2) / (1.0 + (f / fw) ** 2))
+    return np.abs(h_bloom * h_dip) * h_wood
 
 
 def compute_coil_aperture(

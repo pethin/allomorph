@@ -302,11 +302,30 @@ To preserve authentic electromagnetic spatial aperture comb filtering and preven
 
 ---
 
-## 11. Diffuse Mechanical Body Vibrations & Elimination of Static Microphonic Filters
+## 11. Diffuse Mechanical Body Vibrations & Semi-Hollow / Hollow-Body Admittance ($H_{\text{body}}$ & $k_{\text{body\_sink}}$)
 
-In real-world instruments, acoustic vibrations from the wooden body cavity can vibrate unpotted or lightly wax-potted pickup bobbins. However, in musical acoustics, mechanical body coupling is **acoustic vibrational feedback** dependent on dynamic room SPL, wood modal resonances, and playing volume—it is not an invariant static linear filter.
+### A. Solid-Body Instruments (`body_type = "solid"`) & Elimination of Static Microphonic Filters
+In solid-body instruments, acoustic vibrations from the wooden body slab are secondary to rigid termination at the bridge and nut. Modeling solid-body microphonics as a static high-frequency peaking filter (e.g. $+0.4\text{ dB}$ at $6.2\text{ kHz}$) violates Guardrail 5.1.3 by injecting artificial high-frequency coloration into dry neural network training stems. For `body_type = "solid"`, the forward digital twin pipeline evaluates $H_{\text{body}}(f) = 1.0000$ ($0.00\text{ dB}$) and $k_{\text{body\_sink}} = 0.0$ (exact identity).
 
-Analogous to longitudinal steel core clank (Section 10), modeling body microphonics as a static linear peaking filter (e.g. $+0.4\text{ dB}$ at $6.2\text{ kHz}$) violates Guardrail 5.1.3 by injecting artificial high-frequency noise and spectral coloration into dry neural network training stems. The forward digital twin pipeline strictly omits static linear microphonic filters, preserving clean electromagnetic spatial comb filtering and authentic minimum-phase causal dynamics.
+### B. Semi-Hollow & Hollow-Body Mechanical Bridge Admittance ($H_{\text{body}}(f)$) & Sustain Energy Sink ($k_{\text{body\_sink}}$)
+Unlike solid-body instruments where the bridge approaches a rigid termination ($Z_{\text{bridge}} \to \infty$), semi-hollow archtops with maple rims and f-holes (e.g., Gibson EB-2) and fully hollow spruce/maple archtops with floating wooden bridges (e.g., Höfner 500/1 Violin Bass, 41" Acoustic Upright Bass) exhibit finite, frequency-dependent mechanical bridge admittance $Y_{\text{body}}(f) = 1 / Z_{\text{bridge}}(f)$ (Fleischer 2001/2006; Fletcher & Rossing 1998):
+
+1. **Linear Frequency-Domain Mechanical Admittance (`compute_body_acoustic_coupling`):**
+   - **Coupled Air-Cavity & Top-Plate Fundamental Bloom ($f_{\text{air}}$):** Sympathetic structural compliance at the Helmholtz / $T(1,1)$ top-plate mode reinforces upper-bass warmth via a smooth $C^\infty$ rational peaking resonator:
+     $$H_{\text{air}}(f) = \sqrt{\frac{\left(1 - (f/f_{\text{air}})^2\right)^2 + \left(\frac{g_{\text{air}} \cdot f}{Q_{\text{air}} f_{\text{air}}}\right)^2}{\left(1 - (f/f_{\text{air}})^2\right)^2 + \left(\frac{f}{Q_{\text{air}} f_{\text{air}}}\right)^2}}$$
+   - **Anti-Resonant Mechanical Energy-Sink Dip ($f_{\text{dip}}$):** Above the main plate resonance ($f_{\text{dip}} \approx 2.2 f_{\text{air}}$), out-of-phase plate motion absorbs string vibrational energy from the bridge witness point via a smooth $C^\infty$ notch resonator $H_{\text{dip}}(f)$.
+   - **Compliant Floating/Archtop Bridge High-Frequency Wood Damping ($f_{\text{wood}}$):** Viscoelastic losses in floating ebony/rosewood bridges and spruce/maple plates attenuate upper-harmonic string overtones via a smooth first-order $C^\infty$ high-shelf:
+     $$H_{\text{wood}}(f) = \sqrt{\frac{1 + g_{\text{wood}}^2 \cdot (f/f_{\text{wood}})^2}{1 + (f/f_{\text{wood}})^2}}$$
+   - **Total Linear Admittance Envelope:**
+     $$H_{\text{body}}(f) = H_{\text{air}}(f) \cdot H_{\text{dip}}(f) \cdot H_{\text{wood}}(f)$$
+     - **`"semi_hollow"`** (Maple archtop with center block / f-holes, e.g., Gibson EB-2): $f_{\text{air}} = 165.0\text{ Hz}$ ($Q = 1.6, +1.5\text{ dB}$), $f_{\text{dip}} = 363.0\text{ Hz}$ ($Q = 1.4, -1.8\text{ dB}$), $f_{\text{wood}} = 3,800\text{ Hz}$ ($-3.5\text{ dB}$).
+     - **`"hollow_archtop"`** (Fully hollow spruce/maple violin or upright body with floating wooden bridge, e.g., Höfner 500/1, 41" Upright Bass): $f_{\text{air}} = 145.0\text{ Hz}$ ($Q = 1.8, +2.2\text{ dB}$), $f_{\text{dip}} = 320.0\text{ Hz}$ ($Q = 1.5, -2.5\text{ dB}$), $f_{\text{wood}} = 2,800\text{ Hz}$ ($-5.5\text{ dB}$).
+
+2. **Non-Linear Time-Domain Sustain Energy Sink (`apply_body_sustain_sink`, CL-36):**
+   - Because a hollow or semi-hollow soundboard radiates acoustic energy rapidly into the air cavity during initial string excitation, the string's mechanical sustain envelope decays much faster than on a solid-body bass—producing the signature "woody thump" with a brief bloom and rapid sustain tail decay.
+   - A static linear FIR or cabinet IR ($\sim 21\text{--}42\text{ ms}$) cannot shorten a $1,000\text{ ms}$ solid-body string sustain envelope. Allomorph models this two-stage decay in `src/allomorph/circuit/saturation.py` via a dual-time-constant energy tracker ($\tau_{\text{atk}} = 45\text{ ms}$ slow cavity build-up, $\tau_{\text{rel}} = 180\text{ ms}$ soundboard dissipation) and a $C^\infty$ softplus energy excess (`_softplus_cinf(e - e_thresh, 24.0)`, $e_{\text{thresh}} = 0.035$):
+     $$y[i] = \frac{x[i]}{1.0 + k_{\text{body\_sink}} \cdot \tanh\left(\frac{\text{excess}}{0.25}\right)}$$
+   - During the initial pluck transient ($0\text{--}35\text{ ms}$), `e` is still rising so the attack transient passes with full woody thump; once the soundboard is excited ($> 45\text{ ms}$), the energy sink absorbs sustain energy (`k_body_sink = 0.18` for `"semi_hollow"`, `0.30` for `"hollow_archtop"`), accelerating sustain decay before smoothly releasing in the pianissimo tail ($\|x\|_\infty \le 0.10$ linear bypass per **CL-10**).
 
 ---
 

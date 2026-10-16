@@ -1,6 +1,6 @@
 {
   "bundle": "bridge",
-  "recipe_token": "alo_bun_265330b629f45c59f53a18b78dbee54a58cb1530283716c64dfbb5b07ee45394",
+  "recipe_token": "alo_bun_4f316c761dba094999983ed4701c7a299aef15f79acffd475c7cbef6358bbf78",
   "source": "34in_standard_jazz:bridge_open",
   "position_name": "Bridge",
   "base_dry_file": "input.wav",
@@ -8,12 +8,12 @@
   "base_dry_recipe_token": "alo_dryrec_1a9431f5085c7cfb3d73dc284983b967034111a8ae80406c864e053f31fff744",
   "dry_file": "dry v7.1.1.wav",
   "dry_version": "v7.1.1",
-  "dry_recipe_token": "alo_rec_825639664471b10bf3f9c5d1d3b4996489f498e90fe0426bdf5bedbc8d390578",
+  "dry_recipe_token": "alo_rec_341346b87b3e2c2161e40d08c87b9eaf68a87273fa2b4053ab62eb4e4bf7e115",
   "dry_digest_token": "alo_stem_d5d1fdc9c1d2fc26a17d5b0a6e0ffbd3a71963db8cc1a9718677eea2b8a74e29",
   "instrument_id": "34in_standard_jazz",
   "instrument_version": 1,
   "source_voicing_version": 1,
-  "stem_count": 6,
+  "stem_count": 5,
   "stems": [
     {
       "filename": "StingRay Parallel [Bridge] v7.1.1.wav",
@@ -22,7 +22,7 @@
       "target_voicing_version": 1,
       "version": "v7.1.1",
       "tone_name": "StingRay Parallel",
-      "recipe_token": "alo_rec_86e05026ad0df87b1db06ba86016c6024d50dda625b9cdbc802a46f41e7eb406",
+      "recipe_token": "alo_rec_57a7909e9bc2a3611737d68aadfdcfa554dfb8c4c784c5063cea7e81af393947",
       "digest_token": "alo_stem_330666f319dc6d8d48a722aa924fbcdc812e3533bc6b6ea9223ee7dd089386a9"
     },
     {
@@ -32,7 +32,7 @@
       "target_voicing_version": 1,
       "version": "v7.1.1",
       "tone_name": "StingRay Series",
-      "recipe_token": "alo_rec_680a4c3e48dd6af98baa21bfb7090a7af59a424e8a48ac3aba6bcf7886304771",
+      "recipe_token": "alo_rec_685776e001d755c9dfc0a9b36dab91c792a9b3eb91d10a2d6a36744c858e3931",
       "digest_token": "alo_stem_cf7800d53f39451d212c5ed7b6c47a8e3008397ec10348d68db748b1e526ee02"
     },
     {
@@ -42,7 +42,7 @@
       "target_voicing_version": 1,
       "version": "v7.1.1",
       "tone_name": "Rickenbacker Clank",
-      "recipe_token": "alo_rec_0d8aaa89f20df4a36c6efc3553cbbddd201a0ff063e907ff341d70b82f3fad27",
+      "recipe_token": "alo_rec_ae589e76c6f9e0148ce68ec0c6cfe80af84e9d7e21d3a7426fbc9cb82bd0b18e",
       "digest_token": "alo_stem_fc05cc0dcd8b55af5c73d685ed63d32b2ec217b921eb4ad25960bd500710c4f7"
     },
     {
@@ -52,7 +52,7 @@
       "target_voicing_version": 1,
       "version": "v7.1.1",
       "tone_name": "Dingwall Bridge",
-      "recipe_token": "alo_rec_6a0dada449d4e890d0eee178da62bca8f72e28d5d5863d4f3d92ec9038c52b25",
+      "recipe_token": "alo_rec_c75eda99c0de4d3adcd048c85a15e34590c8aaff84c268856ea0e7cb57c8ea86",
       "digest_token": "alo_stem_70974a783fff84f6dab535ea3ce91ea766efbdbea96d21fb6bdfe2105b562cc9"
     },
     {
@@ -62,18 +62,8 @@
       "target_voicing_version": 1,
       "version": "v7.1.1",
       "tone_name": "Jazz Bridge Growl",
-      "recipe_token": "alo_rec_fcf73f08598ee994a6e6f31805b8cbc63af9d23103d3974b04bb98b8d0dad1f8",
-      "digest_token": "alo_stem_c9c21a037277b74f235b82efbe968dbc9ef925768d0289190cb38b5992eeabf6"
-    },
-    {
-      "filename": "Jazz Bridge 70s [Bridge] v7.1.1.wav",
-      "target": "34in_standard_jazz:bridge_70s",
-      "target_instrument_version": 1,
-      "target_voicing_version": 1,
-      "version": "v7.1.1",
-      "tone_name": "Jazz Bridge 70s",
-      "recipe_token": "alo_rec_6d5549897da5b4958c2e53ed9c80741dd5f701f8400af433402e8f51514955d3",
-      "digest_token": "alo_stem_73ce63b3e31c5bc40cb503c2dba4fbc56f0d9ea33d22dc75460806db99d6b27c"
+      "recipe_token": "alo_rec_27bf0b1e75c78f86e4be9cf1beab5b5482b097701c93c30d612d45f1c241783b",
+      "digest_token": "alo_stem_52459d4c1bd2f6ba59961d1aae7e13b7cfa163a774ba0cb4dec98b941f0fbaf4"
     }
   ]
 }

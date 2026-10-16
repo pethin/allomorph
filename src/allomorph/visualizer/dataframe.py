@@ -210,6 +210,8 @@ def build_voicings_comparison_data(
         "34in_dingwall_sp1",
         "33in_rickenbacker_4003",
         "30in_gibson_eb0",
+        "30in_gibson_eb2",
+        "30in_hofner_500_1",
         "41in_upright_bass",
     ]
     sorted_instruments = [i for i in standard_instrument_order if i in instruments_dict] + [

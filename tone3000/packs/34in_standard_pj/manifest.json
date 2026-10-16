@@ -5,46 +5,46 @@
   "version": "v7.1.1",
   "allomorph_version": "0.5.0",
   "dsp_generation": 7,
-  "recipe_token": "alo_pck_7b6059829f37cbe4d6c8cf312071319ddb9e535f67e9f18eead2ec524d42f429",
+  "recipe_token": "alo_pck_8469317368bddbfa6c93e88616f00e164c6def8be47eb8dbfe2b347b30dd3c67",
   "bundles": {
     "neck": {
-      "recipe_token": "alo_bun_207b0b32ccc101738e3b03c01fb61230d42372b4c0b2f1e8fbe87c0681450467",
+      "recipe_token": "alo_bun_b1e52b382df0f52cc358df79d213f8ec647f5bcb817228678d2958701d444cc0",
       "source": "34in_standard_pj:p_warm",
       "position_name": "Neck",
       "base_dry_file": "input.wav",
       "base_dry_token": "alo_dry_891a0d5650ab0e9d897d36e584180a6a2dd4c0652a252ebe5ad6cf589d62dd37",
       "dry_file": "dry v7.1.1.wav",
       "dry_version": "v7.1.1",
-      "dry_recipe_token": "alo_rec_baf9d770b7a941773e7e12483b3705e5b614982239c9b200ffc24096a76e137a",
+      "dry_recipe_token": "alo_rec_6b854ae7230899f5dfd05ae1ddb371f26d045031d0bebd8d64f8e056079de08c",
       "dry_digest_token": "alo_stem_5a2d7faf063881634ad4647889daac90c45a4a9b544e490650e05332672b9b3a",
       "source_voicing_version": 1,
       "stem_count": 10
     },
     "bridge": {
-      "recipe_token": "alo_bun_4d038f144af702d17ebe05684250361a0a295b0f470d6077665df9e8f1f1fb52",
+      "recipe_token": "alo_bun_1f8816861b5f29e94af9d8a6e6f3bfce9270bcb91f621138a61f4a09778caba3",
       "source": "34in_standard_pj:j_growl",
       "position_name": "Bridge",
       "base_dry_file": "input.wav",
       "base_dry_token": "alo_dry_891a0d5650ab0e9d897d36e584180a6a2dd4c0652a252ebe5ad6cf589d62dd37",
       "dry_file": "dry v7.1.1.wav",
       "dry_version": "v7.1.1",
-      "dry_recipe_token": "alo_rec_b37fa22706fb01699a96458522ceb5932f824acc7dfc63c696b11707bc37ce2e",
+      "dry_recipe_token": "alo_rec_35cc395ce2b680419fbe61de1dafaffd9ee117818354f2050c22da407d90993e",
       "dry_digest_token": "alo_stem_291579a1494b4519ae02f1b79f0ecbbf38941ee03f307f84785478a3918e05a8",
       "source_voicing_version": 1,
-      "stem_count": 6
+      "stem_count": 5
     },
     "parallel": {
-      "recipe_token": "alo_bun_f0075798b4654f92c086c5dd02ce7461db63ba7b1ef16e746d8539cd22f896aa",
+      "recipe_token": "alo_bun_758bf93f2335a9aa20e54bff0c2731af5c7e4a6d3b13052cfde7f94bc422dbfa",
       "source": "34in_standard_pj:pair_parallel",
       "position_name": "Parallel",
       "base_dry_file": "input.wav",
       "base_dry_token": "alo_dry_891a0d5650ab0e9d897d36e584180a6a2dd4c0652a252ebe5ad6cf589d62dd37",
       "dry_file": "dry v7.1.1.wav",
       "dry_version": "v7.1.1",
-      "dry_recipe_token": "alo_rec_828c829dad09688bbc8866274b0caeb8243e62c0e862060d59ebcf62eb7b5bf1",
+      "dry_recipe_token": "alo_rec_5689c724f811ec830d42eb6a99fa61c6179e1f31a1a0cf9a03e8991ab84e4701",
       "dry_digest_token": "alo_stem_fdbbbf43393ac24611ab907d63120b0606c815e90193f39d6b4f342c11420527",
       "source_voicing_version": 1,
-      "stem_count": 7
+      "stem_count": 9
     }
   }
 }

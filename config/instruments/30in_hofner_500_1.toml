@@ -1,0 +1,139 @@
+# ==============================================================================
+# ALLOMORPH SOURCE INSTRUMENT CONFIGURATION
+# 30.0" 1963 Hofner 500/1 Fully Hollow Violin Bass (Spruce Top, Flame Maple Back)
+# ==============================================================================
+# Physical Datums:
+#   - Scale Length: 30.0" (762.0mm short scale)
+#   - Body Construction: Fully hollow archtop violin body (carved spruce top,
+#     flamed maple back/sides, zero center block, floating ebony bridge -> body_type = "hollow_archtop")
+#   - Neck Pickup: Franz Pix Type 511B "Staple" Alnico V humbucker at 238.0mm from bridge
+#   - Bridge Pickup: Franz Pix Type 511B "Staple" Alnico V humbucker at 41.0mm from bridge
+#   - Control Panel (HA2B):
+#       1. "Bass On" (Solo Neck with 100k series + 47nF shunt RC treble roll-off network)
+#       2. "Solo" Pair Open (Dual Staple humbuckers wide open on 500k volume pots)
+
+id = "30in_hofner_500_1"
+name = "30\" Hofner 500/1 Violin Bass"
+scale_length_in = 30.0
+scale_length_m = 0.762
+body_type = "hollow_archtop"
+electronics = "passive"
+version = 1
+
+string_wave_speeds = [62.79, 83.82, 111.89, 149.35]
+
+[strings]
+preset = "flatwound_low_tension"
+brand = "Pyramid"
+model = "Gold Flatwound Short Scale"
+gauge = "40-100"
+core = "round"
+wrap = "nickel_flat"
+tension_lbs = 132.0
+
+# ------------------------------------------------------------------------------
+# 1. HARDWARE TRANSDUCERS (Franz Pix Type 511B "Staple" Alnico V Humbuckers)
+# ------------------------------------------------------------------------------
+
+[pickups.neck]
+name = "Hofner Type 511B Staple Humbucker (Neck)"
+position_name = "Neck"
+position_from_bridge_m = 0.2380  # 238.0mm from floating ebony bridge (22-fret neck heel)
+aperture_width_in = 0.55
+coil_spacing_in = 0.0
+type = "humbucker"
+magnet_type = "alnico_v"
+coils = [
+    { id = "staple_neck", strings = ["all"], position_from_bridge_m = 0.2380, aperture_width_in = 0.55, pole_type = "blade", L = 4.2, Rdc = 6500.0, Reddy = 140000.0, Ccoil = 9.5e-11, weight = 1.0 },
+]
+
+[pickups.bridge]
+name = "Hofner Type 511B Staple Humbucker (Bridge)"
+position_name = "Bridge"
+position_from_bridge_m = 0.0410  # 41.0mm from floating ebony bridge
+aperture_width_in = 0.55
+coil_spacing_in = 0.0
+type = "humbucker"
+magnet_type = "alnico_v"
+coils = [
+    { id = "staple_bridge", strings = ["all"], position_from_bridge_m = 0.0410, aperture_width_in = 0.55, pole_type = "blade", L = 4.2, Rdc = 6500.0, Reddy = 140000.0, Ccoil = 9.5e-11, weight = 1.0 },
+]
+
+# ------------------------------------------------------------------------------
+# 2. CONTROL HARNESSES (HA2B "Bass On" Solo Neck RC & Dual "Solo" Open Harness)
+# ------------------------------------------------------------------------------
+
+[harnesses.bass_on]
+name = "Hofner HA2B 'Bass On' Solo Neck Harness"
+type = "passive"
+load_resistance = 1000000.0
+cable_pf = 750.0
+
+wiring = [
+    ["pickups.neck.staple_neck.cold", "GND"],
+    ["pickups.neck.staple_neck.hot", "controls.neck_vol.in"],
+    ["controls.neck_vol.gnd", "GND"],
+    ["controls.neck_vol.wiper", "rhythm_res.in"],
+    ["rhythm_res.out", "rhythm_cap.in"],
+    ["rhythm_cap.out", "GND"],
+    ["controls.neck_vol.wiper", "out"],
+]
+
+[harnesses.bass_on.controls.neck_vol]
+name = "Volume 1 (Neck)"
+type = "pot"
+taper = "audio_15"
+resistance = 500000.0
+default = 1.0
+
+[harnesses.solo_pair]
+name = "Hofner HA2B 'Solo' Dual Staple Open Harness"
+type = "passive"
+load_resistance = 1000000.0
+cable_pf = 750.0
+k_mutual = 0.03
+
+wiring = [
+    ["pickups.neck.staple_neck.cold", "GND"],
+    ["pickups.neck.staple_neck.hot", "controls.neck_vol.wiper"],
+    ["controls.neck_vol.in", "out"],
+    ["controls.neck_vol.gnd", "GND"],
+
+    ["pickups.bridge.staple_bridge.cold", "GND"],
+    ["pickups.bridge.staple_bridge.hot", "controls.bridge_vol.wiper"],
+    ["controls.bridge_vol.in", "out"],
+    ["controls.bridge_vol.gnd", "GND"],
+]
+
+[harnesses.solo_pair.controls.neck_vol]
+name = "Volume 1 (Neck)"
+type = "pot"
+taper = "audio_15"
+resistance = 500000.0
+default = 1.0
+
+[harnesses.solo_pair.controls.bridge_vol]
+name = "Volume 2 (Bridge)"
+type = "pot"
+taper = "audio_15"
+resistance = 500000.0
+default = 1.0
+
+# ------------------------------------------------------------------------------
+# 3. NATIVE INSTRUMENT VOICINGS
+# ------------------------------------------------------------------------------
+
+[voicings.neck_warm]
+version = 1
+name = "1963 Hofner 500/1 'Bass On' Hollow Violin Thump"
+tone_name = "Hofner Violin Warm"
+harness = "bass_on"
+controls = { neck_vol = 1.0 }
+components = { "rhythm_res" = 100000.0, "rhythm_cap" = 4.7e-8 }
+
+[voicings.pair_open]
+version = 1
+name = "1963 Hofner 500/1 Dual Staple 'Solo' Open"
+tone_name = "Hofner Pair Open"
+harness = "solo_pair"
+controls = { neck_vol = 1.0, bridge_vol = 1.0 }

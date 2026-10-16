@@ -10,9 +10,11 @@ Allomorph organizes instrument models, target voices, active preamps, physical s
 
 ```
 config/
-├── instruments/                        # Unified instrument catalog & native voicings (16 instruments)
+├── instruments/                        # Unified instrument catalog & native voicings (18 instruments)
 │   ├── 30in_emg_mmtw.toml              # 30.0" Short scale with EMG MMTWX dual-mode pickup
-│   ├── 30in_gibson_eb0.toml            # 30.5" Short scale 1960s Gibson EB-0 Sidewinder Mudbucker
+│   ├── 30in_gibson_eb0.toml            # 30.5" Short scale 1960s Gibson EB-0 Sidewinder Mudbucker (Solid)
+│   ├── 30in_gibson_eb2.toml            # 30.5" Short scale 1958 Gibson EB-2 Semi-Hollow Maple Archtop
+│   ├── 30in_hofner_500_1.toml          # 30.0" Short scale 1962 Höfner 500/1 Hollow Violin Bass
 │   ├── 30in_mustang_pj.toml            # 30.0" Short scale Fender Mustang Bass PJ
 │   ├── 32in_custom_pmm.toml            # 32.0" Medium scale with Reverse EMG PX + MMTWX + ABCX blend
 │   ├── 32in_fretless_pmm.toml          # 32.0" Fretless Medium scale with EMG PCSX + MMTWX + ABCX blend
@@ -22,11 +24,11 @@ config/
 │   ├── 34in_active_stingray.toml       # 34.0" Music Man StingRay (2-Band Preamp)
 │   ├── 34in_dingwall_sp1.toml          # 32.0"-35.0" Multi-scale Dingwall SP1 5-String
 │   ├── 34in_preamp_soapbar.toml        # 34.0" 5-String Passive Soapbar + Aguilar OBP-3
-│   ├── 34in_standard_jazz.toml         # 34.0" Standard 1960s Fender Jazz Bass
+│   ├── 34in_standard_jazz.toml         # 34.0" Standard 1960s/1970s Fender Jazz Bass
 │   ├── 34in_standard_p.toml            # 34.0" Standard 1962 Fender Precision Bass
 │   ├── 34in_standard_pj.toml           # 34.0" Standard P/J & Fender American Ultra II Active P/J
 │   ├── 37in_multiscale_dingwall.toml   # 34.0"-37.0" Multi-scale Dingwall Combustion / NG3 5-String
-│   └── 41in_upright_bass.toml          # 41.25" Orchestral 3/4 Double Bass (Piezo Bridge Transducer)
+│   └── 41in_upright_bass.toml          # 41.25" Orchestral 3/4 Double Bass (Piezo Bridge, Hollow Archtop)
 ├── packs/                              # Storefront pack manifests & affinity bundle definitions
 ├── naming.toml                         # Tone naming vocabulary & pedalboard character budgets
 ├── preamps.toml                        # Reusable active preamp catalog (8 preamps)
@@ -56,6 +58,7 @@ Each file in `config/instruments/*.toml` defines a complete **Physical & Digital
 | `string_preset` | `string` | Key | `"roundwound_nickel_standard"` | Default string preset key in `config/strings.toml`. |
 | `string` | `table` | — | `None` | Optional inline custom string physics block (`CustomStringConfig`). |
 | `preamp` | `string` | Key | `None` | Optional instrument-level active preamp preset key from `config/preamps.toml`. |
+| `body_type` | `string` | — | `"solid"` | Acoustic body construction (`BodyType`): `"solid"`, `"semi_hollow"` (maple archtop with f-holes / center block), or `"hollow_archtop"` (fully hollow spruce/maple archtop with floating wooden bridge). Controls $H_{\text{body}}(f)$ bridge admittance and $k_{\text{body\_sink}}$ dynamic sustain absorption. |
 
 ---
 
@@ -150,18 +153,19 @@ Every playable tone on an instrument is declared under `[voicings.<id>]`:
 | `preamp` | `string` | Key | `None` | Optional voicing-level preamp preset override from `config/preamps.toml`. |
 | `gain_db` | `float` | dB | `0.0` | Drive offset in dB into non-linear magnetic saturation and visualizer vertical display offset. |
 | `string_preset_override` | `string` | Key | `None` | Optional string preset override from `config/strings.toml` (e.g. `"flatwound_vintage_heavy"`). Unknown keys raise `KeyError`. |
+| `body_type_override` | `string` | — | `None` | Optional voicing-level body construction override (`"solid"`, `"semi_hollow"`, or `"hollow_archtop"`). |
 | `sensor_type` | `string` | — | `"magnetic"` | Physical transducer taxonomy: `"magnetic"` or `"bridge_force"`. |
 
 ---
 
 ## 3. Scale Lengths & Wave Speeds (`config/scales.toml`)
 
-`config/scales.toml` defines the 9 physical scale standards used across all 16 instruments ($v_s = 2 L_s f_{0,s}$):
+`config/scales.toml` defines the 9 physical scale standards used across all 18 instruments ($v_s = 2 L_s f_{0,s}$):
 
 | Scale Key | Scale Length ($L_{\text{in}}$) | Metric ($L_{\text{m}}$) | Multi-Scale Span | String Wave Speeds ($v_s$, m/s) | Representative Instruments |
 | :--- | :--- | :--- | :---: | :--- | :--- |
-| **`30in`** | $30.0''$ | $0.76200\text{ m}$ | Fixed | $[62.79, 83.82, 111.89, 149.35]$ | `30in_emg_mmtw`, `30in_mustang_pj` |
-| **`30.5in`** | $30.5''$ | $0.77470\text{ m}$ | Fixed | $[63.83, 85.22, 113.75, 151.84]$ | `30in_gibson_eb0` |
+| **`30in`** | $30.0''$ | $0.76200\text{ m}$ | Fixed | $[62.79, 83.82, 111.89, 149.35]$ | `30in_emg_mmtw`, `30in_mustang_pj`, `30in_hofner_500_1` |
+| **`30.5in`** | $30.5''$ | $0.77470\text{ m}$ | Fixed | $[63.83, 85.22, 113.75, 151.84]$ | `30in_gibson_eb0`, `30in_gibson_eb2` |
 | **`32in`** | $32.0''$ | $0.81280\text{ m}$ | Fixed | $[66.98, 89.41, 119.35, 159.31]$ | `32in_custom_pmm`, `32in_fretless_pmm` |
 | **`33.25in`** | $33.25''$ | $0.84455\text{ m}$ | Fixed | $[69.60, 92.90, 124.01, 165.53]$ | `33in_rickenbacker_4003` |
 | **`34in`** | $34.0''$ | $0.86360\text{ m}$ | Fixed | $[71.16, 95.00, 126.81, 169.27]$ | `34in_standard_p`, `34in_standard_jazz`, `34in_standard_pj`, `34in_active_stingray`, `34in_active_pmm` |
