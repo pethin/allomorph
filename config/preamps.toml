@@ -127,7 +127,6 @@ bands = [
     { id = "bass", type = "low_shelf", freq_hz = 40.0, gain_db = 2.0 },
     { id = "treble", type = "high_shelf", freq_hz = 4000.0, gain_db = 2.0 }
 ]
-
 # ------------------------------------------------------------------------------
 # 8. Fender American Ultra II 3-Band Active Preamp
 # ------------------------------------------------------------------------------
@@ -149,4 +148,27 @@ bands = [
     { id = "treble", type = "high_shelf", freq_hz = 8000.0, gain_db = 0.0 }
 ]
 
+# ------------------------------------------------------------------------------
+# 9. Studio Super Universal Amp/Cab Inverse Pre-Conditioner
+# ------------------------------------------------------------------------------
+# Inverse pre-conditioning filter engineered for the Studio Super digital twin.
+# Specifically calibrated to drive tube amplifiers (SVT 6550, B-15 6L6GC) and cabinets (6x10, 1x15):
+#   - Tames 80 Hz sealed-cab boom (-1.8 dB, Q=2.0)
+#   - Drives 310 Hz low-mid note authority and tube harmonics (+3.6 dB, Q=1.1)
+#   - Stabilizes 880 Hz midrange pocket balance (+1.2 dB, Q=1.3)
+#   - Drives 2450 Hz upper-mid articulation (+5.6 dB, Q=1.0)
+[preamps.studio_amp_driver]
+id = "studio_amp_driver"
+name = "Studio Super Universal Amp/Cab Inverse Pre-Conditioner"
+description = "Universal amp/cab inverse pre-conditioner calibrated for Ampeg SVT 6x10 and B-15 1x15 rigs"
+input_impedance_meg = 1.0
+input_capacitance_pf = 420.0
+output_impedance_ohm = 100.0
+gain_db = 0.0
+bands = [
+    { id = "cab_80hz_tame", type = "bell", freq_hz = 80.0, gain_db = -1.8, q = 2.0 },
+    { id = "amp_mid_body", type = "bell", freq_hz = 310.0, gain_db = 3.6, q = 1.1 },
+    { id = "amp_pocket_balance", type = "bell", freq_hz = 880.0, gain_db = 1.2, q = 1.3 },
+    { id = "amp_bite_drive", type = "bell", freq_hz = 2450.0, gain_db = 5.6, q = 1.0 }
+]
 

@@ -156,7 +156,7 @@ def test_storefront_description_passive_multi_pickup():
     desc = pack_cfg.full_storefront_description
 
     assert "Master Tone Knob: 100%" in desc
-    assert "Neck Vol 100%" in desc
+    assert "Neck Volume Knob: 100%" in desc
 
 
 def test_export_tone_pack_parallel_bundles_and_cached_stems(

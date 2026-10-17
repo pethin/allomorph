@@ -70,6 +70,7 @@ class NamTrainingMetadata(AllomorphBaseModel):
     esr_pre_loss: float | None = None
     consecutive_gates_met: int | None = None
     epochs_trained: int | None = None
+    spike_restarts: int | None = None
     stop_reason: str | None = None
     batch_size: int | None = None
     precision: str | None = None

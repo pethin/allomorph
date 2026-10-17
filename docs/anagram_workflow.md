@@ -108,38 +108,38 @@ Allomorph models are calibrated with RMS loudness matching, bounded by a $-0.09\
 Group the pickup profiles into dedicated 3-button banks on the Anagram hardware:
 
 ### Bank 1: Modern & Vintage Jazz Foundations
-* **Footswitch A:** `Jazz Pair Active [Parallel] v7.1.1.nam` (Modern Active Jazz - 2-Band Slap Scoop)
-* **Footswitch B:** `Jazz Pair Open [Parallel] v7.1.1.nam` (Vintage 60s Jazz Bass Pair)
-* **Footswitch C:** `Jazz Bridge Open [Bridge] v7.1.1.nam` (60s Jazz Bridge Single-Coil)
+* **Footswitch A:** `Jazz Pair Active v7.1.1.nam` (Modern Active Jazz - 2-Band Slap Scoop)
+* **Footswitch B:** `Jazz Pair Open v7.1.1.nam` (Vintage 60s Jazz Bass Pair)
+* **Footswitch C:** `Jazz Bridge Growl v7.1.1.nam` (60s Jazz Bridge Jaco Growl)
 
 ### Bank 2: Precision Bass Foundations
-* **Footswitch A:** `Precision Active [Split] v7.1.1.nam` (Modern Ceramic Split-P - Active 2-Band Preamp)
-* **Footswitch B:** `Precision Vintage [Split] v7.1.1.nam` (Vintage '62 Alnico V Split-P - Tone Open)
-* **Footswitch C:** `Precision Warm [Split] v7.1.1.nam` (P-Bass 47nF Motown Flatwound Warmth)
+* **Footswitch A:** `Precision Active v7.1.1.nam` (Modern Ceramic Split-P - Active 3-Band Preamp)
+* **Footswitch B:** `Precision Vintage v7.1.1.nam` (Vintage '62 Alnico V Split-P - Tone Open)
+* **Footswitch C:** `Precision Warm v7.1.1.nam` (P-Bass 47nF Motown Flatwound Warmth)
 
 ### Bank 3: P/J Hybrid & Music Man Active
-* **Footswitch A:** `PJ Active [Parallel] v7.1.1.nam` (Modern Active P/J)
-* **Footswitch B:** `PJ Passive [Parallel] v7.1.1.nam` (Vintage Passive P/J)
-* **Footswitch C:** `StingRay Parallel [Bridge] v7.1.1.nam` (Music Man Active 2-Band Humbucker Parallel)
+* **Footswitch A:** `PJ Active v7.1.1.nam` (Modern Active P/J)
+* **Footswitch B:** `PJ Passive v7.1.1.nam` (Vintage Passive P/J)
+* **Footswitch C:** `StingRay Parallel v7.1.1.nam` (Music Man Active 2-Band Humbucker Parallel)
 
 ### Bank 4: Series Punch & Maximum Inductance
-* **Footswitch A:** `StingRay Series [Bridge] v7.1.1.nam` (Music Man Series Humbucker Mid-Punch)
-* **Footswitch B:** `P∕MM Series [Parallel] v7.1.1.nam` (P/MM Bridge MM Series Coils)
-* **Footswitch C:** `Mudbucker Deep [Neck] v7.1.1.nam` (Gibson Mudbucker Series)
+* **Footswitch A:** `StingRay Series v7.1.1.nam` (Music Man Series Humbucker Mid-Punch)
+* **Footswitch B:** `P∕MM Series v7.1.1.nam` (P/MM Bridge MM Series Coils)
+* **Footswitch C:** `Mudbucker Deep v7.1.1.nam` (Gibson Mudbucker Series)
 
 ### Bank 5: Multi-Scale, Acoustic & Vintage Filtered
-* **Footswitch A:** `Rickenbacker Clank [Bridge] v7.1.1.nam` (Rickenbacker 4003 Bridge with HPF Clank)
-* **Footswitch B:** `Dingwall Bridge [Bridge] v7.1.1.nam` (Dingwall Multi-Scale Bridge)
+* **Footswitch A:** `Rickenbacker Clank v7.1.1.nam` (Rickenbacker 4003 Bridge with HPF Clank)
+* **Footswitch B:** `Dingwall Bridge v7.1.1.nam` (Dingwall Multi-Scale Bridge)
 * **Footswitch C:** `Upright Piezo v7.1.1.nam` (Upright Piezo Bridge Saddle Transducer)
 
 ### Bank 6: Tone Shapers & Boutique Articulation
-* **Footswitch A:** `Precision Dub [Split] v7.1.1.nam` (1950s Slab P-Bass 100nF Sub-Bass Dub)
-* **Footswitch B:** `Jazz Pair Mids [Parallel] v7.1.1.nam` (60s Jazz Pair 22nF Vocal Mid-Honk)
-* **Footswitch C:** `Dingwall Middle [Neck] v7.1.1.nam` (Dingwall Fanned-Fret Neck/Middle Growl)
+* **Footswitch A:** `Dingwall Super P v7.1.1.nam` (Dingwall SP1 Multi-Scale Neodymium Split-P)
+* **Footswitch B:** `Jazz Pair Series v7.1.1.nam` (60s Jazz Pair S-1 Series Humbucker Mod)
+* **Footswitch C:** `Hofner Violin Warm v7.1.1.nam` (1962 Höfner 500/1 Hollow Violin Bass Thump)
 
 > [!TIP]
-> **Bank 6 Tone Shaper Routing:**
-> Bank 6 pairs deep capacitive tone-shaper states (`Precision Dub`, `Jazz Pair Mids`) with fanned-fret neck/middle articulation (`Dingwall Middle`) for instant sub-bass dub and vocal mid-forward fingerstyle switching on stage.
+> **Unified Parallel Input Convenience:**
+> Because all dual-pickup Allomorph tone packs are trained from your bass's unified parallel output (both pickups full up / blend at center detent), you can switch seamlessly across all 6 banks via footswitch without ever touching your bass's physical volume or blend knobs mid-set.
 
 ---
 

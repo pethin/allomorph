@@ -92,13 +92,14 @@ def test_partition_instrument_bundles_undeclared_pack_raises():
 
 
 def test_partition_instrument_bundles_multi_pickup():
-    """Verify bundle partitioning for a multi-pickup instrument (Jazz Bass)."""
+    """Verify bundle partitioning for a dual-pickup instrument (Jazz Bass unified parallel)."""
     from allomorph.config.instruments import partition_instrument_bundles
 
     inst = load_instrument("34in_standard_jazz")
     bundles = partition_instrument_bundles(inst)
-    # Jazz bass should have multiple pickup bundles (neck, bridge, pair)
-    assert len(bundles) >= 2
+    # Dual-pickup packs use a single unified 'parallel' source bundle
+    assert len(bundles) == 1
+    assert "parallel" in bundles
     for b_name, bundle in bundles.items():
         assert bundle.bundle_name == b_name
         assert bundle.source_voicing in inst.voicings

@@ -225,6 +225,60 @@ def evaluate_plateau_stopping_condition(
     return (False, None)
 
 
+def evaluate_loss_spike_condition(
+    train_loss_epoch: float,
+    min_train_loss: float,
+    val_loss_epoch: float | None = None,
+    min_val_loss: float = float("inf"),
+    spike_ratio_threshold: float = 500.0,
+    min_abs_loss_floor: float = 0.02,
+) -> tuple[bool, str | None]:
+    """Pure function detecting truly erroneous loss spikes and divergence requiring a training restart.
+
+    Detects:
+    1. Non-finite (NaN / Inf) training or validation losses.
+    2. Catastrophic training loss spikes exceeding `spike_ratio_threshold * min_train_loss`
+       (when `train_loss_epoch >= min_abs_loss_floor`, default >= 0.02).
+    3. Catastrophic validation loss spikes exceeding `spike_ratio_threshold * min_val_loss`
+       (when `val_loss_epoch >= min_abs_loss_floor`, default >= 0.02).
+    """
+    if not math.isfinite(train_loss_epoch):
+        return (True, f"non-finite train loss ({train_loss_epoch})")
+
+    if val_loss_epoch is not None and not math.isfinite(val_loss_epoch):
+        return (True, f"non-finite val loss ({val_loss_epoch})")
+
+    if spike_ratio_threshold <= 0.0:
+        return (False, None)
+
+    if (
+        math.isfinite(min_train_loss)
+        and min_train_loss > 0.0
+        and train_loss_epoch >= min_abs_loss_floor
+    ):
+        train_ratio = train_loss_epoch / max(min_train_loss, 1.0e-7)
+        if train_ratio >= spike_ratio_threshold:
+            return (
+                True,
+                f"train loss spiked {train_ratio:.1f}x ({min_train_loss:.5f} -> {train_loss_epoch:.4f})",
+            )
+
+    if (
+        val_loss_epoch is not None
+        and math.isfinite(min_val_loss)
+        and min_val_loss > 0.0
+        and val_loss_epoch >= min_abs_loss_floor
+    ):
+        val_ratio = val_loss_epoch / max(min_val_loss, 1.0e-7)
+        if val_ratio >= spike_ratio_threshold:
+            return (
+                True,
+                f"val loss spiked {val_ratio:.1f}x ({min_val_loss:.5f} -> {val_loss_epoch:.5f})",
+            )
+
+    return (False, None)
+
+
 class LinearWarmupCallback(Callback):
     """Linearly ramps optimizer learning rate from 0 to target lr over warmup_epochs,
     and clamps LR at eta_min for epoch >= lr_t_max to ensure monotonic cosine decay.
@@ -700,6 +754,7 @@ __all__ = [
     "compute_linear_slope",
     "compute_pareto_quality_score",
     "compute_window_improvement",
+    "evaluate_loss_spike_condition",
     "evaluate_plateau_stopping_condition",
     "extract_trainer_metrics",
 ]

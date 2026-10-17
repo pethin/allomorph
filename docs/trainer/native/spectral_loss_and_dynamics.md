@@ -28,92 +28,126 @@ The gradient $\nabla_\theta \mathcal{L}_{\text{MSE}}$ is dominated almost exclus
 
 ---
 
-## 2. Zero-Phase Blackman FIR High-Pass & Multi-Harmonic Sine Regularizer
+## 2. Composite Time-Domain Loss: Waveform MSE + 255-Tap Blackman FIR High-Pass (`FIR HP`)
 
-To isolate harmonic bands without phase distortion, the native engine designs Type-I linear-phase Blackman-windowed FIR filters directly in pure NumPy (`design_fir_highpass` in `loss.py`, $M = 255$ taps in `engine.py`, `padding="valid"`):
+To supervise both fundamental bass weight and high-frequency pickup resonance without phase distortion, the native engine evaluates a strictly time-domain composite loss in [`engine.py`](../../../src/allomorph/trainer/native/engine.py) and [`loss.py`](../../../src/allomorph/trainer/native/loss.py):
 
-### 2.1 Formulation
+$$\mathcal{L}_{\text{total}} = w_{\text{MSE}} \cdot \Big(\mathcal{L}_{\text{MSE}}(\hat{y}_{\text{full}}, y) + w_{\text{lite}} \mathcal{L}_{\text{MSE}}(\hat{y}_{\text{lite}}, y)\Big) + w_{\text{HP}} \cdot \Big(\mathcal{L}_{\text{MSE}}(h_{\text{HP}} * \hat{y}_{\text{full}}, h_{\text{HP}} * y) + w_{\text{lite}} \mathcal{L}_{\text{MSE}}(h_{\text{HP}} * \hat{y}_{\text{lite}}, h_{\text{HP}} * y)\Big)$$
 
-For a filter with $M$ taps (where $M$ is odd, $M=255$ in `engine.py` and $M=31$ default in `loss.py`) and cutoff frequency $f_c = 1200.0\text{ Hz}$ at sampling rate $f_s = 48,000\text{ Hz}$:
+where:
+- **`MSE` ($w_{\text{MSE}} = 1.00$, `NATIVE_DEFAULT_MSE_WEIGHT`):** Full-band sample-by-sample Mean Squared Error across $0\text{ Hz}$ to $24\text{ kHz}$. Anchors fundamental bass frequencies ($30\text{--}500\text{ Hz}$), comb-filter notch inversions ($550\text{--}800\text{ Hz}$), overall phase alignment, and dynamic transient envelopes.
+- **`FIR HP` ($w_{\text{HP}} = 2.50$, `NATIVE_DEFAULT_FIR_HP_WEIGHT`):** Convolves both predicted $\hat{y}[n]$ and target $y[n]$ with a Type-I linear-phase **255-tap Blackman-windowed FIR high-pass filter** (`padding="valid"`) on the GPU (`F.conv1d`) and weights the high-passed MSE by $2.50\times$.
+- **`FIR HP FC` ($f_c = 1200.0\text{ Hz}$, `NATIVE_DEFAULT_FIR_HP_FC`):** The $-6\text{ dB}$ cutoff frequency of the 255-tap high-pass kernel. $1200\text{ Hz}$ matches the physical string overtone corner frequency (`f_corner` in [`docs/dsp_synthesis_engine.md`](../../dsp_synthesis_engine.md)), blocking the massive $<500\text{ Hz}$ fundamental energy ($>58\text{ dB}$ Blackman stopband rejection) so the optimizer receives a dedicated, high-gain gradient microscope across the $1.2\text{--}14\text{ kHz}$ band where passive RLC pickup resonances ($1.8\text{--}4.5\text{ kHz}$), Neodymium presence peaks, eddy-current damping slopes, and active treble shelves reside.
+
+### 2.1 255-Tap Blackman FIR High-Pass Formulation (`design_sharp_fir_highpass`)
+
+For a filter with $M = 255$ taps and cutoff frequency $f_c = 1200.0\text{ Hz}$ at sampling rate $f_s = 48,000\text{ Hz}$:
 
 1. **Normalized Cutoff:** $\omega_c = 2\pi \dfrac{f_c}{f_s}$.
 2. **Symmetric Time Indices:** $m = n - \dfrac{M - 1}{2}$ for $n \in [0, M-1]$.
 3. **Ideal High-Pass Impulse Response:**
    $$h_{\text{ideal}}[m] = \text{sinc}(m) - \frac{\omega_c}{\pi} \text{sinc}\left(\frac{\omega_c m}{\pi}\right)$$
-4. **Blackman Tapering (`np.blackman` in `engine.py` / Hamming in `loss.py`):**
-   $$w[n] = 0.42 - 0.50 \cos\left(\frac{2\pi n}{M - 1}\right) + 0.08 \cos\left(\frac{4\pi n}{M - 1}\right)$$
-   $$h_{\text{win}}[n] = h_{\text{ideal}}[n] \cdot w[n]$$
+4. **Blackman Tapering (`np.blackman`):**
+   $$w[n] = 0.42 - 0.50 \cos\left(\frac{2\pi n}{M - 1}\right) + 0.08 \cos\left(\frac{4\pi n}{M - 1}\right), \quad h_{\text{win}}[n] = h_{\text{ideal}}[n] \cdot w[n]$$
 5. **Unit Nyquist Gain Normalization:**
-   $$S_{\text{Nyq}} = \sum_{n=0}^{M-1} h_{\text{win}}[n] \cdot \cos(\pi m)$$
-   $$h[n] = \frac{h_{\text{win}}[n]}{S_{\text{Nyq}}}$$
+   $$S_{\text{Nyq}} = \sum_{n=0}^{M-1} h_{\text{win}}[n] \cdot \cos(\pi m), \quad h_{\text{HP}}[n] = \frac{h_{\text{win}}[n]}{S_{\text{Nyq}}}$$
 
-Combined with the 5-harmonic small-signal sine regularizer (`sine_frequencies = (659.25, 1318.5, 1977.8, 2637.0, 3296.3)` Hz, `sine_amplitudes = (0.25, 0.10, 0.05, 0.03, 0.008)`), this guarantees zero phase distortion, exact $0.0\text{ dB}$ gain at Nyquist, and suppression of `LeakyReLU(0.01)` zero-crossing buzz.
+Because a symmetric odd-tap FIR filter is strictly **linear-phase** and evaluated in the time domain via `F.conv1d(..., padding="valid")`, `FIR HP` enforces **both exact magnitude and exact sample-accurate phase** above $1200\text{ Hz}$ in a single fused GPU GEMM call—avoiding the phase blindness and host-sync overhead of FFT/STFT losses.
 
 ---
 
-## 3. Multi-Resolution STFT (MRSTFT) & Composite Loss Formulation
+## 3. Parseval Linearity Regularizer (`Linearity Reg`) & Three-Way Convergence Loop
 
-### 3.1 The Small-Signal Singularity of Normalized High-Pass ESR
+### 3.1 What `Linearity Reg` (`sine_regularizer = True`) Does
+
+A 23-layer WaveNet A2 network contains non-linear `LeakyReLU(0.01)` activations at every residual layer. When trained solely on complex musical stems and high-level sweeps, the network can minimize waveform MSE on loud transients while leaving subtle zero-crossing kinks (crossover distortion), intermodulation products, or static EQ/phase drift in the small-signal regime (where notes ring out and decay).
+
+Before training begins ([`engine.py` Step 9c](../../../src/allomorph/trainer/native/engine.py#L434-L586)), **Linearity Reg** synthesizes **$170.0\text{ seconds}$** ($8,160,000\text{ samples}$) of clean, analytical reference signals and passes them directly through the exact **linear** electroacoustic + MNA circuit solver (`simulate_voicing_dsp(..., apply_saturation=False, apply_dither=False)`) for both the Source Digital Twin and the Target Digital Twin:
+
+1. **3 Multi-Amplitude Continuous Tilted Log Chirps ($3 \times 10\text{ s} = 30\text{ s}$):**
+   - Sweeps $20\text{ Hz} \to 14,000\text{ Hz}$ with a $2000\text{ Hz}$ string-tilt envelope at three amplitude tiers: **`0.40`**, **`0.20`**, and **`0.08`**.
+   - Provides dense, continuous frequency-response and phase supervision across the entire audio spectrum at multiple operating levels.
+2. **140 Multi-Amplitude Pure-Sine Probes ($28\text{ frequencies} \times 5\text{ amplitudes} \times 1.0\text{ s} = 140\text{ s}$):**
+   - **28 Frequencies (`NATIVE_DEFAULT_SINE_FREQUENCIES`):** `(40.0, 80.0, 81.4, 110.0, 160.0, 162.8, 220.0, 300.0, 329.6, 330.0, 440.0, 500.0, 550.0, 586.2, 600.0, 650.0, 659.2, 700.0, 880.0, 1000.0, 1100.0, 1318.5, 1320.0, 1760.0, 2000.0, 3000.0, 5000.0, 7000.0)` Hz. Specifically targets open-string fundamentals ($E_1/A_1/D_2/G_2$ harmonics), dual-pickup comb-filter notch basins ($500\text{--}700\text{ Hz}$), and passive RLC resonant peaks ($1.76\text{--}7.0\text{ kHz}$).
+   - **5 Amplitude Tiers (`NATIVE_DEFAULT_SINE_AMPLITUDES`):** **`(0.25, 0.10, 0.05, 0.03, 0.008)`**, spanning from normal playing level down to $-42\text{ dBFS}$ (`0.008`) to force clean linear behavior across small-signal note tails.
+3. **Broadband Gain Coherence (`probe_gain_correction`):**
+   - Because the musical training stems (`x_train`, `y_train`) include non-linear magnetic/circuit saturation and are normalized to the target RMS standard ($-18.0\text{ dBFS}$ internal target scaling), there is a small broadband gain offset ($0.5\text{--}2.5\text{ dB}$) between the full-track stem RMS ratio and the raw unnormalized linear DSP ratio.
+   - Linearity Reg computes `probe_gain_correction = stem_gain_ratio / raw_dsp_gain_ratio` (logged as `gain align: +X.XX dB`) and scales the target probes to match `y_train` with $100\%$ gain coherence so the optimizer never sees conflicting gain targets between musical stems and linear probes.
+4. **Step-0 Wiener-Hopf Head Warm-Start (`warm_start_head`):**
+   - Before Epoch 1, the `0.20`-amplitude linear calibration chirp (`cal_chirp_x`, `cal_chirp_y`) is passed through the frozen 23-layer dilated basis to solve the 16-tap `head_rechannel` weights in closed form via Tikhonov-regularized Cholesky normal equations, placing the model at unity gain and approximate linear EQ transfer at Step 0.
+5. **In-VRAM Concatenation & Full-Track Permutation:**
+   - The $170\text{ s}$ of paired linear probes `(x_sines_t, y_sines_t)` are concatenated directly onto `(x_train, y_train)` in GPU VRAM. Under epoch block permutation, every training epoch mixes real non-linear bass performances with pure single-frequency sines and chirps.
+
+### 3.2 How `Linearity Reg`, `MSE + FIR HP`, and the `Cosine + Homotopy Schedule` Fit Together
+
+The three components form a tightly coupled system where each resolves a failure mode of the others:
+
+```
+┌────────────────────────────────────────────────────────────────────────────────────────┐
+│ 1. DATA SPACE: Linearity Reg (170s Pure Sines + Tilted Chirps appended to Stems)      │
+│    Provides clean single-frequency & swept targets from 40 Hz to 14 kHz across 5 amps  │
+└──────────────────────────────────────────┬─────────────────────────────────────────────┘
+                                           ▼
+┌────────────────────────────────────────────────────────────────────────────────────────┐
+│ 2. LOSS SPACE: Full-Band MSE (w=1.0) + 1200 Hz FIR High-Pass MSE (w=2.5)               │
+│    • MSE (w=1.0) locks in the 40–1000 Hz fundamentals & comb-notch inversions          │
+│    • FIR HP (w=2.5, fc=1200 Hz) magnifies the >1.2 kHz chirps, sines, & pick clank     │
+│      while penalizing any spurious high-frequency harmonic buzz from low-freq sines!   │
+└──────────────────────────────────────────┬─────────────────────────────────────────────┘
+                                           ▼
+┌────────────────────────────────────────────────────────────────────────────────────────┐
+│ 3. TIME / OPTIMIZER SPACE: C^∞ Homotopy (Ep 1–75) + Cosine LR Annealing (Ep 5–120)     │
+│    • Ep 1–75: Smooth SiLU-gated activation (tau: 0.02 -> 0) shapes global EQ & phase   │
+│    • Ep 75–120: Exact LeakyReLU(0.01) + decaying Cosine LR (4e-3 -> 1e-6) freezes      │
+│      zero-crossing kinks so FIR HP + Linearity Reg can polish out -60 dB fizz          │
+└────────────────────────────────────────────────────────────────────────────────────────┘
+```
+
+#### A. The Dual-Band Synergy Between `FIR HP (1200 Hz)` and `Linearity Reg`
+`FIR HP` interacts with `Linearity Reg` in two complementary ways depending on whether a probe's frequency is **above** or **below** $f_c = 1200\text{ Hz}$:
+1. **High-Frequency Probes ($f_0 \ge 1200\text{ Hz}$ — $1.32\text{--}7.0\text{ kHz}$ sines & $1.2\text{--}14\text{ kHz}$ chirp bands):**
+   Because the log chirps have a physical string tilt and passive pickup targets roll off above their RLC resonance peak, raw high-frequency energy is much smaller than low-frequency energy. Without `FIR HP`, full-band `MSE` would spend $>99\%$ of its gradient budget fitting the $40\text{--}500\text{ Hz}$ sines. `FIR HP` blocks everything below $1200\text{ Hz}$ and multiplies the high-band error by $2.5\times$, forcing the WaveNet to nail the exact target RLC resonant peak height, $Q$ factor, and phase.
+2. **Low-Frequency Probes ($f_0 < 1200\text{ Hz}$ — $40\text{--}880\text{ Hz}$ sines):**
+   When a pure $110\text{ Hz}$ or $330\text{ Hz}$ sine wave from `Linearity Reg` passes through the linear target solver, the target has **zero energy above $1200\text{ Hz}$** ($h_{\text{HP}} * y_{\text{sine}} \equiv 0$). However, if the WaveNet's `LeakyReLU(0.01)` layers introduce tiny zero-crossing kinks (crossover distortion / high-order odd harmonics at $11 f_0, 13 f_0, 15 f_0 > 1200\text{ Hz}$), those spurious harmonics pass straight through the $1200\text{ Hz}$ `FIR HP` filter! Because the high-passed target is literally `0.0`, **`FIR HP` acts as a $2.5\times$-weighted Total Harmonic Distortion (THD) penalty** on every low-frequency sine wave in `Linearity Reg`.
+
+#### B. How the `Cosine Schedule` + `$C^\infty$ Homotopy` Completes the Loop
+Even with `Linearity Reg` and `FIR HP` penalizing high-frequency distortion and EQ error, training a sharp `LeakyReLU(0.01)` network at a constant or high learning rate causes **kink oscillation**: magnified $2.5\times$ by `FIR HP`, steep high-frequency gradients cause Adam updates to jump back and forth across the $x = 0$ bias threshold of individual WaveNet channels, creating a persistent high-frequency "fizz" plateau around $-30\text{ dB}$ ESR.
+
+The two-phase schedule in [`engine.py`](../../../src/allomorph/trainer/native/engine.py#L711-L735) eliminates this:
+1. **Phase 1 — Smooth Manifold & Filterbank Shaping (Epochs 1–75):**
+   - The **$C^\infty$ Activation Homotopy** ($\tau: 0.02 \to 0.0$ via a cosine curve over $75\%$ of `min_epochs`) rounds off the `LeakyReLU` corner into a $C^\infty$ `SiLU`-gated curve ($\psi_\tau(x) = 0.01x + 0.99\tau\,\text{silu}(x/\tau)$) while the **Cosine Learning Rate** is in its high-to-mid range ($4\times 10^{-3} \to 1.5\times 10^{-3}$).
+   - Gradients flow smoothly across $x = 0$ without kink chatter, allowing the 6,347-sample dilated filterbank to rapidly lock in the macro transfer function (comb-notch inversions, bass body, and RLC peak placement) driven by `MSE` + `FIR HP`.
+2. **Phase 2 — Exact Hardware Kink-Locking & Micro-Polishing (Epochs 75–120):**
+   - At Epoch 75 (`0.75 * min_epochs`), $\tau$ reaches `0.0`, locking the network into the exact `LeakyReLU(0.01)` activation executed by the Darkglass Anagram C++ engine.
+   - Simultaneously, the **Cosine LR Schedule** ($T_{\max}=115$) smoothly decays the learning rate down toward $\eta_{\min} = 1.0\times 10^{-6}$ ($4,000\times$ smaller than peak LR), while the **In-VRAM EMA shadow weights** ($\beta = 0.995$) average out step-to-step variance.
+   - With microscopic step sizes and `FIR HP` + `Linearity Reg` continuously penalizing any energy above $1200\text{ Hz}$ on low-frequency sines, the optimizer gently settles the channel bias terms so zero-crossings never chatter—driving validation ESR down to **$-37\text{ to }-40\text{ dB}$** with $\le 0.16\text{ dB}$ spectral band tracking error.
+
+---
+
+## 3.3 Historical Context: Why Normalized High-Pass ESR & Online MRSTFT Were Replaced
+
+### The Small-Signal Singularity of Normalized High-Pass ESR
 
 Previously, high-frequency emphasis was attempted via `NormalizedHighPassESRLoss`, which computes high-pass error normalized by target band energy:
 $$\mathcal{L}_{\text{hp}}(y, \hat{y}) = \frac{\sum_n (h * (y - \hat{y}))[n]^2}{\sum_n (h * y)[n]^2 + \epsilon}$$
 
 While effective on full-amplitude plucks, this formulation exhibits an electroacoustic singularity on decaying harmonics, quiet passages, and chords. As target high-frequency energy decays toward the noise floor ($E_{\text{target}} \to 10^{-7}$), the denominator collapses. The resulting gradient:
 $$\frac{\partial \mathcal{L}_{\text{hp}}}{\partial \hat{y}} \propto \frac{1}{\sum (h * y)^2 + \epsilon}$$
-explodes by several orders of magnitude. 
+explodes by several orders of magnitude. Because a WaveNet contains non-linear activations, the optimizer drives internal convolutional weights into heavy saturation to generate spurious upper harmonics out of thin air, producing severe audible distortion on small signals. Unnormalized `FIR HP` ($w_{\text{HP}} = 2.50$) completely avoids denominator division, scaling gradients smoothly with signal amplitude.
 
-Because a WaveNet contains non-linear gated activations ($\tanh(Wx) \odot \sigma(Vx)$), the optimizer discovers an unphysical shortcut: it drives internal convolutional weights into heavy non-linear saturation to generate spurious upper harmonics out of thin air to satisfy the high-pass loss. This produced severe audible distortion on small signals (up to **`16.4%`** THD on native and **`67.5%`** on stock engines at $-40\text{ dBFS}$).
+### Offline Multi-Resolution STFT (`MultiResolutionSTFTLoss`) for Telemetry Only
 
-### 3.2 Multi-Resolution STFT Loss Formulation
-
-To overcome this singularity while preserving full high-frequency deconvolution accuracy ($+18.6\text{ dB}$ at $10\text{ kHz}$), the native engine deploys `MultiResolutionSTFTLoss`. MRSTFT operates in the log-spectral domain, where a $10\text{ dB}$ error at $10\text{ kHz}$ incurs the exact same numerical penalty as a $10\text{ dB}$ error at $100\text{ Hz}$, providing balanced gradient pressure to develop linear differentiator taps without non-linear distortion.
-
-For $M$ simultaneous Short-Time Fourier Transform (STFT) resolutions:
-$$\mathcal{L}_{\text{MRSTFT}}(y, \hat{y}) = \frac{1}{M} \sum_{m=1}^M \left( \mathcal{L}_{\text{sc}}^{(m)}(y, \hat{y}) + \mathcal{L}_{\text{log\_mag}}^{(m)}(y, \hat{y}) \right)$$
-
-1. **Spectral Convergence Loss ($\mathcal{L}_{\text{sc}}$):**
-   $$\mathcal{L}_{\text{sc}}(y, \hat{y}) = \frac{\| |Y| - |\hat{Y}| \|_F}{\| |Y| \|_F + \epsilon}$$
-2. **Log-Magnitude L1 Loss ($\mathcal{L}_{\text{log\_mag}}$):**
-   $$\mathcal{L}_{\text{log\_mag}}(y, \hat{y}) = \frac{1}{K} \sum_{k=0}^{K-1} \left| \log |Y_k| - \log |\hat{Y}_k| \right|$$
-
-#### Resolution Multi-Scale Grid:
-- **Resolution 1 (Bass / Fundamental):** FFT size $N=2048$, hop size $H=240$, Hann window length $W=1200$ ($25.0\text{ ms}$).
-- **Resolution 2 (Mid-Band / Body):** FFT size $N=1024$, hop size $H=120$, Hann window length $W=600$ ($12.5\text{ ms}$).
-- **Resolution 3 (Transients / Air):** FFT size $N=512$, hop size $H=50$, Hann window length $W=240$ ($5.0\text{ ms}$).
-
-### 3.3 Zero-Silence Gradient Proof ($C^\infty$ Power Clamping)
-
-In naive STFT loss implementations, magnitude is computed via $\sqrt{\text{power} + \epsilon_{\text{small}}}$ with $\epsilon \approx 10^{-14}$. When computing $\log |\hat{Y}|$, the gradient evaluated at silence ($|\hat{Y}| \approx 10^{-7}$) explodes:
-$$\frac{d}{d\hat{Y}} \log |\hat{Y}| = \frac{1}{|\hat{Y}|} \approx 10,000,000$$
-This instability previously necessitated hard gradient norm clipping (`max_norm = 1.0`), which in turn suppressed tiny high-frequency gradient updates.
-
-The Allomorph native engine adopts the bit-exact `auraloss` formulation:
-$$P = \text{STFT}_{\text{real}}^2 + \text{STFT}_{\text{imag}}^2$$
-$$P_{\text{clamped}} = \text{clamp}(P, \min=1.0\times 10^{-8})$$
-$$|\hat{Y}| = \sqrt{P_{\text{clamped}}}$$
-
-**Mathematical Proof of Zero Silence Gradient:**  
-For any sub-audible noise or silence where $P < 1.0 \times 10^{-8}$, the clamp function enters its constant boundary:
-$$\frac{d}{dP} \text{clamp}(P, \min=c) = 0 \quad \text{for } P < c$$
-By the chain rule:
-$$\frac{\partial \mathcal{L}_{\text{log\_mag}}}{\partial \hat{Y}} = \frac{\partial \mathcal{L}}{\partial |\hat{Y}|} \cdot \frac{1}{2\sqrt{P_{\text{clamped}}}} \cdot \frac{d P_{\text{clamped}}}{dP} \cdot \frac{\partial P}{\partial \hat{Y}} = \frac{\partial \mathcal{L}}{\partial |\hat{Y}|} \cdot \frac{1}{2\sqrt{c}} \cdot 0 \cdot \frac{\partial P}{\partial \hat{Y}} \equiv 0.0$$
-
-Silence and sub-audible noise bins evaluate to mathematically exact **`0.0`** gradient. Gradients cannot explode, eliminating the need for gradient clipping and allowing the Adam optimizer to directly integrate high-frequency linear differentiator updates.
-
-### 3.4 Composite Loss Weighting Allocation & FIR Regularizer
-
-$$\mathcal{L}_{\text{total}} = w_{\text{mse}} \cdot \left( \mathcal{L}_{\text{mse\_full}} + w_{\text{lite}} \cdot \mathcal{L}_{\text{mse\_lite}} \right) + w_{\text{fir}} \cdot \left( \mathcal{L}_{\text{fir\_full}} + w_{\text{lite}} \cdot \mathcal{L}_{\text{fir\_lite}} \right)$$
+`MultiResolutionSTFTLoss` in [`loss.py`](../../../src/allomorph/trainer/native/loss.py) is retained strictly for **offline post-training telemetry** (`compute_baseline_mrstft`) and stock engine diagnostics, and is never included in the active native training loop:
 
 | Component | Default Weight | Target Domain | Acoustic & Hardware Purpose |
 | :--- | :---: | :---: | :--- |
-| **Waveform MSE** | `1.00` | Time Domain | Anchors fundamental phase, sub-bass excursion, and DC stability |
-| **FIR Highpass GEMM** | `2.50` | Time Domain Conv1D | 255-tap Blackman FIR ($f_c = 1200\text{ Hz}$, `padding="valid"`). Evaluated identically in both training and validation (`mb_val`), forcing WaveNet into linear subspaces across chime harmonics H2–H5 ($1318\text{--}3296\text{ Hz}$) without FFT launch bubbles. |
-| **MRSTFT Loss** | Removed from training (`MultiResolutionSTFTLoss` offline only) | Multi-Scale Log-STFT | **Removed from training:** When evaluated on pure sines, log-STFT crushes differentiator taps, muffling bright voices (presence $-6.9\text{ dB}$, treble $-4.3\text{ dB}$). Retained strictly for offline `compute_baseline_mrstft` diagnostics and stock engine telemetry. |
-| **Pre-Emphasis MSE** | `0.00` (Bypassed) | Time Domain | Bypassed to prevent sub-bass phase distortion. |
-| **High-Pass ESR** | `0.00` (Bypassed) | Band-Passed ESR | Bypassed to prevent small-signal denominator singularities ($E \to 10^{-7}$) that force non-linear diode distortion. |
+| **Waveform MSE (`MSE`)** | `1.00` | Time Domain | Anchors fundamental phase, sub-bass excursion, comb-notch inversion, and DC stability |
+| **FIR Highpass (`FIR HP`)** | `2.50` ($f_c = 1200\text{ Hz}$) | Time Domain Conv1D | 255-tap Blackman FIR (`padding="valid"`). Enforces exact magnitude and phase above $1200\text{ Hz}$ and penalizes high-order harmonic distortion on low-frequency `Linearity Reg` sines. |
+| **Linearity Reg (`sine_regularizer`)** | `Enabled` ($170\text{ s}$) | In-VRAM Training Buffer | 3 tilted log chirps ($20\text{ Hz}\to 14\text{ kHz}$) + $28\text{ freqs} \times 5\text{ amps}$ pure sines ($40\text{--}7000\text{ Hz}$) with dynamic gain coherence (`probe_gain_correction`). |
+| **MRSTFT Loss** | `0.00` (Offline only) | Multi-Scale Log-STFT | **Excluded from training:** Phase-blind log-STFT crushes differentiator taps on pure sines. Used strictly for post-training QA telemetry (`mrstft_loss`, `differential_mrstft`). |
 
 > [!CAUTION]
-> **Regression Prevention:** For complete forensic proofs of why MRSTFT, untilted sweeps, independent LUFS matching, and `padding="same"` failed, consult [What Didn't Work: Forensic Analysis & Regression Prevention](what_did_not_work_and_regression_prevention.md).
+> **Regression Prevention:** For complete forensic proofs of why online MRSTFT, untilted sweeps, independent LUFS matching, and `padding="same"` failed, consult [What Didn't Work: Forensic Analysis & Regression Prevention](what_did_not_work_and_regression_prevention.md).
 
 ---
 
@@ -143,6 +177,14 @@ if best_state_dict is not None and best_epoch > 0:
     )
     model.load_state_dict(best_state_dict)
 ```
+
+### 4.4 Unlucky Loss Spike Detection & Automatic Training Restart (CL-37)
+
+In deep 23-layer dilated WaveNet architectures trained with `bf16-mixed` precision and sharp highpass FIR regularization, an occasional unlucky stochastic mini-batch alignment can trigger a catastrophic gradient explosion (e.g. `train_loss` jumping from $0.00004 \to 0.0343 \to 14.89 \to 109.72$ and validation ESR spiking from $-35.1\text{ dB}$ to $+16.2\text{ dB}$). Once the Adam second-moment accumulator ($v_t$) and EMA shadow weights (`ema_params`, $\beta = 0.995$) are polluted by a $10^4\times$ gradient spike, the remaining epochs are wasted slowly decaying the corrupted moments.
+
+To guarantee clean, uninterrupted convergence without wasting GPU compute or falsely triggering on benign transient wobbles ($0.001\text{--}0.005$), the native engine evaluates `evaluate_loss_spike_condition` (`callbacks.py`) after every training epoch and validation pass:
+- **Trigger Condition:** Fires immediately if `train_loss_epoch` or `mb_val` is non-finite (`NaN`/`Inf`), or if either exceeds `spike_ratio_threshold` ($500.0\times$, `NATIVE_DEFAULT_SPIKE_RATIO_THRESHOLD`) times its running minimum (`min_train_loss` or `min_val_loss_seen`) while above the absolute floor $\mathcal{L}_{\text{floor}} = 0.02$.
+- **Automatic Recovery:** Aborts the corrupted trajectory immediately and restarts training from Epoch 1 (up to `NATIVE_DEFAULT_MAX_SPIKE_RESTARTS = 3` attempts) with fresh WaveNet A2 weights, fresh closed-form Tikhonov `warm_start_head` initialization, reset Adam moments and EMA shadow buffers, and a $0.85\times$ learning rate backoff ($\eta_{\text{attempt}} = 0.85^{\text{attempt}} \cdot \eta_0$) to prevent re-entering the same unstable trajectory.
 
 ---
 

@@ -5,36 +5,10 @@
   "version": "v7.1.1",
   "allomorph_version": "0.5.0",
   "dsp_generation": 7,
-  "recipe_token": "alo_pck_3ad7798c51f5d7488778ce0c1b79ce0c4e95c85e3e1b3f6fb8a1e0077b3e1777",
+  "recipe_token": "alo_pck_5aa5a8620929dfe8a698c2fe1be5920f2f151d955ef831df521cff1afde6ee49",
   "bundles": {
-    "neck": {
-      "recipe_token": "alo_bun_183c180716778c7877fa7a0a1e99ea5b620aa4d7f3d7fc20a679766afe5aaeba",
-      "source": "34in_active_emg:neck_solo",
-      "position_name": "Neck",
-      "base_dry_file": "input.wav",
-      "base_dry_token": "alo_dry_891a0d5650ab0e9d897d36e584180a6a2dd4c0652a252ebe5ad6cf589d62dd37",
-      "dry_file": "dry v7.1.1.wav",
-      "dry_version": "v7.1.1",
-      "dry_recipe_token": "alo_rec_815387abe6c0a019a0d52a9a65140b94fd174acfe14fc2188e4145e371da32df",
-      "dry_digest_token": "alo_stem_c1e04558e4011f1689f0b9ea840714bfe7bc6f241e5534853c2f1ab70e85c048",
-      "source_voicing_version": 1,
-      "stem_count": 11
-    },
-    "bridge": {
-      "recipe_token": "alo_bun_c8545e20f0deb4be52aefc1af35ebc11a4260ec3824e7ddffc0b6de554778c58",
-      "source": "34in_active_emg:bridge_solo",
-      "position_name": "Bridge",
-      "base_dry_file": "input.wav",
-      "base_dry_token": "alo_dry_891a0d5650ab0e9d897d36e584180a6a2dd4c0652a252ebe5ad6cf589d62dd37",
-      "dry_file": "dry v7.1.1.wav",
-      "dry_version": "v7.1.1",
-      "dry_recipe_token": "alo_rec_d6ac7116e143011798732be9bf4ea775a47c7a7cc69f9c294882933842c661ed",
-      "dry_digest_token": "alo_stem_e57c0e4db74941af35bb564e5b927cfa801d5bc8600a71df1b2c8967f1971a18",
-      "source_voicing_version": 1,
-      "stem_count": 5
-    },
     "parallel": {
-      "recipe_token": "alo_bun_34c6b3703e41e55c34673abde2bf4dd686007372e97fcfd2a7d9c1f138fa435f",
+      "recipe_token": "alo_bun_347556cfd9a6f36abf438dafd9537fbf9ebfeaa03516d80fc4c9afc433cb685d",
       "source": "34in_active_emg:pair_parallel",
       "position_name": "Parallel",
       "base_dry_file": "input.wav",
@@ -44,7 +18,7 @@
       "dry_recipe_token": "alo_rec_cbf3013c1803eac5b7f27bedb57579b4d1cb3436f177629725cecb9d9f84fea1",
       "dry_digest_token": "alo_stem_5c2f9e57e5fc6a1ce515725cf429538982f6aa63863d76153785dc03f72deb9c",
       "source_voicing_version": 1,
-      "stem_count": 10
+      "stem_count": 26
     }
   }
 }

@@ -30,16 +30,16 @@ def test_resolve_bundle_target_file_descriptors_single_pickup():
 
 
 def test_resolve_bundle_target_file_descriptors_multi_pickup():
-    """Verify descriptors for a multi-pickup instrument include bracketed position tags."""
+    """Verify descriptors when is_multi_pickup=True include bracketed position tags."""
     inst = load_instrument("34in_standard_jazz")
     bundles = partition_instrument_bundles(inst)
-    bridge_bundle = bundles["bridge"]
+    parallel_bundle = bundles["parallel"]
 
-    descriptors = resolve_bundle_target_file_descriptors(bridge_bundle, is_multi_pickup=True)
+    descriptors = resolve_bundle_target_file_descriptors(parallel_bundle, is_multi_pickup=True)
     assert len(descriptors) > 0
 
     first = descriptors[0]
-    assert first["pos_tag"] == bridge_bundle.position_name or "Bridge"
+    assert first["pos_tag"] == parallel_bundle.position_name or "Parallel"
     assert f"[{first['pos_tag']}]" in first["stem_base"]
 
 

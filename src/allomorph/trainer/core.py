@@ -40,10 +40,12 @@ from allomorph.trainer.constants import (
     NATIVE_DEFAULT_HOMOTOPY_TAU_INIT,
     NATIVE_DEFAULT_LITE_WEIGHT,
     NATIVE_DEFAULT_LR,
+    NATIVE_DEFAULT_MAX_SPIKE_RESTARTS,
     NATIVE_DEFAULT_SINE_AMPLITUDES,
     NATIVE_DEFAULT_SINE_FREQUENCIES,
     NATIVE_DEFAULT_SINE_REGULARIZER,
     NATIVE_DEFAULT_SLICE_LEN,
+    NATIVE_DEFAULT_SPIKE_RATIO_THRESHOLD,
     NATIVE_DEFAULT_VAL_INTERVAL,
     NATIVE_DEFAULT_WARM_START,
     NATIVE_DEFAULT_WEIGHT_DECAY,
@@ -512,6 +514,8 @@ def train_voice(
     warm_start: bool = NATIVE_DEFAULT_WARM_START,
     homotopy_tau_init: float = NATIVE_DEFAULT_HOMOTOPY_TAU_INIT,
     ema_decay: float = NATIVE_DEFAULT_EMA_DECAY,
+    spike_ratio_threshold: float = NATIVE_DEFAULT_SPIKE_RATIO_THRESHOLD,
+    max_spike_restarts: int = NATIVE_DEFAULT_MAX_SPIKE_RESTARTS,
     val_loss_metric: str = STOCK_DEFAULT_VAL_LOSS_METRIC,
 ) -> bool:
     """Trains a Neural Amp Modeler Architecture 2 model container using the configured engine."""
@@ -560,6 +564,8 @@ def train_voice(
             warm_start=warm_start,
             homotopy_tau_init=homotopy_tau_init,
             ema_decay=ema_decay,
+            spike_ratio_threshold=spike_ratio_threshold,
+            max_spike_restarts=max_spike_restarts,
         )
 
     from allomorph.trainer.stock import train_voice_stock

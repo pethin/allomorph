@@ -1,6 +1,6 @@
 ALLOMORPH: STANDARD JAZZ BASS EDITION
 
-Transform your stock Fender Jazz Bass into 24 legendary active, vintage, modern, hollow-body, and acoustic pickup configurations.
+Transform your stock Fender Jazz Bass into 25 legendary active, vintage, modern, hollow-body, and acoustic pickup configurations.
 
 
 OVERVIEW
@@ -13,9 +13,9 @@ With this pack, your Jazz Bass can instantly deliver:
 • Modern active slap preamps, boutique P/MM hybrids, and cutting multi-scale progressive rock clank
 • Iconic 1960s Hofner hollow-body violin thump and Gibson EB-2 semi-hollow archtop rumble
 • Acoustic upright double bass resonance for jazz and acoustic sessions
-• '70s bridge-shifted dual-pickup growl, S-1 series humbucking punch, and Jaco Pastorius bridge bark
+• '70s bridge-shifted dual-pickup growl, S-1 series humbucking punch, Jaco Pastorius bridge bark, and solo neck warmth
 
-Calibrated specifically for a 34" Standard Jazz Bass with stock single-coil pickups. Plug in, select a model, and hear your Jazz Bass transform into a completely different instrument in real time with zero latency.
+Calibrated specifically for a 34" Standard Jazz Bass with both stock single-coil pickups wide open in parallel (preserving 100% hum cancellation across every model). Plug in, select a model, and hear your Jazz Bass transform into a completely different instrument in real time with zero latency.
 
 
 RECOMMENDED SIGNAL CHAIN
@@ -31,116 +31,116 @@ Why Block 1? Overdrive pedals and amps react directly to the resonant character 
 
 QUICK INSTRUMENT SETUP
 
-For each voicing, set your bass's physical pickup controls to the recommended bracketed setting [Parallel], [Neck], or [Bridge]:
+• Neck Volume Knob: 100% (Wide Open)
+• Bridge Volume Knob: 100% (Wide Open)
+• Master Tone Knob: 100% (Wide Open)
 
-• [Parallel]: Neck Vol 100% | Bridge Vol 100% (Both Pickups Wide Open)
-• [Neck]: Neck Vol 100% | Bridge Vol 0% (Solo Neck Pickup)
-• [Bridge]: Neck Vol 0% | Bridge Vol 100% (Solo Bridge Pickup)
-• Master Tone Knob: 100% (Wide Open across all models)
-
-Plug straight in. All pickup positioning, pot loading, tone capacitor shaping, and active preamp EQs are handled automatically by the models.
+Keep both pickups wide open in parallel for all 25 models—preserving 100% hum cancellation while letting you switch between solo neck, solo bridge, and dual-pickup instruments completely hands-free via footswitch. All pickup positioning, pot loading, tone capacitor shaping, and active preamp EQs are handled automatically by the models.
 
 
-THE 24 DIGITAL TWIN VOICINGS
+THE 25 DIGITAL TWIN VOICINGS
 
 
 Precision Bass & Super P Family
 
-01. Precision Vintage [Neck]
+01. Precision Vintage
 The gold standard: a vintage 1962 Precision Bass with tone wide open. Warm, woody low-mids, open harmonic bloom, and organic touch sensitivity that sits perfectly in any mix.
 
-02. Precision Active [Neck]
+02. Precision Active
 Fender American Ultra II active split-coil P-bass tone with 18V 3-band active preamp. Punchy, articulate, and wideband with authoritative low-end weight and bright transient clarity—built for modern rock, gospel, and mix cutting authority.
 
-03. Dingwall Super P [Neck]
+03. Dingwall Super P
 Dingwall SP1 multi-scale (32"–35") passive Neodymium Dual-P split-coil pickup. Combines fanned-fret low-end tightness with a focused 3.0 kHz passive Neodymium presence peak that cuts through dense mixes without an active preamp.
 
-04. Precision Warm [Neck]
+04. Precision Warm
 The legendary Motown flatwound sound (James Jamerson / Pino Palladino). Fat, pillowy sub-bass thump with rolled-off highs that glues the groove together.
 
 
 Music Man StingRay Family
 
-05. StingRay Parallel [Bridge]
+05. StingRay Parallel
 The iconic Music Man StingRay sound: thunderous low end, aggressive metallic slap clank, and that hollow midrange scoop heard on thousands of hit records.
 
-06. StingRay Series [Bridge]
+06. StingRay Series
 StingRay wired in series for a hotter, thicker signal with punchy low-mids and an aggressive, in-your-face rock bark.
 
 
 P/J Bass Family
 
-07. PJ Active [Parallel]
+07. PJ Active
 Modern active P/J punch (Fender American Ultra II style). Combines Ultra II Noiseless split-coil body with Noiseless bridge single-coil cut, boosted by the 18V 3-band active preamp.
 
-08. PJ Passive [Parallel]
+08. PJ Passive
 Classic '80s rock P/J tone (Fender Precision Special / Yamaha BB). Thick hard-rock punch with aggressive midrange bite and authoritative low-end grunt.
 
 
 P/MM Modern Hybrids
 
-09. P∕MM Parallel [Parallel]
+09. P∕MM Parallel
 Modern boutique session hybrid (Lakland 44-02 / Sandberg California style). Blends the woody warmth of a Split-P neck with the scooped slap bite and sparkling top-end of a parallel Music Man bridge humbucker through an active 3-band preamp.
 
-10. P∕MM Series [Parallel]
+10. P∕MM Series
 Modern active P/MM hybrid with the bridge humbucker switched to series coils. Delivers a punchy, mid-forward humbucker roar and muscular rock authority through the active 3-band preamp.
 
 
 Rickenbacker 4001/4003 Family
 
-11. Rickenbacker Clank [Bridge]
+11. Rickenbacker Clank
 The quintessential prog-rock clank (Chris Squire / Geddy Lee). Tight, lean low end with biting, aggressive pick attack and cutting upper-mid grit.
 
-12. Rickenbacker Vintage [Parallel]
+12. Rickenbacker Vintage
 Authentic vintage 4001 dual-pickup circuit with the 4.7nF high-pass capacitor engaged on the bridge pickup. Combines full-range neck sub-bass with biting bridge clank while eliminating 500 Hz phase cancellation.
 
-13. Rickenbacker Neck [Neck]
+13. Rickenbacker Neck
 Solo 4001/4003 "Toaster / Hi-Gain" neck single-coil positioned at the 24th-fret harmonic node (210 mm). Scoops the 4th harmonic for a deep, woody fundamental while retaining a glassy 2.34 kHz roundwound presence peak (Paul McCartney / Al Cisneros).
 
 
 Dingwall Multi-Scale Family
 
-14. Dingwall Bridge [Bridge]
+14. Dingwall Bridge
 Modern progressive metal tone: razor-sharp pick clank, extreme note clarity, and piano-like low-B definition tailored for drop tunings and heavy distortion.
 
-15. Dingwall Series [Parallel]
+15. Dingwall Series
 The signature Dingwall rotary position (Bridge + Middle FD3n pickups wired in series). Massive low-mid wall of sound with laser-focused multi-scale string tension and aggressive modern rock/metal authority (Nolly Getgood).
 
-16. Dingwall Parallel [Parallel]
+16. Dingwall Parallel
 FD3 bridge and middle coils in parallel: modern scooped aggression with ultra-fast transient attack, tight sub-bass, and pristine harmonic sparkle.
 
 
 Gibson Mudbucker & Hollow-Body Family
 
-17. Mudbucker Deep [Neck]
+17. Mudbucker Deep
 The legendary Gibson EB-0 solid-body "Mudbucker": a dark, colossal wall of pure vintage bass rumble with zero top-end harshness—pure '60s and '70s British blues-rock.
 
-18. Mudbucker Hollow [Neck]
+18. Mudbucker Hollow
 1961 Gibson EB-2 / Epiphone Rivoli semi-hollow laminated maple archtop with neck Sidewinder humbucker. Combines massive 30.5" short-scale low end with warm, resonant archtop wood bloom and natural semi-hollow sustain damping ('60s soul and British Invasion).
 
-19. Mudbucker Baritone [Neck]
+19. Mudbucker Baritone
 1961 Gibson EB-2 semi-hollow archtop with the Baritone push-button choke filter engaged (15.0H inductor + 20nF capacitor). Attenuates sub-bass mud below 200 Hz to focus a snarling, woody midrange rock bark (Jack Bruce / Chris Dreja).
 
-20. Hofner Violin Warm [Neck]
+20. Hofner Violin Warm
 Iconic 1963 Hofner 500/1 fully hollow violin bass ("Beatle Bass") with Staple Alnico V neck humbucker, "Bass On" rhythm circuit, floating ebony bridge, and low-tension flatwounds. Explosive woody attack thump with fast, blooming hollow-body decay (Paul McCartney).
 
 
 Acoustic Transducers
 
-21. Upright Piezo [Neck]
+21. Upright Piezo
 Acoustic upright double bass: transforms your electric bass into a woody, resonant acoustic upright with natural hollow-body pizzicato decay and organic finger feel. Pair with 3 Sigma Audio "Acoustic Upright Standard" AST IRs in your cabinet loader for authentic soundboard acoustic bloom.
 
 
 Jazz Bass Family
 
-22. Jazz Pair Active [Parallel]
+22. Jazz Pair Active
 The quintessential NYC '70s active slap tone: tight, massive sub-bass and crisp, glassy highs with a 53.3mm bridge-spaced midrange scoop that pops right out of a dense mix.
 
-23. Jazz Pair Series [Parallel]
+23. Jazz Pair Series
 Dual Jazz single-coils wired in series (Fender S-1 / push-pull spec). Eliminates the parallel mid-scoop in favor of a hot, muscular humbucking midrange punch that drives tube amps and pedals with authority.
 
-24. Jazz Bridge Growl [Bridge]
-The unmistakable Jaco Pastorius tone: solo your bridge pickup for that signature singing, vocal bridge growl and burp with full low-end body.
+24. Jazz Bridge Growl
+The unmistakable Jaco Pastorius tone: delivers that signature singing, vocal bridge growl and burp with full low-end body while keeping both physical pickups hum-canceling.
+
+25. Jazz Neck Warm
+Solo '60s neck single-coil character—deep, warm, and round with a woody low-end bloom that rivals a P-bass while retaining single-coil openness and hum-free parallel operation.
 
 
 LICENSE & DISCLAIMER

@@ -352,6 +352,7 @@ def test_native_default_hyperparameters_and_isolation() -> None:
         NATIVE_DEFAULT_LR,
         NATIVE_DEFAULT_LR_SCHEDULER,
         NATIVE_DEFAULT_MAX_EPOCHS,
+        NATIVE_DEFAULT_MAX_SPIKE_RESTARTS,
         NATIVE_DEFAULT_MIN_DELTA,
         NATIVE_DEFAULT_MIN_EPOCHS,
         NATIVE_DEFAULT_PATIENCE,
@@ -359,6 +360,7 @@ def test_native_default_hyperparameters_and_isolation() -> None:
         NATIVE_DEFAULT_SINE_FREQUENCIES,
         NATIVE_DEFAULT_SINE_REGULARIZER,
         NATIVE_DEFAULT_SLICE_LEN,
+        NATIVE_DEFAULT_SPIKE_RATIO_THRESHOLD,
         NATIVE_DEFAULT_VAL_INTERVAL,
         NATIVE_DEFAULT_WARM_START,
         NATIVE_DEFAULT_WEIGHT_DECAY,
@@ -387,6 +389,8 @@ def test_native_default_hyperparameters_and_isolation() -> None:
     assert NATIVE_DEFAULT_WARM_START is True
     assert NATIVE_DEFAULT_HOMOTOPY_TAU_INIT == 0.02
     assert NATIVE_DEFAULT_EMA_DECAY == 0.995
+    assert NATIVE_DEFAULT_SPIKE_RATIO_THRESHOLD == 500.0
+    assert NATIVE_DEFAULT_MAX_SPIKE_RESTARTS == 3
 
     # 3. Default platform hyperparameters match Native defaults
     assert DEFAULT_MAX_EPOCHS == NATIVE_DEFAULT_MAX_EPOCHS
@@ -410,6 +414,8 @@ def test_native_default_hyperparameters_and_isolation() -> None:
     assert sig.parameters["warm_start"].default == NATIVE_DEFAULT_WARM_START
     assert sig.parameters["homotopy_tau_init"].default == NATIVE_DEFAULT_HOMOTOPY_TAU_INIT
     assert sig.parameters["ema_decay"].default == NATIVE_DEFAULT_EMA_DECAY
+    assert sig.parameters["spike_ratio_threshold"].default == NATIVE_DEFAULT_SPIKE_RATIO_THRESHOLD
+    assert sig.parameters["max_spike_restarts"].default == NATIVE_DEFAULT_MAX_SPIKE_RESTARTS
 
 
 def test_normalize_training_stem_calibrates_unnormalized_stems() -> None:
@@ -435,3 +441,109 @@ def test_normalize_training_stem_calibrates_unnormalized_stems() -> None:
     assert abs(rms_loud_dbfs - TARGET_RMS_DBFS) < 1e-3
     assert compute_true_peak(norm_quiet, sample_rate=sr) <= CALIBRATION_PEAK_CEILING + 1e-4
     assert compute_true_peak(norm_loud, sample_rate=sr) <= CALIBRATION_PEAK_CEILING + 1e-4
+
+
+def test_evaluate_loss_spike_condition() -> None:
+    """Verifies pure loss spike detection logic across normal progression, transient wobbles, catastrophic explosions, and NaNs."""
+    from allomorph.trainer import evaluate_loss_spike_condition
+
+    # 1. Normal progression or small fluctuation below min_abs_loss_floor (0.02) -> no spike
+    is_spike, reason = evaluate_loss_spike_condition(
+        train_loss_epoch=0.0046,
+        min_train_loss=0.00001,
+        val_loss_epoch=0.00002,
+        min_val_loss=0.00001,
+    )
+    assert is_spike is False
+    assert reason is None
+
+    # 2. Catastrophic train loss explosion (e.g. 0.0000 -> 0.0343 / 14.8920 as in Rickenbacker Vintage)
+    is_spike_t, reason_t = evaluate_loss_spike_condition(
+        train_loss_epoch=0.0343,
+        min_train_loss=0.00004,
+    )
+    assert is_spike_t is True
+    assert reason_t is not None and "train loss spiked" in reason_t
+
+    # 3. Catastrophic validation loss explosion (e.g. 0.00001 -> 0.29012)
+    is_spike_v, reason_v = evaluate_loss_spike_condition(
+        train_loss_epoch=0.0002,
+        min_train_loss=0.0001,
+        val_loss_epoch=0.29012,
+        min_val_loss=0.00001,
+    )
+    assert is_spike_v is True
+    assert reason_v is not None and "val loss spiked" in reason_v
+
+    # 4. Non-finite NaN / Inf loss
+    is_spike_nan, reason_nan = evaluate_loss_spike_condition(
+        train_loss_epoch=float("nan"),
+        min_train_loss=0.001,
+    )
+    assert is_spike_nan is True
+    assert reason_nan is not None and "non-finite" in reason_nan
+
+
+def test_train_voice_native_restarts_on_unlucky_spike(tmp_path: Path, monkeypatch: object) -> None:
+    """Verifies that train_voice_native detects an unlucky loss spike and automatically restarts training."""
+    import pytest
+
+    mp = pytest.MonkeyPatch()
+    fs = 48000
+    duration_s = 1.5
+    n_frames = int(fs * duration_s)
+
+    t = np.linspace(0, duration_s, n_frames, endpoint=False, dtype=np.float32)
+    sig_src = (0.5 * np.sin(2.0 * np.pi * 100.0 * t)).astype(np.float32)
+    sig_tgt = (0.4 * np.sin(2.0 * np.pi * 200.0 * t)).astype(np.float32)
+
+    src_wav = tmp_path / "spike_src.wav"
+    tgt_wav = tmp_path / "spike_tgt.wav"
+
+    with AudioFile(str(src_wav), "w", samplerate=fs, num_channels=1) as f:
+        f.write(sig_src[np.newaxis, :])
+    with AudioFile(str(tgt_wav), "w", samplerate=fs, num_channels=1) as f:
+        f.write(sig_tgt[np.newaxis, :])
+
+    models_dir = tmp_path / "models_spike"
+    orig_forward = AllomorphWaveNetA2.forward
+    forward_calls = 0
+
+    def spiky_forward(self: AllomorphWaveNetA2, x: torch.Tensor) -> torch.Tensor:
+        nonlocal forward_calls
+        out = orig_forward(self, x)
+        if self.training:
+            forward_calls += 1
+            # Inject an unlucky 100x output spike on the 2nd training forward call (Epoch 2 of Attempt 1)
+            if forward_calls == 2:
+                return out * 100.0 + 10.0
+        return out
+
+    mp.setattr(AllomorphWaveNetA2, "forward", spiky_forward)
+    try:
+        ok = train_voice_native(
+            instrument="30in_emg_mmtw:dual_mode",
+            voice="34in_standard_p:slab_dub",
+            reference_wav=src_wav,
+            output_wav=tgt_wav,
+            models_dir=models_dir,
+            epochs=3,
+            min_epochs=2,
+            slice_len=4096,
+            sine_regularizer=False,
+            warm_start=False,
+            fast_dev_run=False,
+            silent=True,
+            seed=42,
+            device="cpu",
+            max_spike_restarts=2,
+        )
+    finally:
+        mp.undo()
+
+    assert ok is True
+    exported = list(models_dir.glob("**/*.nam"))
+    assert len(exported) == 1
+    with open(exported[0], "r", encoding="utf-8") as f:
+        data = json.load(f)
+    assert data["metadata"]["training"]["spike_restarts"] == 1

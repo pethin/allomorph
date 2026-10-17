@@ -52,21 +52,21 @@ PACK_ARTWORK_NAMES: dict[str, str] = {
 
 PACK_VOICING_COUNTS: dict[str, int] = {
     "34in_standard_p": 25,
-    "34in_standard_jazz": 24,
-    "34in_standard_pj": 24,
+    "34in_standard_jazz": 25,
+    "34in_standard_pj": 25,
     "30in_mustang_pj": 26,
     "34in_preamp_soapbar": 26,
     "34in_active_stingray": 25,
     "34in_active_emg": 26,
 }
 
-MULTI_PICKUP_PACKS: dict[str, list[str]] = {
-    "34in_standard_jazz": ["[Parallel]", "[Neck]", "[Bridge]"],
-    "34in_standard_pj": ["[Parallel]", "[Neck]", "[Bridge]"],
-    "30in_mustang_pj": ["[Parallel]", "[Neck]", "[Bridge]"],
-    "34in_preamp_soapbar": ["[Parallel]", "[Neck]", "[Bridge]"],
-    "34in_active_emg": ["[Parallel]", "[Neck]", "[Bridge]"],
-}
+DUAL_PICKUP_PACKS: list[str] = [
+    "34in_standard_jazz",
+    "34in_standard_pj",
+    "30in_mustang_pj",
+    "34in_preamp_soapbar",
+    "34in_active_emg",
+]
 
 ACTIVE_PACKS: list[str] = [
     "34in_preamp_soapbar",
@@ -107,13 +107,12 @@ def test_tone3000_pydantic_schema_validation():
     for pack_id in PACK_EDITIONS:
         pack_cfg = load_tone_pack(pack_id)
         content = pack_cfg.full_storefront_description
-        tags = MULTI_PICKUP_PACKS.get(pack_id, [])
         expected_count = PACK_VOICING_COUNTS[pack_id]
         voicings = [f"{v:02d}" for v in range(1, expected_count + 1)]
         listing = Tone3000PackListing(
             edition=pack_id,
             description=content,
-            pickup_tags=tags,
+            pickup_tags=[],
             voicings=voicings,
         )
         assert listing.edition == pack_id
@@ -155,12 +154,18 @@ def test_tone3000_required_sections():
         assert legal_text.strip() in content, f"{pack_id} missing standard legal disclaimer text"
 
 
-def test_tone3000_multi_pickup_tags():
-    """Verify that multi-pickup editions include bracketed selector tags."""
-    for pack_id, tags in MULTI_PICKUP_PACKS.items():
+def test_tone3000_dual_pickup_unified_parallel_bundles():
+    """Verify that dual-pickup editions use a single unified 'parallel' bundle and omit redundant bracket tags."""
+    for pack_id in DUAL_PICKUP_PACKS:
         pack_cfg = load_tone_pack(pack_id)
+        assert len(pack_cfg.bundles) == 1, (
+            f"{pack_id} should have a single unified 'parallel' bundle, found {len(pack_cfg.bundles)}"
+        )
+        assert pack_cfg.bundles[0].name == "parallel"
+
         content = pack_cfg.full_storefront_description
         expected_count = PACK_VOICING_COUNTS[pack_id]
+        assert "parallel" in content.lower()
 
         voicing_lines = [
             line.strip() for line in content.splitlines() if re.match(r"^\d{2}\.", line.strip())
@@ -170,8 +175,9 @@ def test_tone3000_multi_pickup_tags():
         )
 
         for line in voicing_lines:
-            has_tag = any(tag in line for tag in tags)
-            assert has_tag, f"{pack_id} voicing line missing selector tag {tags}: '{line}'"
+            assert "[" not in line and "]" not in line, (
+                f"{pack_id} single-bundle voicing line should not contain bracketed position tag: '{line}'"
+            )
 
 
 def test_tone3000_active_instrument_guidance():
@@ -231,9 +237,10 @@ def test_tone3000_t3k_pack_basename_alignment():
         )
 
         bundles = partition_instrument_bundles(pack_id)
+        is_multi_pickup = len(bundles) > 1
         valid_basenames = set()
         for b_data in bundles.values():
-            pos = b_data.position_name if pack_id in MULTI_PICKUP_PACKS else None
+            pos = b_data.position_name if is_multi_pickup else None
             for tgt_ref in b_data.targets:
                 if tgt_ref.custom_name:
                     valid_basenames.add(tgt_ref.custom_name)

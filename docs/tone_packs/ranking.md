@@ -14,8 +14,8 @@ The Allomorph ranking architecture is built on four fundamental tenets designed 
 When a player browses or loads a tone pack for their physical bass, the primary value proposition is **transformational capacity**—giving the player sounds they **cannot** physically achieve with their stock instrument.
 - **Rule:** 1:1 base-instrument identity duplicates (`is_identity_voicing`) where the target pickup geometry, body construction (`body_type`), and circuit match the player's stock instrument voicing are **excluded** from the pack. Players do not need a neural network to emulate the exact physical pickup and circuit already installed in their guitar.
 - **Example (Precision Bass):** Excludes `Precision Vintage` (`34in_standard_p:vintage_open`, since the player's bass already possesses this exact Alnico V split-coil CTS 250k circuit). Retains `Precision Active` (Ultra II 18V 3-band), `Dingwall Super P` (passive Neodymium Dual-P on $32''\text{--}35''$ multiscale), and `Precision Warm` (Jamerson heavy flatwounds + damped roll-off).
-- **Example (Jazz Bass):** Excludes `Jazz Pair Open` and `Jazz Neck Warm` (matches stock 60s dual single-coils and neck single-coil), while retaining `Jazz Pair Active` ('70s $53.3\text{ mm}$ spacing + Sadowsky 2-band), `Jazz Pair Series` (S-1 series humbucker mode), and `Jazz Bridge Growl` (Jaco neck-pot decoupling).
-- **Example (P/J Bass):** Excludes `PJ Passive` and `Precision Vintage` (matches the player's native passive P/J and solo P configurations).
+- **Example (Jazz Bass):** Excludes `Jazz Pair Open` (`34in_standard_jazz:pair_open`, matches the stock '60s dual single-coil parallel baseline), while retaining `Jazz Pair Active` ('70s $53.3\text{ mm}$ spacing + Sadowsky 2-band), `Jazz Pair Series` (S-1 series humbucker mode), `Jazz Bridge Growl` (Jaco neck-pot decoupling), and `Jazz Neck Warm` (transforms the hum-canceling parallel pair into a solo '60s neck single-coil without losing physical RWRP hum-cancellation).
+- **Example (P/J Bass):** Excludes `PJ Passive` (`34in_standard_pj:pair_parallel`, matches the player's native passive P/J parallel baseline), while retaining `Precision Vintage` (isolates the '62 Split-P voice from the parallel P+J input without touching volume knobs on stage).
 - **Example (Active StingRay):** Excludes `StingRay Parallel` (matches the stock active bridge humbucker in parallel).
 
 ### 1.2 Popularity & Transformative Demand Weighting
@@ -50,9 +50,9 @@ Because Darkglass Anagram preset slots and Tone3000 pack listings must maximize 
 
 ## 2. Edition-Specific Ranking Hierarchies
 
-### 2.1 Standard P/J Bass Edition (24 Voicings)
-*Source Instrument:* Physical Split-P neck + Single-coil J bridge ($34''$ scale).  
-*Native Exclusions:* `PJ Passive` and `Precision Vintage` (`is_identity_voicing`).
+### 2.1 Standard P/J Bass Edition (25 Voicings)
+*Source Instrument:* Physical Split-P neck + Single-coil J bridge in parallel ($34''$ scale, `34in_standard_pj:pair_parallel`).  
+*Native Exclusions:* `PJ Passive` (`is_identity_voicing`).
 
 | Rank Range | Sonic Family | Rationale / Musical Character |
 | :--- | :--- | :--- |
@@ -63,13 +63,13 @@ Because Darkglass Anagram preset slots and Tone3000 pack listings must maximize 
 | **13–15** | **Dingwall Multi-Scale Family** | `Dingwall Bridge`, `Dingwall Series`, and `Dingwall Parallel`. |
 | **16–19** | **Gibson Mudbucker & Hollow-Body Family** | `Mudbucker Deep`, `Mudbucker Hollow`, `Mudbucker Baritone`, and `Hofner Violin Warm`. |
 | **20** | **Acoustic Transducers** | `Upright Piezo` bridge force transducer on $41.25''$ hollow upright scale. |
-| **21–23** | **Precision Bass & Super P Family** | `Precision Active`, `Dingwall Super P`, and `Precision Warm`. |
-| **24** | **P/J Bass Family** | `PJ Active` (Fender American Ultra II 18V 3-band). |
+| **21–24** | **Precision Bass & Super P Family** | `Precision Vintage`, `Precision Active`, `Dingwall Super P`, and `Precision Warm`. |
+| **25** | **P/J Bass Family** | `PJ Active` (Fender American Ultra II 18V 3-band). |
 
 ---
 
 ### 2.2 Mustang P/J Bass Edition (26 Voicings)
-*Source Instrument:* Short-scale ($30''$) physical Split-P neck + Single-coil J bridge.  
+*Source Instrument:* Short-scale ($30''$) physical Split-P neck + Single-coil J bridge in parallel (`30in_mustang_pj:pair_parallel`).  
 *Native Exclusions:* None (all $34''$, $30.5''$, and hollow-body targets transform the solid-body $30''$ Mustang P/J into distinct instruments).
 
 | Rank Range | Sonic Family | Rationale / Musical Character |
@@ -86,9 +86,9 @@ Because Darkglass Anagram preset slots and Tone3000 pack listings must maximize 
 
 ---
 
-### 2.3 Standard Jazz Bass Edition (24 Voicings)
-*Source Instrument:* Dual single-coils in 60s spacing ($155.6\text{ mm}$ neck, $63.5\text{ mm}$ bridge, $34''$ scale).  
-*Native Exclusions:* `Jazz Pair Open` and `Jazz Neck Warm` (`is_identity_voicing`).
+### 2.3 Standard Jazz Bass Edition (25 Voicings)
+*Source Instrument:* Dual single-coils in '60s spacing in parallel ($155.6\text{ mm}$ neck, $63.5\text{ mm}$ bridge, $34''$ scale, `34in_standard_jazz:pair_open`).  
+*Native Exclusions:* `Jazz Pair Open` (`is_identity_voicing`).
 
 | Rank Range | Sonic Family | Rationale / Musical Character |
 | :--- | :--- | :--- |
@@ -100,7 +100,7 @@ Because Darkglass Anagram preset slots and Tone3000 pack listings must maximize 
 | **14–16** | **Dingwall Multi-Scale Family** | `Dingwall Bridge`, `Dingwall Series`, and `Dingwall Parallel`. |
 | **17–20** | **Gibson Mudbucker & Hollow-Body Family** | `Mudbucker Deep`, `Mudbucker Hollow`, `Mudbucker Baritone`, and `Hofner Violin Warm`. |
 | **21** | **Acoustic Transducers** | `Upright Piezo` bridge force sensor on $41.25''$ hollow upright scale. |
-| **22–24** | **Jazz Bass Family** | Non-native Jazz upgrades: NYC active '70s-spacing 2-band (`Jazz Pair Active`), S-1 series humbucker mod (`Jazz Pair Series`), and Jaco decoupled growl (`Jazz Bridge Growl`). |
+| **22–25** | **Jazz Bass Family** | Non-native Jazz upgrades from the hum-canceling parallel input: NYC active '70s-spacing 2-band (`Jazz Pair Active`), S-1 series humbucker mod (`Jazz Pair Series`), Jaco decoupled growl (`Jazz Bridge Growl`), and solo neck single-coil warmth (`Jazz Neck Warm`). |
 
 ---
 
@@ -123,7 +123,7 @@ Because Darkglass Anagram preset slots and Tone3000 pack listings must maximize 
 ---
 
 ### 2.5 Preamp Soapbar Bass Edition (26 Voicings)
-*Source Instrument:* Modern 34" preamp bass with dual passive Alnico dual-coil soapbars ($135.0\text{ mm}$ neck, $55.0\text{ mm}$ bridge, exposed round pole pieces) and 3-band active EQ buffer. Universally calibrated for 4, 5, and 6-string instruments.  
+*Source Instrument:* Modern 34" preamp bass with dual passive Alnico dual-coil soapbars in parallel ($135.0\text{ mm}$ neck, $55.0\text{ mm}$ bridge, exposed round pole pieces) and 3-band active EQ buffer (`34in_preamp_soapbar:pair_parallel`). Universally calibrated for 4, 5, and 6-string instruments.  
 *Native Exclusions:* None (all 26 curated storefront targets transform the passive-soapbar + active-preamp topology into distinct iconic instruments).
 
 | Rank Range | Sonic Family | Rationale / Musical Character |
@@ -159,7 +159,7 @@ Because Darkglass Anagram preset slots and Tone3000 pack listings must maximize 
 ---
 
 ### 2.7 Active EMG Bass Edition (26 Voicings)
-*Source Instrument:* 34" active EMG soapbar bass (Spector / ESP LTD / Schecter) with dual EMG ceramic dual-blade soapbars ($135.0\text{ mm}$ neck, $55.0\text{ mm}$ bridge) and internal low-noise buffers calibrated under Option C ($f_r = 4.15\text{ kHz}, Q = 1.40$). Universally calibrated for 4, 5, and 6-string instruments.  
+*Source Instrument:* 34" active EMG soapbar bass (Spector / ESP LTD / Schecter) with dual EMG ceramic dual-blade soapbars in parallel ($135.0\text{ mm}$ neck, $55.0\text{ mm}$ bridge) and internal low-noise buffers calibrated under Option C ($f_r = 4.15\text{ kHz}, Q = 1.40$, `34in_active_emg:pair_parallel`). Universally calibrated for 4, 5, and 6-string instruments.  
 *Native Exclusions:* None (all 26 curated storefront targets transform active EMG dual-blade aperture and buffer response into iconic instruments).
 
 | Rank Range | Sonic Family | Rationale / Musical Character |
@@ -193,5 +193,5 @@ When modifying or generating new Tone3000 pack listings:
 2. **Verify Utilitarian & Mix-Ready Compliance:** Confirm that every target voicing provides non-invertible electroacoustic physics or SNR-preserving bandwidth extension, and sits mix-ready (or is easily EQed to mix-ready) with full low-end authority.
 3. **Preserve Distinct Families:** Confirm StingRay is never merged with P/J, and P∕MM is never merged with Acoustic Transducers.
 4. **Check Character Limits:** Ensure the total listing length strictly remains under 10,000 characters.
-5. **Preserve Bracketed Tags:** Every multi-pickup listing must contain `[Parallel]`, `[Neck]`, or `[Bridge]` tags.
+5. **Unified Parallel Input Setup:** Confirm that all dual-pickup single-instrument editions use a single unified `parallel` bundle and instruct players to keep both pickups active in parallel (or blend at center detent).
 6. **Active Calibration Integrity:** Active editions must direct players to set onboard active EQs flat at center detents.

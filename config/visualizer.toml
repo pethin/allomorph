@@ -43,6 +43,11 @@ source = "34in_active_emg:neck_solo"
 target = "34in_standard_p:vintage_open"
 
 [[chips]]
+label = "P vs Studio Super"
+source = "34in_standard_p:vintage_open"
+target = "35in_studio_super:studio_super"
+
+[[chips]]
 label = "Identity (Reset)"
 source = "34in_standard_p:vintage_open"
 target = "34in_standard_p:vintage_open"

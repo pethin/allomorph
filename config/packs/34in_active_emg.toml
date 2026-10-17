@@ -38,11 +38,8 @@ Why Block 1? Overdrive pedals and amps react directly to the resonant character 
 
 QUICK INSTRUMENT SETUP
 
-For each voicing, set your bass's physical pickup blend knob to the recommended bracketed setting [Parallel], [Neck], or [Bridge]:
-
-• [Parallel]: Pickup Blend at Center Detent (Both EMG Soapbars Active)
-• [Neck]: Pickup Blend 100% Neck (Solo Neck EMG Soapbar)
-• [Bridge]: Pickup Blend 100% Bridge (Solo Bridge EMG Soapbar)
+• Pickup Blend: Center Detent (Both EMG Soapbars Active in Parallel)
+• Master Volume Knob: 100% (Full Up)
 • Onboard Active EQ (Bass, Mid, Treble): Set to Center Detents (Flat / 0 dB)
 
 Plug straight in. All pickup positioning, pot loading, tone capacitor shaping, and active preamp EQs are handled automatically by the models.
@@ -53,149 +50,137 @@ THE 26 DIGITAL TWIN VOICINGS
 
 Precision Bass & Super P Family
 
-01. Precision Vintage [Neck]
+01. Precision Vintage
 The gold standard: a vintage 1962 Precision Bass with tone wide open. Warm, woody low-mids, open harmonic bloom, and organic touch sensitivity that sits perfectly in any mix.
 
-02. Precision Active [Neck]
+02. Precision Active
 Fender American Ultra II active split-coil P-bass tone with 18V 3-band active preamp. Punchy, articulate, and wideband with authoritative low-end weight and bright transient clarity—built for modern rock, gospel, and mix cutting authority.
 
-03. Dingwall Super P [Neck]
+03. Dingwall Super P
 Dingwall SP1 multi-scale (32"–35") passive Neodymium Dual-P split-coil pickup. Combines fanned-fret low-end tightness with a focused 3.0 kHz passive Neodymium presence peak that cuts through dense mixes without an active preamp.
 
-04. Precision Warm [Neck]
+04. Precision Warm
 The legendary Motown flatwound sound (James Jamerson / Pino Palladino). Fat, pillowy sub-bass thump with rolled-off highs that glues the groove together.
 
 
 Jazz Bass Family
 
-05. Jazz Pair Open [Parallel]
+05. Jazz Pair Open
 The golden-era '60s Jazz Bass sound. Both pickups wide open deliver that iconic hollow midrange scoop, warm low-mids, and smooth, singing top-end.
 
-06. Jazz Pair Active [Parallel]
+06. Jazz Pair Active
 The quintessential NYC active '70s-spacing slap tone: tight, massive sub-bass and crisp, glassy highs with an upward-shifted '70s comb-filter scoop that pops right out of a dense mix.
 
-07. Jazz Pair Series [Parallel]
+07. Jazz Pair Series
 Fender S-1 / 4-way series mod wiring both Jazz coils in series (15.4 kΩ total, 7.6 H). Eliminates the parallel mid-scoop for a hotter, thicker humbucker-like midrange roar with deep passive inductor roll-off.
 
-08. Jazz Bridge Growl [Bridge]
+08. Jazz Bridge Growl
 The unmistakable Jaco Pastorius tone: solo bridge pickup with authentic neck-pot decoupling under the hood for that signature singing, vocal bridge growl and burp.
 
-09. Jazz Neck Warm [Neck]
+09. Jazz Neck Warm
 Solo '60s neck single-coil. Deep, warm, and round with a woody low-end bloom that rivals a P-bass while retaining single-coil openness.
 
 
 Music Man StingRay Family
 
-10. StingRay Parallel [Bridge]
+10. StingRay Parallel
 The iconic Music Man StingRay sound: thunderous low end, aggressive metallic slap clank, and that hollow midrange scoop heard on thousands of hit records.
 
-11. StingRay Series [Bridge]
+11. StingRay Series
 StingRay wired in series for a hotter, thicker signal with punchy low-mids and an aggressive, in-your-face rock bark.
 
 
 P/MM Modern Hybrids
 
-12. P∕MM Parallel [Parallel]
+12. P∕MM Parallel
 Modern boutique session hybrid (Lakland 44-02 / Sandberg California style). Blends the woody warmth of a Split-P neck with the scooped slap bite and sparkling top-end of a parallel Music Man bridge humbucker through an active 3-band preamp.
 
-13. P∕MM Series [Parallel]
+13. P∕MM Series
 Modern active P/MM hybrid with the bridge humbucker switched to series coils. Delivers a punchy, mid-forward humbucker roar and muscular rock authority through the active 3-band preamp.
 
 
 Rickenbacker 4001/4003 Family
 
-14. Rickenbacker Clank [Bridge]
+14. Rickenbacker Clank
 The quintessential prog-rock clank (Chris Squire / Geddy Lee). Tight, lean low end with biting, aggressive pick attack and cutting upper-mid grit.
 
-15. Rickenbacker Vintage [Parallel]
+15. Rickenbacker Vintage
 Authentic vintage 4001 dual-pickup circuit with the 4.7nF high-pass capacitor engaged on the bridge pickup. Combines full-range neck sub-bass with biting bridge clank while eliminating 500 Hz phase cancellation.
 
-16. Rickenbacker Neck [Neck]
+16. Rickenbacker Neck
 Solo 4001/4003 "Toaster / Hi-Gain" neck single-coil positioned at the 24th-fret harmonic node (210 mm). Scoops the 4th harmonic for a deep, woody fundamental while retaining a glassy 2.34 kHz roundwound presence peak (Paul McCartney / Al Cisneros).
 
 
 Dingwall Multi-Scale Family
 
-17. Dingwall Bridge [Bridge]
+17. Dingwall Bridge
 Modern progressive metal tone: razor-sharp pick clank, extreme note clarity, and piano-like low-B definition tailored for drop tunings and heavy distortion.
 
-18. Dingwall Parallel [Parallel]
+18. Dingwall Parallel
 FD3 bridge and middle coils in parallel: modern scooped aggression with ultra-fast transient attack, tight sub-bass, and pristine harmonic sparkle.
 
-19. Dingwall Series [Parallel]
+19. Dingwall Series
 FD3 bridge and middle coils wired in series (Rotary Position 3): massive dual-pickup series humbucker midrange roar with fanned-fret low-end tightness and non-linear core compression.
 
 
 Gibson Mudbucker & Hollow-Body Family
 
-20. Mudbucker Deep [Neck]
+20. Mudbucker Deep
 The legendary solid-body Gibson EB-0 "Mudbucker": a dark, colossal wall of pure vintage bass rumble with zero top-end harshness—pure '60s and '70s British blues-rock.
 
-21. Mudbucker Hollow [Neck]
+21. Mudbucker Hollow
 1958 Gibson EB-2 semi-hollow maple archtop with neck Sidewinder Mudbucker: combines deep 30H inductor sub-bass with warm 165 Hz semi-hollow air-cavity bloom and rapid woody sustain decay.
 
-22. Mudbucker Baritone [Neck]
+22. Mudbucker Baritone
 Authentic Gibson EB-2 semi-hollow Baritone choke filter (2.5H inductor + 22nF capacitor). Attenuates sub-bass mud below 200 Hz while retaining semi-hollow acoustic resonance for a snarling, vocal midrange rock bark (Jack Bruce / Chas Chandler).
 
-23. Hofner Violin Warm [Neck]
+23. Hofner Violin Warm
 1962 Höfner 500/1 Violin Bass fully hollow spruce/maple archtop with neck "Staple" humbucker: iconic 145 Hz hollow-body wood bloom, rapid thumpy sustain envelope, and warm Beatle-bass midrange.
 
 
 Acoustic Transducers
 
-24. Upright Piezo [Neck]
+24. Upright Piezo
 Acoustic upright double bass: transforms your electric bass into a woody, resonant acoustic upright with natural hollow-body sustain decay, body thump, and organic finger feel. Pair with 3 Sigma Audio "Acoustic Upright Standard" AST IRs in your cabinet loader for authentic soundboard acoustic bloom.
 
 
 P/J Bass Family
 
-25. PJ Active [Parallel]
+25. PJ Active
 Modern active P/J punch (Fender American Ultra II style). Combines Ultra II Noiseless split-coil body with Noiseless bridge single-coil cut, boosted by the 18V 3-band active preamp.
 
-26. PJ Passive [Parallel]
+26. PJ Passive
 Classic '80s rock P/J tone (Fender Precision Special / Yamaha BB). Thick hard-rock punch with aggressive midrange bite and authoritative low-end grunt.
 """
-
-[[bundles]]
-name = "neck"
-source = "34in_active_emg:neck_solo"
-targets = [
-    "34in_standard_p:vintage_open",
-    "34in_standard_pj:neck_active",
-    "34in_dingwall_sp1:super_p_solo",
-    "34in_standard_p:vintage_warm",
-    "33in_rickenbacker_4003:neck_warm",
-    "30in_gibson_eb0:neck_deep",
-    "30in_gibson_eb2:neck_deep",
-    "30in_gibson_eb2:neck_baritone",
-    "30in_hofner_500_1:neck_warm",
-    "41in_upright_bass:bridge_piezo",
-    "34in_standard_jazz:neck_warm",
-]
-
-[[bundles]]
-name = "bridge"
-source = "34in_active_emg:bridge_solo"
-targets = [
-    "34in_standard_jazz:bridge_growl",
-    "34in_active_stingray:parallel_classic",
-    "34in_active_stingray:series_punch",
-    "33in_rickenbacker_4003:bridge_clank",
-    "37in_multiscale_dingwall:bridge_clank",
-]
 
 [[bundles]]
 name = "parallel"
 source = "34in_active_emg:pair_parallel"
 targets = [
+    "34in_standard_p:vintage_open",
+    "34in_standard_pj:neck_active",
+    "34in_dingwall_sp1:super_p_solo",
+    "34in_standard_p:vintage_warm",
     "34in_standard_jazz:pair_open",
     "34in_standard_jazz:pair_active",
     "34in_standard_jazz:pair_series",
-    "33in_rickenbacker_4003:pair_vintage",
+    "34in_standard_jazz:bridge_growl",
+    "34in_standard_jazz:neck_warm",
+    "34in_active_stingray:parallel_classic",
+    "34in_active_stingray:series_punch",
     "34in_active_pmm:pmm_parallel",
     "34in_active_pmm:pmm_series",
-    "34in_standard_pj:pair_active",
-    "34in_standard_pj:pair_parallel",
+    "33in_rickenbacker_4003:bridge_clank",
+    "33in_rickenbacker_4003:pair_vintage",
+    "33in_rickenbacker_4003:neck_warm",
+    "37in_multiscale_dingwall:bridge_clank",
     "37in_multiscale_dingwall:pair_parallel",
     "37in_multiscale_dingwall:pair_series",
+    "30in_gibson_eb0:neck_deep",
+    "30in_gibson_eb2:neck_deep",
+    "30in_gibson_eb2:neck_baritone",
+    "30in_hofner_500_1:neck_warm",
+    "41in_upright_bass:bridge_piezo",
+    "34in_standard_pj:pair_active",
+    "34in_standard_pj:pair_parallel",
 ]

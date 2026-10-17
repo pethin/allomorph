@@ -1,0 +1,127 @@
+# ==============================================================================
+# ALLOMORPH INSTRUMENT CONFIGURATION
+# 32"-35" Allomorph Studio Super 5-String
+# ==============================================================================
+# Physical Datums:
+#   - Scale Length: 32"-35" Multi-Scale (35.0" low B, 32.0" high G)
+#   - Transverse Wave Speeds: 54.88 m/s (B) to 159.31 m/s (G)
+#   - Neck Split-P (Underwound Alnico V, Series RWRP):
+#       - Centerline: 126.0mm from bridge saddle
+#       - Forward coil (B/E/A strings 3,4,5): 136.0mm from bridge
+#       - Rearward coil (D/G strings 1,2): 116.0mm from bridge (narrow 20mm stagger)
+#       - Inductance: 2x 1.65H series = 3.30H, Rdc = 6.20 kOhm
+#   - Bridge Split-Coil (Reverse-Split Neodymium, Series RWRP):
+#       - Centerline: 62.0mm from bridge saddle
+#       - Forward coil (D/G treble strings 1,2): 70.0mm from bridge (reverse split)
+#       - Rearward coil (B/E/A bass strings 3,4,5): 54.0mm from bridge
+#       - Inductance: 2x 1.55H series = 3.10H, Rdc = 5.80 kOhm
+# Electronics:
+#   - Dual-FET buffered blend pot (73% Split-P / 27% Bridge)
+#   - 6.8 nF inline series bridge high-pass capacitor (sub-bass phase protection)
+#   - Studio Amp Driver active pre-conditioner (SVT 6x10 & B-15 1x15 optimized)
+#   - 25k low-Z active volume pot
+
+id = "35in_studio_super"
+name = "Studio Super"
+scale_length_in = 35.0
+scale_length_m = 0.889
+scale_min_in = 32.0
+scale_max_in = 35.0
+is_multiscale = true
+electronics = "active"
+version = 1
+
+string_wave_speeds = [54.88, 71.69, 93.60, 122.14, 159.31]
+
+[strings]
+preset = "roundwound_nickel_5string"
+brand = "Allomorph"
+model = "Custom Super 5-String"
+gauge = "45-130"
+core = "hex"
+wrap = "nickel_round"
+tension_lbs = 205.0
+
+[pickups.split_p]
+name = "Studio Super Underwound Alnico V Split-P (Neck)"
+position_name = "Neck"
+position_from_bridge_m = 0.1260
+aperture_width_in = 0.42
+coil_spacing_in = 0.0
+type = "split_coil"
+magnet_type = "alnico_v"
+coils = [
+    # Narrow 20mm reverse-inspired stagger: tighter low strings (136mm), fuller high strings (116mm)
+    { id = "forward", strings = [3, 4, 5], position_from_bridge_m = 0.1360, aperture_width_in = 0.42, pole_type = "rod", L = 1.65, Rdc = 3100.0, Reddy = 180000.0, Ccoil = 1.40e-10, weight = 1.0 },
+    { id = "rearward", strings = [1, 2], position_from_bridge_m = 0.1160, aperture_width_in = 0.42, pole_type = "rod", L = 1.65, Rdc = 3100.0, Reddy = 180000.0, Ccoil = 1.40e-10, weight = 1.0 },
+]
+
+[pickups.bridge]
+name = "Studio Super Reverse-Split Neodymium (Bridge)"
+position_name = "Bridge"
+position_from_bridge_m = 0.0620
+aperture_width_in = 0.40
+coil_spacing_in = 0.0
+type = "split_coil"
+magnet_type = "neodymium"
+coils = [
+    # Reverse split-coil: treble strings (1, 2) forward at 70mm, bass strings (3, 4, 5) rearward at 54mm
+    { id = "forward", strings = [1, 2], position_from_bridge_m = 0.0700, aperture_width_in = 0.40, pole_type = "rod", L = 1.55, Rdc = 2900.0, Reddy = 195000.0, Ccoil = 1.40e-10, weight = 1.0 },
+    { id = "rearward", strings = [3, 4, 5], position_from_bridge_m = 0.0540, aperture_width_in = 0.40, pole_type = "rod", L = 1.55, Rdc = 2900.0, Reddy = 195000.0, Ccoil = 1.40e-10, weight = 1.0 },
+]
+
+# Active Pre-Amp/Cab Conditioning Harness (Dual-FET Buffered Blend + 6.8nF Bridge HPF + Pre-Amp Tilt EQ)
+[harnesses.super_preamp]
+name = "Studio Super Universal Pre-Amp/Cab Driver Harness"
+type = "active_preamp"
+preamp = "studio_amp_driver"
+load_resistance = 1000000.0
+cable_pf = 300.0
+
+wiring = [
+    ["pickups.split_p.forward.cold", "pickups.split_p.rearward.hot"],
+    ["pickups.split_p.rearward.cold", "GND"],
+    ["pickups.bridge.forward.cold", "pickups.bridge.rearward.hot"],
+    ["pickups.bridge.rearward.cold", "GND"],
+    ["controls.blend.wiper", "preamp.in"],
+    ["preamp.out", "controls.vol.in"],
+    ["controls.vol.wiper", "out"],
+    ["controls.vol.gnd", "GND"],
+]
+
+[harnesses.super_preamp.controls.blend]
+name = "Pickup Blend (73% Split-P / 27% Bridge)"
+type = "pot"
+taper = "mn_blend"
+resistance = 500000.0
+default = 0.28
+buffered = true
+
+[harnesses.super_preamp.controls.vol]
+name = "Master Volume"
+type = "pot"
+taper = "audio_15"
+resistance = 25000.0
+default = 1.0
+
+[harnesses.super_preamp.switches.coil_mode]
+name = "Bridge Coil Mode"
+type = "toggle"
+default = "parallel"
+
+[harnesses.super_preamp.switches.coil_mode.positions.parallel]
+connect = [
+    ["pickups.split_p.forward.hot", "controls.blend.neck_in"],
+    ["pickups.bridge.forward.hot", "bridge_hpf.in"],
+    ["bridge_hpf.out", "controls.blend.bridge_in"],
+]
+components = { bridge_hpf = 6.8e-9 }
+k_mutual = 0.04
+
+[voicings.studio_super]
+version = 1
+name = "Studio Super (Universal Amp/Cab Driver)"
+tone_name = "Studio Super"
+harness = "super_preamp"
+switches = { coil_mode = "parallel" }
+controls = { vol = 1.0, blend = 0.28 }

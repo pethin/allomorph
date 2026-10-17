@@ -208,6 +208,7 @@ def build_voicings_comparison_data(
         "30in_emg_mmtw",
         "37in_multiscale_dingwall",
         "34in_dingwall_sp1",
+        "35in_studio_super",
         "33in_rickenbacker_4003",
         "30in_gibson_eb0",
         "30in_gibson_eb2",

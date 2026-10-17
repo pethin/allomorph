@@ -135,47 +135,47 @@ Every Allomorph tone name must satisfy two physical and software thresholds:
 ### 1. Darkglass Anagram Screen Viewport ($\le 34$ Characters)
 - **Viewport:** The Darkglass Anagram pedalboard LCD block displays **34 characters** without scrolling.
 - **Goal:** Achieve **100% Zero-Scroll** on stage across all production voices.
-- Under our systematic grammar, the longest unversioned display name in the storefront pack catalog (`Rickenbacker Vintage [Parallel]`) is **31 characters**, ensuring zero marquee scrolling on stage!
+- Because all single-instrument tone packs use a single unified source bundle (`parallel` for dual-pickup basses, solo for single-pickup basses), redundant `[Parallel]`/`[Neck]`/`[Bridge]` suffixes are omitted from single-instrument pack filenames. The longest unversioned display name in the storefront pack catalog (`Rickenbacker Vintage`) is **20 characters** (**27 characters** versioned as `Rickenbacker Vintage v7.1.1`), ensuring 100% zero marquee scrolling on stage!
 
 ### 2. Tone3000 Upload Ceiling ($\le 64$ Characters)
 - **Ceiling:** The Tone3000 cloud uploader strictly rejects model basenames exceeding **64 characters** (excluding `.nam`).
 - **Enforcement:** Programmatically enforced in `get_t3k_basename()` in `src/allomorph/naming.py`, which raises a diagnostic `ValueError` if violated.
-- With our grammar, all versioned `.nam` model basenames range between **20 and 38 characters** (max **38 chars** for `Rickenbacker Vintage [Parallel] v7.1.1`), providing a massive safety margin below the 64-character ceiling.
+- With our grammar, all versioned `.nam` model basenames range between **16 and 27 characters** in single-bundle packs (up to **38 chars** if optional `[Pickup Position]` tags are enabled in multi-bundle packs), providing a massive safety margin below the 64-character ceiling.
 
 ---
 
 ## 5. Complete 26-Voicing Storefront Target Reference Table
 
-Below is the definitive table of the 26 curated utilitarian & mix-ready storefront target voicings across the 18 catalog instruments, showing character lengths and screen viewport status:
+Below is the definitive table of the 26 curated utilitarian & mix-ready storefront target voicings across the 18 catalog instruments, showing character lengths and screen viewport status in standard single-bundle packs:
 
-| Target (`<inst_id>:<voicing_id>`) | Declarative `tone_name` | Source Pos Tag | Full Model Basename (`.nam`) | Unversioned / Versioned Chars | Screen Status | Musical Personality / Bassist Context |
-| :--- | :--- | :---: | :--- | :---: | :--- | :--- |
-| `34in_standard_jazz:pair_active` | `Jazz Pair Active` | `[Parallel]` | `Jazz Pair Active [Parallel] v7.1.1` | 27 / 34 | **Zero-Scroll** | Active 2-band EQ '70s-spacing slap scoop; hi-fi lows & highs |
-| `34in_standard_jazz:pair_open` | `Jazz Pair Open` | `[Parallel]` | `Jazz Pair Open [Parallel] v7.1.1` | 25 / 32 | **Zero-Scroll** | Classic '60s dual single-coils ($63.5\text{ mm}$ bridge), tone open |
-| `34in_standard_jazz:pair_series` | `Jazz Pair Series` | `[Parallel]` | `Jazz Pair Series [Parallel] v7.1.1` | 27 / 34 | **Zero-Scroll** | Fender S-1 series-wired Jazz coils ($7.0\text{ H}$); thick humbucker roar |
-| `34in_standard_jazz:bridge_growl` | `Jazz Bridge Growl` | `[Bridge]` | `Jazz Bridge Growl [Bridge] v7.1.1` | 26 / 33 | **Zero-Scroll** | Singing Jaco bridge burp & vocal growl with neck-pot decoupling |
-| `34in_standard_jazz:neck_warm` | `Jazz Neck Warm` | `[Neck]` | `Jazz Neck Warm [Neck] v7.1.1` | 21 / 28 | **Zero-Scroll** | Warm, woody '60s jazz neck single-coil bloom |
-| `34in_standard_p:vintage_open` | `Precision Vintage` | `[Neck]` | `Precision Vintage [Neck] v7.1.1` | 24 / 31 | **Zero-Scroll** | Classic '62 Alnico V split-P, CTS 250k open |
-| `34in_standard_pj:neck_active` | `Precision Active` | `[Neck]` | `Precision Active [Neck] v7.1.1` | 23 / 30 | **Zero-Scroll** | Fender Ultra II active split-P with 18V 3-band preamp |
-| `34in_dingwall_sp1:super_p_solo` | `Dingwall Super P` | `[Neck]` | `Dingwall Super P [Neck] v7.1.1` | 23 / 30 | **Zero-Scroll** | Dingwall SP1 $32''\text{--}35''$ passive Neodymium Dual-P ($3.0\text{ kHz}$ peak) |
-| `34in_standard_p:vintage_warm` | `Precision Warm` | `[Neck]` | `Precision Warm [Neck] v7.1.1` | 21 / 28 | **Zero-Scroll** | Classic Motown / Jamerson heavy flatwound woody thump |
-| `34in_standard_pj:pair_active` | `PJ Active` | `[Parallel]` | `PJ Active [Parallel] v7.1.1` | 20 / 27 | **Zero-Scroll** | Ultra II Split-P + J-bridge with 18V 3-band preamp |
-| `34in_standard_pj:pair_parallel` | `PJ Passive` | `[Parallel]` | `PJ Passive [Parallel] v7.1.1` | 21 / 28 | **Zero-Scroll** | Organic P-thump with J-bridge articulation |
-| `34in_active_stingray:parallel_classic` | `StingRay Parallel` | `[Bridge]` | `StingRay Parallel [Bridge] v7.1.1` | 26 / 33 | **Zero-Scroll** | Classic 2-band active Music Man authority |
-| `34in_active_stingray:series_punch` | `StingRay Series` | `[Bridge]` | `StingRay Series [Bridge] v7.1.1` | 24 / 31 | **Zero-Scroll** | Muscular, mid-forward high-output MM series bark |
-| `33in_rickenbacker_4003:bridge_clank` | `Rickenbacker Clank` | `[Bridge]` | `Rickenbacker Clank [Bridge] v7.1.1` | 27 / 34 | **Zero-Scroll** | Classic 4003 bridge coil with 4.7nF high-pass clank |
-| `33in_rickenbacker_4003:pair_vintage` | `Rickenbacker Vintage` | `[Parallel]` | `Rickenbacker Vintage [Parallel] v7.1.1` | 31 / 38 | **Zero-Scroll** | Vintage 4001 dual pair with 4.7nF bridge HPF |
-| `33in_rickenbacker_4003:neck_warm` | `Rickenbacker Neck` | `[Neck]` | `Rickenbacker Neck [Neck] v7.1.1` | 24 / 31 | **Zero-Scroll** | Solo 4003 Toaster/Hi-Gain neck at 24th-fret node ($210\text{ mm}$, $2.34\text{ kHz}$ peak) |
-| `34in_active_pmm:pmm_parallel` | `P∕MM Parallel` | `[Parallel]` | `P∕MM Parallel [Parallel] v7.1.1` | 24 / 31 | **Zero-Scroll** | Split-P + MM bridge (parallel coils) with LH-3 preamp |
-| `34in_active_pmm:pmm_series` | `P∕MM Series` | `[Parallel]` | `P∕MM Series [Parallel] v7.1.1` | 22 / 29 | **Zero-Scroll** | Split-P + MM bridge (series coils) with LH-3 preamp |
-| `30in_gibson_eb0:neck_deep` | `Mudbucker Deep` | `[Neck]` | `Mudbucker Deep [Neck] v7.1.1` | 21 / 28 | **Zero-Scroll** | Solid-body EB-0 18.0H coupled Sidewinder sub-bass rumble |
-| `30in_gibson_eb2:neck_deep` | `Mudbucker Hollow` | `[Neck]` | `Mudbucker Hollow [Neck] v7.1.1` | 23 / 30 | **Zero-Scroll** | Semi-hollow EB-2 Sidewinder with 165 Hz cavity bloom & woody decay |
-| `30in_gibson_eb2:neck_baritone` | `Mudbucker Baritone` | `[Neck]` | `Mudbucker Baritone [Neck] v7.1.1` | 25 / 32 | **Zero-Scroll** | Semi-hollow EB-2 Baritone choke + cap midrange rock bark |
-| `30in_hofner_500_1:neck_warm` | `Hofner Violin Warm` | `[Neck]` | `Hofner Violin Warm [Neck] v7.1.1` | 25 / 32 | **Zero-Scroll** | 1962 Höfner 500/1 hollow Violin Bass neck Staple Beatle thump |
-| `37in_multiscale_dingwall:bridge_clank` | `Dingwall Bridge` | `[Bridge]` | `Dingwall Bridge [Bridge] v7.1.1` | 24 / 31 | **Zero-Scroll** | High-tension fanned-fret progressive clarity |
-| `37in_multiscale_dingwall:pair_parallel` | `Dingwall Parallel` | `[Parallel]` | `Dingwall Parallel [Parallel] v7.1.1` | 28 / 35 | **Zero-Scroll** | Modern scooped aggression, ultra-fast transients |
-| `37in_multiscale_dingwall:pair_series` | `Dingwall Series` | `[Parallel]` | `Dingwall Series [Parallel] v7.1.1` | 26 / 33 | **Zero-Scroll** | Rotary Pos 3 Bridge + Middle in series; massive fanned-fret wall of sound |
-| `41in_upright_bass:bridge_piezo` | `Upright Piezo` | `[Neck]` | `Upright Piezo [Neck] v7.1.1` | 20 / 27 | **Zero-Scroll** | Woody double-bass piezo bridge force sensor with hollow sustain decay |
+| Target (`<inst_id>:<voicing_id>`) | Declarative `tone_name` | Full Model Basename (`.nam`) | Unversioned / Versioned Chars | Screen Status | Musical Personality / Bassist Context |
+| :--- | :--- | :--- | :---: | :---: | :--- |
+| `34in_standard_jazz:pair_active` | `Jazz Pair Active` | `Jazz Pair Active v7.1.1` | 16 / 23 | **Zero-Scroll** | Active 2-band EQ '70s-spacing slap scoop; hi-fi lows & highs |
+| `34in_standard_jazz:pair_open` | `Jazz Pair Open` | `Jazz Pair Open v7.1.1` | 14 / 21 | **Zero-Scroll** | Classic '60s dual single-coils ($63.5\text{ mm}$ bridge), tone open |
+| `34in_standard_jazz:pair_series` | `Jazz Pair Series` | `Jazz Pair Series v7.1.1` | 16 / 23 | **Zero-Scroll** | Fender S-1 series-wired Jazz coils ($7.0\text{ H}$); thick humbucker roar |
+| `34in_standard_jazz:bridge_growl` | `Jazz Bridge Growl` | `Jazz Bridge Growl v7.1.1` | 17 / 24 | **Zero-Scroll** | Singing Jaco bridge burp & vocal growl with neck-pot decoupling |
+| `34in_standard_jazz:neck_warm` | `Jazz Neck Warm` | `Jazz Neck Warm v7.1.1` | 14 / 21 | **Zero-Scroll** | Warm, woody '60s jazz neck single-coil bloom |
+| `34in_standard_p:vintage_open` | `Precision Vintage` | `Precision Vintage v7.1.1` | 17 / 24 | **Zero-Scroll** | Classic '62 Alnico V split-P, CTS 250k open |
+| `34in_standard_pj:neck_active` | `Precision Active` | `Precision Active v7.1.1` | 16 / 23 | **Zero-Scroll** | Fender Ultra II active split-P with 18V 3-band preamp |
+| `34in_dingwall_sp1:super_p_solo` | `Dingwall Super P` | `Dingwall Super P v7.1.1` | 16 / 23 | **Zero-Scroll** | Dingwall SP1 $32''\text{--}35''$ passive Neodymium Dual-P ($3.0\text{ kHz}$ peak) |
+| `34in_standard_p:vintage_warm` | `Precision Warm` | `Precision Warm v7.1.1` | 14 / 21 | **Zero-Scroll** | Classic Motown / Jamerson heavy flatwound woody thump |
+| `34in_standard_pj:pair_active` | `PJ Active` | `PJ Active v7.1.1` | 9 / 16 | **Zero-Scroll** | Ultra II Split-P + J-bridge with 18V 3-band preamp |
+| `34in_standard_pj:pair_parallel` | `PJ Passive` | `PJ Passive v7.1.1` | 10 / 17 | **Zero-Scroll** | Organic P-thump with J-bridge articulation |
+| `34in_active_stingray:parallel_classic` | `StingRay Parallel` | `StingRay Parallel v7.1.1` | 17 / 24 | **Zero-Scroll** | Classic 2-band active Music Man authority |
+| `34in_active_stingray:series_punch` | `StingRay Series` | `StingRay Series v7.1.1` | 15 / 22 | **Zero-Scroll** | Muscular, mid-forward high-output MM series bark |
+| `33in_rickenbacker_4003:bridge_clank` | `Rickenbacker Clank` | `Rickenbacker Clank v7.1.1` | 18 / 25 | **Zero-Scroll** | Classic 4003 bridge coil with 4.7nF high-pass clank |
+| `33in_rickenbacker_4003:pair_vintage` | `Rickenbacker Vintage` | `Rickenbacker Vintage v7.1.1` | 20 / 27 | **Zero-Scroll** | Vintage 4001 dual pair with 4.7nF bridge HPF |
+| `33in_rickenbacker_4003:neck_warm` | `Rickenbacker Neck` | `Rickenbacker Neck v7.1.1` | 17 / 24 | **Zero-Scroll** | Solo 4003 Toaster/Hi-Gain neck at 24th-fret node ($210\text{ mm}$, $2.34\text{ kHz}$ peak) |
+| `34in_active_pmm:pmm_parallel` | `P∕MM Parallel` | `P∕MM Parallel v7.1.1` | 13 / 20 | **Zero-Scroll** | Split-P + MM bridge (parallel coils) with LH-3 preamp |
+| `34in_active_pmm:pmm_series` | `P∕MM Series` | `P∕MM Series v7.1.1` | 11 / 18 | **Zero-Scroll** | Split-P + MM bridge (series coils) with LH-3 preamp |
+| `30in_gibson_eb0:neck_deep` | `Mudbucker Deep` | `Mudbucker Deep v7.1.1` | 14 / 21 | **Zero-Scroll** | Solid-body EB-0 18.0H coupled Sidewinder sub-bass rumble |
+| `30in_gibson_eb2:neck_deep` | `Mudbucker Hollow` | `Mudbucker Hollow v7.1.1` | 16 / 23 | **Zero-Scroll** | Semi-hollow EB-2 Sidewinder with 165 Hz cavity bloom & woody decay |
+| `30in_gibson_eb2:neck_baritone` | `Mudbucker Baritone` | `Mudbucker Baritone v7.1.1` | 18 / 25 | **Zero-Scroll** | Semi-hollow EB-2 Baritone choke + cap midrange rock bark |
+| `30in_hofner_500_1:neck_warm` | `Hofner Violin Warm` | `Hofner Violin Warm v7.1.1` | 18 / 25 | **Zero-Scroll** | 1962 Höfner 500/1 hollow Violin Bass neck Staple Beatle thump |
+| `37in_multiscale_dingwall:bridge_clank` | `Dingwall Bridge` | `Dingwall Bridge v7.1.1` | 15 / 22 | **Zero-Scroll** | High-tension fanned-fret progressive clarity |
+| `37in_multiscale_dingwall:pair_parallel` | `Dingwall Parallel` | `Dingwall Parallel v7.1.1` | 17 / 24 | **Zero-Scroll** | Modern scooped aggression, ultra-fast transients |
+| `37in_multiscale_dingwall:pair_series` | `Dingwall Series` | `Dingwall Series v7.1.1` | 15 / 22 | **Zero-Scroll** | Rotary Pos 3 Bridge + Middle in series; massive fanned-fret wall of sound |
+| `41in_upright_bass:bridge_piezo` | `Upright Piezo` | `Upright Piezo v7.1.1` | 13 / 20 | **Zero-Scroll** | Woody double-bass piezo bridge force sensor with hollow sustain decay |
 
 ---
 
@@ -209,7 +209,7 @@ To ensure model files are compatible with macOS, Linux, and Windows filesystems,
 - **DO follow the 3-token grammar:** `[Family] [Configuration] [Voicing Modifier]`.
 - **DO use permitted vocabulary:** Draw tokens strictly from Section 3.
 - **DO verify character lengths:** Ensure the unversioned display name is $\le 34$ characters for zero scroll on stage, and the versioned `.nam` basename never exceeds 64 chars.
-- **DO use standard physical switch tags for multi-pickup source basses:** `[Neck]`, `[Bridge]`, `[Parallel]`, `[Series]`, `[Split]`.
+- **DO use standard physical switch tags when defining multi-bundle collections:** `[Neck]`, `[Bridge]`, `[Parallel]`, `[Series]`, `[Split]`.
 - **DO verify with automated tests:** Run `uv run pytest tests/pipeline/test_pack.py tests/pipeline/test_versioning.py` after any voice modification.
 
 ### DO NOT:
@@ -225,10 +225,10 @@ To ensure model files are compatible with macOS, Linux, and Windows filesystems,
   - ✅ `Jazz Bridge Growl`
 - **DO NOT include the source instrument name in single-instrument `tone_name`:**
   - ❌ `34in Standard P Precision Vintage v7.1.1.nam` (43 chars, marquee scrolls)
-  - ✅ `Precision Vintage [Split] v7.1.1.nam` (32 chars, zero-scroll)
+  - ✅ `Precision Vintage v7.1.1.nam` (24 chars, zero-scroll)
 - **DO NOT invent arbitrary abbreviations:**
-  - ❌ `P-Bss Vntg [Splt] v7.1.1.nam` (cryptic and unprofessional)
-  - ✅ `Precision Vintage [Split] v7.1.1.nam`
+  - ❌ `P-Bss Vntg v7.1.1.nam` (cryptic and unprofessional)
+  - ✅ `Precision Vintage v7.1.1.nam`
 - **DO NOT mix and match word order:**
   - ❌ `Active Modern Jazz Pair`
   - ✅ `Jazz Pair Active`

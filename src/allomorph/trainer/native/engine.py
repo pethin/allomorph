@@ -40,6 +40,7 @@ from allomorph.pipeline.schema import (
 from allomorph.trainer.callbacks import (
     compute_linear_slope,
     compute_pareto_quality_score,
+    evaluate_loss_spike_condition,
     evaluate_plateau_stopping_condition,
 )
 from allomorph.trainer.constants import (
@@ -57,6 +58,7 @@ from allomorph.trainer.constants import (
     NATIVE_DEFAULT_LR,
     NATIVE_DEFAULT_LR_SCHEDULER,
     NATIVE_DEFAULT_MAX_EPOCHS,
+    NATIVE_DEFAULT_MAX_SPIKE_RESTARTS,
     NATIVE_DEFAULT_MIN_DELTA,
     NATIVE_DEFAULT_MIN_EPOCHS,
     NATIVE_DEFAULT_MSE_WEIGHT,
@@ -66,6 +68,7 @@ from allomorph.trainer.constants import (
     NATIVE_DEFAULT_SINE_FREQUENCIES,
     NATIVE_DEFAULT_SINE_REGULARIZER,
     NATIVE_DEFAULT_SLICE_LEN,
+    NATIVE_DEFAULT_SPIKE_RATIO_THRESHOLD,
     NATIVE_DEFAULT_VAL_INTERVAL,
     NATIVE_DEFAULT_WARM_START,
     NATIVE_DEFAULT_WEIGHT_DECAY,
@@ -143,6 +146,8 @@ def train_voice_native(
     warm_start: bool = NATIVE_DEFAULT_WARM_START,
     homotopy_tau_init: float = NATIVE_DEFAULT_HOMOTOPY_TAU_INIT,
     ema_decay: float = NATIVE_DEFAULT_EMA_DECAY,
+    spike_ratio_threshold: float = NATIVE_DEFAULT_SPIKE_RATIO_THRESHOLD,
+    max_spike_restarts: int = NATIVE_DEFAULT_MAX_SPIKE_RESTARTS,
 ) -> bool:
     """Trains a Neural Amp Modeler (NAM) Architecture 2 model using Allomorph's Native PyTorch Engine."""
     from allomorph.trainer.core import (
@@ -585,46 +590,7 @@ def train_voice_native(
     x_train_padded = torch.cat([torch.zeros(rf_pad, device=hw_device, dtype=vram_dtype), x_train])
     x_val_padded = torch.cat([torch.zeros(rf_pad, device=hw_device, dtype=vram_dtype), x_val])
 
-    # 10. Model, Closed-Form Wiener Warm-Start, EMA & Loss Initialization
-    model = AllomorphWaveNetA2().to(hw_device)
-    model.mask_weights()
-
-    if warm_start:
-        if cal_chirp_x is not None and cal_chirp_y is not None and len(cal_chirp_y) >= 1024:
-            cal_len = min(32768, len(cal_chirp_y))
-            x_cal_t = torch.cat(
-                [
-                    torch.zeros(rf_pad, device=hw_device, dtype=torch.float32),
-                    torch.from_numpy(cal_chirp_x[:cal_len]).to(
-                        device=hw_device, dtype=torch.float32
-                    ),
-                ]
-            )
-            y_cal_t = torch.from_numpy(cal_chirp_y[:cal_len]).to(
-                device=hw_device, dtype=torch.float32
-            )
-            model.warm_start_head(x_cal_t, y_cal_t)
-        elif total_train_samples >= 1024:
-            cal_len = min(32768, total_train_samples)
-            model.warm_start_head(
-                x_train_padded[: cal_len + rf_pad].float(),
-                y_train[:cal_len].float(),
-            )
-
-    model_params: list[torch.Tensor] = list(model.parameters())
-    ema_params: list[torch.Tensor] = (
-        [p.detach().clone() for p in model_params] if ema_decay > 0.0 else []
-    )
-    global_step: int = 0
-
-    optimizer = torch.optim.Adam(model_params, lr=lr, weight_decay=weight_decay, foreach=True)
-    hp_kernel: torch.Tensor | None = None
-    if fir_hp_weight > 0.0:
-        hp_kernel = design_sharp_fir_highpass(fc=fir_hp_fc, fs=float(sample_rate), num_taps=255).to(
-            device=hw_device, dtype=vram_dtype
-        )
-
-    # 11. Slicing Parameters
+    # 10. Slicing Parameters & Pre-allocated VRAM Index Grids
     ny = slice_len
     nx = ny + rf_pad  # ny + 6346
     num_blocks = max(1, (total_train_samples - ny) // ny)
@@ -633,7 +599,6 @@ def train_voice_native(
         epochs = 1
         steps_per_epoch = 1
 
-    # Pre-allocate slice index offset grids in accelerator VRAM as int32
     arange_nx = torch.arange(nx, device=hw_device, dtype=torch.int32).unsqueeze(0)
     arange_ny = torch.arange(ny, device=hw_device, dtype=torch.int32).unsqueeze(0)
 
@@ -646,91 +611,176 @@ def train_voice_native(
         else None
     )
 
-    # State tracking
+    hp_kernel: torch.Tensor | None = None
+    if fir_hp_weight > 0.0:
+        hp_kernel = design_sharp_fir_highpass(fc=fir_hp_fc, fs=float(sample_rate), num_taps=255).to(
+            device=hw_device, dtype=vram_dtype
+        )
+
+    t0 = time.time()
+    homotopy_end_epoch = max(1, int(0.75 * min_epochs))
+
+    # 11. Spike-Resilient Training & Restart Loop (CL-37)
+    max_attempts = 1 + max(0, int(max_spike_restarts))
+    spike_restarts = 0
+
+    model = AllomorphWaveNetA2().to(hw_device)
     best_pareto_score = float("inf")
     best_epoch = 0
     best_val_loss = float("inf")
     best_val_esr = float("inf")
     best_val_esr_lite = float("inf")
     best_state_dict: dict[str, torch.Tensor] | None = None
-
-    val_loss_history: list[float] = []
-    hp_high_history: list[float] = []
-    min_mse_full = float("inf")
     stop_reason: str | None = None
     cur_esr_full: float = float("inf")
     cur_esr_lite: float = float("inf")
     mb_val: float = float("inf")
     pareto_score: float = float("inf")
-    metrics_full: dict[str, float] = {}
+    epoch = 1
 
-    t0 = time.time()
+    for attempt in range(max_attempts):
+        if attempt > 0 and seed is not None:
+            attempt_seed = int(seed) + attempt * 10007
+            torch.manual_seed(attempt_seed)
+            if torch.cuda.is_available():
+                torch.cuda.manual_seed_all(attempt_seed)
 
-    # 12. Training Loop
-    homotopy_end_epoch = max(1, int(0.75 * min_epochs))
-    for epoch in range(1, epochs + 1):
-        epoch_t0 = time.time()
-        model.train()
+        # 11a. Model, Closed-Form Wiener Warm-Start, EMA & Optimizer Initialization
+        model = AllomorphWaveNetA2().to(hw_device)
+        model.mask_weights()
 
-        # C-infinity SiLU-gated LeakyReLU activation homotopy schedule (tau: 0.02 -> 0.0)
-        if homotopy_tau_init > 0.0 and epoch <= homotopy_end_epoch and not fast_dev_run:
-            prog = (epoch - 1) / max(1, homotopy_end_epoch)
-            model.activation_tau = 0.5 * homotopy_tau_init * (1.0 + math.cos(math.pi * prog))
-        else:
-            model.activation_tau = 0.0
-
-        # Learning Rate Schedule (5-epoch linear warmup + decay)
-        warmup_epochs = 5
-        target_lr = lr
-        if epoch <= warmup_epochs:
-            cur_lr = target_lr * (epoch / warmup_epochs)
-        elif lr_scheduler == "cosine":
-            effective_t_max = (
-                max(1, epochs - warmup_epochs) if lr_t_max == DEFAULT_LR_T_MAX else lr_t_max
-            )
-            t_cur = min(epoch - warmup_epochs, effective_t_max)
-            cur_lr = eta_min + 0.5 * (target_lr - eta_min) * (
-                1.0 + math.cos(math.pi * t_cur / effective_t_max)
-            )
-        else:
-            cur_lr = target_lr * (0.994 ** (epoch - warmup_epochs))
-
-        for param_group in optimizer.param_groups:
-            param_group["lr"] = cur_lr
-
-        train_loss_acc = torch.tensor(0.0, device=hw_device)
-
-        max_start = max(1, total_train_samples - ny)
-        if num_blocks >= resolved_bs and max_start >= ny:
-            rem = max(1, max_start - (num_blocks - 1) * ny)
-            jitter = int(torch.randint(0, rem, (1,), device=hw_device).item()) if rem > 1 else 0
-            perm_blocks = torch.randperm(num_blocks, device=hw_device, dtype=torch.int32)
-            epoch_block_offsets: torch.Tensor | None = perm_blocks * ny + jitter
-        else:
-            epoch_block_offsets = None
-
-        for step in range(steps_per_epoch):
-            if epoch_block_offsets is not None and (step + 1) * resolved_bs <= len(
-                epoch_block_offsets
-            ):
-                indices = epoch_block_offsets[
-                    step * resolved_bs : (step + 1) * resolved_bs
-                ].unsqueeze(1)
-            else:
-                indices = torch.randint(
-                    0,
-                    max(1, total_train_samples - ny),
-                    (resolved_bs, 1),
-                    device=hw_device,
-                    dtype=torch.int32,
+        if warm_start:
+            if cal_chirp_x is not None and cal_chirp_y is not None and len(cal_chirp_y) >= 1024:
+                cal_len = min(32768, len(cal_chirp_y))
+                x_cal_t = torch.cat(
+                    [
+                        torch.zeros(rf_pad, device=hw_device, dtype=torch.float32),
+                        torch.from_numpy(cal_chirp_x[:cal_len]).to(
+                            device=hw_device, dtype=torch.float32
+                        ),
+                    ]
                 )
-            x_batch = x_train_padded[indices + arange_nx].unsqueeze(1)
-            y_batch = y_train[indices + arange_ny]
+                y_cal_t = torch.from_numpy(cal_chirp_y[:cal_len]).to(
+                    device=hw_device, dtype=torch.float32
+                )
+                model.warm_start_head(x_cal_t, y_cal_t)
+            elif total_train_samples >= 1024:
+                cal_len = min(32768, total_train_samples)
+                model.warm_start_head(
+                    x_train_padded[: cal_len + rf_pad].float(),
+                    y_train[:cal_len].float(),
+                )
 
-            optimizer.zero_grad(set_to_none=True)
+        model_params: list[torch.Tensor] = list(model.parameters())
+        ema_params: list[torch.Tensor] = (
+            [p.detach().clone() for p in model_params] if ema_decay > 0.0 else []
+        )
+        global_step: int = 0
 
-            if use_autocast:
-                with torch.autocast(device_type=hw_device.type, dtype=autocast_dtype):
+        attempt_lr = lr * (0.85**attempt)
+        optimizer = torch.optim.Adam(
+            model_params, lr=attempt_lr, weight_decay=weight_decay, foreach=True
+        )
+
+        # State tracking (reset per attempt)
+        best_pareto_score = float("inf")
+        best_epoch = 0
+        best_val_loss = float("inf")
+        best_val_esr = float("inf")
+        best_val_esr_lite = float("inf")
+        best_state_dict = None
+
+        val_loss_history: list[float] = []
+        hp_high_history: list[float] = []
+        min_mse_full = float("inf")
+        min_train_loss = float("inf")
+        min_val_loss_seen = float("inf")
+        stop_reason = None
+        cur_esr_full = float("inf")
+        cur_esr_lite = float("inf")
+        mb_val = float("inf")
+        pareto_score = float("inf")
+        metrics_full: dict[str, float] = {}
+        restarted_on_spike = False
+
+        # 12. Training Loop
+        for epoch in range(1, epochs + 1):
+            epoch_t0 = time.time()
+            model.train()
+
+            # C-infinity SiLU-gated LeakyReLU activation homotopy schedule (tau: 0.02 -> 0.0)
+            if homotopy_tau_init > 0.0 and epoch <= homotopy_end_epoch and not fast_dev_run:
+                prog = (epoch - 1) / max(1, homotopy_end_epoch)
+                model.activation_tau = 0.5 * homotopy_tau_init * (1.0 + math.cos(math.pi * prog))
+            else:
+                model.activation_tau = 0.0
+
+            # Learning Rate Schedule (5-epoch linear warmup + decay)
+            warmup_epochs = 5
+            target_lr = attempt_lr
+            if epoch <= warmup_epochs:
+                cur_lr = target_lr * (epoch / warmup_epochs)
+            elif lr_scheduler == "cosine":
+                effective_t_max = (
+                    max(1, epochs - warmup_epochs) if lr_t_max == DEFAULT_LR_T_MAX else lr_t_max
+                )
+                t_cur = min(epoch - warmup_epochs, effective_t_max)
+                cur_lr = eta_min + 0.5 * (target_lr - eta_min) * (
+                    1.0 + math.cos(math.pi * t_cur / effective_t_max)
+                )
+            else:
+                cur_lr = target_lr * (0.994 ** (epoch - warmup_epochs))
+
+            for param_group in optimizer.param_groups:
+                param_group["lr"] = cur_lr
+
+            train_loss_acc = torch.tensor(0.0, device=hw_device)
+
+            max_start = max(1, total_train_samples - ny)
+            if num_blocks >= resolved_bs and max_start >= ny:
+                rem = max(1, max_start - (num_blocks - 1) * ny)
+                jitter = int(torch.randint(0, rem, (1,), device=hw_device).item()) if rem > 1 else 0
+                perm_blocks = torch.randperm(num_blocks, device=hw_device, dtype=torch.int32)
+                epoch_block_offsets: torch.Tensor | None = perm_blocks * ny + jitter
+            else:
+                epoch_block_offsets = None
+
+            for step in range(steps_per_epoch):
+                if epoch_block_offsets is not None and (step + 1) * resolved_bs <= len(
+                    epoch_block_offsets
+                ):
+                    indices = epoch_block_offsets[
+                        step * resolved_bs : (step + 1) * resolved_bs
+                    ].unsqueeze(1)
+                else:
+                    indices = torch.randint(
+                        0,
+                        max(1, total_train_samples - ny),
+                        (resolved_bs, 1),
+                        device=hw_device,
+                        dtype=torch.int32,
+                    )
+                x_batch = x_train_padded[indices + arange_nx].unsqueeze(1)
+                y_batch = y_train[indices + arange_ny]
+
+                optimizer.zero_grad(set_to_none=True)
+
+                if use_autocast:
+                    with torch.autocast(device_type=hw_device.type, dtype=autocast_dtype):
+                        pred = model(x_batch)
+                        l_full = F.mse_loss(pred[:, 1, :], y_batch)
+                        l_lite = F.mse_loss(pred[:, 0, :], y_batch)
+                        total_step_loss = mse_weight * (l_full + lite_weight * l_lite)
+                        if hp_kernel is not None and fir_hp_weight > 0.0:
+                            p_hp_full = F.conv1d(pred[:, 1:2, :], hp_kernel, padding="valid")
+                            p_hp_lite = F.conv1d(pred[:, 0:1, :], hp_kernel, padding="valid")
+                            t_hp = F.conv1d(y_batch.unsqueeze(1), hp_kernel, padding="valid")
+                            l_hp_full = F.mse_loss(p_hp_full, t_hp)
+                            l_hp_lite = F.mse_loss(p_hp_lite, t_hp)
+                            total_step_loss = total_step_loss + fir_hp_weight * (
+                                l_hp_full + lite_weight * l_hp_lite
+                            )
+                else:
                     pred = model(x_batch)
                     l_full = F.mse_loss(pred[:, 1, :], y_batch)
                     l_lite = F.mse_loss(pred[:, 0, :], y_batch)
@@ -744,237 +794,294 @@ def train_voice_native(
                         total_step_loss = total_step_loss + fir_hp_weight * (
                             l_hp_full + lite_weight * l_hp_lite
                         )
-            else:
-                pred = model(x_batch)
-                l_full = F.mse_loss(pred[:, 1, :], y_batch)
-                l_lite = F.mse_loss(pred[:, 0, :], y_batch)
-                total_step_loss = mse_weight * (l_full + lite_weight * l_lite)
-                if hp_kernel is not None and fir_hp_weight > 0.0:
-                    p_hp_full = F.conv1d(pred[:, 1:2, :], hp_kernel, padding="valid")
-                    p_hp_lite = F.conv1d(pred[:, 0:1, :], hp_kernel, padding="valid")
-                    t_hp = F.conv1d(y_batch.unsqueeze(1), hp_kernel, padding="valid")
-                    l_hp_full = F.mse_loss(p_hp_full, t_hp)
-                    l_hp_lite = F.mse_loss(p_hp_lite, t_hp)
-                    total_step_loss = total_step_loss + fir_hp_weight * (
-                        l_hp_full + lite_weight * l_hp_lite
+
+                total_step_loss.backward()
+                model.mask_gradients()
+                optimizer.step()
+                model.mask_weights()
+
+                global_step += 1
+                if ema_decay > 0.0 and ema_params:
+                    step_ema_decay = min(ema_decay, (1.0 + global_step) / (10.0 + global_step))
+                    with torch.no_grad():
+                        torch._foreach_lerp_(ema_params, model_params, 1.0 - step_ema_decay)
+
+                train_loss_acc.add_(total_step_loss.detach())
+
+            train_loss_epoch = float((train_loss_acc / steps_per_epoch).item())
+
+            # 12a. Pre-validation unlucky training spike check
+            is_train_spike, spike_desc = evaluate_loss_spike_condition(
+                train_loss_epoch=train_loss_epoch,
+                min_train_loss=min_train_loss,
+                spike_ratio_threshold=spike_ratio_threshold,
+            )
+            if is_train_spike and attempt < max_attempts - 1 and not fast_dev_run:
+                epoch_sec = time.time() - epoch_t0
+                spike_restarts += 1
+                if not silent:
+                    print(
+                        f"Epoch {epoch:03d}/{epochs:03d} [{epoch_sec:.2f}s] "
+                        f"Train: {train_loss_epoch:.4f}",
+                        flush=True,
                     )
+                    next_lr = lr * (0.85 ** (attempt + 1))
+                    print(
+                        f"\n[Native Trainer] Unlucky loss spike detected at epoch {epoch:03d} "
+                        f"({spike_desc}). Restarting training "
+                        f"(attempt {attempt + 2}/{max_attempts}, lr={next_lr:.2e})...\n",
+                        flush=True,
+                    )
+                restarted_on_spike = True
+                break
 
-            total_step_loss.backward()
-            model.mask_gradients()
-            optimizer.step()
-            model.mask_weights()
+            if math.isfinite(train_loss_epoch) and train_loss_epoch > 0.0:
+                min_train_loss = min(min_train_loss, train_loss_epoch)
 
-            global_step += 1
-            if ema_decay > 0.0 and ema_params:
-                step_ema_decay = min(ema_decay, (1.0 + global_step) / (10.0 + global_step))
-                with torch.no_grad():
-                    torch._foreach_lerp_(ema_params, model_params, 1.0 - step_ema_decay)
-
-            train_loss_acc.add_(total_step_loss.detach())
-
-        train_loss_epoch = float((train_loss_acc / steps_per_epoch).item())
-
-        # 13. Batched Full-Track Validation Pass (with in-VRAM EMA shadow evaluation)
-        is_val_epoch = (
-            (epoch % val_interval == 0)
-            or (epoch == 1)
-            or (epoch == epochs)
-            or (epoch >= min_epochs)
-        )
-        if is_val_epoch:
-            model.eval()
-            use_ema_val = ema_decay > 0.0 and bool(ema_params) and epoch >= warmup_epochs
-            live_backup: list[torch.Tensor] = []
-            if use_ema_val:
-                with torch.no_grad():
-                    live_backup = [p.detach().clone() for p in model_params]
-                    torch._foreach_copy_(model_params, ema_params)
-
-            val_autocast = (
-                torch.autocast(device_type=hw_device.type, dtype=autocast_dtype)
-                if use_autocast
-                else contextlib.nullcontext()
+            # 13. Batched Full-Track Validation Pass (with in-VRAM EMA shadow evaluation)
+            is_val_epoch = (
+                (epoch % val_interval == 0)
+                or (epoch == 1)
+                or (epoch == epochs)
+                or (epoch >= min_epochs)
             )
-            with torch.no_grad(), val_autocast:
-                if val_chunks > 0 and all_val_indices is not None:
-                    val_err_full_acc = torch.tensor(0.0, device=hw_device)
-                    val_err_lite_acc = torch.tensor(0.0, device=hw_device)
-                    val_tgt_acc = torch.tensor(0.0, device=hw_device)
-                    val_hp_full_acc = torch.tensor(0.0, device=hw_device)
+            if is_val_epoch:
+                model.eval()
+                use_ema_val = ema_decay > 0.0 and bool(ema_params) and epoch >= warmup_epochs
+                live_backup: list[torch.Tensor] = []
+                if use_ema_val:
+                    with torch.no_grad():
+                        live_backup = [p.detach().clone() for p in model_params]
+                        torch._foreach_copy_(model_params, ema_params)
 
-                    for s in range(val_steps):
-                        bs = min(val_bs, val_chunks - s * val_bs)
-                        if bs <= 0:
-                            break
-                        c_indices = all_val_indices[s * val_bs : s * val_bs + bs]
-                        c_bx = x_val_padded[c_indices + arange_nx].unsqueeze(1)
-                        c_by = y_val[c_indices + arange_ny]
+                val_autocast = (
+                    torch.autocast(device_type=hw_device.type, dtype=autocast_dtype)
+                    if use_autocast
+                    else contextlib.nullcontext()
+                )
+                with torch.no_grad(), val_autocast:
+                    if val_chunks > 0 and all_val_indices is not None:
+                        val_err_full_acc = torch.tensor(0.0, device=hw_device)
+                        val_err_lite_acc = torch.tensor(0.0, device=hw_device)
+                        val_tgt_acc = torch.tensor(0.0, device=hw_device)
+                        val_hp_full_acc = torch.tensor(0.0, device=hw_device)
 
-                        c_pred = model(c_bx)
-                        c_pred_full = c_pred[:, 1, :]
-                        c_pred_lite = c_pred[:, 0, :]
-                        c_err_full = c_pred_full - c_by
-                        c_err_lite = c_pred_lite - c_by
+                        for s in range(val_steps):
+                            bs = min(val_bs, val_chunks - s * val_bs)
+                            if bs <= 0:
+                                break
+                            c_indices = all_val_indices[s * val_bs : s * val_bs + bs]
+                            c_bx = x_val_padded[c_indices + arange_nx].unsqueeze(1)
+                            c_by = y_val[c_indices + arange_ny]
 
-                        val_err_full_acc.add_(torch.sum(c_err_full**2))
-                        val_err_lite_acc.add_(torch.sum(c_err_lite**2))
-                        val_tgt_acc.add_(torch.sum(c_by**2))
+                            c_pred = model(c_bx)
+                            c_pred_full = c_pred[:, 1, :]
+                            c_pred_lite = c_pred[:, 0, :]
+                            c_err_full = c_pred_full - c_by
+                            c_err_lite = c_pred_lite - c_by
+
+                            val_err_full_acc.add_(torch.sum(c_err_full**2))
+                            val_err_lite_acc.add_(torch.sum(c_err_lite**2))
+                            val_tgt_acc.add_(torch.sum(c_by**2))
+                            if hp_kernel is not None and fir_hp_weight > 0.0 and ny >= 255:
+                                c_hp_full = F.conv1d(
+                                    c_pred_full.unsqueeze(1), hp_kernel, padding="valid"
+                                )
+                                c_hp_by = F.conv1d(c_by.unsqueeze(1), hp_kernel, padding="valid")
+                                val_hp_full_acc.add_(torch.sum((c_hp_full - c_hp_by) ** 2))
+
+                        cur_esr_full = float((val_err_full_acc / (val_tgt_acc + 1e-12)).item())
+                        cur_esr_lite = float((val_err_lite_acc / (val_tgt_acc + 1e-12)).item())
+                        total_eval_samples = float(val_chunks * ny)
+                        val_mse_full = float((val_err_full_acc / total_eval_samples).item())
+                        mse_cur = val_mse_full
                         if hp_kernel is not None and fir_hp_weight > 0.0 and ny >= 255:
-                            c_hp_full = F.conv1d(
-                                c_pred_full.unsqueeze(1), hp_kernel, padding="valid"
+                            total_hp_samples = float(val_chunks * (ny - 254))
+                            val_hp_full = float((val_hp_full_acc / total_hp_samples).item())
+                        else:
+                            val_hp_full = 0.0
+                        mb_val = mse_weight * mse_cur + fir_hp_weight * val_hp_full
+                        metrics_full = {
+                            "mse": mse_cur,
+                            "fir_hp": val_hp_full,
+                            "composite_loss": mb_val,
+                        }
+                    else:
+                        y_val_hat = model(x_val_padded.unsqueeze(0))
+                        y_full_pred = y_val_hat[0, 1, :val_samples]
+                        y_lite_pred = y_val_hat[0, 0, :val_samples]
+                        mse_cur = float(F.mse_loss(y_full_pred, y_val).item())
+                        err_full = y_full_pred - y_val
+                        err_lite = y_lite_pred - y_val
+                        target_energy = float(torch.sum(y_val**2).item()) + 1e-12
+                        cur_esr_full = float(torch.sum(err_full**2).item()) / target_energy
+                        cur_esr_lite = float(torch.sum(err_lite**2).item()) / target_energy
+                        if (
+                            hp_kernel is not None
+                            and fir_hp_weight > 0.0
+                            and y_full_pred.shape[-1] >= 255
+                        ):
+                            v_hp_pred = F.conv1d(
+                                y_full_pred.unsqueeze(0).unsqueeze(0), hp_kernel, padding="valid"
                             )
-                            c_hp_by = F.conv1d(c_by.unsqueeze(1), hp_kernel, padding="valid")
-                            val_hp_full_acc.add_(torch.sum((c_hp_full - c_hp_by) ** 2))
+                            v_hp_tgt = F.conv1d(
+                                y_val.unsqueeze(0).unsqueeze(0), hp_kernel, padding="valid"
+                            )
+                            val_hp_full = float(F.mse_loss(v_hp_pred, v_hp_tgt).item())
+                        else:
+                            val_hp_full = 0.0
+                        mb_val = mse_weight * mse_cur + fir_hp_weight * val_hp_full
+                        metrics_full = {
+                            "mse": mse_cur,
+                            "fir_hp": val_hp_full,
+                            "composite_loss": mb_val,
+                        }
 
-                    cur_esr_full = float((val_err_full_acc / (val_tgt_acc + 1e-12)).item())
-                    cur_esr_lite = float((val_err_lite_acc / (val_tgt_acc + 1e-12)).item())
-                    total_eval_samples = float(val_chunks * ny)
-                    val_mse_full = float((val_err_full_acc / total_eval_samples).item())
-                    mse_cur = val_mse_full
-                    if hp_kernel is not None and fir_hp_weight > 0.0 and ny >= 255:
-                        total_hp_samples = float(val_chunks * (ny - 254))
-                        val_hp_full = float((val_hp_full_acc / total_hp_samples).item())
-                    else:
-                        val_hp_full = 0.0
-                    mb_val = mse_weight * mse_cur + fir_hp_weight * val_hp_full
-                    metrics_full = {
-                        "mse": mse_cur,
-                        "fir_hp": val_hp_full,
-                        "composite_loss": mb_val,
-                    }
-                else:
-                    y_val_hat = model(x_val_padded.unsqueeze(0))
-                    y_full_pred = y_val_hat[0, 1, :val_samples]
-                    y_lite_pred = y_val_hat[0, 0, :val_samples]
-                    mse_cur = float(F.mse_loss(y_full_pred, y_val).item())
-                    err_full = y_full_pred - y_val
-                    err_lite = y_lite_pred - y_val
-                    target_energy = float(torch.sum(y_val**2).item()) + 1e-12
-                    cur_esr_full = float(torch.sum(err_full**2).item()) / target_energy
-                    cur_esr_lite = float(torch.sum(err_lite**2).item()) / target_energy
-                    if (
-                        hp_kernel is not None
-                        and fir_hp_weight > 0.0
-                        and y_full_pred.shape[-1] >= 255
-                    ):
-                        v_hp_pred = F.conv1d(
-                            y_full_pred.unsqueeze(0).unsqueeze(0), hp_kernel, padding="valid"
-                        )
-                        v_hp_tgt = F.conv1d(
-                            y_val.unsqueeze(0).unsqueeze(0), hp_kernel, padding="valid"
-                        )
-                        val_hp_full = float(F.mse_loss(v_hp_pred, v_hp_tgt).item())
-                    else:
-                        val_hp_full = 0.0
-                    mb_val = mse_weight * mse_cur + fir_hp_weight * val_hp_full
-                    metrics_full = {
-                        "mse": mse_cur,
-                        "fir_hp": val_hp_full,
-                        "composite_loss": mb_val,
-                    }
-
-            # 14. Anti-Drift Pareto Early Stopping Evaluation
-            if epoch >= min_epochs:
-                if min_mse_full == float("inf"):
-                    min_mse_full = mse_cur
-                else:
-                    min_mse_full = min(min_mse_full, mse_cur)
-
-            if min_mse_full < float("inf") and min_mse_full > 0.0:
-                mse_drift = max(0.0, (mse_cur - min_mse_full) / min_mse_full)
-            else:
-                mse_drift = 0.0
-
-            val_loss_history.append(mb_val)
-            hp_metric = metrics_full.get("fir_hp", 0.0)
-            hp_high_history.append(hp_metric)
-
-            if min_mse_full < float("inf"):
-                pareto_score = compute_pareto_quality_score(
-                    mb_full_loss=mb_val,
-                    mse_full=mse_cur,
-                    min_mse_full=min_mse_full,
-                    drift_tolerance=0.15,
-                    drift_penalty_gain=2.5,
+                # 13a. Post-validation unlucky validation spike check
+                is_val_spike, val_spike_desc = evaluate_loss_spike_condition(
+                    train_loss_epoch=train_loss_epoch,
+                    min_train_loss=min_train_loss,
+                    val_loss_epoch=mb_val,
+                    min_val_loss=min_val_loss_seen,
+                    spike_ratio_threshold=spike_ratio_threshold,
                 )
-            else:
-                pareto_score = mb_val
+                if is_val_spike and attempt < max_attempts - 1 and not fast_dev_run:
+                    if use_ema_val and live_backup:
+                        with torch.no_grad():
+                            torch._foreach_copy_(model_params, live_backup)
+                    epoch_sec = time.time() - epoch_t0
+                    esr_full_db = 10.0 * math.log10(max(cur_esr_full, 1e-12))
+                    esr_lite_db = 10.0 * math.log10(max(cur_esr_lite, 1e-12))
+                    spike_restarts += 1
+                    if not silent:
+                        print(
+                            f"Epoch {epoch:03d}/{epochs:03d} [{epoch_sec:.2f}s] "
+                            f"Train: {train_loss_epoch:.4f} | "
+                            f"Val Loss: {mb_val:.5f} | "
+                            f"ESR Ch8: {cur_esr_full:.6f} ({esr_full_db:+.1f}dB) | "
+                            f"ESR Ch3: {cur_esr_lite:.6f} ({esr_lite_db:+.1f}dB)",
+                            flush=True,
+                        )
+                        next_lr = lr * (0.85 ** (attempt + 1))
+                        print(
+                            f"\n[Native Trainer] Unlucky validation spike detected at epoch {epoch:03d} "
+                            f"({val_spike_desc}). Restarting training "
+                            f"(attempt {attempt + 2}/{max_attempts}, lr={next_lr:.2e})...\n",
+                            flush=True,
+                        )
+                    restarted_on_spike = True
+                    break
 
-            # Track global best Pareto checkpoint post-warmup
-            if epoch >= warmup_epochs:
-                is_new_best = pareto_score < best_pareto_score
-                if is_new_best or best_pareto_score == float("inf"):
-                    best_pareto_score = pareto_score
-                    best_epoch = epoch
-                    best_val_loss = mb_val
-                    best_val_esr = cur_esr_full
-                    best_val_esr_lite = cur_esr_lite
-                    best_state_dict = {k: v.cpu().clone() for k, v in model.state_dict().items()}
+                if math.isfinite(mb_val) and mb_val > 0.0:
+                    min_val_loss_seen = min(min_val_loss_seen, mb_val)
 
-            if use_ema_val and live_backup:
-                with torch.no_grad():
-                    torch._foreach_copy_(model_params, live_backup)
+                # 14. Anti-Drift Pareto Early Stopping Evaluation
+                if epoch >= min_epochs:
+                    if min_mse_full == float("inf"):
+                        min_mse_full = mse_cur
+                    else:
+                        min_mse_full = min(min_mse_full, mse_cur)
 
-            # Compute trajectory slopes
-            k_eval = max(patience, 4)
-            val_slope = (
-                compute_linear_slope(val_loss_history[-k_eval:])
-                if len(val_loss_history) >= 2
-                else 0.0
-            )
-            hp_slope = (
-                compute_linear_slope(hp_high_history[-k_eval:])
-                if len(hp_high_history) >= 2
-                else 0.0
-            )
+                if min_mse_full < float("inf") and min_mse_full > 0.0:
+                    mse_drift = max(0.0, (mse_cur - min_mse_full) / min_mse_full)
+                else:
+                    mse_drift = 0.0
 
-            if epoch >= min_epochs:
-                should_stop, reason = evaluate_plateau_stopping_condition(
-                    val_loss_history=val_loss_history,
-                    val_loss_slope=val_slope,
-                    epoch=epoch,
-                    warmup_floor=min_epochs,
-                    patience=patience,
-                    min_delta=min_delta,
-                    hp_high_slope=hp_slope,
-                    mse_drift_ratio=mse_drift,
-                    drift_exit_threshold=0.25,
+                val_loss_history.append(mb_val)
+                hp_metric = metrics_full.get("fir_hp", 0.0)
+                hp_high_history.append(hp_metric)
+
+                if min_mse_full < float("inf"):
+                    pareto_score = compute_pareto_quality_score(
+                        mb_full_loss=mb_val,
+                        mse_full=mse_cur,
+                        min_mse_full=min_mse_full,
+                        drift_tolerance=0.15,
+                        drift_penalty_gain=2.5,
+                    )
+                else:
+                    pareto_score = mb_val
+
+                # Track global best Pareto checkpoint post-warmup
+                if epoch >= warmup_epochs:
+                    is_new_best = pareto_score < best_pareto_score
+                    if is_new_best or best_pareto_score == float("inf"):
+                        best_pareto_score = pareto_score
+                        best_epoch = epoch
+                        best_val_loss = mb_val
+                        best_val_esr = cur_esr_full
+                        best_val_esr_lite = cur_esr_lite
+                        best_state_dict = {
+                            k: v.cpu().clone() for k, v in model.state_dict().items()
+                        }
+
+                if use_ema_val and live_backup:
+                    with torch.no_grad():
+                        torch._foreach_copy_(model_params, live_backup)
+
+                # Compute trajectory slopes
+                k_eval = max(patience, 4)
+                val_slope = (
+                    compute_linear_slope(val_loss_history[-k_eval:])
+                    if len(val_loss_history) >= 2
+                    else 0.0
                 )
+                hp_slope = (
+                    compute_linear_slope(hp_high_history[-k_eval:])
+                    if len(hp_high_history) >= 2
+                    else 0.0
+                )
+
+                if epoch >= min_epochs:
+                    should_stop, reason = evaluate_plateau_stopping_condition(
+                        val_loss_history=val_loss_history,
+                        val_loss_slope=val_slope,
+                        epoch=epoch,
+                        warmup_floor=min_epochs,
+                        patience=patience,
+                        min_delta=min_delta,
+                        hp_high_slope=hp_slope,
+                        mse_drift_ratio=mse_drift,
+                        drift_exit_threshold=0.25,
+                    )
+                else:
+                    should_stop, reason = False, None
             else:
                 should_stop, reason = False, None
-        else:
-            should_stop, reason = False, None
 
-        epoch_sec = time.time() - epoch_t0
-        esr_full_db = 10.0 * math.log10(max(cur_esr_full, 1e-12))
-        esr_lite_db = 10.0 * math.log10(max(cur_esr_lite, 1e-12))
+            epoch_sec = time.time() - epoch_t0
+            esr_full_db = 10.0 * math.log10(max(cur_esr_full, 1e-12))
+            esr_lite_db = 10.0 * math.log10(max(cur_esr_lite, 1e-12))
 
-        if not silent:
-            is_best_str = " *" if epoch == best_epoch else ""
-            if is_val_epoch:
-                print(
-                    f"Epoch {epoch:03d}/{epochs:03d} [{epoch_sec:.2f}s] "
-                    f"Train: {train_loss_epoch:.4f} | "
-                    f"Val Loss: {mb_val:.5f} (Q: {pareto_score:.5f}){is_best_str} | "
-                    f"ESR Ch8: {cur_esr_full:.6f} ({esr_full_db:+.1f}dB) | "
-                    f"ESR Ch3: {cur_esr_lite:.6f} ({esr_lite_db:+.1f}dB)",
-                    flush=True,
-                )
-            else:
-                print(
-                    f"Epoch {epoch:03d}/{epochs:03d} [{epoch_sec:.2f}s] "
-                    f"Train: {train_loss_epoch:.4f}",
-                    flush=True,
-                )
-
-        if should_stop:
-            stop_reason = reason
             if not silent:
-                print(
-                    f"\n[Native Trainer] Early stopping triggered at epoch {epoch:03d} "
-                    f"({stop_reason}).",
-                    flush=True,
-                )
+                is_best_str = " *" if epoch == best_epoch else ""
+                if is_val_epoch:
+                    print(
+                        f"Epoch {epoch:03d}/{epochs:03d} [{epoch_sec:.2f}s] "
+                        f"Train: {train_loss_epoch:.4f} | "
+                        f"Val Loss: {mb_val:.5f} (Q: {pareto_score:.5f}){is_best_str} | "
+                        f"ESR Ch8: {cur_esr_full:.6f} ({esr_full_db:+.1f}dB) | "
+                        f"ESR Ch3: {cur_esr_lite:.6f} ({esr_lite_db:+.1f}dB)",
+                        flush=True,
+                    )
+                else:
+                    print(
+                        f"Epoch {epoch:03d}/{epochs:03d} [{epoch_sec:.2f}s] "
+                        f"Train: {train_loss_epoch:.4f}",
+                        flush=True,
+                    )
+
+            if should_stop:
+                stop_reason = reason
+                if not silent:
+                    print(
+                        f"\n[Native Trainer] Early stopping triggered at epoch {epoch:03d} "
+                        f"({stop_reason}).",
+                        flush=True,
+                    )
+                break
+
+        if not restarted_on_spike:
             break
 
     total_time = time.time() - t0
@@ -1040,6 +1147,7 @@ def train_voice_native(
         "device_name": device_name,
         "engine": "native",
         "training_time_seconds": round(total_time, 2),
+        "spike_restarts": spike_restarts,
     }
     if stop_reason:
         raw_training_meta["stop_reason"] = stop_reason
@@ -1139,6 +1247,7 @@ def train_voice_native(
                         m_entry["validation_esr_ch8"] = float(best_val_esr)
                         m_entry["validation_esr_ch3"] = float(best_val_esr_lite)
                         m_entry["epochs_trained"] = epochs_trained_val
+                        m_entry["spike_restarts"] = spike_restarts
                         m_entry["training_time_seconds"] = round(total_time, 2)
                         m_entry["batch_size"] = resolved_bs
                         m_entry["precision"] = resolved_precision
@@ -1175,6 +1284,8 @@ def train_voice_native(
         print(f"  Best Epoch:     {best_epoch:03d} / {epoch:03d}")
         print(f"  Validation ESR: {best_val_esr:.6f} (A2 Full Ch8, {full_db:+.2f} dB)")
         print(f"  Lite Mode ESR:  {best_val_esr_lite:.6f} (A2 Lite Ch3, {lite_db:+.2f} dB)")
+        if spike_restarts > 0:
+            print(f"  Spike Restarts: {spike_restarts}")
         if stop_reason:
             print(f"  Stop Condition: {stop_reason}")
         print("  Status: Ready for Darkglass Anagram Block 1 loading.")
