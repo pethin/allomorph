@@ -40,6 +40,7 @@ def parse_target_token(
     Parses a single target token according to the Allomorph target grammar.
 
     Grammar:
+      - 'target1,target2,...': comma-separated composite targets
       - 'packs': all tone packs
       - 'pack:<name>': specific pack
       - 'pack:<name>:<voicing>': specific voicing in pack
@@ -54,6 +55,22 @@ def parse_target_token(
     raw = token.strip()
     if not raw:
         return []
+
+    if "," in raw:
+        sub_tokens = [part.strip() for part in raw.split(",") if part.strip()]
+        res: list[ResolvedTarget] = []
+        seen_keys: set[tuple[TargetKind, str, str | None]] = set()
+        for sub_tok in sub_tokens:
+            for item in parse_target_token(
+                sub_tok,
+                allow_shorthand=allow_shorthand,
+                shorthand_kind=shorthand_kind,
+            ):
+                key = (item.kind, item.id, item.sub_target)
+                if key not in seen_keys:
+                    seen_keys.add(key)
+                    res.append(item)
+        return res
 
     available_packs = get_available_pack_ids()
     available_insts = get_available_instrument_ids()

@@ -368,6 +368,68 @@ def test_cli_train_pack_dispatch(monkeypatch: pytest.MonkeyPatch) -> None:
     assert calls[0][0] == "34in_standard_p"
     assert calls[0][1]["epochs"] == 50
     assert calls[0][1]["overwrite"] is True
+    assert calls[0][1]["silent"] is False
+
+
+def test_cli_train_standalone_dispatch(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    calls: list[dict[str, Any]] = []
+
+    def _mock_train_voice(*args: Any, **kwargs: Any) -> bool:
+        calls.append(kwargs)
+        return True
+
+    monkeypatch.setattr("allomorph.cli.train_cmd.MODELS_DIR", tmp_path / "models")
+    monkeypatch.setattr("allomorph.cli.train_cmd.train_voice", _mock_train_voice)
+
+    code = main(
+        [
+            "train",
+            "--source",
+            "30in_emg_mmtw:dual_mode",
+            "--targets",
+            "34in_standard_p:vintage_open",
+            "--epochs",
+            "50",
+        ]
+    )
+    assert code == 0
+    assert len(calls) == 1
+    assert calls[0]["voice"] == "34in_standard_p:vintage_open"
+    assert calls[0]["source_voicing"] == "dual_mode"
+    assert calls[0]["epochs"] == 50
+    assert calls[0]["silent"] is False
+
+    # Verify --silent flag silences training progress
+    calls.clear()
+    code = main(
+        [
+            "train",
+            "--source",
+            "30in_emg_mmtw:dual_mode",
+            "--targets",
+            "34in_standard_p:vintage_open",
+            "--silent",
+        ]
+    )
+    assert code == 0
+    assert len(calls) == 1
+    assert calls[0]["silent"] is True
+
+    # Verify comma-separated targets dispatch multiple target voices
+    calls.clear()
+    code = main(
+        [
+            "train",
+            "--source",
+            "30in_emg_mmtw:dual_mode",
+            "--targets",
+            "34in_standard_p:vintage_open,30in_gibson_eb0:neck_deep",
+        ]
+    )
+    assert code == 0
+    assert len(calls) == 2
+    assert calls[0]["voice"] == "34in_standard_p:vintage_open"
+    assert calls[1]["voice"] == "30in_gibson_eb0:neck_deep"
 
 
 def test_cli_train_standalone_source_validation() -> None:

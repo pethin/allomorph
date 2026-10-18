@@ -201,6 +201,7 @@ def train(
     fast_dev_run: bool = False,
     seed: int | None = DEFAULT_SEED,
     models_dir: Path | None = None,
+    silent: bool = False,
     # Native Engine Options
     slice_len: Annotated[int, Parameter(group=native_group)] = NATIVE_DEFAULT_SLICE_LEN,
     min_epochs: Annotated[int, Parameter(group=native_group)] = NATIVE_DEFAULT_MIN_EPOCHS,
@@ -408,6 +409,7 @@ def train(
                     val_interval=val_interval,
                     sine_regularizer=sine_regularizer,
                     val_loss_metric=val_loss_metric,
+                    silent=silent,
                 )
                 total_trained += 1
             except Exception as e:  # noqa: BLE001
@@ -441,10 +443,13 @@ def train(
                 for vid, v_cfg in tgt_inst_cfg.voicings.items():
                     voices_to_train.append(f"{tgt_inst_cfg.id}:{v_cfg.id or vid}")
 
-            for v in voices_to_train:
+            for idx, v in enumerate(voices_to_train, 1):
+                progress_prefix = (
+                    f"[{idx}/{len(voices_to_train)}] " if len(voices_to_train) > 1 else ""
+                )
                 log_step(
                     "TRAIN",
-                    f"Training standalone model {src_inst_cfg.id}:{src_voicing_id} -> {v}...",
+                    f"{progress_prefix}Training standalone model {src_inst_cfg.id}:{src_voicing_id} -> {v}...",
                 )
                 ok = train_voice(
                     instrument=src_inst_cfg,
@@ -473,6 +478,7 @@ def train(
                     fir_hp_fc=fir_hp_fc,
                     val_interval=val_interval,
                     sine_regularizer=sine_regularizer,
+                    silent=silent,
                     val_loss_metric=val_loss_metric,
                 )
                 if ok:

@@ -811,6 +811,7 @@ def train_tone_pack(
     val_interval: int = NATIVE_DEFAULT_VAL_INTERVAL,
     sine_regularizer: bool = NATIVE_DEFAULT_SINE_REGULARIZER,
     val_loss_metric: str = DEFAULT_VAL_LOSS_METRIC,
+    silent: bool = False,
 ) -> Path:
     """Trains a complete Tone3000 upload pack, outputting flat .nam files to tone3000/packs/[pack]/nam/.
 
@@ -834,9 +835,10 @@ def train_tone_pack(
 
     manifest_path = pack_dir / "manifest.json"
     if not manifest_path.exists():
-        print(
-            f"[Tone Pack Trainer] Manifest missing for '{inst.name}' at '{pack_dir}'. Auto-exporting pack..."
-        )
+        if not silent:
+            print(
+                f"[Tone Pack Trainer] Manifest missing for '{inst.name}' at '{pack_dir}'. Auto-exporting pack..."
+            )
         export_tone_pack(inst, output_dir=pack_dir)
 
     with open(manifest_path, "r", encoding="utf-8") as f:
@@ -874,9 +876,10 @@ def train_tone_pack(
                 break
 
     if missing_stems:
-        print(
-            f"[Tone Pack Trainer] Pack bundles missing or incomplete in '{pack_dir}'. Auto-exporting..."
-        )
+        if not silent:
+            print(
+                f"[Tone Pack Trainer] Pack bundles missing or incomplete in '{pack_dir}'. Auto-exporting..."
+            )
         export_tone_pack(inst, output_dir=pack_dir)
         with open(manifest_path, "r", encoding="utf-8") as f:
             manifest_data = json.load(f)
@@ -970,9 +973,10 @@ def train_tone_pack(
                     and recorded_dry_digest == current_dry_digest
                     and recorded_wet_digest == current_wet_digest
                 ):
-                    print(
-                        f"[Tone Pack Trainer] Audio digests match, skipping retraining: {existing_nam_path.name}"
-                    )
+                    if not silent:
+                        print(
+                            f"[Tone Pack Trainer] Audio digests match, skipping retraining: {existing_nam_path.name}"
+                        )
                     total_skipped += 1
                     continue
                 elif existing_nam_path == target_nam:
@@ -995,9 +999,10 @@ def train_tone_pack(
                         is_invalid = True
 
                     if not is_invalid and not recorded_dry_digest and not recorded_wet_digest:
-                        print(
-                            f"[Tone Pack Trainer] Model already exists, skipping: {target_nam.name}"
-                        )
+                        if not silent:
+                            print(
+                                f"[Tone Pack Trainer] Model already exists, skipping: {target_nam.name}"
+                            )
                         total_skipped += 1
                         if target_nam.name not in manifest_data["models"]:
                             _populate_manifest_model_entry(
@@ -1007,9 +1012,10 @@ def train_tone_pack(
                                 json.dump(manifest_data, f, indent=2)
                         continue
 
-            print(
-                f"\n[Tone Pack Trainer] Training model for {model_basename} (Bundle: {b_name})..."
-            )
+            if not silent:
+                print(
+                    f"\n[Tone Pack Trainer] Training model for {model_basename} (Bundle: {b_name})..."
+                )
             src_vid = (
                 b_info["source"].split(":", 1)[1]
                 if "source" in b_info and ":" in b_info["source"]
@@ -1051,7 +1057,7 @@ def train_tone_pack(
                 val_interval=val_interval,
                 sine_regularizer=sine_regularizer,
                 val_loss_metric=val_loss_metric,
-                silent=False,
+                silent=silent,
             )
             if not ok:
                 print(f"[Tone Pack Trainer] Warning: Training failed for {target_nam.name}")

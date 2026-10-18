@@ -112,3 +112,63 @@ def test_resolve_targets_deduplication() -> None:
     )
     assert len(resolved) == 1
     assert resolved[0].id == "34in_standard_p"
+
+
+def test_parse_target_token_comma_separated() -> None:
+    # 1. Full prefix syntax with multiple instruments
+    targets = parse_target_token(
+        "instrument:34in_standard_p:vintage_open,instrument:30in_gibson_eb0:neck_deep"
+    )
+    assert len(targets) == 2
+    assert targets[0] == ResolvedTarget(
+        kind="instrument", id="34in_standard_p", sub_target="vintage_open"
+    )
+    assert targets[1] == ResolvedTarget(
+        kind="instrument", id="30in_gibson_eb0", sub_target="neck_deep"
+    )
+
+    # 2. Packs with comma separation
+    targets = parse_target_token("pack:34in_standard_p,pack:34in_standard_jazz")
+    assert len(targets) == 2
+    assert targets[0] == ResolvedTarget(kind="pack", id="34in_standard_p", sub_target=None)
+    assert targets[1] == ResolvedTarget(kind="pack", id="34in_standard_jazz", sub_target=None)
+
+    # 3. Shorthand with whitespace around commas
+    targets = parse_target_token(
+        "34in_standard_p:vintage_open , 30in_gibson_eb0:neck_deep",
+        allow_shorthand=True,
+    )
+    assert len(targets) == 2
+    assert targets[0] == ResolvedTarget(
+        kind="instrument", id="34in_standard_p", sub_target="vintage_open"
+    )
+    assert targets[1] == ResolvedTarget(
+        kind="instrument", id="30in_gibson_eb0", sub_target="neck_deep"
+    )
+
+    # 4. Intra-token deduplication
+    targets = parse_target_token(
+        "34in_standard_p, 34in_standard_p",
+        allow_shorthand=True,
+    )
+    assert len(targets) == 1
+    assert targets[0] == ResolvedTarget(kind="instrument", id="34in_standard_p", sub_target=None)
+
+    # 5. Tolerant to leading/trailing commas
+    targets = parse_target_token(",34in_standard_p,", allow_shorthand=True)
+    assert len(targets) == 1
+    assert targets[0] == ResolvedTarget(kind="instrument", id="34in_standard_p", sub_target=None)
+
+
+def test_resolve_targets_comma_separated() -> None:
+    resolved = resolve_targets(
+        ["34in_standard_p:vintage_open,30in_gibson_eb0:neck_deep", "34in_standard_jazz"],
+        allow_shorthand=True,
+        shorthand_kind="instrument",
+    )
+    assert len(resolved) == 3
+    assert resolved[0].id == "34in_standard_p"
+    assert resolved[0].sub_target == "vintage_open"
+    assert resolved[1].id == "30in_gibson_eb0"
+    assert resolved[1].sub_target == "neck_deep"
+    assert resolved[2].id == "34in_standard_jazz"
