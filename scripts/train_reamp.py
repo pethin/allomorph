@@ -1286,7 +1286,7 @@ def train_reamp(
             name=["--input", "-i"],
             help="Path to dry excitation input WAV file.",
         ),
-    ] = REPO_ROOT / "audio" / "input.wav",
+    ] = REPO_ROOT / "reamp" / "input.wav",
     output_dir: Annotated[
         Path,
         Parameter(
@@ -1366,16 +1366,27 @@ def train_reamp(
     ] = False,
 ) -> None:
     """Trains production-grade NAM Architecture 2 models from re-amped audio stems using Cyclopts."""
+    if not input_file.exists() and input_file == REPO_ROOT / "reamp" / "input.wav":
+        fallback_input = REPO_ROOT / "audio" / "input.wav"
+        if fallback_input.exists():
+            input_file = fallback_input
     if not input_file.exists():
         raise FileNotFoundError(f"Dry excitation file '{input_file}' not found.")
 
+    input_resolved = input_file.resolve()
     targets: list[Path] = []
     if reamp_target.is_file() and reamp_target.suffix.lower() == ".wav":
         targets.append(reamp_target)
     elif reamp_target.is_dir():
         targets.extend(sorted(reamp_target.glob("*.wav")))
-        # Exclude raw stems if save_raw was used
-        targets = [t for t in targets if not t.stem.endswith("_raw")]
+        # Exclude dry excitation input.wav and raw stems if save_raw was used
+        targets = [
+            t
+            for t in targets
+            if not t.stem.endswith("_raw")
+            and t.stem.lower() != "input"
+            and t.resolve() != input_resolved
+        ]
     else:
         raise FileNotFoundError(f"Target re-amp file or directory '{reamp_target}' not found.")
 

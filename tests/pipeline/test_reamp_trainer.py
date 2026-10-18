@@ -18,6 +18,11 @@ if str(REPO_ROOT) not in sys.path:
 
 from allomorph.dsp.constants import FS
 from allomorph.dsp.io import read_wav, write_wav_24bit
+from scripts.generate_reamp_input import (
+    generate_optimal_reamp_dry,
+    generate_reamp_input,
+    synth_reamp_alignment_pulses,
+)
 from scripts.reamp_anagram import (
     align_hardware_latency,
     calibrate_output_gain,
@@ -349,18 +354,40 @@ def test_select_warm_start_offset_skips_leading_silence() -> None:
     assert 65536 <= offset <= 98304
 
 
+def test_generate_reamp_input_signal_properties(tmp_path: Path) -> None:
+    """generate_reamp_input must synthesize a -3.0 dBFS peak re-amp excitation with asymmetric band-limited pulses."""
+    pulses = synth_reamp_alignment_pulses(sample_rate=FS, scale=1.0)
+    assert len(pulses) == FS
+    assert float(np.max(pulses)) > 0.85
+    assert float(np.min(pulses)) < -0.55
+
+    out_wav = tmp_path / "reamp" / "input.wav"
+    res_path = generate_reamp_input(output_file=out_wav, duration=8.0, peak_dbfs=-3.0)
+    assert res_path == out_wav
+    assert out_wav.is_file()
+
+    audio, sr = read_wav(out_wav)
+    assert sr == FS
+    assert len(audio) == 8 * FS
+    peak_db = 20.0 * np.log10(float(np.max(np.abs(audio))))
+    assert abs(peak_db - (-3.0)) < 0.05
+
+    dry_arr = generate_optimal_reamp_dry(duration_sec=8.0, sample_rate=FS, peak_dbfs=-3.0)
+    assert len(dry_arr) == 8 * FS
+
+
 def test_train_reamp_fast_dev_run_exports_signal_chain_metadata(tmp_path: Path) -> None:
-    """train_reamp fast_dev_run must align stems, train dual-tier A2 model, and export signal chain metadata."""
+    """train_reamp fast_dev_run must align stems, exclude reamp/input.wav from targets, train dual-tier A2 model, and export signal chain metadata."""
     sr = FS
     n_samples = 96_000  # 2.0 seconds (>= 65,536 minimum)
     t = np.arange(n_samples, dtype=np.float32) / sr
     dry = (0.15 * np.sin(2.0 * np.pi * 82.41 * t)).astype(np.float32)
     wet = np.tanh(2.0 * dry).astype(np.float32)
 
-    dry_wav = tmp_path / "input.wav"
     reamp_dir = tmp_path / "reamp"
     out_dir = tmp_path / "models"
     reamp_dir.mkdir(parents=True, exist_ok=True)
+    dry_wav = reamp_dir / "input.wav"
     wet_wav = reamp_dir / "peggy_classic_8x10.wav"
 
     write_wav_24bit(dry_wav, dry, sample_rate=sr)
@@ -379,6 +406,7 @@ def test_train_reamp_fast_dev_run_exports_signal_chain_metadata(tmp_path: Path) 
 
     nam_path = out_dir / "peggy_classic_8x10.nam"
     assert nam_path.is_file()
+    assert not (out_dir / "input.nam").exists()
 
     container = json.loads(nam_path.read_text(encoding="utf-8"))
     assert container["architecture"] == "SlimmableContainer"

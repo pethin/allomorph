@@ -696,7 +696,7 @@ def reamp(
             name=["--input", "-i"],
             help="Path to dry excitation input WAV file.",
         ),
-    ] = REPO_ROOT / "audio" / "input.wav",
+    ] = REPO_ROOT / "reamp" / "input.wav",
     output_file: Annotated[
         Path,
         Parameter(
@@ -836,7 +836,11 @@ def reamp(
         )
         return
 
-    # 3. Load Dry Audio
+    # 3. Load Dry Audio (fallback from reamp/input.wav to audio/input.wav if needed)
+    if not input_file.exists() and input_file == REPO_ROOT / "reamp" / "input.wav":
+        fallback_input = REPO_ROOT / "audio" / "input.wav"
+        if fallback_input.exists():
+            input_file = fallback_input
     if not input_file.exists():
         raise FileNotFoundError(f"Input excitation file '{input_file}' not found.")
 
