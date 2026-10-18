@@ -50,11 +50,11 @@ Bassists browse Tone3000 to find sounds that inspire them, solve gigging problem
 Keep every numbered tone description in `config/packs/*.toml` to **one tight, scan-friendly sentence**:
 - **Cut filler and measurements:** Strip conversational filler (*"The quintessential..."*, *"heard on thousands of hit records"*), physical dimensions (*"53.3mm bridge-spaced"*, *"210 mm"*), and raw component values (*"15.0H inductor + 20nF capacitor"*).
 - **Format:** `[Archetype / Era]: [concise tonal character & mix feel].`
-- **Rig-Calibrated Voicings (`Studio Super`):** Append the exact expected Darkglass Anagram signal chain in parentheses at the end of the sentence: `([Amp Block] + [Cab Block] + [Mic Block] [Mic Position])`.
+- **Rig-Calibrated Voicings (`Studio Super`):** Make it explicit that the model is a Block 1 instrument front-end and append the required Darkglass Anagram signal chain in parentheses: `(requires Anagram blocks: [Amp Block] + [Cab Block] + [Mic Block] [Mic Position])`.
 - **Examples:**
   - ❌ *Verbose:* `"The quintessential NYC '70s active slap tone: tight, massive sub-bass and crisp, glassy highs with a 53.3mm bridge-spaced midrange scoop that pops right out of a dense mix."`
   - ✅ *Concise:* `"NYC '70s active slap tone: tight, massive sub-bass and crisp, glassy highs with a midrange scoop."`
-  - ✅ *Rig-Calibrated (`Studio Super`):* `"Punchy '80s/'90s alt-rock and funk voice with tight lows and snappy 2 kHz presence (Kallinen Kruukkeri + Peggy 4x10 + Dynamic 52 Cone On-Axis)."`
+  - ✅ *Rig-Calibrated (`Studio Super`):* `"Punchy '80s/'90s alt-rock and funk front-end with tight lows and snappy 2 kHz presence (requires Anagram blocks: Kallinen Kruukkeri + Peggy 4x10 + Dynamic 52 Cone On-Axis)."`
 
 ### 3. Jargon Translation Guide
 

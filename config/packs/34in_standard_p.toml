@@ -19,7 +19,7 @@ With this pack, your single P-Bass can instantly deliver:
 • Modern active slap preamps, boutique P/MM hybrids, and cutting multi-scale progressive rock clank
 • Warm Motown flatwound thump, woody 1960s Hofner hollow-body violin bass, and semi-hollow Gibson EB-2 rumble
 • Acoustic upright double bass resonance for jazz and acoustic sessions
-• 10 hardware-calibrated 32"–35" multi-scale Studio Super voicings engineered to sit effortlessly in the mix with specific Darkglass Anagram amp and cabinet combinations
+• 10 Block-1 Studio Super instrument front-ends voiced to feed specific Darkglass Anagram amp and cabinet blocks (amp and cab blocks not included)
 
 Calibrated specifically for a 34" Standard Precision Bass with stock split-coil pickups. Plug in, select a model, and hear your P-Bass transform into a completely different instrument in real time with zero latency.
 
@@ -148,37 +148,38 @@ Multi-scale passive Neodymium Split-P: fanned-fret low-end tightness with a focu
 Classic Motown flatwound P-Bass: fat, pillowy sub-bass thump with smooth rolled-off highs.
 
 
-Studio Super Family (Darkglass Anagram Rig-Calibrated)
+Studio Super Family (Block 1 Instrument Front-Ends — Requires Amp & Cab Blocks)
+These models reshape your bass in Block 1 and do not include the amplifier or cabinet; pair each voice with its matching Darkglass Anagram Amp and Cab blocks below.
 
 26. Studio Super SVT Classic
-Classic and modern rock studio voice with tight lows and authoritative midrange growl (Peggy Classic + Vintage Peggy 8x10 + Dynamic 421 Cone On-Axis).
+Classic and modern rock studio front-end with tight lows and authoritative midrange growl (requires Anagram blocks: Peggy Classic + Vintage Peggy 8x10 + Dynamic 421 Cone On-Axis).
 
 27. Studio Super SVT Blueline
-Aggressive pick-rock and punk voice with forward upper-mid grind and tamed cone fizz (Peggy Bass + Peggy 8x10 + Dynamic 421 Cap Off-Axis).
+Aggressive pick-rock and punk front-end with forward upper-mid grind and tamed cone fizz (requires Anagram blocks: Peggy Bass + Peggy 8x10 + Dynamic 421 Cap Off-Axis).
 
 28. Studio Super B15
-Warm Motown and soul voice with pillowy sub-bass and smooth fingerstyle articulation (Peggy FlipTop + Peggy Fliptop 1x15 + Condenser 67 Cone On-Axis).
+Warm Motown and soul front-end with pillowy sub-bass and smooth fingerstyle articulation (requires Anagram blocks: Peggy FlipTop + Peggy Fliptop 1x15 + Condenser 67 Cone On-Axis).
 
 29. Studio Super Bassman
-Classic rock, indie, and blues voice with warm midrange body and articulate top-end snap (Super California + California Bass 4x10 + Condenser 67 Cone On-Axis).
+Classic rock, indie, and blues front-end with warm midrange body and articulate top-end snap (requires Anagram blocks: Super California + California Bass 4x10 + Condenser 67 Cone On-Axis).
 
 30. Studio Super GK 800RB
-Punchy '80s/'90s alt-rock and funk voice with tight lows and snappy 2 kHz presence (Kallinen Kruukkeri + Peggy 4x10 + Dynamic 52 Cone On-Axis).
+Punchy '80s/'90s alt-rock and funk front-end with tight lows and snappy 2 kHz presence (requires Anagram blocks: Kallinen Kruukkeri + Peggy 4x10 + Dynamic 52 Cone On-Axis).
 
 31. Studio Super Mesa Block
-Modern hard-rock and metal voice with tightened sub-bass and aggressive pick clank (Modern ISOBRICK750 OD + Modern Bass 4x10 + Dynamic 52 Cap Off-Axis).
+Modern hard-rock and metal front-end with tightened sub-bass and aggressive pick clank (requires Anagram blocks: Modern ISOBRICK750 OD + Modern Bass 4x10 + Dynamic 52 Cap Off-Axis).
 
 32. Studio Super Orange
-Thick stoner, doom, and indie voice with creamy British midrange roar and smooth highs (Fruity Horror Bass 500 + Fruity Bass 4x10 + Dynamic 7 Cone On-Axis).
+Thick stoner, doom, and indie front-end with creamy British midrange roar and smooth highs (requires Anagram blocks: Fruity Horror Bass 500 + Fruity Bass 4x10 + Dynamic 7 Cone On-Axis).
 
 33. Studio Super SWR Goliath
-Hi-fi '90s slap and fusion voice with extended lows, supportive mids, and crisp slap snap (Swirl-900 + SWIRL 4x10 + Condenser 103 Cone On-Axis).
+Hi-fi '90s slap and fusion front-end with extended lows, supportive mids, and crisp slap snap (requires Anagram blocks: Swirl-900 + SWIRL 4x10 + Condenser 103 Cone On-Axis).
 
 34. Studio Super Markbass
-Articulate jazz, fusion, and pop/funk voice with clean low-mids and vocal midrange clarity (Black and Yellow + Black & Yellow 4x10 + Condenser 414 Cone On-Axis).
+Articulate jazz, fusion, and pop/funk front-end with clean low-mids and vocal midrange clarity (requires Anagram blocks: Black and Yellow + Black & Yellow 4x10 + Condenser 414 Cone On-Axis).
 
 35. Studio Super EBS TD650
-Tight Scandinavian metal and prog voice with low-mid authority and razor-sharp attack (SWE TC650 + Darkglass Neo 4x10 + Dynamic 112 Cone On-Axis).
+Tight Scandinavian metal and prog front-end with low-mid authority and razor-sharp attack (requires Anagram blocks: SWE TC650 + Darkglass Neo 4x10 + Dynamic 112 Cone On-Axis).
 """
 
 [[bundles]]
