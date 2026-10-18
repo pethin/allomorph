@@ -332,10 +332,13 @@ class AllomorphWaveNetA2(nn.Module):
             head_feats = self.extract_head_features(x_f32)  # (1, 11, l_out + 15)
 
             l_out = min(l_out_expected, int(y_flat.numel()))
-            y_target_scaled = y_flat[:l_out].to(device=param_dev, dtype=torch.float64) / float(
+            # Compute Wiener-Hopf normal equations on CPU with float64 precision.
+            # This guarantees high numerical precision and cross-platform compatibility across
+            # all accelerators (including Apple Silicon MPS, which does not support torch.float64).
+            y_target_scaled = y_flat[:l_out].to(device="cpu", dtype=torch.float64) / float(
                 self.head_scale
             )
-            ones_col = torch.ones((l_out, 1), device=param_dev, dtype=torch.float64)
+            ones_col = torch.ones((l_out, 1), device="cpu", dtype=torch.float64)
 
             submodel_specs = [
                 (0, slice(0, CHANNELS_LITE), CHANNELS_LITE),
@@ -349,7 +352,7 @@ class AllomorphWaveNetA2(nn.Module):
                     .squeeze(0)
                     .permute(1, 0, 2)
                     .reshape(l_out, c_count * HEAD_KERNEL_SIZE)
-                    .to(dtype=torch.float64)
+                    .to(device="cpu", dtype=torch.float64)
                 )
                 phi = torch.cat([unfolded, ones_col], dim=1)  # (l_out, D)
                 d_dim = phi.shape[1]
@@ -358,7 +361,7 @@ class AllomorphWaveNetA2(nn.Module):
                 rhs = phi.T @ y_target_scaled
                 diag_mean = float(torch.diagonal(gram).mean().clamp(min=1e-6).item())
                 reg = max(float(ridge_lambda) * diag_mean, 1.0e-4)
-                gram_reg = gram + reg * torch.eye(d_dim, device=param_dev, dtype=torch.float64)
+                gram_reg = gram + reg * torch.eye(d_dim, device="cpu", dtype=torch.float64)
 
                 try:
                     sol = torch.linalg.solve(gram_reg, rhs)
@@ -377,10 +380,14 @@ class AllomorphWaveNetA2(nn.Module):
                         1.0 + torch.pow(torch.abs(b_val) / w_max, 4.0), 0.25
                     )
                     self.head_rechannel.weight[h_idx, c_slice, :].copy_(
-                        w_bounded.reshape(c_count, HEAD_KERNEL_SIZE).to(dtype=param_dtype)
+                        w_bounded.reshape(c_count, HEAD_KERNEL_SIZE).to(
+                            device=param_dev, dtype=param_dtype
+                        )
                     )
                     if self.head_rechannel.bias is not None:
-                        self.head_rechannel.bias[h_idx].copy_(b_bounded.to(dtype=param_dtype))
+                        self.head_rechannel.bias[h_idx].copy_(
+                            b_bounded.to(device=param_dev, dtype=param_dtype)
+                        )
 
             self.mask_weights()
 
