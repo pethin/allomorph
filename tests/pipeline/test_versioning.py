@@ -48,6 +48,15 @@ def test_resolve_tri_part_version():
 
 def test_get_version_info():
     """Verify provenance metadata dictionary structure and git commit detection."""
+    import tomllib
+
+    import allomorph
+    from allomorph.cli import app
+
+    pyproject_path = Path(__file__).resolve().parents[2] / "pyproject.toml"
+    with pyproject_path.open("rb") as f:
+        expected_version = tomllib.load(f)["project"]["version"]
+
     info = get_version_info()
     assert info["version"] == "v7.1.1"
     assert info["dsp_version"] == DSP_GENERATION
@@ -55,7 +64,9 @@ def test_get_version_info():
     assert info["instrument_version"] == DEFAULT_INST_VERSION
     assert info["voice_version"] == DEFAULT_VOICE_VERSION
     assert info["allomorph_version"] == ALLOMORPH_VERSION
-    assert ALLOMORPH_VERSION == "0.5.0"
+    assert ALLOMORPH_VERSION == expected_version
+    assert allomorph.__version__ == ALLOMORPH_VERSION
+    assert app.version == ALLOMORPH_VERSION
     assert "generated_at" in info
     commit = get_git_commit()
     assert info["git_commit"] == commit

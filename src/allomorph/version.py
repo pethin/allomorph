@@ -13,10 +13,11 @@ import subprocess
 import threading
 from collections.abc import Mapping, Sequence
 from datetime import UTC, datetime
+from importlib.metadata import version as _pkg_version
 from pathlib import Path
 from typing import Any
 
-ALLOMORPH_VERSION: str = "0.5.0"
+ALLOMORPH_VERSION: str = _pkg_version("allomorph")
 DSP_GENERATION: int = 7
 DEFAULT_INST_VERSION: int = 1
 DEFAULT_VOICE_VERSION: int = 1

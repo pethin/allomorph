@@ -2,8 +2,6 @@
 Allomorph - Universal Pickup & Transducer Analog Modeling Engine
 """
 
-__version__ = "0.5.0"
-
 import os
 import sys
 import types
@@ -114,6 +112,8 @@ from allomorph.version import (
     write_manifest,
 )
 
+__version__ = ALLOMORPH_VERSION
+
 __all__ = [
     "ALLOMORPH_VERSION",
     "CALIBRATION_PEAK_CEILING",
@@ -126,6 +126,7 @@ __all__ = [
     "NYQ",
     "SCALES",
     "STRINGS",
+    "__version__",
     "audit_audio_file",
     "audit_stems_audio_catalog",
     "calibrate_nam_v3_latency",

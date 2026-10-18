@@ -14,6 +14,13 @@ from allomorph.config.schema import (
     PackBundleConfig,
     TonePackConfig,
 )
+from allomorph.version import (
+    ALLOMORPH_VERSION,
+    DEFAULT_INST_VERSION,
+    DEFAULT_VOICE_VERSION,
+    DSP_GENERATION,
+    resolve_tri_part_version,
+)
 
 __all__ = [
     "ArtworkPackConfig",
@@ -109,11 +116,11 @@ class NamExportMetadata(AllomorphBaseModel):
     license: str
     copyright: str
     author: str
-    version: str = Field(default="v7.1.1")
-    dsp_version: int = Field(default=7)
-    instrument_version: int = Field(default=1)
-    voice_version: int = Field(default=1)
-    allomorph_version: str = Field(default="0.5.0")
+    version: str = Field(default_factory=resolve_tri_part_version)
+    dsp_version: int = Field(default=DSP_GENERATION)
+    instrument_version: int = Field(default=DEFAULT_INST_VERSION)
+    voice_version: int = Field(default=DEFAULT_VOICE_VERSION)
+    allomorph_version: str = Field(default=ALLOMORPH_VERSION)
     git_commit: str | None = None
     generated_at: str | None = None
     source_instrument: NamSourceInstrumentMeta

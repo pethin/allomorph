@@ -15,6 +15,7 @@ from allomorph.cli.pack_cmd import pack
 from allomorph.cli.stems_cmd import generate_stems, prune_stems
 from allomorph.cli.train_cmd import native_group, stock_group, train
 from allomorph.cli.visualize_cmd import visualize
+from allomorph.version import ALLOMORPH_VERSION
 
 # ------------------------------------------------------------------------------
 # Root Cyclopts Application
@@ -22,7 +23,7 @@ from allomorph.cli.visualize_cmd import visualize
 app = App(
     name="allomorph",
     help="Allomorph - Analog digital twin & universal pickup/transducer modeling engine.",
-    version="0.5.0",
+    version=ALLOMORPH_VERSION,
 )
 
 # 1. Visualize Command (with 'viz' alias)
