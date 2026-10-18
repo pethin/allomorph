@@ -11,7 +11,7 @@ Covers declarative TOML configurations for physical source instruments, target v
 Before adding or modifying TOML configurations or Pydantic config loaders in [`src/allomorph/config/`](../src/allomorph/config/), read:
 1. [`docs/configuration_reference.md`](../docs/configuration_reference.md) — Complete TOML schema specification, required fields, physical units, and hardware constraints.
 2. [`docs/voice_catalog.md`](../docs/voice_catalog.md) — Master catalog of target pickup voicings, RLC parameters, and harnesses.
-3. [`docs/tone_packs/naming.md`](../docs/tone_packs/naming.md) — Normative tone naming rules and taxonomy vocabulary for `tone_name` fields.
+3. [`docs/tone_packs/naming.md`](../docs/tone_packs/naming.md) & [`docs/tone_packs/catalog.md`](../docs/tone_packs/catalog.md) — Normative tone naming rules, taxonomy vocabulary, and concise single-sentence storefront description guidelines.
 4. [`docs/architectural_guardrails.md`](../docs/architectural_guardrails.md) — Transducer `sensor_type` taxonomy and fail-fast declarative validation rules.
 
 ## Verification

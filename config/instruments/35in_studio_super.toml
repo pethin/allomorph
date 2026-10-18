@@ -132,7 +132,7 @@ k_mutual = 0.04
 # ------------------------------------------------------------------------------
 [voicings.svt_classic]
 version = 1
-name = "Studio Super SVT Classic (Peggy Classic + Vintage 8x10 + Dynamic 421 Cone On-Axis)"
+name = "Studio Super SVT Classic (Peggy Classic + Vintage Peggy 8x10 + Dynamic 421 Cone On-Axis)"
 tone_name = "Studio Super SVT Classic"
 harness = "super_preamp"
 switches = { coil_mode = "parallel" }
@@ -161,7 +161,7 @@ preamp_bands = [
 # ------------------------------------------------------------------------------
 [voicings.b15_fliptop]
 version = 1
-name = "Studio Super B-15 FlipTop (Peggy FlipTop + 1x15 + Condenser 67 Cone On-Axis)"
+name = "Studio Super B-15 FlipTop (Peggy FlipTop + Peggy Fliptop 1x15 + Condenser 67 Cone On-Axis)"
 tone_name = "Studio Super B15"
 harness = "super_preamp"
 switches = { coil_mode = "parallel" }
@@ -180,7 +180,7 @@ preamp_bands = [
 # ------------------------------------------------------------------------------
 [voicings.bassman_410]
 version = 1
-name = "Studio Super Bassman 4x10 (Super California + California 4x10 + Condenser 67 Cone On-Axis)"
+name = "Studio Super Bassman 4x10 (Super California + California Bass 4x10 + Condenser 67 Cone On-Axis)"
 tone_name = "Studio Super Bassman"
 harness = "super_preamp"
 switches = { coil_mode = "parallel" }
@@ -218,7 +218,7 @@ preamp_bands = [
 # ------------------------------------------------------------------------------
 [voicings.mesa_block]
 version = 1
-name = "Studio Super Mesa Block (Modern ISOBRICK750 OD + Modern 4x10 + Dynamic 52 Cap Off-Axis)"
+name = "Studio Super Mesa Block (Modern ISOBRICK750 OD + Modern Bass 4x10 + Dynamic 52 Cap Off-Axis)"
 tone_name = "Studio Super Mesa Block"
 harness = "super_preamp"
 switches = { coil_mode = "parallel" }
@@ -236,7 +236,7 @@ preamp_bands = [
 # ------------------------------------------------------------------------------
 [voicings.orange_terror]
 version = 1
-name = "Studio Super Orange Terror (Fruity Horror 500 + Fruity 4x10 + Dynamic 7 Cone On-Axis)"
+name = "Studio Super Orange Terror (Fruity Horror Bass 500 + Fruity Bass 4x10 + Dynamic 7 Cone On-Axis)"
 tone_name = "Studio Super Orange"
 harness = "super_preamp"
 switches = { coil_mode = "parallel" }
@@ -273,7 +273,7 @@ preamp_bands = [
 # ------------------------------------------------------------------------------
 [voicings.markbass_410]
 version = 1
-name = "Studio Super Markbass 4x10 (Black and Yellow + 4x10 + Condenser 414 Cone On-Axis)"
+name = "Studio Super Markbass 4x10 (Black and Yellow + Black & Yellow 4x10 + Condenser 414 Cone On-Axis)"
 tone_name = "Studio Super Markbass"
 harness = "super_preamp"
 switches = { coil_mode = "parallel" }

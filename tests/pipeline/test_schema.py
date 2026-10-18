@@ -36,7 +36,7 @@ def test_tone3000_listing_validation():
             voicings=valid_voicings,
         )
 
-    # Incorrect number of voicings (< 15 or > 32)
+    # Incorrect number of voicings (< 15 or > 40)
     with pytest.raises(ValidationError):
         Tone3000PackListing(
             edition="test",
@@ -47,7 +47,7 @@ def test_tone3000_listing_validation():
         Tone3000PackListing(
             edition="test",
             description=valid_desc,
-            voicings=[f"voicing_{i:02d}" for i in range(33)],
+            voicings=[f"voicing_{i:02d}" for i in range(41)],
         )
 
 

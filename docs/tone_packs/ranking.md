@@ -104,7 +104,7 @@ Because Darkglass Anagram preset slots and Tone3000 pack listings must maximize 
 
 ---
 
-### 2.4 Standard Precision Bass Edition (25 Voicings)
+### 2.4 Standard Precision Bass Edition (35 Voicings)
 *Source Instrument:* Single split-coil P-Bass centered at $125.0\text{ mm}$ ($34''$ scale).  
 *Native Exclusions:* `Precision Vintage` (`is_identity_voicing`).
 
@@ -119,6 +119,7 @@ Because Darkglass Anagram preset slots and Tone3000 pack listings must maximize 
 | **18–21** | **Gibson Mudbucker & Hollow-Body Family** | `Mudbucker Deep`, `Mudbucker Hollow`, `Mudbucker Baritone`, and `Hofner Violin Warm`. |
 | **22** | **Acoustic Transducers** | `Upright Piezo` bridge force sensor on $41.25''$ hollow upright scale. |
 | **23–25** | **Precision Bass & Super P Family** | `Precision Active`, `Dingwall Super P`, and `Precision Warm`. |
+| **26–35** | **Studio Super Family** | 10 hardware-calibrated $32''\text{--}35''$ multi-scale Studio Super voicings matched to Darkglass Anagram amp + cab + mic signal chains (`Studio Super SVT Classic`, `Studio Super SVT Blueline`, `Studio Super B15`, `Studio Super Bassman`, `Studio Super GK 800RB`, `Studio Super Mesa Block`, `Studio Super Orange`, `Studio Super SWR Goliath`, `Studio Super Markbass`, `Studio Super EBS TD650`). |
 
 ---
 

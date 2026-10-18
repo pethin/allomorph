@@ -34,7 +34,7 @@ class Tone3000PackListing(AllomorphBaseModel):
     edition: str
     description: str = Field(..., max_length=10000)
     pickup_tags: list[str] = Field(default_factory=list)
-    voicings: list[str] = Field(..., min_length=15, max_length=32)
+    voicings: list[str] = Field(..., min_length=15, max_length=40)
 
 
 class NamSourceVoicingMeta(AllomorphBaseModel):

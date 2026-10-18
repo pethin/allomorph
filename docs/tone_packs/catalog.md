@@ -2,7 +2,7 @@
 
 This document details the standardized storefront product configurations for **Allomorph Tone Packs** on [Tone3000](https://tone3000.com), engineered for Neural Amp Modeler (NAM) and the Darkglass Anagram pedalboard.
 
-Each pack contains 25–26 precision Forward Digital Twin voicings paired directly from the source instrument's simulated stem (`Source Digital Twin → NAM Block 1 → Target Digital Twin`) to transform a specific physical bass guitar into iconic vintage passive, modern active, semi-hollow/hollow-body, heavy multi-scale, and acoustic bass topologies.
+Each pack contains 25–35 precision Forward Digital Twin voicings paired directly from the source instrument's simulated stem (`Source Digital Twin → NAM Block 1 → Target Digital Twin`) to transform a specific physical bass guitar into iconic vintage passive, modern active, semi-hollow/hollow-body, heavy multi-scale, acoustic, and rig-calibrated Studio Super bass topologies.
 
 Tone pack metadata and bespoke storefront product copy are defined in `config/packs/*.toml`, while canonical license terms and trademark notices are defined in `config/legal.toml`.
 
@@ -12,7 +12,7 @@ Tone pack metadata and bespoke storefront product copy are defined in `config/pa
 
 | Pack Edition | Source Instrument Calibration | Recommended Knobs / Switches | Pack Configuration | Production Artwork (SVG / JPG) |
 | :--- | :--- | :--- | :--- | :--- |
-| **Standard Precision Bass Edition** | 34" Standard Fender P-Bass (Passive Split-P, 25 Voicings) | Vol 100%, Tone 100% | [`34in_standard_p.toml`](../../config/packs/34in_standard_p.toml) | [`allomorph_standard_precision_bass.svg`](../../tone3000/assets/allomorph_standard_precision_bass.svg) &bull; [JPG](../../tone3000/assets/allomorph_standard_precision_bass.jpg) |
+| **Standard Precision Bass Edition** | 34" Standard Fender P-Bass (Passive Split-P, 35 Voicings) | Vol 100%, Tone 100% | [`34in_standard_p.toml`](../../config/packs/34in_standard_p.toml) | [`allomorph_standard_precision_bass.svg`](../../tone3000/assets/allomorph_standard_precision_bass.svg) &bull; [JPG](../../tone3000/assets/allomorph_standard_precision_bass.jpg) |
 | **Standard Jazz Bass Edition** | 34" Standard Fender Jazz Bass (Passive Single-Coil Pair, 25 Voicings) | Neck Vol 100%, Bridge Vol 100%, Tone 100% (Both Pickups in Parallel) | [`34in_standard_jazz.toml`](../../config/packs/34in_standard_jazz.toml) | [`allomorph_standard_jazz_bass.svg`](../../tone3000/assets/allomorph_standard_jazz_bass.svg) &bull; [JPG](../../tone3000/assets/allomorph_standard_jazz_bass.jpg) |
 | **Standard P/J Bass Edition** | 34" Standard Fender P/J Bass (Split-P Neck + J Bridge, 25 Voicings) | Neck Vol 100%, Bridge Vol 100%, Tone 100% (Both Pickups in Parallel) | [`34in_standard_pj.toml`](../../config/packs/34in_standard_pj.toml) | [`allomorph_standard_pj_bass.svg`](../../tone3000/assets/allomorph_standard_pj_bass.svg) &bull; [JPG](../../tone3000/assets/allomorph_standard_pj_bass.jpg) |
 | **Mustang P/J Bass Edition** | 30" Short-Scale Fender Mustang P/J Bass (26 Voicings) | 3-Way Switch in Middle (Both Pickups in Parallel), Vol 100%, Tone 100% | [`30in_mustang_pj.toml`](../../config/packs/30in_mustang_pj.toml) | [`allomorph_mustang_pj_bass.svg`](../../tone3000/assets/allomorph_mustang_pj_bass.svg) &bull; [JPG](../../tone3000/assets/allomorph_mustang_pj_bass.jpg) |
@@ -27,7 +27,7 @@ Tone pack metadata and bespoke storefront product copy are defined in `config/pa
 All pack descriptions strictly adhere to Tone3000 platform guidelines:
 1. **Character Limit Compliance:** Tone3000 enforces a strict maximum length of 10,000 characters per listing. All 7 packs stay safely under this ceiling.
 2. **Unified Parallel Setup for Dual-Pickup Editions:** All dual-pickup editions (Jazz, P/J, Mustang P/J, Preamp Soapbar, Active EMG) are calibrated from a single unified parallel input (both pickups 100% / blend at center detent), preserving physical RWRP hum-cancellation on Jazz basses and eliminating manual pickup-switch changes between presets on stage.
-3. **Concise Voicing Summaries:** Each target voicing is distilled into 1–2 punchy, informative sentences highlighting real-world musical feel, mix behavior, and sonic character.
+3. **Single-Sentence Concise Voicing Summaries:** Every numbered voicing description in `config/packs/*.toml` must be a single concise sentence focusing on musical style and tonal character (plus expected amp + cab + mic pairing for rig-calibrated Studio Super voicings), omitting filler adjectives, millimeter/inductance measurements, and multi-sentence explanations.
 4. **Independent Legal Disclaimers:** Trademark disclaimers and non-commercial/commercial user rights are centrally codified in `config/legal.toml` and appended to each exported listing.
 5. **Native Identity Exclusion:** Base-instrument 1:1 identical duplicates (where source and target voicings are identical) are omitted via `is_identity_voicing`, ensuring every model in the pack provides transformational capacity (see [`ranking.md`](ranking.md)).
 6. **Utilitarian & Mix-Ready Selection:** Every storefront voicing delivers non-invertible electroacoustic physics (or SNR-preserving neural bandwidth extension) and sits mix-ready (or is easily EQed to mix-ready) without thin solo-bridge fundamental loss or redundant passive RC low-pass variations (see [`ranking.md` §1.4](ranking.md#14-utilitarian--mix-ready-storefront-selection-principle)).
@@ -46,7 +46,17 @@ Bassists browse Tone3000 to find sounds that inspire them, solve gigging problem
 - **Mix Placement & EQ Feel:** Vocal midrange growl, hollow slap scoop, pillowy sub-bass thump, cutting pick clank, woody semi-hollow/hollow bloom, glassy hi-fi air.
 - **Playing Styles:** Slap & pop, 16th-note staccato fingerstyle, drop-tuned metal, British invasion Beatle-bass thump, acoustic jazz gigs.
 
-### 2. Jargon Translation Guide
+### 2. The Concise Single-Sentence Rule
+Keep every numbered tone description in `config/packs/*.toml` to **one tight, scan-friendly sentence**:
+- **Cut filler and measurements:** Strip conversational filler (*"The quintessential..."*, *"heard on thousands of hit records"*), physical dimensions (*"53.3mm bridge-spaced"*, *"210 mm"*), and raw component values (*"15.0H inductor + 20nF capacitor"*).
+- **Format:** `[Archetype / Era]: [concise tonal character & mix feel].`
+- **Rig-Calibrated Voicings (`Studio Super`):** Append the exact expected Darkglass Anagram signal chain in parentheses at the end of the sentence: `([Amp Block] + [Cab Block] + [Mic Block] [Mic Position])`.
+- **Examples:**
+  - ❌ *Verbose:* `"The quintessential NYC '70s active slap tone: tight, massive sub-bass and crisp, glassy highs with a 53.3mm bridge-spaced midrange scoop that pops right out of a dense mix."`
+  - ✅ *Concise:* `"NYC '70s active slap tone: tight, massive sub-bass and crisp, glassy highs with a midrange scoop."`
+  - ✅ *Rig-Calibrated (`Studio Super`):* `"Punchy '80s/'90s alt-rock and funk voice with tight lows and snappy 2 kHz presence (Kallinen Kruukkeri + Peggy 4x10 + Dynamic 52 Cone On-Axis)."`
+
+### 3. Jargon Translation Guide
 
 | Avoid Engineering Mumbo-Jumbo | Use Bassist-Friendly Language |
 | :--- | :--- |
@@ -57,19 +67,19 @@ Bassists browse Tone3000 to find sounds that inspire them, solve gigging problem
 | *Decoupled dual volumes with 8.8k neck wiper resistance* | Rolling the neck volume back just a touch for singing Jaco bridge growl |
 | *1951 single-coil Alnico V 2.8H slab pickup* | Raw, uncompressed '51 single-coil Precision growl and open top-end snap |
 | *47nF paper-in-oil cap with flatwound damping* | Classic Jamerson/Pino Motown flatwound thump with fat, pillowy sub-bass |
-| *Sadowsky-style 2-band buffer with '70s bridge spacing* | The quintessential NYC active '70s-spacing slap tone: massive lows and crisp, glassy highs |
+| *Sadowsky-style 2-band buffer with '70s bridge spacing* | NYC '70s active slap tone: tight, massive sub-bass and crisp, glassy highs with a midrange scoop |
 | *Series wiring with +6.0 dB inductive surge* | Hotter, muscular series punch with wall-shaking low-mid growl and sustain |
-| *4.7nF series high-pass capacitor prog-rock clank* | Classic prog-rock clank (Chris Squire/Geddy Lee): tight lows with aggressive pick grit |
-| *FD3 34"–37" multi-scale fanned fret active sparkle* | Modern progressive metal tone: razor-sharp pick attack and piano-like low-B clarity |
-| *18.0H coupled overwound neck-heel sidewinder Mudbucker* | The Gibson Mudbucker: dark, colossal vintage bass wall of sound |
-| *Semi-hollow / hollow-archtop admittance & sustain sink* | Authentic 165 Hz / 145 Hz hollow-body wood bloom and rapid thumpy sustain decay |
-| *Bridge piezo force sensor with hollow sustain sink* | Acoustic upright double bass: woody resonance, natural sustain decay, and organic feel |
+| *4.7nF series high-pass capacitor prog-rock clank* | Classic prog-rock bridge clank: tight, lean lows with biting pick attack and upper-mid grit |
+| *FD3 34"–37" multi-scale fanned fret active sparkle* | Modern progressive metal bridge tone: razor-sharp pick clank and piano-like low-B definition |
+| *18.0H coupled overwound neck-heel sidewinder Mudbucker* | Solid-body Gibson EB-0 Mudbucker: a dark, colossal wall of vintage sub-bass rumble |
+| *Semi-hollow / hollow-archtop admittance & sustain sink* | Authentic hollow-body wood bloom and fast, thumpy sustain decay |
+| *Bridge piezo force sensor with hollow sustain sink* | Acoustic upright double bass: woody pizzicato decay and organic finger feel |
 
 ---
 
 ## Digital Twin Voice Architecture & Ranking
 
-Every pack provides comprehensive coverage across nine modular sonic families (up to 26 target voicings), ordered according to the [Tone Ranking Architecture](ranking.md):
+Every pack provides comprehensive coverage across nine core modular sonic families (plus the 10 Darkglass Anagram rig-calibrated Studio Super voicings in the Standard Precision Bass Edition), ordered according to the [Tone Ranking Architecture](ranking.md):
 
 1. **Jazz Bass Family:**
    - **Jazz Pair Active** (Modern Active '70s-Spacing Jazz Bass, Sadowsky NYC 2-Band Preamp with Cable Isolation)
@@ -106,6 +116,17 @@ Every pack provides comprehensive coverage across nine modular sonic families (u
 9. **P/J Bass Family:**
    - **PJ Active** (Fender American Ultra II Active P/J, 18V 3-Band Preamp)
    - **PJ Passive** (Vintage '80s Passive P/J Bass, Duff McKagan / BB3000 Parallel Sum)
+10. **Studio Super Family (Darkglass Anagram Rig-Calibrated):**
+   - **Studio Super SVT Classic** (Peggy Classic + Vintage Peggy 8x10 + Dynamic 421 Cone On-Axis)
+   - **Studio Super SVT Blueline** (Peggy Bass + Peggy 8x10 + Dynamic 421 Cap Off-Axis)
+   - **Studio Super B15** (Peggy FlipTop + Peggy Fliptop 1x15 + Condenser 67 Cone On-Axis)
+   - **Studio Super Bassman** (Super California + California Bass 4x10 + Condenser 67 Cone On-Axis)
+   - **Studio Super GK 800RB** (Kallinen Kruukkeri + Peggy 4x10 + Dynamic 52 Cone On-Axis)
+   - **Studio Super Mesa Block** (Modern ISOBRICK750 OD + Modern Bass 4x10 + Dynamic 52 Cap Off-Axis)
+   - **Studio Super Orange** (Fruity Horror Bass 500 + Fruity Bass 4x10 + Dynamic 7 Cone On-Axis)
+   - **Studio Super SWR Goliath** (Swirl-900 + SWIRL 4x10 + Condenser 103 Cone On-Axis)
+   - **Studio Super Markbass** (Black and Yellow + Black & Yellow 4x10 + Condenser 414 Cone On-Axis)
+   - **Studio Super EBS TD650** (SWE TC650 + Darkglass Neo 4x10 + Dynamic 112 Cone On-Axis)
 
 ---
 

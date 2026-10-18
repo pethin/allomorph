@@ -144,9 +144,9 @@ Every Allomorph tone name must satisfy two physical and software thresholds:
 
 ---
 
-## 5. Complete 26-Voicing Storefront Target Reference Table
+## 5. Complete 36-Voicing Storefront Target Reference Table
 
-Below is the definitive table of the 26 curated utilitarian & mix-ready storefront target voicings across the 18 catalog instruments, showing character lengths and screen viewport status in standard single-bundle packs:
+Below is the definitive table of the 36 curated utilitarian & mix-ready storefront target voicings across the 18 catalog instruments (26 universal voicings plus 10 Darkglass Anagram rig-calibrated Studio Super voicings), showing character lengths and screen viewport status in standard single-bundle packs:
 
 | Target (`<inst_id>:<voicing_id>`) | Declarative `tone_name` | Full Model Basename (`.nam`) | Unversioned / Versioned Chars | Screen Status | Musical Personality / Bassist Context |
 | :--- | :--- | :--- | :---: | :---: | :--- |
@@ -176,6 +176,16 @@ Below is the definitive table of the 26 curated utilitarian & mix-ready storefro
 | `37in_multiscale_dingwall:pair_parallel` | `Dingwall Parallel` | `Dingwall Parallel v7.1.1` | 17 / 24 | **Zero-Scroll** | Modern scooped aggression, ultra-fast transients |
 | `37in_multiscale_dingwall:pair_series` | `Dingwall Series` | `Dingwall Series v7.1.1` | 15 / 22 | **Zero-Scroll** | Rotary Pos 3 Bridge + Middle in series; massive fanned-fret wall of sound |
 | `41in_upright_bass:bridge_piezo` | `Upright Piezo` | `Upright Piezo v7.1.1` | 13 / 20 | **Zero-Scroll** | Woody double-bass piezo bridge force sensor with hollow sustain decay |
+| `35in_studio_super:svt_classic` | `Studio Super SVT Classic` | `Studio Super SVT Classic v7.1.1` | 24 / 31 | **Zero-Scroll** | Peggy Classic + Vintage Peggy 8x10 + Dynamic 421 Cone On-Axis |
+| `35in_studio_super:svt_blueline` | `Studio Super SVT Blueline` | `Studio Super SVT Blueline v7.1.1` | 25 / 32 | **Zero-Scroll** | Peggy Bass + Peggy 8x10 + Dynamic 421 Cap Off-Axis |
+| `35in_studio_super:b15_fliptop` | `Studio Super B15` | `Studio Super B15 v7.1.1` | 16 / 23 | **Zero-Scroll** | Peggy FlipTop + Peggy Fliptop 1x15 + Condenser 67 Cone On-Axis |
+| `35in_studio_super:bassman_410` | `Studio Super Bassman` | `Studio Super Bassman v7.1.1` | 20 / 27 | **Zero-Scroll** | Super California + California Bass 4x10 + Condenser 67 Cone On-Axis |
+| `35in_studio_super:gk_800rb` | `Studio Super GK 800RB` | `Studio Super GK 800RB v7.1.1` | 21 / 28 | **Zero-Scroll** | Kallinen Kruukkeri + Peggy 4x10 + Dynamic 52 Cone On-Axis |
+| `35in_studio_super:mesa_block` | `Studio Super Mesa Block` | `Studio Super Mesa Block v7.1.1` | 23 / 30 | **Zero-Scroll** | Modern ISOBRICK750 OD + Modern Bass 4x10 + Dynamic 52 Cap Off-Axis |
+| `35in_studio_super:orange_terror` | `Studio Super Orange` | `Studio Super Orange v7.1.1` | 19 / 26 | **Zero-Scroll** | Fruity Horror Bass 500 + Fruity Bass 4x10 + Dynamic 7 Cone On-Axis |
+| `35in_studio_super:swr_goliath` | `Studio Super SWR Goliath` | `Studio Super SWR Goliath v7.1.1` | 24 / 31 | **Zero-Scroll** | Swirl-900 + SWIRL 4x10 + Condenser 103 Cone On-Axis |
+| `35in_studio_super:markbass_410` | `Studio Super Markbass` | `Studio Super Markbass v7.1.1` | 21 / 28 | **Zero-Scroll** | Black and Yellow + Black & Yellow 4x10 + Condenser 414 Cone On-Axis |
+| `35in_studio_super:ebs_td650` | `Studio Super EBS TD650` | `Studio Super EBS TD650 v7.1.1` | 22 / 29 | **Zero-Scroll** | SWE TC650 + Darkglass Neo 4x10 + Dynamic 112 Cone On-Axis |
 
 ---
 

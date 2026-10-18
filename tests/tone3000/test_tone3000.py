@@ -51,7 +51,7 @@ PACK_ARTWORK_NAMES: dict[str, str] = {
 }
 
 PACK_VOICING_COUNTS: dict[str, int] = {
-    "34in_standard_p": 25,
+    "34in_standard_p": 35,
     "34in_standard_jazz": 25,
     "34in_standard_pj": 25,
     "30in_mustang_pj": 26,
