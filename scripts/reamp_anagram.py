@@ -18,6 +18,7 @@ Features:
 from __future__ import annotations
 
 import importlib
+import json
 import math
 import sys
 import time
@@ -43,10 +44,12 @@ app = App(
 )
 
 DEFAULT_TARGET_PEAK_DBFS: float = -3.0
-DEFAULT_GAIN_TOLERANCE_DB: float = 1.0
+DEFAULT_GAIN_TOLERANCE_DB: float = 0.5
 DEFAULT_MIN_SEND_GAIN_DB: float = -24.0
 DEFAULT_MAX_SEND_GAIN_DB: float = 18.0
-DEFAULT_MAX_CAL_ITERATIONS: int = 4
+DEFAULT_MAX_CAL_ITERATIONS: int = 5
+DEFAULT_DOWNWARD_PROBE_STEP_DB: float = -6.0
+COMPRESSION_SLOPE_THRESHOLD: float = 0.40
 CLIP_DETECTION_DBFS: float = -0.2
 SILENCE_FLOOR_DBFS: float = -60.0
 
@@ -154,7 +157,7 @@ def compute_max_unclipped_send_gain_db(
     without clipping its musical body above `peak_ceiling` (-0.09 dBFS).
 
     Evaluates the peak across the active musical content (skipping the first 2.0s
-    of 1-sample calibration blips on full-length training files).
+    of alignment pulses on full-length training files).
     """
     if len(dry_audio) == 0:
         return 0.0
@@ -171,14 +174,16 @@ def compute_max_unclipped_send_gain_db(
 def extract_calibration_probe(
     dry_audio: np.ndarray,
     sample_rate: int = FS,
-    window_sec: float = 1.2,
+    window_sec: float = 0.9,
 ) -> np.ndarray:
-    """Extracts a compact (~2.4s) high-energy calibration probe from `dry_audio`.
+    """Extracts a compact (~2.8s) high-energy calibration probe from `dry_audio`.
 
-    Combines two key excitation windows from the musical body of `dry_audio`
-    (skipping the leading 2.0s 1-sample Dirac calibration blips when `dry_audio` > 4.0s):
-      1. The window with maximum broadband RMS energy (excites tube sag, power compression, and cab excursion)
-      2. The distinct window with maximum transient peak amplitude (excites slap/pop and attack headroom)
+    Combines up to three distinct non-overlapping excitation windows from the musical body
+    of `dry_audio` (skipping the leading 2.0s alignment pulses when `dry_audio` > 4.0s):
+      1. The window with maximum bass-cabinet resonance energy (45 Hz - 180 Hz, where 8x10,
+         4x10, and 1x15 bass cabinets and tube power sections reach peak excursion)
+      2. The distinct window with maximum broadband RMS energy (excites tube sag and multi-band drive)
+      3. The distinct window with maximum transient peak amplitude (excites slap/pop and attack headroom)
 
     Each segment is shaped with C-infinity smoothstep boundary fades (`apply_cinf_fades`)
     to prevent discontinuity clicks during hardware probing.
@@ -203,51 +208,64 @@ def extract_calibration_probe(
         faded = apply_cinf_fades(active.astype(np.float64), min(fade_len, len(active) // 8))
         return faded.astype(np.float32)
 
+    # Compute bass-cabinet resonance weighted signal (centered at 95 Hz, 45-180 Hz passband)
+    freqs = np.fft.rfftfreq(len(active), 1.0 / sample_rate)
+    cab_weight = np.exp(-0.5 * ((np.log10(np.maximum(freqs, 10.0) / 95.0)) / 0.25) ** 2)
+    cab_filtered = np.fft.irfft(
+        np.fft.rfft(active.astype(np.float64)) * cab_weight,
+        n=len(active),
+    ).astype(np.float32)
+
     hop_len = max(64, win_len // 4)
     starts = list(range(0, len(active) - win_len + 1, hop_len))
     if not starts:
         starts = [0]
 
-    best_rms_start = starts[0]
-    best_rms_val = -1.0
-    for s in starts:
-        seg = active[s : s + win_len]
-        rms_sq = float(np.mean(np.square(seg, dtype=np.float64)))
-        if rms_sq > best_rms_val:
-            best_rms_val = rms_sq
-            best_rms_start = s
-
-    # Select highest-peak transient window distinct from best_rms_start (>= 50% non-overlapping)
-    best_peak_start: int | None = None
-    best_peak_val = -1.0
     min_separation = win_len // 2
-    for s in starts:
-        if abs(s - best_rms_start) < min_separation:
-            continue
-        seg = active[s : s + win_len]
-        pk = float(np.max(np.abs(seg)))
-        if pk > best_peak_val:
-            best_peak_val = pk
-            best_peak_start = s
+    selected_starts: list[int] = []
 
-    seg_rms = apply_cinf_fades(
-        active[best_rms_start : best_rms_start + win_len].astype(np.float64),
-        fade_len,
-    ).astype(np.float32)
+    # 1. Window with maximum cabinet-resonance (45-180 Hz) peak excursion
+    best_cab_start = max(
+        starts,
+        key=lambda s: float(np.max(np.abs(cab_filtered[s : s + win_len]))),
+    )
+    selected_starts.append(best_cab_start)
 
-    if best_peak_start is None:
-        return seg_rms
+    # 2. Distinct window with maximum broadband RMS energy
+    rms_candidates = [
+        s for s in starts if all(abs(s - prev) >= min_separation for prev in selected_starts)
+    ]
+    if rms_candidates:
+        best_rms_start = max(
+            rms_candidates,
+            key=lambda s: float(np.mean(np.square(active[s : s + win_len], dtype=np.float64))),
+        )
+        selected_starts.append(best_rms_start)
 
-    seg_peak = apply_cinf_fades(
-        active[best_peak_start : best_peak_start + win_len].astype(np.float64),
-        fade_len,
-    ).astype(np.float32)
+    # 3. Distinct window with maximum broadband transient peak
+    peak_candidates = [
+        s for s in starts if all(abs(s - prev) >= min_separation for prev in selected_starts)
+    ]
+    if peak_candidates:
+        best_peak_start = max(
+            peak_candidates,
+            key=lambda s: float(np.max(np.abs(active[s : s + win_len]))),
+        )
+        selected_starts.append(best_peak_start)
 
-    gap = np.zeros(int(0.08 * sample_rate), dtype=np.float32)
-    # Order chronologically as they appear in the track
-    if best_peak_start < best_rms_start:
-        return np.concatenate([seg_peak, gap, seg_rms])
-    return np.concatenate([seg_rms, gap, seg_peak])
+    selected_starts.sort()
+    gap = np.zeros(int(0.06 * sample_rate), dtype=np.float32)
+    pieces: list[np.ndarray] = []
+    for idx, s in enumerate(selected_starts):
+        if idx > 0:
+            pieces.append(gap)
+        seg = apply_cinf_fades(
+            active[s : s + win_len].astype(np.float64),
+            fade_len,
+        ).astype(np.float32)
+        pieces.append(seg)
+
+    return np.concatenate(pieces)
 
 
 def _stream_audio_pass(
@@ -353,10 +371,15 @@ def calibrate_output_gain(
 ) -> GainCalibrationResult:
     """Identifies the optimal Output 9 send gain for `dry_audio` via closed-loop hardware probing.
 
-    Plays a compact high-energy probe extracted from `dry_audio` through the Anagram and measures
-    the return peak on `input_ch` (or stereo Inputs 1 & 2), iteratively adjusting the send gain
-    so the wet return hits `target_peak_dbfs` (within `±tolerance_db`) without clipping either
-    the USB send or the Anagram return.
+    Probes both gain reduction (< 0 dB) and gain boost (> 0 dB) to handle two distinct hardware behaviors:
+      1. Return Headroom Targeting: Adjusts send gain so the wet return hits `target_peak_dbfs` (±`tolerance_db`)
+         without clipping either Output 9 or Input 1/2.
+      2. Internal Preset Compression / Cab-Attenuated Ceiling Detection: In the Darkglass Anagram, the Cab Block
+         sits after the nonlinear Amp Block and may attenuate the preset's maximum possible output peak below
+         `target_peak_dbfs` (e.g. -7.5 dBFS). By probing a reduced send gain (-6.0 dB) after the 0.0 dB baseline,
+         this routine measures the input-to-output peak transfer slope (dB/dB). If the preset is already in
+         heavy compression/saturation at 0.0 dB (slope < 0.40 dB/dB), it continues stepping down (-12 dB, -18 dB)
+         until it locates the preset's dynamic compression knee rather than boosting into a brickwall ceiling.
     """
     probe = extract_calibration_probe(dry_audio, sample_rate=sample_rate)
     max_unclipped_db = compute_max_unclipped_send_gain_db(dry_audio, sample_rate=sample_rate)
@@ -368,13 +391,16 @@ def calibrate_output_gain(
     tail_samples = max(0, int(tail_sec * sample_rate))
 
     current_gain_db = float(np.clip(initial_gain_db, effective_min_gain_db, effective_max_gain_db))
-    prev_unclipped_gain_db: float | None = None
-    prev_unclipped_peak_dbfs: float | None = None
+    ref_gain_db: float | None = None
+    ref_peak_dbfs: float | None = None
+    ref_rms_dbfs: float | None = None
 
     best_gain_db = current_gain_db
     best_peak_dbfs = -180.0
     best_rms_dbfs = -180.0
     best_err_db = float("inf")
+    compression_search_active = False
+    probed_gain_reduction = False
     converged = False
     last_clipped = False
     iterations_run = 0
@@ -383,11 +409,12 @@ def calibrate_output_gain(
         f"\n[AUTO-GAIN] Probing Output {output_ch} -> "
         f"{'Inputs 1 & 2' if stereo else f'Input {input_ch}'} "
         f"(Target Peak: {target_peak_dbfs:+.1f} dBFS ±{tolerance_db:.1f} dB, "
-        f"Max Clean Send: {effective_max_gain_db:+.2f} dB)...",
+        f"Range: [{effective_min_gain_db:+.1f}, {effective_max_gain_db:+.2f}] dB)...",
         flush=True,
     )
 
-    for iteration in range(1, max(1, max_iterations) + 1):
+    total_iters = max(1, max_iterations)
+    for iteration in range(1, total_iters + 1):
         iterations_run = iteration
         gain_linear = 10.0 ** (current_gain_db / 20.0)
         scaled_probe = np.clip(
@@ -419,19 +446,48 @@ def calibrate_output_gain(
 
         is_clipped = ret_peak_dbfs >= CLIP_DETECTION_DBFS
         last_clipped = is_clipped
-        status_tag = (
-            "CLIP!"
-            if is_clipped
-            else ("OK" if abs(target_peak_dbfs - ret_peak_dbfs) <= tolerance_db else "adjusting")
-        )
+        err_db = target_peak_dbfs - ret_peak_dbfs
+        abs_err = abs(err_db)
+
+        # Compute transfer slope relative to reference probe when available
+        measured_slope: float | None = None
+        if ref_gain_db is not None and ref_peak_dbfs is not None:
+            d_in = current_gain_db - ref_gain_db
+            d_out = ret_peak_dbfs - ref_peak_dbfs
+            if abs(d_in) >= 0.20:
+                measured_slope = d_out / d_in
+
+        slope_str = f" | Slope: {measured_slope:.2f} dB/dB" if measured_slope is not None else ""
+        if is_clipped:
+            status_tag = "CLIP! -> reducing gain"
+        elif compression_search_active:
+            status_tag = (
+                "knee found"
+                if (measured_slope is not None and measured_slope >= COMPRESSION_SLOPE_THRESHOLD)
+                else "saturated -> reducing gain"
+            )
+        elif iteration == 1 and not probed_gain_reduction and total_iters > 1:
+            status_tag = (
+                "hot -> reducing gain"
+                if err_db < -tolerance_db
+                else "baseline -> probing reduced gain"
+            )
+        elif abs_err <= tolerance_db and (
+            measured_slope is None or measured_slope >= COMPRESSION_SLOPE_THRESHOLD
+        ):
+            status_tag = "OK"
+        else:
+            status_tag = "adjusting"
+
         print(
-            f"  [Probe {iteration}/{max_iterations}] Send: {current_gain_db:+.2f} dB ({gain_linear:.3f}x) -> "
-            f"Return Peak: {ret_peak_dbfs:+.2f} dBFS | RMS: {ret_rms_dbfs:+.2f} dBFS [{status_tag}]",
+            f"  [Probe {iteration}/{total_iters}] Send: {current_gain_db:+.2f} dB ({gain_linear:.3f}x) -> "
+            f"Return Peak: {ret_peak_dbfs:+.2f} dBFS | RMS: {ret_rms_dbfs:+.2f} dBFS{slope_str} [{status_tag}]",
             flush=True,
         )
 
+        # 1. Handle digital return clipping: aggressive step-down
         if is_clipped:
-            # Aggressive step-down to escape digital converter / return saturation quickly
+            probed_gain_reduction = True
             backoff_db = max(6.0, (ret_peak_dbfs - target_peak_dbfs) + 3.0)
             next_gain_db = max(effective_min_gain_db, current_gain_db - backoff_db)
             if best_err_db == float("inf"):
@@ -443,46 +499,168 @@ def calibrate_output_gain(
             current_gain_db = next_gain_db
             continue
 
-        err_db = target_peak_dbfs - ret_peak_dbfs
-        abs_err = abs(err_db)
+        # 2. First unclipped probe (baseline): always schedule a gain-reduction probe next
+        if ref_gain_db is None or ref_peak_dbfs is None or ref_rms_dbfs is None:
+            ref_gain_db = current_gain_db
+            ref_peak_dbfs = ret_peak_dbfs
+            ref_rms_dbfs = ret_rms_dbfs
+            best_gain_db = current_gain_db
+            best_peak_dbfs = ret_peak_dbfs
+            best_rms_dbfs = ret_rms_dbfs
+            best_err_db = abs_err
+
+            if abs_err <= tolerance_db and (probed_gain_reduction or total_iters == 1):
+                converged = True
+                break
+
+            probed_gain_reduction = True
+            if err_db < -tolerance_db:
+                # Return is hotter than target_peak_dbfs: step down toward target (minimum -3.0 dB probe)
+                step_down_db = float(np.clip(min(err_db / 0.65, -3.0), -12.0, -1.5))
+                next_gain_db = max(effective_min_gain_db, current_gain_db + step_down_db)
+            else:
+                # Return is at or below target: probe -6.0 dB reduced send gain to measure
+                # transfer slope and detect internal preset compression / cab-attenuated limiting
+                next_gain_db = max(
+                    effective_min_gain_db,
+                    current_gain_db + DEFAULT_DOWNWARD_PROBE_STEP_DB,
+                )
+
+            if abs(next_gain_db - current_gain_db) < 0.15:
+                break
+            current_gain_db = next_gain_db
+            continue
+
+        # 3. Active compression-knee backoff search (stepping down -6 dB -> -12 dB -> -18 dB)
+        if compression_search_active:
+            if measured_slope is not None and measured_slope >= COMPRESSION_SLOPE_THRESHOLD:
+                # Dynamic slope recovered between current_gain_db and ref_gain_db -> ref_gain_db is the knee!
+                print(
+                    f"  [Auto-Gain] Dynamic response recovered below {ref_gain_db:+.2f} dB "
+                    f"(slope {measured_slope:.2f} dB/dB). Locking compression knee at {ref_gain_db:+.2f} dB.",
+                    flush=True,
+                )
+                best_gain_db = ref_gain_db
+                best_peak_dbfs = ref_peak_dbfs
+                best_rms_dbfs = ref_rms_dbfs
+                converged = True
+                break
+
+            # Still compressed between current_gain_db and ref_gain_db: disqualify ref_gain_db and step down further
+            ref_gain_db = current_gain_db
+            ref_peak_dbfs = ret_peak_dbfs
+            ref_rms_dbfs = ret_rms_dbfs
+            best_gain_db = current_gain_db
+            best_peak_dbfs = ret_peak_dbfs
+            best_rms_dbfs = ret_rms_dbfs
+            best_err_db = abs_err
+
+            next_gain_db = max(
+                effective_min_gain_db,
+                current_gain_db + DEFAULT_DOWNWARD_PROBE_STEP_DB,
+            )
+            if abs(next_gain_db - current_gain_db) < 0.15:
+                break
+            current_gain_db = next_gain_db
+            continue
+
+        # 4. Evaluate slope from Probe 2 (downward probe) or subsequent target-tracking probes
+        d_in = current_gain_db - ref_gain_db
+        slope_val = measured_slope if measured_slope is not None else 1.0
+
+        # Case 4a: We just probed reducing gain (d_in < 0) from a baseline at or below target
+        if d_in < 0.0 and ref_peak_dbfs <= target_peak_dbfs + tolerance_db:
+            if slope_val < COMPRESSION_SLOPE_THRESHOLD and ref_peak_dbfs > -24.0:
+                # Baseline (e.g. 0.0 dB) was already slamming an internal preset ceiling!
+                print(
+                    f"  [Auto-Gain] Internal preset compression ceiling detected between "
+                    f"{current_gain_db:+.2f} dB and {ref_gain_db:+.2f} dB "
+                    f"(slope {slope_val:.2f} dB/dB; peak changed by only {ret_peak_dbfs - ref_peak_dbfs:+.2f} dB). "
+                    f"Probing further gain reduction...",
+                    flush=True,
+                )
+                compression_search_active = True
+                ref_gain_db = current_gain_db
+                ref_peak_dbfs = ret_peak_dbfs
+                ref_rms_dbfs = ret_rms_dbfs
+                best_gain_db = current_gain_db
+                best_peak_dbfs = ret_peak_dbfs
+                best_rms_dbfs = ret_rms_dbfs
+                best_err_db = abs_err
+
+                next_gain_db = max(
+                    effective_min_gain_db,
+                    current_gain_db + DEFAULT_DOWNWARD_PROBE_STEP_DB,
+                )
+                if abs(next_gain_db - current_gain_db) < 0.15:
+                    break
+                current_gain_db = next_gain_db
+                continue
+
+            # Baseline at ref_gain_db is verified dynamic (not pinned against a compression ceiling)!
+            ref_err_db = target_peak_dbfs - ref_peak_dbfs
+            if abs(ref_err_db) <= tolerance_db:
+                best_gain_db = ref_gain_db
+                best_peak_dbfs = ref_peak_dbfs
+                best_rms_dbfs = ref_rms_dbfs
+                best_err_db = abs(ref_err_db)
+                converged = True
+                break
+
+            # Baseline was below target and dynamic: step UP from ref_gain_db using measured slope
+            slope_eff = float(np.clip(slope_val, COMPRESSION_SLOPE_THRESHOLD, 1.50))
+            step_up_db = float(np.clip(ref_err_db / slope_eff, -12.0, 12.0))
+            next_gain_db = float(
+                np.clip(ref_gain_db + step_up_db, effective_min_gain_db, effective_max_gain_db)
+            )
+            if abs(next_gain_db - ref_gain_db) < 0.15:
+                if next_gain_db >= effective_max_gain_db - 1e-6 and ref_err_db > tolerance_db:
+                    print(
+                        f"  [Auto-Gain] Reached maximum unclipped Output {output_ch} digital ceiling "
+                        f"({effective_max_gain_db:+.2f} dB; return peak {ref_peak_dbfs:+.2f} dBFS).",
+                        flush=True,
+                    )
+                break
+            current_gain_db = next_gain_db
+            continue
+
+        # Case 4b: We stepped UP (d_in > 0) and hit an internal preset compression ceiling
+        if d_in > 0.5 and slope_val < COMPRESSION_SLOPE_THRESHOLD and ret_peak_dbfs > -24.0:
+            print(
+                f"  [Auto-Gain] Preset compression ceiling reached above {ref_gain_db:+.2f} dB "
+                f"(+{d_in:.2f} dB send yielded only {ret_peak_dbfs - ref_peak_dbfs:+.2f} dB peak change, "
+                f"slope {slope_val:.2f} dB/dB). Backing off to {ref_gain_db:+.2f} dB.",
+                flush=True,
+            )
+            best_gain_db = ref_gain_db
+            best_peak_dbfs = ref_peak_dbfs
+            best_rms_dbfs = ref_rms_dbfs
+            converged = True
+            break
+
+        # Case 4c: Standard target-peak tracking (including downward tracking when baseline was > target)
         if abs_err < best_err_db:
             best_err_db = abs_err
             best_gain_db = current_gain_db
             best_peak_dbfs = ret_peak_dbfs
             best_rms_dbfs = ret_rms_dbfs
 
-        if abs_err <= tolerance_db:
+        if abs_err <= tolerance_db and slope_val >= 0.30:
             converged = True
             break
 
-        # Compute next gain adjustment (accounting for non-linear amp compression / limiting)
-        if prev_unclipped_gain_db is not None and prev_unclipped_peak_dbfs is not None:
-            d_in = current_gain_db - prev_unclipped_gain_db
-            d_out = ret_peak_dbfs - prev_unclipped_peak_dbfs
-            if d_in > 1.5 and d_out < 0.25 and ret_peak_dbfs > -15.0:
-                # Internal preset brickwall limiter / hard saturation ceiling reached
-                print(
-                    f"  [Auto-Gain] Preset compression ceiling detected "
-                    f"(+{d_in:.2f} dB send yielded only {d_out:+.2f} dB peak change). "
-                    f"Locking previous unclipped send gain ({prev_unclipped_gain_db:+.2f} dB).",
-                    flush=True,
-                )
-                best_gain_db = prev_unclipped_gain_db
-                best_peak_dbfs = prev_unclipped_peak_dbfs
-                converged = True
-                break
-            if abs(d_in) >= 0.25:
-                slope = float(np.clip(d_out / d_in, 0.40, 1.50))
-                step_db = err_db / slope
-            else:
-                step_db = err_db
+        if err_db < 0.0 and slope_val < COMPRESSION_SLOPE_THRESHOLD:
+            # Still above target_peak_dbfs and heavily compressed -> step down aggressively (-6 dB)
+            step_db = min(err_db / max(slope_val, 0.20), DEFAULT_DOWNWARD_PROBE_STEP_DB)
         else:
-            step_db = err_db
+            slope_eff = float(np.clip(slope_val, 0.35, 1.50))
+            step_db = err_db / slope_eff
 
-        prev_unclipped_gain_db = current_gain_db
-        prev_unclipped_peak_dbfs = ret_peak_dbfs
+        ref_gain_db = current_gain_db
+        ref_peak_dbfs = ret_peak_dbfs
+        ref_rms_dbfs = ret_rms_dbfs
 
-        step_db = float(np.clip(step_db, -12.0, 9.0))
+        step_db = float(np.clip(step_db, -12.0, 12.0))
         next_gain_db = float(
             np.clip(current_gain_db + step_db, effective_min_gain_db, effective_max_gain_db)
         )
@@ -593,6 +771,66 @@ def align_hardware_latency(
     if len(aligned_wet) < target_len:
         aligned_wet = np.pad(aligned_wet, (0, target_len - len(aligned_wet)))
     return delay_samples, aligned_wet
+
+
+def get_reamp_sidecar_path(wav_filepath: str | Path) -> Path:
+    """Returns the JSON sidecar path corresponding to a re-amped WAV stem."""
+    p = Path(wav_filepath)
+    return p.with_suffix(".json")
+
+
+def write_reamp_sidecar(
+    wav_filepath: str | Path,
+    *,
+    send_gain_db: float,
+    send_gain_linear: float,
+    input_file: str | Path | None = None,
+    target_peak_dbfs: float = DEFAULT_TARGET_PEAK_DBFS,
+    measured_peak_dbfs: float | None = None,
+    measured_rms_dbfs: float | None = None,
+    latency_offset_samples: int = 0,
+    sample_rate: int = FS,
+    stereo: bool = False,
+) -> Path:
+    """Writes a JSON sidecar alongside `wav_filepath` recording the exact `send_gain_db`
+    and hardware capture telemetry so `train_reamp.py` can restore 1:1 unity input/output levels.
+    """
+    wav_path = Path(wav_filepath)
+    sidecar_path = get_reamp_sidecar_path(wav_path)
+    payload: dict[str, Any] = {
+        "stem_file": wav_path.name,
+        "input_file": str(input_file) if input_file is not None else None,
+        "send_gain_db": round(float(send_gain_db), 6),
+        "send_gain_linear": float(send_gain_linear),
+        "target_peak_dbfs": float(target_peak_dbfs),
+        "measured_return_peak_dbfs": (
+            round(float(measured_peak_dbfs), 4) if measured_peak_dbfs is not None else None
+        ),
+        "measured_return_rms_dbfs": (
+            round(float(measured_rms_dbfs), 4) if measured_rms_dbfs is not None else None
+        ),
+        "latency_offset_samples": int(latency_offset_samples),
+        "latency_offset_ms": round(
+            (float(latency_offset_samples) / max(1, sample_rate)) * 1000.0, 4
+        ),
+        "sample_rate": int(sample_rate),
+        "stereo": bool(stereo),
+    }
+    sidecar_path.parent.mkdir(parents=True, exist_ok=True)
+    sidecar_path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+    return sidecar_path
+
+
+def read_reamp_sidecar(wav_filepath: str | Path) -> dict[str, Any] | None:
+    """Reads the JSON sidecar for a re-amped WAV stem if present."""
+    sidecar_path = get_reamp_sidecar_path(wav_filepath)
+    if not sidecar_path.is_file():
+        return None
+    try:
+        data = json.loads(sidecar_path.read_text(encoding="utf-8"))
+        return data if isinstance(data, dict) else None
+    except OSError, ValueError, TypeError:
+        return None
 
 
 def write_reamp_wav_24bit(
@@ -941,6 +1179,7 @@ def reamp(
     print(f"  Raw Peak:       {raw_peak:+.1f} dBFS | RMS: {raw_rms:+.1f} dBFS")
 
     # 7. Automatic Time-Alignment
+    delay_samples = 0
     if not no_align:
         delay_samples, aligned_mono = align_hardware_latency(
             dry=scaled_dry,
@@ -964,7 +1203,7 @@ def reamp(
         print("  Latency Offset: Skipped (--no-align)")
         aligned_wet = wet_raw[:n_samples]
 
-    # 8. Export Files
+    # 8. Export Files & Gain Compensation Sidecar
     output_file.parent.mkdir(parents=True, exist_ok=True)
     if save_raw:
         raw_path = output_file.parent / f"{output_file.stem}_raw.wav"
@@ -973,9 +1212,22 @@ def reamp(
 
     write_reamp_wav_24bit(output_file, aligned_wet, sample_rate=sr)
     final_peak, final_rms = compute_audio_levels(aligned_wet)
+    sidecar_path = write_reamp_sidecar(
+        output_file,
+        send_gain_db=send_gain_db,
+        send_gain_linear=send_gain_linear,
+        input_file=input_file,
+        target_peak_dbfs=target_peak,
+        measured_peak_dbfs=final_peak,
+        measured_rms_dbfs=final_rms,
+        latency_offset_samples=delay_samples,
+        sample_rate=sr,
+        stereo=stereo,
+    )
 
     print("------------------------------------------------------------------")
     print(f"  Saved Output:   {output_file}")
+    print(f"  Gain Sidecar:   {sidecar_path.name} (send_gain_db={send_gain_db:+.2f} dB)")
     print(f"  Send Gain Used: {send_gain_db:+.2f} dB ({send_gain_linear:.3f}x)")
     print(f"  Final Level:    Peak: {final_peak:+.1f} dBFS | RMS: {final_rms:+.1f} dBFS")
 

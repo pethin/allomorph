@@ -18,6 +18,7 @@ Specifically customized for non-linear amplifier heads and speaker cabinets:
 from __future__ import annotations
 
 import contextlib
+import json
 import math
 import re
 import sys
@@ -25,7 +26,7 @@ import time
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Annotated, Any
+from typing import Annotated, Any, cast
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 if str(REPO_ROOT / "src") not in sys.path:
@@ -34,7 +35,6 @@ if str(REPO_ROOT / "src") not in sys.path:
 # Must run before importing torch so ROCm MIOpen / Apple Silicon MPS env vars take effect
 from allomorph.trainer.core import (
     get_hardware_device_name,
-    normalize_training_stem,
     resolve_hardware_batch_size,
     resolve_hardware_precision,
     setup_headless_environment,
@@ -47,7 +47,7 @@ import torch
 import torch.nn.functional as F
 from cyclopts import App, Parameter
 
-from allomorph.dsp.constants import FS
+from allomorph.dsp.constants import CALIBRATION_PEAK_CEILING, FS, TARGET_RMS_DBFS
 from allomorph.dsp.io import read_wav
 from allomorph.trainer.callbacks import (
     compute_linear_slope,
@@ -74,7 +74,7 @@ from allomorph.trainer.constants import (
     NATIVE_DEFAULT_WEIGHT_DECAY,
 )
 from allomorph.trainer.native.loss import design_sharp_fir_highpass
-from allomorph.trainer.native.models import AllomorphWaveNetA2
+from allomorph.trainer.native.models import AllomorphWaveNetA2, AllomorphWaveNetLayer
 
 app = App(
     name="train-reamp",
@@ -560,6 +560,64 @@ def select_warm_start_offset(
     return best_offset
 
 
+def resolve_stem_send_gain_db(
+    wet_path: Path,
+    explicit_send_gain_db: float | None = None,
+) -> tuple[float, str]:
+    """Resolves the hardware reamp USB send gain (in dB) for a captured wet stem.
+
+    Priority:
+        1. Explicit `--send-gain` CLI override (`explicit_send_gain_db`).
+        2. JSON sidecar `<stem>.json` written automatically by `scripts/reamp_anagram.py`.
+        3. Unity gain (`0.0 dB`) fallback when no sidecar is present.
+    """
+    if explicit_send_gain_db is not None:
+        return float(explicit_send_gain_db), "cli"
+
+    sidecar_path = wet_path.with_suffix(".json")
+    if sidecar_path.is_file():
+        try:
+            payload = json.loads(sidecar_path.read_text(encoding="utf-8"))
+            if isinstance(payload, dict):
+                raw_gain = payload.get("send_gain_db")
+                if isinstance(raw_gain, int | float) and math.isfinite(float(raw_gain)):
+                    return float(raw_gain), f"sidecar ({sidecar_path.name})"
+        except OSError, ValueError, TypeError:
+            pass
+
+    return 0.0, "default (0.00 dB)"
+
+
+def apply_model_io_scale_compensation(
+    model: AllomorphWaveNetA2,
+    *,
+    x_scale_factor: float,
+    y_scale_factor: float,
+) -> None:
+    """Folds training input/output conditioning scales into WaveNet weights for 1:1 hardware I/O.
+
+    During optimization, the trainer scales the hardware send input `x_sent` by `x_scale_factor`
+    (to -20.50 dBFS RMS) and the hardware return `y_sent` by `y_scale_factor` (to -18.00 dBFS RMS)
+    so AdamW, Ridge warm-start, and SiLU homotopy operate at canonical numerical levels:
+        M_trained(x_scale_factor * x_sent) ≈ y_scale_factor * y_sent
+
+    In WaveNet Architecture 2, the raw input `u` enters exclusively through bias-free 1x1
+    convolutions (`model.rechannel` and every `layer.input_mixer`). Multiplying those weights
+    by `x_scale_factor` and `model.head_scale` by `1.0 / y_scale_factor` yields the exact
+    algebraic identity:
+        M_exported(u) == (1.0 / y_scale_factor) * M_trained(x_scale_factor * u)
+    """
+    with torch.no_grad():
+        if x_scale_factor != 1.0:
+            s_x = float(x_scale_factor)
+            model.rechannel.weight.mul_(s_x)
+            for layer_mod in model.layers:
+                layer = cast(AllomorphWaveNetLayer, layer_mod)
+                layer.input_mixer.weight.mul_(s_x)
+        if y_scale_factor != 1.0:
+            model.head_scale = float(model.head_scale) * (1.0 / float(y_scale_factor))
+
+
 def train_single_reamp_pair(
     dry_path: Path,
     wet_path: Path,
@@ -587,6 +645,7 @@ def train_single_reamp_pair(
     seed: int | None = 42,
     fast_dev_run: bool = False,
     signal_chain: AnagramSignalChain | None = None,
+    send_gain_db: float | None = None,
 ) -> bool:
     """Trains a dual-tier WaveNet A2 model on a single dry -> re-amped wet audio pair."""
     resolved_chain = signal_chain or resolve_signal_chain_for_stem(wet_path.name)
@@ -594,6 +653,12 @@ def train_single_reamp_pair(
         clean_name = model_name or resolved_chain.rig_name.replace("×", "x")
     else:
         clean_name = model_name or wet_path.stem.replace("_", " ").title()
+
+    resolved_send_gain_db, send_gain_source = resolve_stem_send_gain_db(
+        wet_path,
+        explicit_send_gain_db=send_gain_db,
+    )
+    send_gain_linear = float(10.0 ** (resolved_send_gain_db / 20.0))
 
     # 1. Resolve Hardware Device, Batch Size & Precision
     if device_name == "auto":
@@ -624,6 +689,10 @@ def train_single_reamp_pair(
         )
     print(f"  Source Audio:   {dry_path.name}", flush=True)
     print(f"  Target Audio:   {wet_path.name}", flush=True)
+    print(
+        f"  Reamp Send Gain:{resolved_send_gain_db:+.2f} dB ({send_gain_linear:.4f}x via {send_gain_source})",
+        flush=True,
+    )
     print(f"  Output Model:   {output_nam}", flush=True)
     print(f"  Hardware:       {hw_label} ({hw_device.type})", flush=True)
     print(f"  Batch Size:     {resolved_bs} | Precision: {resolved_precision}", flush=True)
@@ -666,19 +735,54 @@ def train_single_reamp_pair(
     else:
         wet_aligned = wet_raw[: len(dry_raw)]
 
-    print("-------------------------------------------------------", flush=True)
-
     n_samples = min(len(dry_raw), len(wet_aligned))
     if n_samples < 65536:
         raise ValueError(f"Aligned audio stem too short for training ({n_samples} samples).")
 
-    # 4. Standardized RMS Normalization (-20.50 dBFS RMS) for 0.00 dB Unity Insertion Gain
-    x_norm = normalize_training_stem(dry_raw[:n_samples], sample_rate=sr_dry).astype(np.float32)
-    y_norm = normalize_training_stem(wet_aligned[:n_samples], sample_rate=sr_wet).astype(np.float32)
-
     # Split Train (90%) / Validation (10%, up to 432,000 samples = 9s)
     val_samples = min(432_000, max(48000, int(0.10 * n_samples)))
     train_samples = n_samples - val_samples
+
+    # 4. Reconstruct Hardware Send Signal (x_sent) & Reversible Training Conditioning Scales
+    if abs(resolved_send_gain_db) > 1e-9:
+        x_sent = np.clip(
+            dry_raw[:n_samples].astype(np.float64) * send_gain_linear,
+            -CALIBRATION_PEAK_CEILING,
+            CALIBRATION_PEAK_CEILING,
+        ).astype(np.float32)
+    else:
+        x_sent = dry_raw[:n_samples].astype(np.float32, copy=True)
+    y_sent = wet_aligned[:n_samples].astype(np.float32, copy=True)
+
+    target_x_rms = float(10.0 ** (TARGET_RMS_DBFS / 20.0))
+    x_sent_rms = float(np.sqrt(np.mean(np.square(x_sent, dtype=np.float64))))
+    x_sent_peak = float(np.max(np.abs(x_sent))) if len(x_sent) > 0 else 0.0
+    if x_sent_rms > 1e-9 and math.isfinite(x_sent_rms):
+        raw_x_scale = target_x_rms / x_sent_rms
+        if x_sent_peak * raw_x_scale > CALIBRATION_PEAK_CEILING and x_sent_peak > 1e-9:
+            raw_x_scale = float(CALIBRATION_PEAK_CEILING / x_sent_peak)
+        x_scale_factor = float(np.float32(raw_x_scale))
+    else:
+        x_scale_factor = 1.0
+
+    # Calibrate Target Training RMS (Upstream NAM Reference Standard: -18.0 dBFS on train split)
+    target_y_rms = 10.0 ** (-18.0 / 20.0)
+    y_train_rms = float(np.sqrt(np.mean(np.square(y_sent[:train_samples], dtype=np.float64))))
+    if y_train_rms > 1e-9 and math.isfinite(y_train_rms):
+        y_scale_factor = float(np.float32(target_y_rms / y_train_rms))
+    else:
+        y_scale_factor = 1.0
+
+    x_norm = (x_sent * np.float32(x_scale_factor)).astype(np.float32)
+    y_norm = (y_sent * np.float32(y_scale_factor)).astype(np.float32)
+
+    print(
+        f"  I/O Scale Fold: Input={20.0 * math.log10(max(x_scale_factor, 1e-12)):+.2f} dB "
+        f"({x_scale_factor:.4f}x) | Output={20.0 * math.log10(max(1.0 / y_scale_factor, 1e-12)):+.2f} dB "
+        f"({1.0 / y_scale_factor:.4f}x)",
+        flush=True,
+    )
+    print("-------------------------------------------------------", flush=True)
 
     x_train_np = x_norm[:train_samples]
     y_train_np = y_norm[:train_samples]
@@ -717,20 +821,6 @@ def train_single_reamp_pair(
     y_train = torch.from_numpy(y_train_np).to(device=hw_device, dtype=vram_dtype)
     x_val = torch.from_numpy(x_val_np).to(device=hw_device, dtype=vram_dtype)
     y_val = torch.from_numpy(y_val_np).to(device=hw_device, dtype=vram_dtype)
-
-    # Calibrate Target RMS Normalization (Upstream NAM Reference Standard: -18.0 dBFS)
-    target_rms_linear = 10.0 ** (-18.0 / 20.0)
-    train_sum_sq = float(torch.sum(torch.square(y_train.float())).item())
-    train_numel = y_train.numel()
-    train_rms = math.sqrt(train_sum_sq / train_numel) if train_numel > 0 else 0.0
-    if train_rms > 0.0 and math.isfinite(train_rms):
-        y_scale_factor = target_rms_linear / train_rms
-    else:
-        y_scale_factor = 1.0
-
-    if y_scale_factor != 1.0:
-        y_train = y_train * y_scale_factor
-        y_val = y_val * y_scale_factor
 
     rf_pad = 6346  # WaveNet A2 receptive field padding (samples)
     ny = NATIVE_DEFAULT_SLICE_LEN  # 8,192 samples
@@ -1171,7 +1261,7 @@ def train_single_reamp_pair(
 
     total_train_dur = time.time() - start_train_time
 
-    # 9. Restore Best Pareto Checkpoint & Rescale Output Head for Unity Gain Export
+    # 9. Restore Best Pareto Checkpoint & Fold I/O Scale Compensation for 1:1 Hardware Levels
     model.activation_tau = 0.0
     model.eval()
     if best_state_dict is not None and best_epoch > 0:
@@ -1187,8 +1277,11 @@ def train_single_reamp_pair(
         best_val_esr = cur_esr_full
         best_val_esr_lite = cur_esr_lite
 
-    if y_scale_factor != 1.0:
-        model.head_scale = model.head_scale * (1.0 / y_scale_factor)
+    apply_model_io_scale_compensation(
+        model,
+        x_scale_factor=x_scale_factor,
+        y_scale_factor=y_scale_factor,
+    )
 
     output_nam.parent.mkdir(parents=True, exist_ok=True)
 
@@ -1232,6 +1325,10 @@ def train_single_reamp_pair(
         "training_time_seconds": round(total_train_dur, 2),
         "delay_samples": delay_samples,
         "spike_restarts": spike_restarts,
+        "send_gain_db": round(resolved_send_gain_db, 4),
+        "send_gain_source": send_gain_source,
+        "input_scale_compensation": round(x_scale_factor, 6),
+        "output_scale_compensation": round(1.0 / y_scale_factor, 6),
         **chain_meta,
     }
     if stop_reason:
@@ -1301,6 +1398,17 @@ def train_reamp(
             help="Path to Darkglass Anagram signal chains markdown table.",
         ),
     ] = REPO_ROOT / "reamp" / "signal_chains.md",
+    send_gain: Annotated[
+        float | None,
+        Parameter(
+            name=["--send-gain", "-g"],
+            help=(
+                "Explicit USB send gain in dB applied during re-amping. "
+                "If omitted, auto-reads <stem>.json sidecar written by reamp_anagram.py "
+                "(or defaults to 0.0 dB)."
+            ),
+        ),
+    ] = None,
     epochs: Annotated[
         int,
         Parameter(name=["--epochs"], help="Maximum training epochs budget."),
@@ -1405,12 +1513,16 @@ def train_reamp(
     print(f"  Targets Found:    {len(targets)} WAV stem(s)", flush=True)
     for idx, t in enumerate(targets, 1):
         matched = resolve_signal_chain_for_stem(t.name, chains=chains)
+        stem_gain_db, stem_gain_src = resolve_stem_send_gain_db(t, explicit_send_gain_db=send_gain)
         chain_desc = (
             f" -> [#{matched.index} {matched.rig_name} | {matched.amp_block} + {matched.cab_block}]"
             if matched is not None
             else ""
         )
-        print(f"    [{idx}] {t.name}{chain_desc}", flush=True)
+        print(
+            f"    [{idx}] {t.name}{chain_desc} (send_gain={stem_gain_db:+.2f} dB via {stem_gain_src})",
+            flush=True,
+        )
     print(f"  Model Output Dir: {output_dir}", flush=True)
     print("=======================================================\n", flush=True)
 
@@ -1439,6 +1551,7 @@ def train_reamp(
             seed=seed,
             fast_dev_run=fast_dev_run,
             signal_chain=matched_chain,
+            send_gain_db=send_gain,
         )
 
 

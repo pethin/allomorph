@@ -11,6 +11,7 @@ from typing import Any, Self
 
 import numpy as np
 import pytest
+import torch
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 if str(REPO_ROOT) not in sys.path:
@@ -18,6 +19,7 @@ if str(REPO_ROOT) not in sys.path:
 
 from allomorph.dsp.constants import FS
 from allomorph.dsp.io import read_wav, write_wav_24bit
+from allomorph.trainer.native.models import AllomorphWaveNetA2
 from scripts.generate_reamp_input import (
     generate_optimal_reamp_dry,
     generate_reamp_input,
@@ -29,11 +31,14 @@ from scripts.reamp_anagram import (
     compute_max_unclipped_send_gain_db,
     extract_calibration_probe,
     find_anagram_device,
+    read_reamp_sidecar,
     reamp,
 )
 from scripts.train_reamp import (
+    apply_model_io_scale_compensation,
     load_signal_chains,
     resolve_signal_chain_for_stem,
+    resolve_stem_send_gain_db,
     select_warm_start_offset,
     train_reamp,
     verify_or_align_stems,
@@ -209,14 +214,19 @@ def test_extract_calibration_probe_and_unclipped_headroom() -> None:
 def test_calibrate_output_gain_closed_loop_boost_and_clip_backoff(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """calibrate_output_gain must boost quiet presets, respect clean send ceiling, and back off clipping presets."""
+    """calibrate_output_gain must probe reducing gain, boost quiet presets, back off warm/clipping presets, and find the compression knee on cab-attenuated saturated presets."""
     sr = FS
     t = np.arange(sr * 6, dtype=np.float32) / sr
     dry = (0.35 * np.sin(2.0 * np.pi * 82.41 * t)).astype(np.float32)
 
-    # Case 1: Unity/moderate preset (1.0x gain -> -9.12 dBFS at 0 dB send, needs +6.12 dB to reach -3.0 dBFS)
+    # Case 1: Unity/moderate preset (1.0x gain -> -9.12 dBFS at 0 dB send; must probe -6 dB first, then step up to +6.12 dB)
+    probed_peaks_mod: list[float] = []
+
     def _moderate_rig(chunk_out: np.ndarray) -> np.ndarray:
         send_sig = chunk_out[:, 8]
+        pk = float(np.max(np.abs(send_sig)))
+        if pk > 1e-4:
+            probed_peaks_mod.append(pk)
         ret = np.zeros((len(chunk_out), 3), dtype=np.float32)
         ret[:, 0] = np.clip(1.0 * send_sig, -1.0, 1.0)
         return ret
@@ -236,6 +246,8 @@ def test_calibrate_output_gain_closed_loop_boost_and_clip_backoff(
     assert not res_mod.clipped
     assert abs(res_mod.measured_peak_dbfs - (-3.0)) <= 0.5
     assert 5.6 <= res_mod.output_gain_db <= 6.6
+    # Verify that a reduced gain (< 0.35 * 0.60, i.e. -6 dB probe) was actively sent
+    assert min(probed_peaks_mod) < 0.20
 
     # Case 2: Very quiet preset (0.5x gain) where reaching -3.0 dBFS would clip Output 9 -> clamps to max_unclipped_gain_db
     def _very_quiet_rig(chunk_out: np.ndarray) -> np.ndarray:
@@ -259,7 +271,30 @@ def test_calibrate_output_gain_closed_loop_boost_and_clip_backoff(
     assert res_ceiling.output_gain_db <= res_ceiling.max_unclipped_gain_db + 1e-6
     assert res_ceiling.output_gain_db >= 8.9
 
-    # Case 3: Hot preset (+12 dB internal gain, 4.0x) that clips at 0 dB send gain
+    # Case 3: Warm unclipped preset (2.2x gain -> -2.27 dBFS at 0 dB send) that needs modest gain reduction
+    def _warm_rig(chunk_out: np.ndarray) -> np.ndarray:
+        send_sig = chunk_out[:, 8]
+        ret = np.zeros((len(chunk_out), 3), dtype=np.float32)
+        ret[:, 0] = np.clip(2.2 * send_sig, -1.0, 1.0)
+        return ret
+
+    _install_fake_sounddevice(monkeypatch, _warm_rig)
+    res_warm = calibrate_output_gain(
+        dry,
+        device_idx=0,
+        output_ch=9,
+        input_ch=1,
+        sample_rate=sr,
+        target_peak_dbfs=-3.0,
+        tolerance_db=0.5,
+        tail_sec=0.05,
+    )
+    assert res_warm.converged
+    assert not res_warm.clipped
+    assert abs(res_warm.measured_peak_dbfs - (-3.0)) <= 0.5
+    assert -1.3 <= res_warm.output_gain_db <= -0.3
+
+    # Case 4: Hot preset (+12 dB internal gain, 4.0x) that clips at 0 dB send gain
     def _hot_rig(chunk_out: np.ndarray) -> np.ndarray:
         send_sig = chunk_out[:, 8]
         ret = np.zeros((len(chunk_out), 3), dtype=np.float32)
@@ -281,6 +316,31 @@ def test_calibrate_output_gain_closed_loop_boost_and_clip_backoff(
     assert not res_hot.clipped
     assert abs(res_hot.measured_peak_dbfs - (-3.0)) <= 0.5
     assert res_hot.output_gain_db < -2.0
+
+    # Case 5: Cab-attenuated saturated preset (e.g. Peggy Classic + 8x10 Cab IR whose ceiling is -7.5 dBFS
+    # even when the amp input is heavily saturated at 0 dB send) -> must probe -6 dB and -12 dB and lock the knee (-6 dB)
+    dry_hot = (0.708 * np.sin(2.0 * np.pi * 82.41 * t)).astype(np.float32)
+
+    def _cab_attenuated_saturated_rig(chunk_out: np.ndarray) -> np.ndarray:
+        send_sig = chunk_out[:, 8]
+        ret = np.zeros((len(chunk_out), 3), dtype=np.float32)
+        ret[:, 0] = (0.42 * np.tanh(3.5 * send_sig)).astype(np.float32)
+        return ret
+
+    _install_fake_sounddevice(monkeypatch, _cab_attenuated_saturated_rig)
+    res_sat = calibrate_output_gain(
+        dry_hot,
+        device_idx=0,
+        output_ch=9,
+        input_ch=1,
+        sample_rate=sr,
+        target_peak_dbfs=-3.0,
+        tolerance_db=0.5,
+        tail_sec=0.05,
+    )
+    assert res_sat.converged
+    assert not res_sat.clipped
+    assert res_sat.output_gain_db <= -5.5
 
 
 def test_find_anagram_device_prefers_full_duplex(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -338,6 +398,10 @@ def test_reamp_end_to_end_with_auto_gain_and_stereo_export(
 
     assert out_wav.is_file()
     assert (tmp_path / "stereo_wet_raw.wav").is_file()
+    sidecar = read_reamp_sidecar(out_wav)
+    assert sidecar is not None
+    assert "send_gain_db" in sidecar
+    assert "send_gain_linear" in sidecar
     audio_out, sr_out = read_wav(out_wav)
     assert sr_out == sr
     assert audio_out.shape == (2, len(dry))
@@ -376,13 +440,40 @@ def test_generate_reamp_input_signal_properties(tmp_path: Path) -> None:
     assert len(dry_arr) == 8 * FS
 
 
+def test_apply_model_io_scale_compensation_preserves_exact_hardware_io_levels() -> None:
+    """Folding x_scale_factor into input 1x1 convs and 1/y_scale_factor into head_scale must satisfy M_exported(u) == (1/s_y) * M_trained(s_x * u)."""
+    torch.manual_seed(42)
+    model = AllomorphWaveNetA2()
+    model.activation_tau = 0.0
+    model.eval()
+
+    s_x = 0.4892  # e.g. -6.21 dB input conditioning scale
+    s_y = 0.7250  # e.g. -2.79 dB target conditioning scale
+    u = torch.randn(2, 6346 + 1024, dtype=torch.float32) * 0.25
+
+    with torch.no_grad():
+        y_full_ref, y_lite_ref = model(u * s_x)
+        y_full_expected = y_full_ref * (1.0 / s_y)
+        y_lite_expected = y_lite_ref * (1.0 / s_y)
+
+    apply_model_io_scale_compensation(model, x_scale_factor=s_x, y_scale_factor=s_y)
+
+    with torch.no_grad():
+        y_full_actual, y_lite_actual = model(u)
+
+    assert float(torch.max(torch.abs(y_full_actual - y_full_expected)).item()) < 1e-6
+    assert float(torch.max(torch.abs(y_lite_actual - y_lite_expected)).item()) < 1e-6
+
+
 def test_train_reamp_fast_dev_run_exports_signal_chain_metadata(tmp_path: Path) -> None:
-    """train_reamp fast_dev_run must align stems, exclude reamp/input.wav from targets, train dual-tier A2 model, and export signal chain metadata."""
+    """train_reamp fast_dev_run must align stems, consume <stem>.json send_gain_db sidecar, train dual-tier A2 model, and export signal chain metadata."""
     sr = FS
     n_samples = 96_000  # 2.0 seconds (>= 65,536 minimum)
     t = np.arange(n_samples, dtype=np.float32) / sr
-    dry = (0.15 * np.sin(2.0 * np.pi * 82.41 * t)).astype(np.float32)
-    wet = np.tanh(2.0 * dry).astype(np.float32)
+    dry = (0.30 * np.sin(2.0 * np.pi * 82.41 * t)).astype(np.float32)
+    send_gain_db = -4.5
+    send_gain_lin = float(10.0 ** (send_gain_db / 20.0))
+    wet = np.tanh(2.0 * (dry * send_gain_lin)).astype(np.float32)
 
     reamp_dir = tmp_path / "reamp"
     out_dir = tmp_path / "models"
@@ -392,6 +483,14 @@ def test_train_reamp_fast_dev_run_exports_signal_chain_metadata(tmp_path: Path) 
 
     write_wav_24bit(dry_wav, dry, sample_rate=sr)
     write_wav_24bit(wet_wav, wet, sample_rate=sr)
+    wet_wav.with_suffix(".json").write_text(
+        json.dumps({"send_gain_db": send_gain_db, "send_gain_linear": send_gain_lin}),
+        encoding="utf-8",
+    )
+
+    resolved_gain, resolved_src = resolve_stem_send_gain_db(wet_wav)
+    assert abs(resolved_gain - send_gain_db) < 1e-6
+    assert "sidecar" in resolved_src
 
     train_reamp(
         reamp_target=reamp_dir,
@@ -418,3 +517,7 @@ def test_train_reamp_fast_dev_run_exports_signal_chain_metadata(tmp_path: Path) 
     assert meta["anagram_mic"] == "Dynamic 421"
     assert meta["anagram_mic_position"] == "Cone On Axis"
     assert meta["gear_make"] == "Ampeg"
+    assert abs(meta["send_gain_db"] - send_gain_db) < 1e-4
+    assert "sidecar" in meta["send_gain_source"]
+    assert meta["input_scale_compensation"] > 0.0
+    assert meta["output_scale_compensation"] > 0.0
