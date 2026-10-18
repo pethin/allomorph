@@ -45,17 +45,17 @@ target = "34in_standard_p:vintage_open"
 [[chips]]
 label = "P vs Super SVT"
 source = "34in_standard_p:vintage_open"
-target = "35in_studio_super:svt_driver"
+target = "35in_studio_super:svt_classic"
 
 [[chips]]
 label = "P vs Super B15"
 source = "34in_standard_p:vintage_open"
-target = "35in_studio_super:b15_driver"
+target = "35in_studio_super:b15_fliptop"
 
 [[chips]]
 label = "Super SVT vs B15"
-source = "35in_studio_super:svt_driver"
-target = "35in_studio_super:b15_driver"
+source = "35in_studio_super:svt_classic"
+target = "35in_studio_super:b15_fliptop"
 
 [[chips]]
 label = "Identity (Reset)"
