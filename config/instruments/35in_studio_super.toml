@@ -23,12 +23,12 @@
 #       2. `svt_blueline`  — '70s SVT Blueline (`Peggy Bass` + `Peggy 8x10` + `Dynamic 421` @ `Cap Off Axis`)
 #       3. `b15_fliptop`   — Ampeg B-15 (`Peggy FlipTop` + `Peggy Fliptop 1x15` + `Condenser 67` @ `Cone On Axis`)
 #       4. `bassman_410`   — Fender Super Bassman (`Super California` + `California Bass 4x10` + `Condenser 67` @ `Cone On Axis`)
-#       5. `gk_800rb`      — GK 800RB (`Kallinen Kruukkeri` + `Peggy 4x10` + `Dynamic 52` @ `Cone On Axis`)
-#       6. `mesa_block`    — Mesa Big Block 750 (`Modern ISOBRICK750 OD` + `Modern Bass 4x10` + `Dynamic 52` @ `Cap Off Axis`)
+#       5. `gk_800rb`      — GK 800RB (`Kallinen Kruukkeri` + `SWIRL 4x10` + `Dynamic 421` @ `Cone On Axis`)
+#       6. `mesa_block`    — Mesa Big Block 750 (`Modern ISOBRICK750 OD` + `Modern Bass 4x10` + `Dynamic 421` @ `Cone On Axis`)
 #       7. `orange_terror` — Orange Terror Bass (`Fruity Horror Bass 500` + `Fruity Bass 4x10` + `Dynamic 7` @ `Cone On Axis`)
-#       8. `swr_goliath`   — SWR SM-900 (`Swirl-900` + `SWIRL 4x10` + `Condenser 103` @ `Cone On Axis`)
-#       9. `markbass_410`  — Markbass Little Mark (`Black and Yellow` + `Black & Yellow 4x10` + `Condenser 414` @ `Cone On Axis`)
-#      10. `ebs_td650`     — EBS TD650 (`SWE TC650` + `Darkglass Neo 4x10` + `Dynamic 112` @ `Cone On Axis`)
+#       8. `swr_goliath`   — SWR SM-900 (`Swirl-900` + `SWIRL 4x10` + `Condenser 103` @ `Cap Off Axis`)
+#       9. `markbass_410`  — Markbass Little Mark (`Black and Yellow` + `Black & Yellow 4x10` + `Condenser 414` @ `Cap Off Axis`)
+#      10. `ebs_td650`     — EBS TD650 (`SWE TC650` + `Darkglass Neo 4x10` + `Dynamic 7` @ `Cap Off Axis`)
 
 id = "35in_studio_super"
 name = "Studio Super"
@@ -194,41 +194,40 @@ preamp_bands = [
 ]
 
 # ------------------------------------------------------------------------------
-# 5. GK 800RB + 4x10 (Kallinen Kruukkeri + Peggy 4x10 + Dynamic 52 @ Cone On Axis)
+# 5. GK 800RB + 4x10 (Kallinen Kruukkeri + SWIRL 4x10 + Dynamic 421 @ Cone On Axis)
 # ------------------------------------------------------------------------------
 [voicings.gk_800rb]
 version = 1
-name = "Studio Super GK 800RB (Kallinen Kruukkeri + Peggy 4x10 + Dynamic 52 Cone On-Axis)"
+name = "Studio Super GK 800RB (Kallinen Kruukkeri + SWIRL 4x10 + Dynamic 421 Cone On-Axis)"
 tone_name = "Studio Super GK 800RB"
 harness = "super_preamp"
 switches = { coil_mode = "parallel" }
 controls = { vol = 1.0, blend = 0.26 }
 preamp_bands = [
-    { id = "gk_sub_punch", type = "bell", freq_hz = 58.0, gain_db = 4.2, q = 1.15 },
-    { id = "gk_lowmid_rail", type = "bell", freq_hz = 360.0, gain_db = 4.8, q = 0.9 },
-    { id = "gk_pocket_growl", type = "bell", freq_hz = 820.0, gain_db = 4.8, q = 1.0 },
-    { id = "gk_2k_snap", type = "bell", freq_hz = 2050.0, gain_db = 5.6, q = 1.3 },
-    { id = "gk_3100_tame", type = "bell", freq_hz = 3080.0, gain_db = -5.6, q = 3.0 },
-    { id = "gk_3750_tame", type = "bell", freq_hz = 3760.0, gain_db = -8.0, q = 2.8 },
-    { id = "gk_4500_spike_tame", type = "bell", freq_hz = 4520.0, gain_db = -8.8, q = 2.4 },
+    { id = "gk_sub_punch", type = "bell", freq_hz = 58.0, gain_db = 6.2, q = 1.1 },
+    { id = "gk_165hz_tight", type = "bell", freq_hz = 165.0, gain_db = -3.0, q = 1.3 },
+    { id = "gk_lowmid_rail", type = "bell", freq_hz = 450.0, gain_db = 3.6, q = 1.1 },
+    { id = "gk_pocket_growl", type = "bell", freq_hz = 720.0, gain_db = 5.8, q = 1.0 },
+    { id = "gk_2050_tame", type = "bell", freq_hz = 2050.0, gain_db = -8.2, q = 1.0 },
+    { id = "gk_3200_snap", type = "bell", freq_hz = 3200.0, gain_db = 3.6, q = 1.6 },
+    { id = "gk_5k_tame", type = "bell", freq_hz = 4950.0, gain_db = -5.2, q = 1.8 },
 ]
 
 # ------------------------------------------------------------------------------
-# 6. Mesa Big Block 750 + Mesa 4x10 (Modern ISOBRICK750 OD + Modern Bass 4x10 + Dynamic 52 @ Cap Off Axis)
+# 6. Mesa Big Block 750 + Mesa 4x10 (Modern ISOBRICK750 OD + Modern Bass 4x10 + Dynamic 421 @ Cone On Axis)
 # ------------------------------------------------------------------------------
 [voicings.mesa_block]
 version = 1
-name = "Studio Super Mesa Block (Modern ISOBRICK750 OD + Modern Bass 4x10 + Dynamic 52 Cap Off-Axis)"
+name = "Studio Super Mesa Block (Modern ISOBRICK750 OD + Modern Bass 4x10 + Dynamic 421 Cone On-Axis)"
 tone_name = "Studio Super Mesa Block"
 harness = "super_preamp"
 switches = { coil_mode = "parallel" }
-controls = { vol = 1.0, blend = 0.34 }
+controls = { vol = 1.0, blend = 0.30 }
 preamp_bands = [
-    { id = "mesa_sub_tight", type = "bell", freq_hz = 60.0, gain_db = -3.2, q = 1.2 },
-    { id = "mesa_400hz_focus", type = "bell", freq_hz = 420.0, gain_db = 3.8, q = 1.1 },
-    { id = "mesa_720hz_support", type = "bell", freq_hz = 720.0, gain_db = 3.6, q = 1.3 },
-    { id = "mesa_honk_tame", type = "bell", freq_hz = 1520.0, gain_db = -5.2, q = 1.2 },
-    { id = "mesa_clank_drive", type = "bell", freq_hz = 3150.0, gain_db = 6.6, q = 1.0 },
+    { id = "mesa_200hz_tight", type = "bell", freq_hz = 200.0, gain_db = -2.6, q = 1.15 },
+    { id = "mesa_pocket_punch", type = "bell", freq_hz = 760.0, gain_db = 6.0, q = 0.95 },
+    { id = "mesa_1420_contour", type = "bell", freq_hz = 1420.0, gain_db = -5.2, q = 1.15 },
+    { id = "mesa_clank_drive", type = "bell", freq_hz = 2750.0, gain_db = 7.2, q = 1.0 },
 ]
 
 # ------------------------------------------------------------------------------
@@ -251,55 +250,60 @@ preamp_bands = [
 ]
 
 # ------------------------------------------------------------------------------
-# 8. SWR SM-900 + SWR Goliath 4x10 (Swirl-900 + SWIRL 4x10 + Condenser 103 @ Cone On Axis)
+# 8. SWR SM-900 + SWR Goliath 4x10 (Swirl-900 + SWIRL 4x10 + Condenser 103 @ Cap Off Axis)
 # ------------------------------------------------------------------------------
 [voicings.swr_goliath]
 version = 1
-name = "Studio Super SWR Goliath (Swirl-900 + SWIRL 4x10 + Condenser 103 Cone On-Axis)"
+name = "Studio Super SWR Goliath (Swirl-900 + SWIRL 4x10 + Condenser 103 Cap Off-Axis)"
 tone_name = "Studio Super SWR Goliath"
 harness = "super_preamp"
 switches = { coil_mode = "parallel" }
 controls = { vol = 1.0, blend = 0.26 }
 preamp_bands = [
-    { id = "swr_sub_extension", type = "low_shelf", freq_hz = 65.0, gain_db = 2.0 },
-    { id = "swr_lowmid_punch", type = "bell", freq_hz = 340.0, gain_db = 4.6, q = 0.95 },
-    { id = "swr_680hz_fill", type = "bell", freq_hz = 680.0, gain_db = 5.8, q = 1.0 },
-    { id = "swr_slap_snap", type = "bell", freq_hz = 3100.0, gain_db = 5.8, q = 1.0 },
-    { id = "swr_5500_smooth", type = "bell", freq_hz = 5500.0, gain_db = -3.6, q = 2.0 },
+    { id = "swr_sub_extension", type = "low_shelf", freq_hz = 58.0, gain_db = 1.8 },
+    { id = "swr_lowmid_punch", type = "bell", freq_hz = 350.0, gain_db = 5.2, q = 0.9 },
+    { id = "swr_660hz_fill", type = "bell", freq_hz = 660.0, gain_db = 6.8, q = 0.9 },
+    { id = "swr_1800_contour", type = "bell", freq_hz = 1800.0, gain_db = -2.8, q = 1.4 },
+    { id = "swr_3250_snap", type = "bell", freq_hz = 3250.0, gain_db = 6.6, q = 1.1 },
+    { id = "swr_5150_smooth", type = "bell", freq_hz = 5150.0, gain_db = -3.8, q = 1.8 },
 ]
 
 # ------------------------------------------------------------------------------
-# 9. Markbass Little Mark + 4x10 (Black and Yellow + Black & Yellow 4x10 + Condenser 414 @ Cone On Axis)
+# 9. Markbass Little Mark + 4x10 (Black and Yellow + Black & Yellow 4x10 + Condenser 414 @ Cap Off Axis)
 # ------------------------------------------------------------------------------
 [voicings.markbass_410]
 version = 1
-name = "Studio Super Markbass 4x10 (Black and Yellow + Black & Yellow 4x10 + Condenser 414 Cone On-Axis)"
+name = "Studio Super Markbass 4x10 (Black and Yellow + Black & Yellow 4x10 + Condenser 414 Cap Off-Axis)"
 tone_name = "Studio Super Markbass"
 harness = "super_preamp"
 switches = { coil_mode = "parallel" }
 controls = { vol = 1.0, blend = 0.28 }
 preamp_bands = [
-    { id = "mb_220hz_trim", type = "bell", freq_hz = 220.0, gain_db = -2.2, q = 1.3 },
-    { id = "mb_820hz_vocal", type = "bell", freq_hz = 820.0, gain_db = 4.8, q = 1.1 },
-    { id = "mb_1150hz_artic", type = "bell", freq_hz = 1150.0, gain_db = 4.8, q = 1.15 },
-    { id = "mb_c414_presence", type = "bell", freq_hz = 2500.0, gain_db = 5.0, q = 1.05 },
+    { id = "mb_180hz_trim", type = "bell", freq_hz = 180.0, gain_db = -1.8, q = 1.3 },
+    { id = "mb_850hz_vocal", type = "bell", freq_hz = 850.0, gain_db = 5.4, q = 1.05 },
+    { id = "mb_1220hz_artic", type = "bell", freq_hz = 1220.0, gain_db = 5.6, q = 1.15 },
+    { id = "mb_1950_contour", type = "bell", freq_hz = 1950.0, gain_db = -3.2, q = 1.2 },
+    { id = "mb_2650_fill", type = "bell", freq_hz = 2650.0, gain_db = 4.8, q = 2.4 },
+    { id = "mb_3050_smooth", type = "bell", freq_hz = 3050.0, gain_db = -3.2, q = 2.2 },
 ]
 
 # ------------------------------------------------------------------------------
-# 10. EBS TD650 + Neo 4x10 (SWE TC650 + Darkglass Neo 4x10 + Dynamic 112 @ Cone On Axis)
+# 10. EBS TD650 + Neo 4x10 (SWE TC650 + Darkglass Neo 4x10 + Dynamic 7 @ Cap Off Axis)
 # ------------------------------------------------------------------------------
 [voicings.ebs_td650]
 version = 1
-name = "Studio Super EBS TD650 (SWE TC650 + Darkglass Neo 4x10 + Dynamic 112 Cone On-Axis)"
+name = "Studio Super EBS TD650 (SWE TC650 + Darkglass Neo 4x10 + Dynamic 7 Cap Off-Axis)"
 tone_name = "Studio Super EBS TD650"
 harness = "super_preamp"
 switches = { coil_mode = "parallel" }
-controls = { vol = 1.0, blend = 0.26 }
+controls = { vol = 1.0, blend = 0.24 }
 preamp_bands = [
-    { id = "ebs_sub_anchor", type = "bell", freq_hz = 52.0, gain_db = -2.4, q = 1.2 },
-    { id = "ebs_lowmid_authority", type = "bell", freq_hz = 330.0, gain_db = 4.6, q = 0.95 },
-    { id = "ebs_prog_growl", type = "bell", freq_hz = 820.0, gain_db = 5.8, q = 0.9 },
-    { id = "ebs_2150_attack", type = "bell", freq_hz = 2150.0, gain_db = 6.4, q = 1.35 },
-    { id = "ebs_4150_spike_tame", type = "bell", freq_hz = 4150.0, gain_db = -7.8, q = 1.35 },
+    { id = "ebs_sub_anchor", type = "bell", freq_hz = 56.0, gain_db = 2.2, q = 1.3 },
+    { id = "ebs_120hz_tight", type = "bell", freq_hz = 120.0, gain_db = -1.8, q = 1.5 },
+    { id = "ebs_lowmid_authority", type = "bell", freq_hz = 360.0, gain_db = 4.4, q = 0.95 },
+    { id = "ebs_prog_growl", type = "bell", freq_hz = 780.0, gain_db = 6.4, q = 0.9 },
+    { id = "ebs_1600_contour", type = "bell", freq_hz = 1600.0, gain_db = -5.2, q = 1.6 },
+    { id = "ebs_2280_attack", type = "bell", freq_hz = 2280.0, gain_db = 8.0, q = 1.6 },
+    { id = "ebs_4800_smooth", type = "bell", freq_hz = 4800.0, gain_db = -3.4, q = 1.5 },
 ]
 

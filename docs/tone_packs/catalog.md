@@ -54,7 +54,7 @@ Keep every numbered tone description in `config/packs/*.toml` to **one tight, sc
 - **Examples:**
   - ❌ *Verbose:* `"The quintessential NYC '70s active slap tone: tight, massive sub-bass and crisp, glassy highs with a 53.3mm bridge-spaced midrange scoop that pops right out of a dense mix."`
   - ✅ *Concise:* `"NYC '70s active slap tone: tight, massive sub-bass and crisp, glassy highs with a midrange scoop."`
-  - ✅ *Rig-Calibrated (`Studio Super`):* `"Punchy '80s/'90s alt-rock and funk front-end with tight lows and snappy 2 kHz presence (requires Anagram blocks: Kallinen Kruukkeri + Peggy 4x10 + Dynamic 52 Cone On-Axis)."`
+  - ✅ *Rig-Calibrated (`Studio Super`):* `"Punchy '80s/'90s alt-rock and funk front-end with tight lows and snappy upper-mid presence (requires Anagram blocks: Kallinen Kruukkeri + SWIRL 4x10 + Dynamic 421 Cone On-Axis)."`
 
 ### 3. Jargon Translation Guide
 
@@ -121,12 +121,12 @@ Every pack provides comprehensive coverage across nine core modular sonic famili
    - **Studio Super SVT Blueline** (Peggy Bass + Peggy 8x10 + Dynamic 421 Cap Off-Axis)
    - **Studio Super B15** (Peggy FlipTop + Peggy Fliptop 1x15 + Condenser 67 Cone On-Axis)
    - **Studio Super Bassman** (Super California + California Bass 4x10 + Condenser 67 Cone On-Axis)
-   - **Studio Super GK 800RB** (Kallinen Kruukkeri + Peggy 4x10 + Dynamic 52 Cone On-Axis)
-   - **Studio Super Mesa Block** (Modern ISOBRICK750 OD + Modern Bass 4x10 + Dynamic 52 Cap Off-Axis)
+   - **Studio Super GK 800RB** (Kallinen Kruukkeri + SWIRL 4x10 + Dynamic 421 Cone On-Axis)
+   - **Studio Super Mesa Block** (Modern ISOBRICK750 OD + Modern Bass 4x10 + Dynamic 421 Cone On-Axis)
    - **Studio Super Orange** (Fruity Horror Bass 500 + Fruity Bass 4x10 + Dynamic 7 Cone On-Axis)
-   - **Studio Super SWR Goliath** (Swirl-900 + SWIRL 4x10 + Condenser 103 Cone On-Axis)
-   - **Studio Super Markbass** (Black and Yellow + Black & Yellow 4x10 + Condenser 414 Cone On-Axis)
-   - **Studio Super EBS TD650** (SWE TC650 + Darkglass Neo 4x10 + Dynamic 112 Cone On-Axis)
+   - **Studio Super SWR Goliath** (Swirl-900 + SWIRL 4x10 + Condenser 103 Cap Off-Axis)
+   - **Studio Super Markbass** (Black and Yellow + Black & Yellow 4x10 + Condenser 414 Cap Off-Axis)
+   - **Studio Super EBS TD650** (SWE TC650 + Darkglass Neo 4x10 + Dynamic 7 Cap Off-Axis)
 
 ---
 
