@@ -18,7 +18,7 @@
 # Electronics:
 #   - Shared Active Harness (`super_preamp` / `studio_super_driver`):
 #       - Dual-FET buffered blend (`buffered = true`) + 6.8 nF inline series bridge HPF (`bridge_hpf = 6.8e-9`)
-#   - 10 Dedicated Darkglass Anagram Hardware-Calibrated Voicings (`reamp/signal_chains.md`):
+#   - 10 Dedicated Darkglass Anagram Hardware-Calibrated Voicings:
 #       1. `svt_classic`   — Ampeg SVT-CL (`Peggy Classic` + `Vintage Peggy 8x10` + `Dynamic 421` @ `Cone On Axis`)
 #       2. `svt_blueline`  — '70s SVT Blueline (`Peggy Bass` + `Peggy 8x10` + `Dynamic 421` @ `Cap Off Axis`)
 #       3. `b15_fliptop`   — Ampeg B-15 (`Peggy FlipTop` + `Peggy Fliptop 1x15` + `Condenser 67` @ `Cone On Axis`)
