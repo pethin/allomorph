@@ -22,6 +22,7 @@ inspection/
 .vscode/
 *.swp
 .DS_Store
+*:Zone.Identifier
 
 # Large NAM calibration files, sweeps & trained model checkpoints
 *.wav
