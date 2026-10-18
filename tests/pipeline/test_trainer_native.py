@@ -547,3 +547,126 @@ def test_train_voice_native_restarts_on_unlucky_spike(tmp_path: Path, monkeypatc
     with open(exported[0], "r", encoding="utf-8") as f:
         data = json.load(f)
     assert data["metadata"]["training"]["spike_restarts"] == 1
+
+
+def test_train_voice_native_freshness_skip_and_overwrite(tmp_path: Path) -> None:
+    """Verifies that train_voice_native records dry/wet recipe & digest tokens in manifest.json,
+    skips retraining when fresh, retrains when audio/recipe changes, and retrains when overwrite=True."""
+    from allomorph.trainer import check_model_freshness
+
+    fs = 48000
+    duration_s = 1.5
+    n_frames = int(fs * duration_s)
+
+    t = np.linspace(0, duration_s, n_frames, endpoint=False, dtype=np.float32)
+    sig_src = (0.5 * np.sin(2.0 * np.pi * 100.0 * t)).astype(np.float32)
+    sig_tgt = (0.4 * np.sin(2.0 * np.pi * 200.0 * t)).astype(np.float32)
+
+    src_wav = tmp_path / "fresh_src.wav"
+    tgt_wav = tmp_path / "fresh_tgt.wav"
+
+    with AudioFile(str(src_wav), "w", samplerate=fs, num_channels=1) as f:
+        f.write(sig_src[np.newaxis, :])
+    with AudioFile(str(tgt_wav), "w", samplerate=fs, num_channels=1) as f:
+        f.write(sig_tgt[np.newaxis, :])
+
+    models_dir = tmp_path / "models_freshness"
+
+    # 1. Initial training run creates model and manifest with recipe & digest tokens
+    ok1 = train_voice_native(
+        instrument="30in_emg_mmtw:dual_mode",
+        voice="34in_standard_p:slab_dub",
+        reference_wav=src_wav,
+        output_wav=tgt_wav,
+        models_dir=models_dir,
+        epochs=1,
+        min_epochs=1,
+        fast_dev_run=True,
+        silent=True,
+        device="cpu",
+        overwrite=False,
+    )
+    assert ok1 is True
+
+    exported = list(models_dir.glob("**/*.nam"))
+    assert len(exported) == 1
+    nam_file = exported[0]
+    manifest_file = nam_file.parent / "manifest.json"
+    assert manifest_file.exists()
+
+    with open(manifest_file, "r", encoding="utf-8") as mf:
+        m_data = json.load(mf)
+    entry = m_data["files"][nam_file.name]
+    assert entry["dry_digest_token"].startswith("alo_stem_")
+    assert entry["wet_digest_token"].startswith("alo_stem_")
+    assert entry["dry_recipe_token"].startswith("alo_rec_")
+    assert entry["wet_recipe_token"].startswith("alo_rec_")
+
+    is_fresh, reason = check_model_freshness(
+        target_nam=nam_file,
+        dry_digest_token=entry["dry_digest_token"],
+        wet_digest_token=entry["wet_digest_token"],
+        dry_recipe_token=entry["dry_recipe_token"],
+        wet_recipe_token=entry["wet_recipe_token"],
+    )
+    assert is_fresh is True
+    assert reason == "cached & fresh"
+
+    # 2. Second run with overwrite=False skips retraining without modifying the model file
+    mtime_before = nam_file.stat().st_mtime_ns
+    ok2 = train_voice_native(
+        instrument="30in_emg_mmtw:dual_mode",
+        voice="34in_standard_p:slab_dub",
+        reference_wav=src_wav,
+        output_wav=tgt_wav,
+        models_dir=models_dir,
+        epochs=1,
+        min_epochs=1,
+        fast_dev_run=True,
+        silent=True,
+        device="cpu",
+        overwrite=False,
+    )
+    assert ok2 is True
+    assert nam_file.stat().st_mtime_ns == mtime_before
+
+    # 3. Calling with overwrite=True forces retraining and updates the model file
+    ok3 = train_voice_native(
+        instrument="30in_emg_mmtw:dual_mode",
+        voice="34in_standard_p:slab_dub",
+        reference_wav=src_wav,
+        output_wav=tgt_wav,
+        models_dir=models_dir,
+        epochs=1,
+        min_epochs=1,
+        fast_dev_run=True,
+        silent=True,
+        device="cpu",
+        overwrite=True,
+    )
+    assert ok3 is True
+    assert nam_file.stat().st_mtime_ns != mtime_before
+
+    # 4. Mutating recorded wet_digest_token in manifest invalidates freshness and triggers retrain
+    mtime_after_force = nam_file.stat().st_mtime_ns
+    with open(manifest_file, "r", encoding="utf-8") as mf:
+        m_data = json.load(mf)
+    m_data["files"][nam_file.name]["wet_digest_token"] = "alo_stem_stale_digest"
+    with open(manifest_file, "w", encoding="utf-8") as mf:
+        json.dump(m_data, mf)
+
+    ok4 = train_voice_native(
+        instrument="30in_emg_mmtw:dual_mode",
+        voice="34in_standard_p:slab_dub",
+        reference_wav=src_wav,
+        output_wav=tgt_wav,
+        models_dir=models_dir,
+        epochs=1,
+        min_epochs=1,
+        fast_dev_run=True,
+        silent=True,
+        device="cpu",
+        overwrite=False,
+    )
+    assert ok4 is True
+    assert nam_file.stat().st_mtime_ns != mtime_after_force

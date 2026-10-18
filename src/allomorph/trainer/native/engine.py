@@ -80,6 +80,7 @@ from allomorph.version import (
     DSP_GENERATION,
     compute_file_sha256,
     compute_recipe_token,
+    compute_stem_digest_token,
     get_git_commit,
     is_stem_valid,
     resolve_tri_part_version,
@@ -148,9 +149,11 @@ def train_voice_native(
     ema_decay: float = NATIVE_DEFAULT_EMA_DECAY,
     spike_ratio_threshold: float = NATIVE_DEFAULT_SPIKE_RATIO_THRESHOLD,
     max_spike_restarts: int = NATIVE_DEFAULT_MAX_SPIKE_RESTARTS,
+    overwrite: bool = False,
 ) -> bool:
     """Trains a Neural Amp Modeler (NAM) Architecture 2 model using Allomorph's Native PyTorch Engine."""
     from allomorph.trainer.core import (
+        check_model_freshness,
         find_sweep_input,
         get_hardware_device_name,
         normalize_training_stem,
@@ -240,14 +243,14 @@ def train_voice_native(
 
     # 6. Resolve Audio Input / Output Stems
     input_path = find_sweep_input(input_wav)
+    target_recipe_token = compute_recipe_token(
+        instrument=tgt_inst,
+        voicing=tgt_v,
+        base_dry_path=input_path,
+    )
 
     if not output_wav:
         target_wet = AUDIO_DIR / "stems" / tgt_inst.id / f"{tgt_voicing_id}.wav"
-        target_recipe_token = compute_recipe_token(
-            instrument=tgt_inst,
-            voicing=tgt_v,
-            base_dry_path=input_path,
-        )
         if not (
             target_wet.exists()
             and is_stem_valid(
@@ -277,24 +280,33 @@ def train_voice_native(
     else:
         output_path = Path(output_wav)
 
+    src_v_for_token = inst_cfg.voicings.get(src_voicing_id) or (
+        next(iter(inst_cfg.voicings.values())) if inst_cfg.voicings else None
+    )
+    src_recipe_token = (
+        compute_recipe_token(
+            instrument=inst_cfg,
+            voicing=src_v_for_token,
+            base_dry_path=input_path,
+        )
+        if src_v_for_token is not None
+        else None
+    )
+
     if reference_wav:
         reference_path = Path(reference_wav)
     elif input_wav and Path(input_wav).exists():
         reference_path = Path(input_wav)
     else:
         candidate_source = AUDIO_DIR / "stems" / inst_id / f"{src_voicing_id}.wav"
-        src_v = inst_cfg.voicings.get(src_voicing_id)
-        if src_v is None:
-            src_v = next(iter(inst_cfg.voicings.values()))
-        src_recipe_token = compute_recipe_token(
-            instrument=inst_cfg,
-            voicing=src_v,
-            base_dry_path=input_path,
-        )
-        if candidate_source.exists() and is_stem_valid(
-            candidate_source,
-            expected_recipe_token=src_recipe_token,
-            base_dry_path=input_path,
+        if (
+            candidate_source.exists()
+            and src_recipe_token is not None
+            and is_stem_valid(
+                candidate_source,
+                expected_recipe_token=src_recipe_token,
+                base_dry_path=input_path,
+            )
         ):
             reference_path = candidate_source
         else:
@@ -332,6 +344,24 @@ def train_voice_native(
     if not reference_path.exists() or not output_path.exists():
         print(f"Error: Missing audio:\n  Source: {reference_path}\n  Target: {output_path}")
         return False
+
+    dry_digest_token = compute_stem_digest_token(reference_path)
+    wet_digest_token = compute_stem_digest_token(output_path)
+
+    if not overwrite and target_nam.exists():
+        is_fresh, _ = check_model_freshness(
+            target_nam=target_nam,
+            dry_digest_token=dry_digest_token,
+            wet_digest_token=wet_digest_token,
+            dry_recipe_token=src_recipe_token,
+            wet_recipe_token=target_recipe_token,
+        )
+        if is_fresh:
+            if not silent:
+                print(
+                    f"[Native Trainer] Audio digests match, skipping retraining: {target_nam.name}"
+                )
+            return True
 
     # 7. Seed Execution
     if seed is not None:
@@ -1238,9 +1268,12 @@ def train_voice_native(
                         m_entry.setdefault("filename", target_nam.name)
                         m_entry["sha256"] = compute_file_sha256(target_nam)
                         m_entry["dry_file"] = reference_path.name
-                        m_entry["dry_sha256"] = compute_file_sha256(reference_path)
+                        m_entry["dry_digest_token"] = dry_digest_token
+                        if src_recipe_token:
+                            m_entry["dry_recipe_token"] = src_recipe_token
                         m_entry["wet_file"] = output_path.name
-                        m_entry["wet_sha256"] = compute_file_sha256(output_path)
+                        m_entry["wet_digest_token"] = wet_digest_token
+                        m_entry["wet_recipe_token"] = target_recipe_token
                         m_entry["validation_esr"] = float(best_val_esr)
                         m_entry["validation_esr_a2_full"] = float(best_val_esr)
                         m_entry["validation_esr_a2_lite"] = float(best_val_esr_lite)
@@ -1267,11 +1300,44 @@ def train_voice_native(
                     pass
 
         if not updated_pack_manifest and target_nam.exists():
+            standalone_meta: dict[str, Any] = {
+                "source": f"{inst_id}:{src_voicing_id}",
+                "target": f"{tgt_inst.id}:{tgt_voicing_id}",
+                "dry_file": reference_path.name,
+                "dry_digest_token": dry_digest_token,
+                "wet_file": output_path.name,
+                "wet_digest_token": wet_digest_token,
+                "wet_recipe_token": target_recipe_token,
+                "validation_esr": float(best_val_esr),
+                "validation_esr_a2_full": float(best_val_esr),
+                "validation_esr_a2_lite": float(best_val_esr_lite),
+                "validation_esr_ch8": float(best_val_esr),
+                "validation_esr_ch3": float(best_val_esr_lite),
+                "epochs_trained": epochs_trained_val,
+                "spike_restarts": spike_restarts,
+                "training_time_seconds": round(total_time, 2),
+                "batch_size": resolved_bs,
+                "precision": resolved_precision,
+                "engine": "native",
+                "device_name": (
+                    torch.cuda.get_device_name(hw_device)
+                    if hw_device.type == "cuda"
+                    else str(hw_device)
+                ),
+            }
+            if src_recipe_token:
+                standalone_meta["dry_recipe_token"] = src_recipe_token
+            if stop_reason:
+                standalone_meta["stop_reason"] = stop_reason
             write_manifest(
                 output_dir=inst_models_dir,
                 stage="train",
-                files=[target_nam],
+                files={target_nam.name: standalone_meta},
                 version_tag=tri_part,
+                instrument_version=inst_ver,
+                voicing_version=voice_ver,
+                recipe_token=target_recipe_token,
+                digest_token=wet_digest_token,
             )
 
     if not silent:

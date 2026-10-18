@@ -1,6 +1,6 @@
 {
   "bundle": "split",
-  "recipe_token": "alo_bun_41dc7cf15c10f4c4958638a3a014733a5fc3ce107ab05e985be5da313d76408d",
+  "recipe_token": "alo_bun_8ed982f3c19ff07955a57966ed020223bfc39c4b69ff5a91d4f2d7e280a731e8",
   "source": "34in_standard_p:vintage_open",
   "position_name": "Split",
   "base_dry_file": "input.wav",
@@ -13,7 +13,7 @@
   "instrument_id": "34in_standard_p",
   "instrument_version": 1,
   "source_voicing_version": 1,
-  "stem_count": 25,
+  "stem_count": 35,
   "stems": [
     {
       "filename": "Jazz Pair Active v7.1.1.wav",
@@ -264,6 +264,106 @@
       "tone_name": "Precision Warm",
       "recipe_token": "alo_rec_3a83253143e11ea17984355ee7ab893f8ff6a257f6a78e620d5d7e3800b3d874",
       "digest_token": "alo_stem_eeca803758780d826309d4c2d1bb7255b74a372fd7edcdfc0eef7fa94934b016"
+    },
+    {
+      "filename": "Studio Super SVT Classic v7.1.1.wav",
+      "target": "35in_studio_super:svt_classic",
+      "target_instrument_version": 1,
+      "target_voicing_version": 1,
+      "version": "v7.1.1",
+      "tone_name": "Studio Super SVT Classic",
+      "recipe_token": "alo_rec_b3903daf9c13a0166a16085a3cb562df278b5f691032fdc22009d7bee592e6da",
+      "digest_token": "alo_stem_9cc1911f46984168c0036c2121ca15b4b97f0a5ea137a706c2f7df0d4cc68686"
+    },
+    {
+      "filename": "Studio Super SVT Blueline v7.1.1.wav",
+      "target": "35in_studio_super:svt_blueline",
+      "target_instrument_version": 1,
+      "target_voicing_version": 1,
+      "version": "v7.1.1",
+      "tone_name": "Studio Super SVT Blueline",
+      "recipe_token": "alo_rec_def0390feb2c509b6a7b8a3b921b9b80c694bf29142201cc5674ab0287dba042",
+      "digest_token": "alo_stem_01493763531ef742ccffa0b71ef89e0dfe52f54d30f5fcd95796402c717b7639"
+    },
+    {
+      "filename": "Studio Super B15 v7.1.1.wav",
+      "target": "35in_studio_super:b15_fliptop",
+      "target_instrument_version": 1,
+      "target_voicing_version": 1,
+      "version": "v7.1.1",
+      "tone_name": "Studio Super B15",
+      "recipe_token": "alo_rec_1a560cf339b45e8710000535253ffddf24c14952c3f42494f9e505bdfbe4e955",
+      "digest_token": "alo_stem_d01f00c4791b6db7efe27c5125dc743830b435e07935c9954cc479132bc2575d"
+    },
+    {
+      "filename": "Studio Super Bassman v7.1.1.wav",
+      "target": "35in_studio_super:bassman_410",
+      "target_instrument_version": 1,
+      "target_voicing_version": 1,
+      "version": "v7.1.1",
+      "tone_name": "Studio Super Bassman",
+      "recipe_token": "alo_rec_b08214e93c31ed2862d2a454850cc3719125c3cbdbfb7dd530d3c37e2eedd2a7",
+      "digest_token": "alo_stem_e770398e546a82ebae7b26ae31cf1cd8ff9906edcbf0800bfa41f37371c75119"
+    },
+    {
+      "filename": "Studio Super GK 800RB v7.1.1.wav",
+      "target": "35in_studio_super:gk_800rb",
+      "target_instrument_version": 1,
+      "target_voicing_version": 1,
+      "version": "v7.1.1",
+      "tone_name": "Studio Super GK 800RB",
+      "recipe_token": "alo_rec_019c6382d4981999dcd17c584addd5d1911a1aa15da5bf92c297b234f7bdc2fe",
+      "digest_token": "alo_stem_6c20c7cf35bdee8aa3fe20dbc5c01e550ca0c53dbae2936d22fa9a78ea8259be"
+    },
+    {
+      "filename": "Studio Super Mesa Block v7.1.1.wav",
+      "target": "35in_studio_super:mesa_block",
+      "target_instrument_version": 1,
+      "target_voicing_version": 1,
+      "version": "v7.1.1",
+      "tone_name": "Studio Super Mesa Block",
+      "recipe_token": "alo_rec_4001c27060ac293baa4707f78629b2cf152719d1a6aa34089936d720d299b811",
+      "digest_token": "alo_stem_c27b10476303202d9075eb7221ec81422471fb4d76b756fbbb552011fb9807db"
+    },
+    {
+      "filename": "Studio Super Orange v7.1.1.wav",
+      "target": "35in_studio_super:orange_terror",
+      "target_instrument_version": 1,
+      "target_voicing_version": 1,
+      "version": "v7.1.1",
+      "tone_name": "Studio Super Orange",
+      "recipe_token": "alo_rec_46467bf76dc32e48725fb4550e4f082c3f0d55ebd660c95fcaef862dc23efce8",
+      "digest_token": "alo_stem_431ed3f41725b2ae22393c99421094f08d5e3163e90c36b6f450f1c138a9eb6e"
+    },
+    {
+      "filename": "Studio Super SWR Goliath v7.1.1.wav",
+      "target": "35in_studio_super:swr_goliath",
+      "target_instrument_version": 1,
+      "target_voicing_version": 1,
+      "version": "v7.1.1",
+      "tone_name": "Studio Super SWR Goliath",
+      "recipe_token": "alo_rec_9dcf6bba7fd0f715b0e590a1db8059a38576dbbe4c01f2b85e5323883ac952da",
+      "digest_token": "alo_stem_9bde8b6b6aede8024e7e9ecf388da20405880a46f0720ce0b8a0eb97254962a0"
+    },
+    {
+      "filename": "Studio Super Markbass v7.1.1.wav",
+      "target": "35in_studio_super:markbass_410",
+      "target_instrument_version": 1,
+      "target_voicing_version": 1,
+      "version": "v7.1.1",
+      "tone_name": "Studio Super Markbass",
+      "recipe_token": "alo_rec_6f6e4b30e989e7dffc068a11a91d6dc38389ff21a2d80d49e541006f52365987",
+      "digest_token": "alo_stem_343300168b94d8715665efecdd35612bdb2a2610642d5719224c18eef7ff98b3"
+    },
+    {
+      "filename": "Studio Super EBS TD650 v7.1.1.wav",
+      "target": "35in_studio_super:ebs_td650",
+      "target_instrument_version": 1,
+      "target_voicing_version": 1,
+      "version": "v7.1.1",
+      "tone_name": "Studio Super EBS TD650",
+      "recipe_token": "alo_rec_39ae39ed1628af71b590daf143a8c3791bc6aef1e2d00036ad0112a038978f08",
+      "digest_token": "alo_stem_8d54c0a4c91004b1b193463002e668228ddde714fdd3cc2b93b1ab45a5be7758"
     }
   ]
 }

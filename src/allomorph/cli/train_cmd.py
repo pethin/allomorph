@@ -480,6 +480,7 @@ def train(
                     sine_regularizer=sine_regularizer,
                     silent=silent,
                     val_loss_metric=val_loss_metric,
+                    overwrite=force,
                 )
                 if ok:
                     total_trained += 1

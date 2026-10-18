@@ -398,8 +398,9 @@ def test_cli_train_standalone_dispatch(tmp_path: Path, monkeypatch: pytest.Monke
     assert calls[0]["source_voicing"] == "dual_mode"
     assert calls[0]["epochs"] == 50
     assert calls[0]["silent"] is False
+    assert calls[0]["overwrite"] is False
 
-    # Verify --silent flag silences training progress
+    # Verify --silent and --force flags pass through to train_voice
     calls.clear()
     code = main(
         [
@@ -409,11 +410,13 @@ def test_cli_train_standalone_dispatch(tmp_path: Path, monkeypatch: pytest.Monke
             "--targets",
             "34in_standard_p:vintage_open",
             "--silent",
+            "--force",
         ]
     )
     assert code == 0
     assert len(calls) == 1
     assert calls[0]["silent"] is True
+    assert calls[0]["overwrite"] is True
 
     # Verify comma-separated targets dispatch multiple target voices
     calls.clear()

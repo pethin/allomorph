@@ -472,6 +472,80 @@ def configure_a2_architecture(
     )
 
 
+def check_model_freshness(
+    target_nam: Path | str,
+    dry_digest_token: str | None = None,
+    wet_digest_token: str | None = None,
+    dry_recipe_token: str | None = None,
+    wet_recipe_token: str | None = None,
+) -> tuple[bool, str]:
+    """Checks whether an existing trained .nam model container is valid and fresh against audio digests/recipes.
+
+    Verifies that the .nam file exists, parses as a valid WaveNet / SlimmableContainer JSON,
+    and matches the recorded dry/wet digest and recipe tokens in the sidecar manifest.json.
+    """
+    import json
+
+    nam_p = Path(target_nam)
+    if not nam_p.exists():
+        return False, "model file missing"
+
+    try:
+        with nam_p.open("r", encoding="utf-8") as f:
+            data = json.load(f)
+        arch = data.get("architecture")
+        if arch == "SlimmableContainer":
+            submodels = data.get("config", {}).get("submodels", [])
+            if len(submodels) < 2:
+                return False, "invalid SlimmableContainer submodels"
+        elif arch == "WaveNet":
+            if not data.get("weights"):
+                return False, "missing WaveNet weights"
+        else:
+            return False, f"unsupported architecture '{arch}'"
+    except json.JSONDecodeError, OSError:
+        return False, "model JSON unreadable"
+
+    manifest_p = nam_p.parent / "manifest.json"
+    if not manifest_p.exists():
+        return False, "manifest.json missing"
+
+    try:
+        with manifest_p.open("r", encoding="utf-8") as mf:
+            m_data = json.load(mf)
+    except json.JSONDecodeError, OSError:
+        return False, "manifest.json unreadable"
+
+    files_dict = m_data.get("files", {})
+    models_dict = m_data.get("models", {})
+    entry = (
+        files_dict.get(nam_p.name)
+        if isinstance(files_dict, dict) and nam_p.name in files_dict
+        else (models_dict.get(nam_p.name) if isinstance(models_dict, dict) else None)
+    )
+    if not isinstance(entry, dict):
+        return False, "not registered in manifest.json"
+
+    rec_dry_digest = entry.get("dry_digest_token")
+    rec_wet_digest = entry.get("wet_digest_token")
+    if not rec_dry_digest or not rec_wet_digest:
+        return False, "digest tokens missing in manifest.json"
+
+    if dry_digest_token and rec_dry_digest != dry_digest_token:
+        return False, "dry digest token mismatch"
+    if wet_digest_token and rec_wet_digest != wet_digest_token:
+        return False, "wet digest token mismatch"
+
+    rec_dry_recipe = entry.get("dry_recipe_token")
+    rec_wet_recipe = entry.get("wet_recipe_token")
+    if dry_recipe_token and rec_dry_recipe and rec_dry_recipe != dry_recipe_token:
+        return False, "dry recipe token mismatch"
+    if wet_recipe_token and rec_wet_recipe and rec_wet_recipe != wet_recipe_token:
+        return False, "wet recipe token mismatch"
+
+    return True, "cached & fresh"
+
+
 def train_voice(
     instrument: str | InstrumentConfig = "34in_standard_p",
     voice: str = "34in_standard_p:vintage",
@@ -517,6 +591,7 @@ def train_voice(
     spike_ratio_threshold: float = NATIVE_DEFAULT_SPIKE_RATIO_THRESHOLD,
     max_spike_restarts: int = NATIVE_DEFAULT_MAX_SPIKE_RESTARTS,
     val_loss_metric: str = STOCK_DEFAULT_VAL_LOSS_METRIC,
+    overwrite: bool = False,
 ) -> bool:
     """Trains a Neural Amp Modeler Architecture 2 model container using the configured engine."""
     resolved_engine = resolve_trainer_engine(engine)
@@ -566,6 +641,7 @@ def train_voice(
             ema_decay=ema_decay,
             spike_ratio_threshold=spike_ratio_threshold,
             max_spike_restarts=max_spike_restarts,
+            overwrite=overwrite,
         )
 
     from allomorph.trainer.stock import train_voice_stock
@@ -592,6 +668,7 @@ def train_voice(
         include_identity=include_identity,
         seed=seed,
         val_loss_metric=val_loss_metric,
+        overwrite=overwrite,
     )
 
 
@@ -599,6 +676,7 @@ __all__ = [
     "AUDIO_DIR",
     "DEFAULT_INPUT_PATH",
     "MODELS_DIR",
+    "check_model_freshness",
     "compute_baseline_delta_ratio",
     "compute_baseline_mrstft",
     "configure_a2_architecture",
