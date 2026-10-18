@@ -43,9 +43,19 @@ source = "34in_active_emg:neck_solo"
 target = "34in_standard_p:vintage_open"
 
 [[chips]]
-label = "P vs Studio Super"
+label = "P vs Super SVT"
 source = "34in_standard_p:vintage_open"
-target = "35in_studio_super:studio_super"
+target = "35in_studio_super:svt_driver"
+
+[[chips]]
+label = "P vs Super B15"
+source = "34in_standard_p:vintage_open"
+target = "35in_studio_super:b15_driver"
+
+[[chips]]
+label = "Super SVT vs B15"
+source = "35in_studio_super:svt_driver"
+target = "35in_studio_super:b15_driver"
 
 [[chips]]
 label = "Identity (Reset)"

@@ -149,26 +149,30 @@ bands = [
 ]
 
 # ------------------------------------------------------------------------------
-# 9. Studio Super Universal Amp/Cab Inverse Pre-Conditioner
+# 9. Studio Super Inverse Pre-Conditioner (`studio_super_driver`)
 # ------------------------------------------------------------------------------
-# Inverse pre-conditioning filter engineered for the Studio Super digital twin.
-# Specifically calibrated to drive tube amplifiers (SVT 6550, B-15 6L6GC) and cabinets (6x10, 1x15):
-#   - Tames 80 Hz sealed-cab boom (-1.8 dB, Q=2.0)
-#   - Drives 310 Hz low-mid note authority and tube harmonics (+3.6 dB, Q=1.1)
-#   - Stabilizes 880 Hz midrange pocket balance (+1.2 dB, Q=1.3)
-#   - Drives 2450 Hz upper-mid articulation (+5.6 dB, Q=1.0)
-[preamps.studio_amp_driver]
-id = "studio_amp_driver"
-name = "Studio Super Universal Amp/Cab Inverse Pre-Conditioner"
-description = "Universal amp/cab inverse pre-conditioner calibrated for Ampeg SVT 6x10 and B-15 1x15 rigs"
+# Shared onboard FET buffer & inverse pre-conditioning preamp for 35in_studio_super.
+# Default bands are calibrated for Ampeg SVT (6550 tubes) + Vintage 8x10
+# with Sennheiser MD 421 at 'Cone On-Axis'; individual voicings (e.g. `b15_driver`)
+# override `preamp_bands` directly on the voicing:
+#   - Anchors 58 Hz sub-fundamental against Vintage 8x10 infinite-baffle roll-off (+1.4 dB @ 58 Hz, Q=1.5)
+#   - Tames 88 Hz Vintage 8x10 "fridge thump" chamber resonance (-2.6 dB @ 88 Hz, Q=1.8)
+#   - Drives 340 Hz low-mid note authority and 6550 tube harmonics (+4.0 dB, Q=1.0)
+#   - Lifts 850 Hz midrange pocket (+3.6 dB, Q=1.2) against the SVT's -17.8 dB @ 800 Hz scoop
+#   - Drives 2500 Hz upper-mid articulation (+5.2 dB, Q=1.1) into the MD 421 Cone On-Axis + 10" cone window
+[preamps.studio_super_driver]
+id = "studio_super_driver"
+name = "Studio Super Active Inverse Pre-Conditioner"
+description = "Inverse pre-conditioner for Studio Super (default SVT Vintage 8x10 + MD 421 Cone On-Axis; overridable per voicing via preamp_bands)"
 input_impedance_meg = 1.0
-input_capacitance_pf = 420.0
+input_capacitance_pf = 400.0
 output_impedance_ohm = 100.0
 gain_db = 0.0
 bands = [
-    { id = "cab_80hz_tame", type = "bell", freq_hz = 80.0, gain_db = -1.8, q = 2.0 },
-    { id = "amp_mid_body", type = "bell", freq_hz = 310.0, gain_db = 3.6, q = 1.1 },
-    { id = "amp_pocket_balance", type = "bell", freq_hz = 880.0, gain_db = 1.2, q = 1.3 },
-    { id = "amp_bite_drive", type = "bell", freq_hz = 2450.0, gain_db = 5.6, q = 1.0 }
+    { id = "svt_sub_anchor", type = "bell", freq_hz = 58.0, gain_db = 1.4, q = 1.5 },
+    { id = "svt_88hz_tame", type = "bell", freq_hz = 88.0, gain_db = -2.6, q = 1.8 },
+    { id = "svt_mid_body", type = "bell", freq_hz = 340.0, gain_db = 4.0, q = 1.0 },
+    { id = "svt_pocket_lift", type = "bell", freq_hz = 850.0, gain_db = 3.6, q = 1.2 },
+    { id = "svt_bite_drive", type = "bell", freq_hz = 2500.0, gain_db = 5.2, q = 1.1 }
 ]
 

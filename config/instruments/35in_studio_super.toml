@@ -16,10 +16,14 @@
 #       - Rearward coil (B/E/A bass strings 3,4,5): 54.0mm from bridge
 #       - Inductance: 2x 1.55H series = 3.10H, Rdc = 5.80 kOhm
 # Electronics:
-#   - Dual-FET buffered blend pot (73% Split-P / 27% Bridge)
-#   - 6.8 nF inline series bridge high-pass capacitor (sub-bass phase protection)
-#   - Studio Amp Driver active pre-conditioner (SVT 6x10 & B-15 1x15 optimized)
-#   - 25k low-Z active volume pot
+#   - Shared Active Harness (`super_preamp` / `studio_super_driver`):
+#       - Dual-FET buffered blend (`buffered = true`) + 6.8 nF inline series bridge HPF (`bridge_hpf = 6.8e-9`)
+#   - Voicing 1 (`svt_driver` / "Studio Super SVT"):
+#       - `blend = 0.28` (73% Split-P / 27% Bridge)
+#       - Uses default `studio_super_driver` bands calibrated for Ampeg SVT + Vintage 8x10 (MD 421, Cone On-Axis)
+#   - Voicing 2 (`b15_driver` / "Studio Super B15"):
+#       - `blend = 0.36` (64% Split-P / 36% Bridge)
+#       - Uses voicing-level `preamp_bands` override calibrated for Ampeg B-15 Portaflex 1x15 (Neumann U67, Cone On-Axis)
 
 id = "35in_studio_super"
 name = "Studio Super"
@@ -70,11 +74,11 @@ coils = [
     { id = "rearward", strings = [3, 4, 5], position_from_bridge_m = 0.0540, aperture_width_in = 0.40, pole_type = "rod", L = 1.55, Rdc = 2900.0, Reddy = 195000.0, Ccoil = 1.40e-10, weight = 1.0 },
 ]
 
-# Active Pre-Amp/Cab Conditioning Harness (Dual-FET Buffered Blend + 6.8nF Bridge HPF + Pre-Amp Tilt EQ)
+# Active Pre-Conditioning Harness (Dual-FET Buffered Blend + 6.8nF Bridge HPF + Studio Super Preamp)
 [harnesses.super_preamp]
-name = "Studio Super Universal Pre-Amp/Cab Driver Harness"
+name = "Studio Super Active Driver Harness"
 type = "active_preamp"
-preamp = "studio_amp_driver"
+preamp = "studio_super_driver"
 load_resistance = 1000000.0
 cable_pf = 300.0
 
@@ -90,7 +94,7 @@ wiring = [
 ]
 
 [harnesses.super_preamp.controls.blend]
-name = "Pickup Blend (73% Split-P / 27% Bridge)"
+name = "Pickup Blend (Dual-FET Buffered)"
 type = "pot"
 taper = "mn_blend"
 resistance = 500000.0
@@ -118,10 +122,24 @@ connect = [
 components = { bridge_hpf = 6.8e-9 }
 k_mutual = 0.04
 
-[voicings.studio_super]
+[voicings.svt_driver]
 version = 1
-name = "Studio Super (Universal Amp/Cab Driver)"
-tone_name = "Studio Super"
+name = "Studio Super SVT (Ampeg SVT Vintage 8x10 Driver)"
+tone_name = "Studio Super SVT"
 harness = "super_preamp"
 switches = { coil_mode = "parallel" }
 controls = { vol = 1.0, blend = 0.28 }
+
+[voicings.b15_driver]
+version = 1
+name = "Studio Super B15 (Ampeg B-15 1x15 Driver)"
+tone_name = "Studio Super B15"
+harness = "super_preamp"
+switches = { coil_mode = "parallel" }
+controls = { vol = 1.0, blend = 0.36 }
+preamp_bands = [
+    { id = "b15_sub_anchor", type = "bell", freq_hz = 60.0, gain_db = 2.0, q = 1.5 },
+    { id = "b15_310hz_bark", type = "bell", freq_hz = 310.0, gain_db = 3.5, q = 1.2 },
+    { id = "b15_650hz_pocket", type = "bell", freq_hz = 650.0, gain_db = -2.4, q = 1.4 },
+    { id = "b15_15in_wake", type = "bell", freq_hz = 2250.0, gain_db = 6.8, q = 1.0 },
+]
