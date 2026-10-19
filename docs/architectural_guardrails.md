@@ -18,7 +18,7 @@ To prevent context exhaustion and eliminate contradictory documentation drift, A
    - NAM A2 pairing theory, native/stock trainers & QA audit $\to$ [`docs/trainer/README.md`](trainer/README.md)
    - Tone naming grammar, character budgets & storefront packs $\to$ [`docs/tone_packs/naming.md`](tone_packs/naming.md)
    - Catalog-wide active clamps, limits & thresholds $\to$ [`docs/clamp_and_limit_registry.md`](clamp_and_limit_registry.md)
-4. **Executable Verification ([`tests/test_guardrails.py`](../tests/test_guardrails.py)):** Programmatically enforces all architectural invariants on every test run.
+4. **Executable Verification ([`tests/allomorph/test_guardrails.py`](../tests/allomorph/test_guardrails.py)):** Programmatically enforces all architectural invariants on every test run.
 5. **Primacy of Physical Modeling over Hardcoded Test Values:** First-principles physical equations serve as ground truth. When refining physical modeling (e.g. enforcing $C^\infty$ smoothness or regularizing singularities), hardcoded legacy test values (dB thresholds, frequency bins) are expected to be updated to match verified physical behavior. Never warp or artificially clamp physical formulas to appease obsolete test numbers.
 6. **Catalog-Driven Empirical Analysis for Clamps & Limits:** Never pick arbitrary constants or clipping bounds by intuition. Every clamp, soft-knee threshold, or regularization floor must be evaluated across the entire Cartesian product of playable source pickups $\times$ target voices, preserving 100% linear passband transparency and physical asymmetry, and must be registered in [`docs/clamp_and_limit_registry.md`](clamp_and_limit_registry.md).
 

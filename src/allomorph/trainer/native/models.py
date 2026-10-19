@@ -640,3 +640,206 @@ class AllomorphWaveNetA2(nn.Module):
         with open(out_file, "w", encoding="utf-8") as f:
             json.dump(container, f, separators=(",", ":"))
         return container
+
+    def load_submodel_weights(self, submodel_idx: int, weights: list[float]) -> None:
+        """Loads a flattened NAM C++ submodel weight vector into Lite (0) or Full (1) channels."""
+        if submodel_idx == 0:
+            c_slice = slice(0, CHANNELS_LITE)
+            c_count = CHANNELS_LITE
+            h_idx = 0
+        else:
+            c_slice = slice(CHANNELS_LITE, CHANNELS_TOTAL)
+            c_count = CHANNELS_FULL
+            h_idx = 1
+
+        w_arr = torch.tensor(weights, dtype=torch.float32)
+        pos = 0
+
+        with torch.no_grad():
+            param_dev = self.rechannel.weight.device
+            param_dtype = self.rechannel.weight.dtype
+
+            # 1. Rechannel (c_count, 1, 1)
+            n_rech = c_count
+            self.rechannel.weight[c_slice, :, :].copy_(
+                w_arr[pos : pos + n_rech]
+                .reshape(c_count, 1, 1)
+                .to(device=param_dev, dtype=param_dtype)
+            )
+            pos += n_rech
+
+            # 2. Layers
+            for layer in self.layers:
+                layer_mod = cast(AllomorphWaveNetLayer, layer)
+                k = layer_mod.kernel_size
+
+                n_conv_w = c_count * c_count * k
+                layer_mod.conv.weight[c_slice, c_slice, :].copy_(
+                    w_arr[pos : pos + n_conv_w]
+                    .reshape(c_count, c_count, k)
+                    .to(device=param_dev, dtype=param_dtype)
+                )
+                pos += n_conv_w
+
+                if layer_mod.conv.bias is not None:
+                    conv_b = cast(torch.Tensor, layer_mod.conv.bias)
+                    conv_b[c_slice].copy_(
+                        w_arr[pos : pos + c_count].to(device=param_dev, dtype=param_dtype)
+                    )
+                    pos += c_count
+
+                n_in_w = c_count
+                layer_mod.input_mixer.weight[c_slice, :, :].copy_(
+                    w_arr[pos : pos + n_in_w]
+                    .reshape(c_count, 1, 1)
+                    .to(device=param_dev, dtype=param_dtype)
+                )
+                pos += n_in_w
+
+                if layer_mod.input_mixer.bias is not None:
+                    in_b = cast(torch.Tensor, layer_mod.input_mixer.bias)
+                    in_b[c_slice].copy_(
+                        w_arr[pos : pos + c_count].to(device=param_dev, dtype=param_dtype)
+                    )
+                    pos += c_count
+
+                n_1x1_w = c_count * c_count
+                layer_mod.layer1x1.weight[c_slice, c_slice, :].copy_(
+                    w_arr[pos : pos + n_1x1_w]
+                    .reshape(c_count, c_count, 1)
+                    .to(device=param_dev, dtype=param_dtype)
+                )
+                pos += n_1x1_w
+
+                if layer_mod.layer1x1.bias is not None:
+                    l1x1_b = cast(torch.Tensor, layer_mod.layer1x1.bias)
+                    l1x1_b[c_slice].copy_(
+                        w_arr[pos : pos + c_count].to(device=param_dev, dtype=param_dtype)
+                    )
+                    pos += c_count
+
+            # 3. Head rechannel
+            n_hr_w = c_count * HEAD_KERNEL_SIZE
+            self.head_rechannel.weight[h_idx : h_idx + 1, c_slice, :].copy_(
+                w_arr[pos : pos + n_hr_w]
+                .reshape(1, c_count, HEAD_KERNEL_SIZE)
+                .to(device=param_dev, dtype=param_dtype)
+            )
+            pos += n_hr_w
+
+            if self.head_rechannel.bias is not None:
+                hr_b = cast(torch.Tensor, self.head_rechannel.bias)
+                hr_b[h_idx : h_idx + 1].copy_(
+                    w_arr[pos : pos + 1].to(device=param_dev, dtype=param_dtype)
+                )
+                pos += 1
+
+            # 4. Head scale
+            if pos < len(weights):
+                self.head_scale = float(weights[pos])
+
+            self.mask_weights()
+
+    @classmethod
+    def from_nam_file(
+        cls,
+        nam_path: str | Path,
+        device: str | torch.device = "cpu",
+    ) -> tuple[AllomorphWaveNetA2, dict[str, Any], int]:
+        """Reconstructs an AllomorphWaveNetA2 instance from an exported .nam file.
+
+        Returns:
+            Tuple of (model, metadata_dict, sample_rate).
+        """
+        path = Path(nam_path)
+        if not path.is_file():
+            raise FileNotFoundError(f"NAM model file not found: {path}")
+
+        data = json.loads(path.read_text(encoding="utf-8"))
+        if not isinstance(data, dict):
+            raise TypeError(f"Invalid NAM JSON payload in {path}")
+
+        model = cls().to(device)
+        model.eval()
+        model.activation_tau = 0.0
+
+        arch = data.get("architecture")
+        if arch == "SlimmableContainer":
+            submodels = data.get("config", {}).get("submodels", [])
+            if len(submodels) >= 2:
+                w0 = submodels[0].get("model", {}).get("weights", [])
+                w1 = submodels[1].get("model", {}).get("weights", [])
+                if isinstance(w0, list) and w0:
+                    model.load_submodel_weights(0, [float(x) for x in w0])
+                if isinstance(w1, list) and w1:
+                    model.load_submodel_weights(1, [float(x) for x in w1])
+        elif arch == "WaveNet":
+            w = data.get("weights", [])
+            ch = (
+                data.get("config", {}).get("layers", [{}])[0].get("channels", CHANNELS_FULL)
+                if isinstance(data.get("config", {}).get("layers"), list)
+                else CHANNELS_FULL
+            )
+            sub_idx = 0 if ch == CHANNELS_LITE else 1
+            if isinstance(w, list) and w:
+                model.load_submodel_weights(sub_idx, [float(x) for x in w])
+        else:
+            raise ValueError(f"Unsupported NAM architecture '{arch}' in {path}")
+
+        meta = data.get("metadata", {})
+        sr = int(data.get("sample_rate", 48000))
+        return model, (meta if isinstance(meta, dict) else {}), sr
+
+
+def select_warm_start_offset(
+    x_train: np.ndarray,
+    window_len: int = 32768,
+    sample_rate: int = 48000,
+) -> int:
+    """Selects the highest-energy active calibration window in x_train for Step-0 Wiener warm-start.
+
+    Avoids leading silence and sparse 1-sample calibration blips so the Tikhonov-regularized
+    Wiener-Hopf normal equations are solved on dense broadband excitation.
+    """
+    n = len(x_train)
+    if n <= window_len:
+        return 0
+
+    scan_limit = min(n - window_len, max(window_len, 60 * sample_rate))
+    stride = max(4096, window_len // 2)
+    best_offset = 0
+    best_energy = -1.0
+
+    for start in range(0, scan_limit + 1, stride):
+        seg = x_train[start : start + window_len]
+        energy = float(np.mean(np.square(seg, dtype=np.float64)))
+        if energy > best_energy:
+            best_energy = energy
+            best_offset = start
+
+    return best_offset
+
+
+def apply_model_io_scale_compensation(
+    model: AllomorphWaveNetA2,
+    *,
+    x_scale_factor: float,
+    y_scale_factor: float,
+) -> None:
+    """Folds training input/output conditioning scales into WaveNet weights for 1:1 hardware I/O.
+
+    In WaveNet Architecture 2, the raw input `u` enters exclusively through bias-free 1x1
+    convolutions (`model.rechannel` and every `layer.input_mixer`). Multiplying those weights
+    by `x_scale_factor` and `model.head_scale` by `1.0 / y_scale_factor` yields the exact
+    algebraic identity:
+        M_exported(u) == (1.0 / y_scale_factor) * M_trained(x_scale_factor * u)
+    """
+    with torch.no_grad():
+        if x_scale_factor != 1.0:
+            s_x = float(x_scale_factor)
+            model.rechannel.weight.mul_(s_x)
+            for layer_mod in model.layers:
+                layer = cast(AllomorphWaveNetLayer, layer_mod)
+                layer.input_mixer.weight.mul_(s_x)
+        if y_scale_factor != 1.0:
+            model.head_scale = float(model.head_scale) * (1.0 / float(y_scale_factor))

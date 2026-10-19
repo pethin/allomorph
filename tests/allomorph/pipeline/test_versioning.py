@@ -1,0 +1,517 @@
+"""
+Unit tests for Allomorph 3-part semantic versioning (v[dsp].[inst].[voice]),
+Tone3000 length bounds, anti-collision guarantees, sidecar manifest generation,
+and NAM container provenance metadata.
+"""
+
+import json
+from pathlib import Path
+
+import pytest
+
+from allomorph.config.instruments import INSTRUMENTS
+from allomorph.config.schema import InstrumentConfig
+from allomorph.naming import get_t3k_basename
+from allomorph.pipeline.schema import (
+    NamExportMetadata,
+    NamSourceInstrumentMeta,
+    NamSourceVoicingMeta,
+    NamTargetVoicingMeta,
+    NamTrainingMetadata,
+)
+from allomorph.version import (
+    ALLOMORPH_VERSION,
+    DEFAULT_INST_VERSION,
+    DEFAULT_VOICE_VERSION,
+    DSP_GENERATION,
+    compute_file_sha256,
+    get_git_commit,
+    get_version_info,
+    resolve_tri_part_version,
+    write_manifest,
+)
+
+
+def test_resolve_tri_part_version():
+    """Verify default and custom tri-part semantic version strings."""
+    assert resolve_tri_part_version() == "v7.1.1"
+    assert resolve_tri_part_version(2, 1, 1) == "v2.1.1"
+    assert resolve_tri_part_version(2, 2, 1) == "v2.2.1"
+    assert resolve_tri_part_version(2, 1, 2) == "v2.1.2"
+    assert resolve_tri_part_version(3, 1, 1) == "v3.1.1"
+    assert resolve_tri_part_version(4, 1, 1) == "v4.1.1"
+    assert resolve_tri_part_version(5, 1, 1) == "v5.1.1"
+    assert resolve_tri_part_version(6, 1, 1) == "v6.1.1"
+    assert resolve_tri_part_version(7, 1, 1) == "v7.1.1"
+    assert resolve_tri_part_version(1, 3, 5) == "v1.3.5"
+
+
+def test_get_version_info():
+    """Verify provenance metadata dictionary structure and git commit detection."""
+    import tomllib
+
+    import allomorph
+    from allomorph.cli import app
+
+    pyproject_path = Path(__file__).resolve().parents[3] / "pyproject.toml"
+    with pyproject_path.open("rb") as f:
+        expected_version = tomllib.load(f)["project"]["version"]
+
+    info = get_version_info()
+    assert info["version"] == "v7.1.1"
+    assert info["dsp_version"] == DSP_GENERATION
+    assert DSP_GENERATION == 7
+    assert info["instrument_version"] == DEFAULT_INST_VERSION
+    assert info["voice_version"] == DEFAULT_VOICE_VERSION
+    assert info["allomorph_version"] == ALLOMORPH_VERSION
+    assert ALLOMORPH_VERSION == expected_version
+    assert allomorph.__version__ == ALLOMORPH_VERSION
+    assert app.version == ALLOMORPH_VERSION
+    assert "generated_at" in info
+    commit = get_git_commit()
+    assert info["git_commit"] == commit
+
+
+def test_anti_collision_guarantee():
+    """Verify that incrementing any version component produces distinct filenames,
+
+    preventing tone overwrites or collisions within tone packs.
+    """
+    v_base = resolve_tri_part_version(2, 1, 1)
+    v_dsp = resolve_tri_part_version(3, 1, 1)
+    v_inst = resolve_tri_part_version(2, 2, 1)
+    v_voice = resolve_tri_part_version(2, 1, 2)
+
+    assert len({v_base, v_dsp, v_inst, v_voice}) == 4
+
+    # Tone3000 filenames
+    t3k_base = get_t3k_basename("Precision Vintage", "Split", version_tag=v_base)
+    t3k_dsp = get_t3k_basename("Precision Vintage", "Split", version_tag=v_dsp)
+    t3k_inst = get_t3k_basename("Precision Vintage", "Split", version_tag=v_inst)
+    t3k_voice = get_t3k_basename("Precision Vintage", "Split", version_tag=v_voice)
+
+    assert len({t3k_base, t3k_dsp, t3k_inst, t3k_voice}) == 4
+    assert t3k_base == "Precision Vintage [Split] v2.1.1"
+    assert t3k_dsp == "Precision Vintage [Split] v3.1.1"
+    assert t3k_inst == "Precision Vintage [Split] v2.2.1"
+    assert t3k_voice == "Precision Vintage [Split] v2.1.2"
+
+
+def test_t3k_filename_length_ceiling():
+    """Verify that all target voices across all instruments with version_tag stay strictly <= 64 chars.
+
+    Tone3000 has a hard 64-character upload ceiling for the tone model name.
+    """
+    version_tag = "v2.1.1"
+    for inst_id, inst_cfg in INSTRUMENTS.items():
+        for tgt_inst_id, tgt_inst in INSTRUMENTS.items():
+            for vid, vcfg in tgt_inst.voicings.items():
+                tone_name = vcfg.tone_name or vcfg.name
+                if len(inst_cfg.pickups) <= 1:
+                    pos_names = [None]
+                else:
+                    pos_names = [
+                        p.position_name or p.name
+                        for p in inst_cfg.pickups.values()
+                        if p.position_name or p.name
+                    ] or [None]
+
+                for pos_name in pos_names:
+                    basename = get_t3k_basename(
+                        tone_name,
+                        pos_name,
+                        version_tag=version_tag,
+                    )
+                    assert len(basename) <= 64, (
+                        f"Tone '{basename}' for {inst_id} -> {tgt_inst_id}:{vid} exceeds 64-character ceiling ({len(basename)} > 64)"
+                    )
+
+
+def test_t3k_basename_exceeding_ceiling_raises_error():
+    """Verify that get_t3k_basename raises ValueError if tone name exceeds 64 chars."""
+    with pytest.raises(ValueError, match="exceeds 64 characters"):
+        get_t3k_basename(
+            "Super Long Ridiculously Verbose Target Voicing Name That Will Overrun",
+            "Neck",
+            version_tag="v2.1.1",
+        )
+
+
+def test_write_manifest_and_sha256(tmp_path: Path):
+    """Verify manifest.json generation, SHA256 calculation, and audio metrics."""
+    import numpy as np
+
+    from allomorph.dsp import write_wav_24bit
+
+    # Create dummy audio and text file
+    dummy_wav = tmp_path / "dummy.wav"
+    audio_data = np.full(48000, 0.5, dtype=np.float32)
+    write_wav_24bit(str(dummy_wav), audio_data, 48000)
+
+    dummy_nam = tmp_path / "dummy.nam"
+    dummy_nam.write_text('{"mock": true}', encoding="utf-8")
+
+    manifest_p = write_manifest(
+        output_dir=tmp_path,
+        stage="test_stage",
+        files=[dummy_wav, dummy_nam],
+        version_tag="v2.1.1",
+    )
+
+    assert manifest_p.exists()
+    with manifest_p.open("r", encoding="utf-8") as f:
+        data = json.load(f)
+
+    assert data["version"] == "v2.1.1"
+    assert data["stage"] == "test_stage"
+    assert data["dsp_generation"] == 7
+    assert data["file_count"] == 2
+    assert "dummy.wav" in data["files"]
+    assert "dummy.nam" in data["files"]
+
+    wav_entry = data["files"]["dummy.wav"]
+    assert "sha256" not in wav_entry
+    assert wav_entry["size_bytes"] == dummy_wav.stat().st_size
+    assert wav_entry["sample_rate"] == 48000
+    assert "peak_dbfs" in wav_entry
+    assert "rms_dbfs" in wav_entry
+    assert "true_peak_dbfs" in wav_entry
+    assert "lufs" in wav_entry
+
+    nam_entry = data["files"]["dummy.nam"]
+    assert nam_entry["sha256"] == compute_file_sha256(dummy_nam)
+    assert nam_entry["size_bytes"] == dummy_nam.stat().st_size
+
+
+def test_simulate_instrument_pickup_with_version_tag(
+    tmp_path: Path, generic_instrument_config: InstrumentConfig
+):
+    """Verify simulate_instrument_voicing creates wet pickup stem and records manifest when requested."""
+    from allomorph.circuit.forward import simulate_instrument_voicing
+
+    v_cfg = generic_instrument_config.voicings["generic_voice"]
+    wet_p = simulate_instrument_voicing(
+        instrument=generic_instrument_config,
+        voicing=v_cfg,
+        output_wav=tmp_path / "generic_voice.wav",
+        max_samples=2048,
+    )
+    assert wet_p.exists()
+    assert wet_p.name == "generic_voice.wav"
+
+    manifest_p = wet_p.parent / "manifest.json"
+    assert manifest_p.exists()
+    with manifest_p.open("r", encoding="utf-8") as f:
+        m = json.load(f)
+    assert m["version"] == "v7.1.1"
+    assert wet_p.name in m["files"]
+    assert "recipe_token" in m
+    assert m["recipe_token"].startswith("alo_rec_")
+    assert m["files"][wet_p.name]["recipe_token"] == m["recipe_token"]
+    assert "digest_token" in m
+    assert m["digest_token"].startswith("alo_stem_")
+    assert m["files"][wet_p.name]["digest_token"] == m["digest_token"]
+
+
+def test_stem_manifest_validation_and_invalidation(tmp_path: Path):
+    """Verify is_stem_valid detects valid stems and catches stale/mismatched recipe tokens."""
+    from allomorph.version import is_stem_valid, write_manifest
+
+    # 1. Setup mock wet stem
+    wet_stem = tmp_path / "mock_wet.wav"
+    wet_stem.write_bytes(b"MOCK_WET_CONVOLVED_AUDIO_DATA_67890")
+
+    original_token = "alo_stem_1111111111111111111111111111111111111111111111111111111111111111"
+    mutated_token = "alo_stem_2222222222222222222222222222222222222222222222222222222222222222"
+
+    # 2. Initially without manifest -> invalid
+    assert not is_stem_valid(wet_stem, expected_recipe_token=original_token)
+
+    # 3. Write authoritative manifest recording recipe_token
+    manifest_p = write_manifest(
+        output_dir=tmp_path,
+        stage="voicing",
+        files=[wet_stem],
+        version_tag="v6.1.1",
+        recipe_token=original_token,
+    )
+    assert manifest_p.exists()
+
+    # 4. Now it must be valid
+    assert is_stem_valid(wet_stem, expected_recipe_token=original_token)
+    assert is_stem_valid(wet_stem, expected_recipe_token=original_token, expected_version="v6.1.1")
+    assert not is_stem_valid(
+        wet_stem, expected_recipe_token=original_token, expected_version="v6.2.1"
+    )
+
+    # 5. Mutate expected recipe token -> must immediately invalidate stale wet stem cache!
+    assert not is_stem_valid(wet_stem, expected_recipe_token=mutated_token)
+
+    # 6. Non-existent wet stem returns False
+    missing_stem = tmp_path / "missing_stem.wav"
+    assert not is_stem_valid(missing_stem, expected_recipe_token=original_token)
+
+
+def test_manifest_tracks_instrument_and_voicing_versions(tmp_path: Path):
+    """Verify write_manifest records instrument_version and voicing_version at root and in file entries."""
+    from allomorph.version import write_manifest
+
+    mock_stem = tmp_path / "mock_stem.wav"
+    mock_stem.write_bytes(b"MOCK_DATA_123")
+
+    m_path = write_manifest(
+        output_dir=tmp_path,
+        stage="voicing",
+        files=[mock_stem],
+        version_tag="v3.1.2",
+        base_dry_token="alo_dry_123",
+        base_dry_file="base.wav",
+        instrument_version=1,
+        voicing_version=2,
+    )
+    assert m_path.exists()
+    with m_path.open("r", encoding="utf-8") as f:
+        data = json.load(f)
+
+    assert data["version"] == "v3.1.2"
+    assert data["instrument_version"] == 1
+    assert data["voicing_version"] == 2
+    assert data["base_dry_token"] == "alo_dry_123"
+    assert "mock_stem.wav" in data["files"]
+    fentry = data["files"]["mock_stem.wav"]
+    assert fentry["instrument_version"] == 1
+    assert fentry["voicing_version"] == 2
+    assert fentry["version"] == "v3.1.2"
+    assert fentry["base_dry_token"] == "alo_dry_123"
+
+
+def test_all_catalog_instruments_and_voicings_declare_version():
+    """Verify all instruments in config/instruments declare version >= 1 at instrument and voicing level."""
+    from allomorph.config.instruments import load_all_instruments
+
+    instruments = load_all_instruments()
+    assert len(instruments) >= 16
+    for iid, inst in instruments.items():
+        assert inst.version >= 1, f"Instrument {iid} has invalid version {inst.version}"
+        for vid, v in inst.voicings.items():
+            assert v.version >= 1, f"Voicing {iid}:{vid} has invalid version {v.version}"
+
+
+def test_nam_export_metadata_schema_version_fields():
+    """Verify NamExportMetadata validates full tri-part version and engine provenance."""
+    meta = NamExportMetadata(
+        training=NamTrainingMetadata(
+            validation_esr=0.0075,
+            training_loss=0.0050,
+            best_epoch=120,
+            total_epochs=150,
+        ),
+        license="PolyForm Noncommercial License 1.0.0",
+        copyright="Copyright 2026 Peter Nguyen",
+        author="Peter Nguyen",
+        version="v2.1.1",
+        dsp_version=2,
+        instrument_version=1,
+        voice_version=1,
+        allomorph_version="0.2.0",
+        git_commit="abc1234",
+        generated_at="2026-09-13T12:00:00Z",
+        source_instrument=NamSourceInstrumentMeta(
+            id="30in_emg_mmtw",
+            name='30" Short Scale MM',
+            scale_length_in=30.0,
+            voicing=NamSourceVoicingMeta(name="EMG MM Dual Coil"),
+        ),
+        target_voicing=NamTargetVoicingMeta(
+            id="vintage_open",
+            name="Vintage 62 P (Alnico V)",
+        ),
+    )
+    d = meta.model_dump()
+    assert d["version"] == "v2.1.1"
+    assert d["dsp_version"] == 2
+    assert d["instrument_version"] == 1
+    assert d["voice_version"] == 1
+    assert d["allomorph_version"] == "0.2.0"
+    assert d["git_commit"] == "abc1234"
+    assert d["target_voicing"]["id"] == "vintage_open"
+    assert d["source_instrument"]["voicing"]["name"] == "EMG MM Dual Coil"
+
+
+def test_resolve_tri_part_version_flexible_none():
+    """Verify resolve_tri_part_version handles None for voice_version and inst_version."""
+    assert resolve_tri_part_version(2, 1, 1) == "v2.1.1"
+    assert resolve_tri_part_version(2, 1, None) == "v2.1"
+    assert resolve_tri_part_version(2, None, None) == "v2"
+    assert resolve_tri_part_version(inst_version=None, voice_version=None) == f"v{DSP_GENERATION}"
+    assert resolve_tri_part_version(inst_version=2, voice_version=None) == f"v{DSP_GENERATION}.2"
+
+
+def test_input_audio_naming_helpers():
+    """Verify naming helpers for input audio file."""
+    from allomorph.naming import get_default_input_path
+
+    input_p = get_default_input_path(audio_dir="/tmp/test_allomorph")
+    assert input_p == Path("/tmp/test_allomorph/input.wav")
+
+
+def test_ensure_input_audio_wav(tmp_path: Path):
+    """Verify ensure_input_audio_wav synthesizes to output path."""
+    from allomorph.dsp import FS, ensure_input_audio_wav, read_wav
+
+    out_file = tmp_path / "input.wav"
+    res = ensure_input_audio_wav(output_path=out_file, duration_sec=1.0)
+    assert res == out_file
+    assert out_file.exists()
+
+    audio, sr = read_wav(out_file)
+    assert sr == FS
+    assert len(audio) == int(1.0 * FS)
+
+
+def test_is_stem_valid_comprehensive_matrix(tmp_path: Path):
+    """Verify is_stem_valid condition matrix (missing files, invalid JSON, version/token mismatch)."""
+    from allomorph.version import is_stem_valid, write_manifest
+
+    base_dry = tmp_path / "base_dry.wav"
+    base_dry.write_bytes(b"base dry audio content")
+    stem = tmp_path / "wet_stem.wav"
+    stem.write_bytes(b"wet audio stem content")
+    manifest_p = tmp_path / "manifest.json"
+    expected_token = "alo_stem_0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+
+    # 1. Stem file does not exist
+    non_existent = tmp_path / "non_existent.wav"
+    assert is_stem_valid(non_existent, expected_recipe_token=expected_token) is False
+
+    # 2. Manifest does not exist
+    assert is_stem_valid(stem, expected_recipe_token=expected_token) is False
+
+    # 3. Manifest contains invalid JSON
+    manifest_p.write_text("invalid json {", encoding="utf-8")
+    assert is_stem_valid(stem, expected_recipe_token=expected_token) is False
+
+    # 4. Manifest missing stem entry
+    manifest_p.write_text(json.dumps({"files": {}}), encoding="utf-8")
+    assert is_stem_valid(stem, expected_recipe_token=expected_token) is False
+
+    # 5. Manifest entry missing recipe_token
+    manifest_p.write_text(
+        json.dumps({"files": {stem.name: {"version": "v6.1.1"}}}), encoding="utf-8"
+    )
+    assert is_stem_valid(stem, expected_recipe_token=expected_token) is False
+
+    # 6. Expected version mismatch
+    write_manifest(
+        tmp_path,
+        "sim",
+        [stem],
+        version_tag="v2.1.1",
+        base_dry_file=base_dry.name,
+        recipe_token=expected_token,
+    )
+    assert (
+        is_stem_valid(stem, expected_recipe_token=expected_token, expected_version="v3.1.1")
+        is False
+    )
+
+    # 7. Token mismatch
+    write_manifest(
+        tmp_path,
+        "sim",
+        [stem],
+        version_tag="v6.1.1",
+        base_dry_file=base_dry.name,
+        recipe_token="alo_stem_wrongtoken000000000000000000000000000000000000000000000000000000",
+    )
+    assert (
+        is_stem_valid(stem, expected_recipe_token=expected_token, expected_version="v6.1.1")
+        is False
+    )
+
+    # 8. Valid stem: matching token and version
+    write_manifest(
+        tmp_path,
+        "sim",
+        [stem],
+        version_tag="v6.1.1",
+        base_dry_file=base_dry.name,
+        recipe_token=expected_token,
+    )
+    assert (
+        is_stem_valid(stem, expected_recipe_token=expected_token, expected_version="v6.1.1") is True
+    )
+
+
+def test_write_manifest_dict_files(tmp_path: Path):
+    """Verify write_manifest handles files passed as a dictionary of metadata."""
+    from allomorph.version import write_manifest
+
+    stem1 = tmp_path / "stem1.wav"
+    stem1.write_bytes(b"content 1")
+    stem2 = tmp_path / "stem2.wav"
+    stem2.write_bytes(b"content 2")
+
+    files_dict = {
+        stem1.name: {"note": "test stem 1"},
+        stem2.name: {"note": "test stem 2"},
+    }
+
+    manifest_p = write_manifest(
+        tmp_path,
+        "sim",
+        files_dict,
+        version_tag="v6.1.1",
+        instrument_version=2,
+        voicing_version=3,
+        base_dry_file="dry.wav",
+        base_dry_token="alo_dry_1234",
+    )
+
+    assert manifest_p.exists()
+    data = json.loads(manifest_p.read_text(encoding="utf-8"))
+    files = data["files"]
+    assert stem1.name in files
+    assert stem2.name in files
+    assert files[stem1.name]["version"] == "v6.1.1"
+    assert files[stem1.name]["instrument_version"] == 2
+    assert files[stem1.name]["voicing_version"] == 3
+    assert files[stem1.name]["base_dry_token"] == "alo_dry_1234"
+    assert files[stem1.name]["note"] == "test stem 1"
+
+
+def test_dual_token_excitation_and_stems(tmp_path: Path):
+    """Verify dual token generation separating recipe from audio PCM digest."""
+    import numpy as np
+
+    from allomorph.dsp.io import write_wav_24bit
+    from allomorph.version import (
+        compute_excitation_digest_token,
+        compute_excitation_recipe_token,
+        compute_pcm_stem_digest,
+        compute_stem_digest_token,
+    )
+
+    # 1. Excitation recipe token
+    rec1 = compute_excitation_recipe_token(dsp_generation=6, sample_rate=48000, duration_sec=120.0)
+    rec2 = compute_excitation_recipe_token(dsp_generation=7, sample_rate=48000, duration_sec=120.0)
+    assert rec1.startswith("alo_dryrec_")
+    assert rec2.startswith("alo_dryrec_")
+    assert len(rec1) == 11 + 64
+    assert rec1 != rec2
+
+    # 2. Audio PCM digest token
+    samples = np.array([0.0, 0.5, -0.5], dtype=np.float32)
+    wav_file = tmp_path / "test.wav"
+    write_wav_24bit(str(wav_file), samples, 48000)
+
+    dry_digest = compute_excitation_digest_token(wav_file)
+    assert dry_digest.startswith("alo_dry_")
+    assert len(dry_digest) == 8 + 64
+
+    stem_digest = compute_stem_digest_token(wav_file)
+    assert stem_digest.startswith("alo_stem_")
+    assert len(stem_digest) == 9 + 64
+
+    pcm_digest = compute_pcm_stem_digest(samples)
+    assert pcm_digest == stem_digest

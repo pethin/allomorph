@@ -45,17 +45,24 @@ build-backend = "hatchling.build"
 
 [project.scripts]
 allomorph = "allomorph.cli:main"
+reamper = "reamper.cli:main"
+denoiser = "denoiser.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/allomorph", "src/reamper", "src/denoiser"]
 
 [tool.pytest.ini_options]
 pythonpath = ["src", "."]
 testpaths = ["tests"]
 addopts = [
     "--cov=allomorph",
+    "--cov=reamper",
+    "--cov=denoiser",
     "--cov-report=term-missing",
 ]
 
 [tool.coverage.run]
-source = ["src/allomorph"]
+source = ["src/allomorph", "src/reamper", "src/denoiser"]
 branch = true
 omit = [
     "tests/*",

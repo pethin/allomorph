@@ -8,7 +8,7 @@
 - **Core Stack:** Strictly use **`numpy`**, **`polars`**, **`altair`**, **`pedalboard`**, **`pydantic`**, and **`numba`**. Never add `scipy`, `pandas`, `matplotlib`, or `soundfile`.
 - **Lint & Format:** Pass `uv run ruff check` and `uv run ruff format --check` targeting Python 3.14 (`py314`).
 - **Strict Typing:** Pass `uv run pyrefly check` (`preset = "strict"` in [`pyproject.toml`](pyproject.toml)). Never disable rules, downscale presets, or use `# type: ignore`.
-- **Testing:** Run `uv run pytest`. All changes must pass [`test_guardrails.py`](tests/test_guardrails.py).
+- **Testing:** Run `uv run pytest`. All changes must pass [`test_guardrails.py`](tests/allomorph/test_guardrails.py).
 - **Git & CLA:** Sign off commits via `git commit -s` per [`CLA.md`](CLA.md) and [`CONTRIBUTING.md`](CONTRIBUTING.md).
 - **Search Hygiene:** Always exclude `*.nam` and `*.wav` files when searching (`rg`, `git grep`, `grep`).
 
@@ -33,7 +33,7 @@ Consult the directory-scoped `AGENTS.md` and Single-Source-of-Truth (SSOT) docs 
 | **Polars + Altair Visualizer** | [`visualizer/AGENTS.md`](src/allomorph/visualizer/AGENTS.md) | [`architectural_guardrails.md`](docs/architectural_guardrails.md) |
 | **Packaging, Naming & CLI** | [`pipeline/AGENTS.md`](src/allomorph/pipeline/AGENTS.md) | [`naming.md`](docs/tone_packs/naming.md), [`ranking.md`](docs/tone_packs/ranking.md), [`catalog.md`](docs/tone_packs/catalog.md) |
 | **TOML Configs & Voices** | [`config/AGENTS.md`](config/AGENTS.md) | [`configuration_reference.md`](docs/configuration_reference.md), [`voice_catalog.md`](docs/voice_catalog.md), [`anagram_workflow.md`](docs/anagram_workflow.md) |
-| **Test Suite & Guardrails** | [`tests/AGENTS.md`](tests/AGENTS.md) | [`CONTRIBUTING.md`](CONTRIBUTING.md), [`test_guardrails.py`](tests/test_guardrails.py) |
+| **Test Suite & Guardrails** | [`tests/AGENTS.md`](tests/AGENTS.md) | [`CONTRIBUTING.md`](CONTRIBUTING.md), [`test_guardrails.py`](tests/allomorph/test_guardrails.py) |
 
 ## 4. Maintaining `AGENTS.md` & Documentation
 

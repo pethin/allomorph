@@ -1,11 +1,14 @@
 # Automated Test Suite — Agent Routing Guide
 
-Covers unit, property-based (Hypothesis), integration, and architectural invariant tests across all Allomorph subpackages.
+Covers unit, property-based (Hypothesis), integration, and architectural invariant tests across the three isolated package suites (`allomorph`, `reamper`, and `denoiser`).
 
 ## Key Suites
-- [`test_guardrails.py`](test_guardrails.py): Programmatic verification of cross-cutting mathematical, physical, naming, and documentation invariants.
-- [`circuit/`](circuit/), [`config/`](config/), [`dsp/`](dsp/), [`physics/`](physics/), [`pipeline/`](pipeline/), [`tone3000/`](tone3000/), [`visualizer/`](visualizer/), [`integration/`](integration/): Domain-specific test suites.
-- [`strategies.py`](strategies.py): Shared Hypothesis property-based testing strategies.
+- [`allomorph/`](allomorph/): Digital Twin simulation, DSP, MNA circuits, visualizer, and Tone3000 packaging tests:
+  - [`test_guardrails.py`](allomorph/test_guardrails.py): Programmatic verification of cross-cutting mathematical, physical, naming, and documentation invariants.
+  - [`circuit/`](allomorph/circuit/), [`config/`](allomorph/config/), [`dsp/`](allomorph/dsp/), [`physics/`](allomorph/physics/), [`pipeline/`](allomorph/pipeline/), [`tone3000/`](allomorph/tone3000/), [`visualizer/`](allomorph/visualizer/), [`integration/`](allomorph/integration/): Domain-specific test suites.
+  - [`strategies.py`](allomorph/strategies.py): Shared Hypothesis property-based testing strategies.
+- [`reamper/`](reamper/): Hardware USB re-amping, closed-loop gain calibration, latency alignment, and re-amped rig NAM A2 trainer tests.
+- [`denoiser/`](denoiser/): Universal Bass Denoiser (50/60 Hz hum + SMPS noise synthesis, $C^\infty$ envelope loss, and native A2 trainer/CLI) tests.
 
 ## Required Reading (Single Source of Truth)
 Before adding or modifying tests in this directory, read:
