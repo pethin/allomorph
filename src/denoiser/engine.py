@@ -98,77 +98,92 @@ def generate_denoiser_storefront_description(
     output_dir: Path,
     trained_metadata: list[dict[str, Any]] | None = None,
 ) -> Path:
-    """Generates `storefront_description.txt` (<= 10,000 chars) for the Tone3000 Denoiser Tone Pack."""
+    """Generates `storefront_description.txt` (<= 10,000 chars) for the Faraday Tone3000 Pack."""
     output_dir.mkdir(parents=True, exist_ok=True)
     desc_path = output_dir / "storefront_description.txt"
 
     lines: list[str] = [
-        "ALLOMORPH UNIVERSAL BASS DENOISER — NEURAL AMP MODELER (NAM A2) UTILITY PACK",
+        "FARADAY: UNIVERSAL BASS DENOISER & HUM ELIMINATOR",
         "",
-        "Overview",
-        "--------",
-        "The Allomorph Universal Bass Denoiser pack is a collection of pickup-agnostic Neural Amp",
-        "Modeler Architecture 2 (.nam) utility models engineered for Darkglass Anagram (Block 1)",
-        "and desktop NAM plugins. Each model suppresses 50/60 Hz electromagnetic mains hum,",
-        "rectifier/dimmer harmonic buzz, and high-frequency switching power supply (SMPS) whine",
-        "(2.5 kHz - 22 kHz) while preserving 1:1 unity gain, transient snap, and natural low-end",
-        "weight across any passive or active bass guitar.",
+        "Studio- and stage-grade 50/60 Hz single-coil hum, dimmer buzz, and power-supply whine",
+        "eliminator for any passive or active bass guitar.",
         "",
-        "Signal Chain Placement",
-        "----------------------",
-        "Place the denoiser in Block 1 of your Darkglass Anagram (or first in your DAW signal chain)",
-        "immediately after your physical bass input and before compressors, overdrive pedals,",
-        "or high-gain amp blocks. Removing 50/60 Hz buzz and ultrasonic SMPS clock noise before",
-        "nonlinear gain stages prevents downstream distortion pedals and tube amp models from",
-        "amplifying and intermodulating your noise floor.",
         "",
-        "Included Profiles & Mains Configurations",
-        "----------------------------------------",
-        "1. Universal Gentle (-50 dBFS Gate Knee)",
-        "   - File: universal_gentle.nam",
-        "   - Best for: Studio recording, well-shielded humbuckers/split-coils, fretless bass,",
-        "     and exposed solo passages requiring ultra-long natural sustain tails.",
+        "OVERVIEW",
         "",
-        "2. Universal Balanced (-44 dBFS Gate Knee) [Recommended Default]",
-        "   - File: universal_balanced.nam",
-        "   - Best for: Everyday live & studio playing across P-Bass, Jazz Bass, StingRay,",
-        "     and modern active soapbars. Balances deep 50/60 Hz hum + SMPS switching whine",
-        "     rejection with smooth C-infinity sustain decay.",
+        "Faraday is a pickup-agnostic Neural Amp Modeler Architecture 2 (.nam) utility pedal pack",
+        "engineered for the Darkglass Anagram (Block 1) and desktop NAM plugins. Like a virtual",
+        "copper Faraday shield wrapped around your instrument's electronics, Faraday eliminates:",
+        "• 50 Hz and 60 Hz electromagnetic mains hum induced in single-coil Jazz, P90, and soapbar pickups",
+        "• Upper-harmonic rectifier and stage LED/TRIAC dimmer buzz across the midrange",
+        "• High-frequency switching power supply (SMPS), daisy-chain, and digital clock whine (2.5 kHz - 22 kHz)",
         "",
-        "3. Universal Aggressive (-36 dBFS Gate Knee)",
-        "   - File: universal_aggressive.nam",
-        "   - Best for: Unshielded vintage single-coils, noisy venue power, LED stage dimmers,",
-        "     unisolated 9V daisy-chain power supplies, and high-gain metal/fuzz rigs.",
+        "Unlike traditional hard noise gates that chop off decaying notes or notch filters that hollow",
+        "out your fundamental low end, Faraday preserves 1:1 unity gain, pick and finger attack",
+        "transients, and full-bodied sub-bass weight (20 Hz - 12 kHz) across any bass guitar.",
         "",
-        "Technical Architecture",
-        "----------------------",
-        "- Dual-Tier WaveNet Architecture 2: Includes both A2 Standard (8-channel) and A2 Lite",
-        "  (3-channel) submodels in every .nam file.",
-        "- C-Infinity Envelope-Gated Suppression: Smooth order-4 rational transition around the",
-        "  gate knee eliminates hard gate chatter or sputter on decaying bass notes.",
-        "- Split Dynamic Passband Anchoring: Trained on multi-voice clean bass spectra plus",
-        "  high-amplitude 50/60/100/120 Hz bass fundamentals so played E1/A1/B1 notes pass at",
-        "  1:1 unity gain without comb-filter hollowing.",
-        "- 14 kHz Ultrasonic Low-Pass Conditioning: 255-tap linear-phase Blackman conditioning",
-        "  permanently strips 14 kHz - 24 kHz SMPS switching carriers even while notes sustain.",
+        "",
+        "RECOMMENDED SIGNAL CHAIN",
+        "",
+        "[Any Passive or Active Bass]",
+        "  -> [Block 1: Faraday Denoiser]     (Input / Front-End Noise Shield)",
+        "  -> [Block 2: Compressor / Drive]   (Clean Sustain & Unmuddied Distortion)",
+        "  -> [Block 3: Amp & Cab Block]      (SVT, B-15, Super Bassman, Modern Rig)",
+        "  -> [FOH / Audio Interface / DAW]",
+        "",
+        "Why Block 1? Placing Faraday at the very beginning of your signal chain strips out 50/60 Hz",
+        "buzz and ultrasonic switching noise before it hits your compressor, overdrive pedals, or",
+        "high-gain amp blocks—preventing downstream gain stages from amplifying and intermodulating",
+        "your noise floor.",
+        "",
+        "",
+        "INCLUDED PROFILES & MAINS CONFIGURATIONS",
+        "",
+        "• Universal Gentle (-50 dBFS Gate Knee) [universal_gentle.nam]",
+        "  Ultra-transparent studio profile for well-shielded humbuckers/split-coils, fretless bass,",
+        "  and exposed solo passages requiring long, natural sustain tails.",
+        "",
+        "• Universal Balanced (-44 dBFS Gate Knee) [universal_balanced.nam — Recommended Default]",
+        "  Everyday live and studio profile for P-Bass, Jazz Bass, StingRay, and active soapbars.",
+        "  Balances deep 50/60 Hz hum and SMPS whine suppression with smooth sustain decay.",
+        "",
+        "• Universal Aggressive (-36 dBFS Gate Knee) [universal_aggressive.nam]",
+        "  Maximum-suppression stage profile for unshielded vintage single-coils, dirty venue power,",
+        "  fluorescent/LED stage dimmers, unisolated 9V power supplies, and high-gain distortion rigs.",
+        "",
+        "(Regional 60Hz and 50Hz dedicated grid variants follow the same Gentle / Balanced / Aggressive",
+        "profiles when included in the pack.)",
+        "",
+        "",
+        "HOW FARADAY WORKS",
+        "",
+        "• Dual-Tier WaveNet Architecture 2: Every .nam file embeds both A2 Standard (8-channel) and",
+        "  A2 Lite (3-channel) submodels for flexible DSP allocation.",
+        "• Smooth Envelope-Gated Suppression: Order-4 continuous rational gating around the knee",
+        "  eliminates hard gate chatter, pumping, or sputter on decaying bass notes.",
+        "• Musical Low-End Protection: Anchored on multi-voice clean bass spectra and high-level",
+        "  50/60/100/120 Hz bass fundamentals so played E1/A1/B1 notes pass at 1:1 unity gain.",
+        "• 14 kHz Ultrasonic Low-Pass Conditioning: 255-tap linear-phase Blackman conditioning",
+        "  permanently blocks 14 kHz - 24 kHz SMPS switching carriers even while loud notes sustain.",
     ]
 
     if trained_metadata:
         lines.extend(
             [
                 "",
-                "Pack Model Summary",
-                "------------------",
+                "",
+                "PACK MODEL SUMMARY",
+                "",
             ]
         )
         for item in trained_metadata:
-            name = item.get("name", "Denoiser")
+            name = item.get("name", "Faraday")
             fname = item.get("nam_file", "")
             thresh = item.get("threshold_dbfs", -44.0)
             supp_db = item.get("silence_suppression_db_ch8", 0.0)
             esr = item.get("validation_esr_ch8", 0.0)
             lines.append(
-                f"- {name} ({fname}): Gate Knee {thresh:.1f} dBFS | "
+                f"• {name} ({fname}): Gate Knee {thresh:.1f} dBFS | "
                 f"Idle Noise Suppression {supp_db:+.1f} dB | Passband ESR {esr:.5f}"
             )
 

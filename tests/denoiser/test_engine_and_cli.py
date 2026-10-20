@@ -123,6 +123,8 @@ def test_denoiser_cli_train_default_profiles_evaluate_and_apply(tmp_path: Path) 
     assert storefront_txt.is_file()
     desc_content = storefront_txt.read_text(encoding="utf-8")
     assert 100 < len(desc_content) <= 10000
+    assert "FARADAY: UNIVERSAL BASS DENOISER" in desc_content
+    assert "allomorph" not in desc_content.lower()
     assert "Universal Balanced" in desc_content
 
     # Test evaluate_cmd and apply_cmd on universal_balanced.nam
