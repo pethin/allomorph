@@ -1,215 +1,507 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 1200" width="1200" height="1200">
   <defs>
-    <!-- Background Radial Gradient: Rich graphite slate center fading smoothly to deep black -->
-    <radialGradient id="bgGrad" cx="50%" cy="46%" r="65%">
-      <stop offset="0%" stop-color="#222b3b"/>
-      <stop offset="35%" stop-color="#151b25"/>
-      <stop offset="70%" stop-color="#0d1117"/>
-      <stop offset="100%" stop-color="#080a0f"/>
+    <!-- Dark SPICE Schematic Canvas Background -->
+    <radialGradient id="bgGrad" cx="50%" cy="50%" r="70%">
+      <stop offset="0%" stop-color="#191d26"/>
+      <stop offset="55%" stop-color="#12151c"/>
+      <stop offset="100%" stop-color="#0b0d12"/>
     </radialGradient>
 
-    <!-- Outer Bezel Linear -->
-    <linearGradient id="bezelGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#475569"/>
-      <stop offset="30%" stop-color="#2a374a"/>
-      <stop offset="70%" stop-color="#141c28"/>
-      <stop offset="100%" stop-color="#334155"/>
-    </linearGradient>
-
-    <!-- Silky-Smooth Studio Backlight Bloom: Pure accent color diffusion with zero hard boundaries -->
-    <radialGradient id="heroGlow" cx="50%" cy="46%" r="48%">
-      <stop offset="0%" stop-color="#10b981" stop-opacity="0.45"/>
-      <stop offset="25%" stop-color="#10b981" stop-opacity="0.28"/>
-      <stop offset="50%" stop-color="#10b981" stop-opacity="0.12"/>
-      <stop offset="75%" stop-color="#10b981" stop-opacity="0.03"/>
+    <!-- Subtle Edition Color Aura Behind Schematic -->
+    <radialGradient id="heroGlow" cx="50%" cy="50%" r="54%">
+      <stop offset="0%" stop-color="#10b981" stop-opacity="0.26"/>
+      <stop offset="48%" stop-color="#10b981" stop-opacity="0.10"/>
       <stop offset="100%" stop-color="#10b981" stop-opacity="0.0"/>
     </radialGradient>
 
-    <!-- Pickup Cover Gradient -->
-    <linearGradient id="coverGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" stop-color="#3b485d"/>
-      <stop offset="35%" stop-color="#263142"/>
-      <stop offset="100%" stop-color="#151b24"/>
-    </linearGradient>
+    <!-- Authentic EDA / SPICE Schematic Coordinate Grid Pattern -->
+    <pattern id="spiceGridMinor" width="30" height="30" patternUnits="userSpaceOnUse">
+      <path d="M 30 0 L 0 0 0 30" fill="none" stroke="#ffffff" stroke-width="0.6" stroke-opacity="0.04"/>
+    </pattern>
+    <pattern id="spiceGridMajor" width="150" height="150" patternUnits="userSpaceOnUse">
+      <rect width="150" height="150" fill="url(#spiceGridMinor)"/>
+      <path d="M 150 0 L 0 0 0 150" fill="none" stroke="#10b981" stroke-width="1.0" stroke-opacity="0.12"/>
+    </pattern>
 
-    <!-- Metallic Pole Gradient -->
-    <radialGradient id="poleGrad" cx="35%" cy="35%" r="70%">
-      <stop offset="0%" stop-color="#ffffff"/>
-      <stop offset="25%" stop-color="#f1f5f9"/>
-      <stop offset="60%" stop-color="#94a3b8"/>
-      <stop offset="100%" stop-color="#475569"/>
-    </radialGradient>
-
-    <!-- Steel String Linear (High-Gloss Steel) -->
-    <linearGradient id="stringGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-      <stop offset="0%" stop-color="#64748b"/>
-      <stop offset="25%" stop-color="#ffffff"/>
-      <stop offset="60%" stop-color="#cbd5e1"/>
-      <stop offset="100%" stop-color="#475569"/>
-    </linearGradient>
-
-    <!-- Clean Drop Shadow: Generous filter region so no blur clipping occurs -->
-    <filter id="dropShadow" x="-50%" y="-50%" width="200%" height="200%">
-      <feDropShadow dx="0" dy="20" stdDeviation="18" flood-color="#000000" flood-opacity="0.92"/>
-      <feDropShadow dx="0" dy="6" stdDeviation="8" flood-color="#000000" flood-opacity="0.65"/>
-    </filter>
-
-    <filter id="stringShadow" x="-50%" y="-20%" width="200%" height="140%">
-      <feDropShadow dx="0" dy="4" stdDeviation="4" flood-color="#000000" flood-opacity="0.80"/>
+    <!-- Clean Drop Shadow for Ghost Pickup Silhouette Underlay -->
+    <filter id="dropShadow" x="-25%" y="-25%" width="150%" height="150%">
+      <feDropShadow dx="0" dy="16" stdDeviation="16" flood-color="#000000" flood-opacity="0.88"/>
     </filter>
   </defs>
 
-  <!-- Canvas Background -->
+  <!-- 1. SPICE Canvas & Grid -->
   <rect width="1200" height="1200" fill="url(#bgGrad)"/>
-  <!-- Seamless Studio Backlight Bloom across canvas (no shape clipping) -->
   <rect width="1200" height="1200" fill="url(#heroGlow)"/>
+  <rect width="1200" height="1200" fill="url(#spiceGridMajor)"/>
   
 
-  <!-- Outer Precision Enclosure Bezel -->
-  <rect x="24" y="24" width="1152" height="1152" rx="32" fill="none" stroke="url(#bezelGrad)" stroke-width="4"/>
-  <rect x="36" y="36" width="1128" height="1128" rx="24" fill="none" stroke="#ffffff" stroke-opacity="0.08" stroke-width="1.5"/>
-
-  <!-- Precision Corner Registration Crosshairs -->
-  <g stroke="#10b981" stroke-width="2.2" stroke-opacity="0.85">
-    <line x1="60" y1="75" x2="90" y2="75"/><line x1="75" y1="60" x2="75" y2="90"/><circle cx="75" cy="75" r="6" fill="none"/>
-    <line x1="1110" y1="75" x2="1140" y2="75"/><line x1="1125" y1="60" x2="1125" y2="90"/><circle cx="1125" cy="75" r="6" fill="none"/>
-    <line x1="60" y1="1125" x2="90" y2="1125"/><line x1="75" y1="1110" x2="75" y2="1140"/><circle cx="75" cy="1125" r="6" fill="none"/>
-    <line x1="1110" y1="1125" x2="1140" y2="1125"/><line x1="1125" y1="1110" x2="1125" y2="1140"/><circle cx="1125" cy="1125" r="6" fill="none"/>
-  </g>
-
-  <!-- Primary Branding Header: Perfectly balanced from top -->
-  <g transform="translate(600, 184)">
-    <text x="0" y="0" fill="#ffffff" font-size="108" font-family="system-ui, -apple-system, sans-serif" font-weight="900" letter-spacing="16" text-anchor="middle">ALLOMORPH</text>
-    <text x="0" y="46" fill="#10b981" font-size="25" font-family="system-ui, -apple-system, sans-serif" font-weight="800" letter-spacing="6" text-anchor="middle">ANALOG PICKUP DIGITAL TWINS</text>
-  </g>
-
-  <!-- Header Technical Divider -->
-  <line x1="80" y1="270" x2="1120" y2="270" stroke="#334155" stroke-width="2"/>
-  <line x1="440" y1="270" x2="760" y2="270" stroke="#10b981" stroke-width="4.5"/>
-
-  <!-- Center Hero Pickup & Strings Container -->
-  <g transform="translate(600, 550.0) scale(1.24) translate(-600, -515)">
+  <!-- 2. Faint Physical Bass Strings Underlay -->
+  <g>
     
-                
-    <!-- Active EMG 40 Soapbar Pickup at 600.0, 415.0 (NECK EMG SOAPBAR) -->
+        <line x1="280.0" y1="0" x2="280.0" y2="1200" stroke="#1e293b" stroke-width="16.0" opacity="0.65"/>
+        <line x1="280.0" y1="0" x2="280.0" y2="1200" stroke="#10b981" stroke-width="1.4" stroke-dasharray="10 8" opacity="0.35"/>
+        
+
+        <line x1="440.0" y1="0" x2="440.0" y2="1200" stroke="#1e293b" stroke-width="14.2" opacity="0.65"/>
+        <line x1="440.0" y1="0" x2="440.0" y2="1200" stroke="#10b981" stroke-width="1.4" stroke-dasharray="10 8" opacity="0.35"/>
+        
+
+        <line x1="600.0" y1="0" x2="600.0" y2="1200" stroke="#1e293b" stroke-width="12.4" opacity="0.65"/>
+        <line x1="600.0" y1="0" x2="600.0" y2="1200" stroke="#10b981" stroke-width="1.4" stroke-dasharray="10 8" opacity="0.35"/>
+        
+
+        <line x1="760.0" y1="0" x2="760.0" y2="1200" stroke="#1e293b" stroke-width="10.6" opacity="0.65"/>
+        <line x1="760.0" y1="0" x2="760.0" y2="1200" stroke="#10b981" stroke-width="1.4" stroke-dasharray="10 8" opacity="0.35"/>
+        
+
+        <line x1="920.0" y1="0" x2="920.0" y2="1200" stroke="#1e293b" stroke-width="8.8" opacity="0.65"/>
+        <line x1="920.0" y1="0" x2="920.0" y2="1200" stroke="#10b981" stroke-width="1.4" stroke-dasharray="10 8" opacity="0.35"/>
+        
+  </g>
+
+  <!-- 3. Dominant Pickup-Shaped SPICE Schematic & Hardware Underlay -->
+  <g transform="translate(600, 600) scale(1.00) translate(-600, -550)">
+    
+                    <!-- Neck Active EMG 40 Soapbar with Internal Differential Preamp U_N -->
+                    
+    
     <g filter="url(#dropShadow)">
-      <!-- Main Soapbar Casing with Crisp Light-Catching Chamfer -->
-      <rect x="386.0" y="335.0" width="428.0" height="160.0" rx="14.0" fill="url(#coverGrad)" stroke="#64748b" stroke-width="3.0"/>
-      <!-- Top Specular Highlight Bevel -->
-      <rect x="388.0" y="337.0" width="424.0" height="156.0" rx="13.0" fill="none" stroke="#94a3b8" stroke-width="1.2" opacity="0.6"/>
-      <!-- Inner Bobbin Recess -->
-      <rect x="393.0" y="342.0" width="414.0" height="146.0" rx="10.0" fill="#161c26" stroke="#2a374a" stroke-width="1.5"/>
-
-      <!-- Inset Mounting Tabs & Screw Recesses -->
-      <!-- Left Inset Recess -->
-      <path d="M 392.0 395.0 A 20 20 0 0 1 392.0 435.0 Z" fill="#0d1117" stroke="#334155" stroke-width="1.5"/>
-      <circle cx="399.5" cy="415.0" r="4.5" fill="#0d1117" stroke="#64748b" stroke-width="1.2"/>
-      <circle cx="399.5" cy="415.0" r="2.0" fill="#334155"/>
-
-      <!-- Right Inset Recess -->
-      <path d="M 808.0 395.0 A 20 20 0 0 0 808.0 435.0 Z" fill="#0d1117" stroke="#334155" stroke-width="1.5"/>
-      <circle cx="800.5" cy="415.0" r="4.5" fill="#0d1117" stroke="#64748b" stroke-width="1.2"/>
-      <circle cx="800.5" cy="415.0" r="2.0" fill="#334155"/>
-
-      <!-- Internal Dual Sensing Blade Rails (Luminous, High Vibrancy) -->
-      <!-- Upper Blade Rail -->
-      <rect x="420.0" y="378.0" width="360.0" height="10" rx="5" fill="#09131a" stroke="#10b981" stroke-width="1.5"/>
-      <rect x="422.0" y="380.0" width="356.0" height="6" rx="3" fill="#10b981" fill-opacity="0.95"/>
-      <line x1="426.0" y1="383.0" x2="774.0" y2="383.0" stroke="#ffffff" stroke-width="1.5" opacity="0.9"/>
-
-      <!-- Lower Blade Rail -->
-      <rect x="420.0" y="442.0" width="360.0" height="10" rx="5" fill="#09131a" stroke="#10b981" stroke-width="1.5"/>
-      <rect x="422.0" y="444.0" width="356.0" height="6" rx="3" fill="#10b981" fill-opacity="0.95"/>
-      <line x1="426.0" y1="447.0" x2="774.0" y2="447.0" stroke="#ffffff" stroke-width="1.5" opacity="0.9"/>
-
-      <!-- Internal Coil Boundary Indication -->
-      <rect x="410.0" y="351.0" width="380.0" height="128.0" rx="8" fill="none" stroke="#10b981" stroke-width="1.0" stroke-opacity="0.4" stroke-dasharray="6 6"/>
+      <rect x="190.0" y="172.0" width="820.0" height="256.0" rx="26.0" fill="#10141d" fill-opacity="0.92" stroke="#334155" stroke-width="3.2"/>
+      <rect x="202.0" y="184.0" width="796.0" height="112.0" rx="14" fill="#0a0d14" fill-opacity="0.94" stroke="#10b981" stroke-width="1.6" stroke-opacity="0.45" stroke-dasharray="10 7"/>
+      <rect x="202.0" y="304.0" width="796.0" height="112.0" rx="14" fill="#0a0d14" fill-opacity="0.94" stroke="#10b981" stroke-width="1.6" stroke-opacity="0.45" stroke-dasharray="10 7"/>
+      <!-- Authentic Soapbar Left & Right Inset Semicircular Screw Cutouts -->
+      <path d="M 194.0 272.0 A 28 28 0 0 1 194.0 328.0 Z" fill="#080a0f" stroke="#10b981" stroke-width="1.8" stroke-opacity="0.60"/>
+      <circle cx="209.0" cy="300.0" r="6.5" fill="#090b10" stroke="#10b981" stroke-width="1.5" stroke-opacity="0.75"/>
+      <path d="M 1006.0 272.0 A 28 28 0 0 0 1006.0 328.0 Z" fill="#080a0f" stroke="#10b981" stroke-width="1.8" stroke-opacity="0.60"/>
+      <circle cx="991.0" cy="300.0" r="6.5" fill="#090b10" stroke="#10b981" stroke-width="1.5" stroke-opacity="0.75"/>
+      
+        <rect x="238.0" y="222.0" width="724.0" height="20" rx="10" fill="#0d131a" stroke="#10b981" stroke-width="1.5" stroke-opacity="0.42"/>
+        <rect x="238.0" y="358.0" width="724.0" height="20" rx="10" fill="#0d131a" stroke="#10b981" stroke-width="1.5" stroke-opacity="0.42"/>
+        
     </g>
     
-                
-    <!-- Active EMG 40 Soapbar Pickup at 600.0, 615.0 (BRIDGE EMG SOAPBAR) -->
+    <!-- Dual-Coil Humbucker SPICE Network Sculpted Inside Soapbar (N) -->
+    <g>
+      <line x1="340.0" y1="200.0" x2="822.0" y2="200.0" stroke="#10b981" stroke-width="2.4"/>
+      <line x1="340.0" y1="400.0" x2="822.0" y2="400.0" stroke="#10b981" stroke-width="2.4"/>
+      <line x1="340.0" y1="200.0" x2="340.0" y2="400.0" stroke="#10b981" stroke-width="2.6"/>
+
+      <!-- Left Ground Reference -->
+      <line x1="228.0" y1="236.0" x2="228.0" y2="364.0" stroke="#10b981" stroke-width="2.8"/>
+      <line x1="228.0" y1="300.0" x2="188.0" y2="300.0" stroke="#10b981" stroke-width="3.0"/>
+      
+    <g>
+      <line x1="188.0" y1="300.0" x2="188.0" y2="316.0" stroke="#10b981" stroke-width="3.0"/>
+      <line x1="168.0" y1="316.0" x2="208.0" y2="316.0" stroke="#f1f5f9" stroke-width="3.2"/>
+      <line x1="175.0" y1="323.0" x2="201.0" y2="323.0" stroke="#f1f5f9" stroke-width="2.8"/>
+      <line x1="183.0" y1="330.0" x2="193.0" y2="330.0" stroke="#f1f5f9" stroke-width="2.4"/>
+    </g>
+    
+      <circle cx="228.0" cy="300.0" r="6.0" fill="#10b981" stroke="#ffffff" stroke-width="1.4"/>
+
+      <!-- Upper Coil Row -->
+      <line x1="228.0" y1="236.0" x2="822.0" y2="236.0" stroke="#10b981" stroke-width="3.0"/>
+      
+    <g>
+      <circle cx="278.0" cy="236.0" r="20.0" fill="#0d1118" stroke="#f8fafc" stroke-width="2.8"/>
+      <circle cx="278.0" cy="236.0" r="16.0" fill="none" stroke="#10b981" stroke-width="1.4" stroke-opacity="0.60"/>
+      <path d="M 266.0 236.0 Q 272.0 224.0 278.0 236.0 T 290.0 236.0" fill="none" stroke="#10b981" stroke-width="2.8" stroke-linecap="round"/>
+      
+    <g>
+      <rect x="254.8" y="195.0" width="46.4" height="18" rx="4" fill="#0a0d14" fill-opacity="0.88"/>
+      <text x="278.0" y="208.0" fill="#f8fafc" font-size="13.5" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-weight="700" text-anchor="middle">V_N1</text>
+    </g>
+    
+    </g>
+    
+      
+    <g>
+      <rect x="406.0" y="213.0" width="118.0" height="28.0" fill="#0a0d14" fill-opacity="0.82" rx="4"/>
+      <line x1="413.0" y1="217.0" x2="517.0" y2="217.0" stroke="#10b981" stroke-width="2.2" stroke-opacity="0.90"/>
+      <line x1="413.0" y1="212.0" x2="517.0" y2="212.0" stroke="#10b981" stroke-width="1.6" stroke-dasharray="7 5" stroke-opacity="0.70"/>
+      <path d="M 409.0 236.0 A 14.0 14.0 0 0 1 437.0 236.0 A 14.0 14.0 0 0 1 465.0 236.0 A 14.0 14.0 0 0 1 493.0 236.0 A 14.0 14.0 0 0 1 521.0 236.0" fill="none" stroke="#f8fafc" stroke-width="3.2" stroke-linecap="round"/>
+      <circle cx="415.0" cy="227.0" r="3.8" fill="#10b981"/>
+      
+    <g>
+      <rect x="420.3" y="243.0" width="89.4" height="18" rx="4" fill="#0a0d14" fill-opacity="0.88"/>
+      <text x="465.0" y="256.0" fill="#f8fafc" font-size="13.5" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-weight="700" text-anchor="middle">L_N1 2.0H</text>
+    </g>
+    
+    </g>
+    
+      
+    <g>
+      <rect x="601.0" y="226.0" width="68.0" height="20.0" rx="3" fill="#0d1118" stroke="#f8fafc" stroke-width="2.6"/>
+      <path d="M 601.0 236.0 L 606.7 227.6 L 618.0 244.4 L 629.3 227.6 L 640.7 244.4 L 652.0 227.6 L 663.3 244.4 L 669.0 236.0" fill="none" stroke="#10b981" stroke-width="1.8" stroke-opacity="0.85" stroke-linejoin="round"/>
+      
+      
+    <g>
+      <rect x="590.3" y="251.0" width="89.4" height="18" rx="4" fill="#0a0d14" fill-opacity="0.88"/>
+      <text x="635.0" y="264.0" fill="#10b981" font-size="13.5" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-weight="700" text-anchor="middle">R_N1 4.5k</text>
+    </g>
+    
+    </g>
+    
+      
+    <g>
+      <rect x="523.0" y="191.0" width="64.0" height="18.0" rx="3" fill="#0d1118" stroke="#f8fafc" stroke-width="2.6"/>
+      <path d="M 523.0 200.0 L 528.3 192.4 L 539.0 207.6 L 549.7 192.4 L 560.3 207.6 L 571.0 192.4 L 581.7 207.6 L 587.0 200.0" fill="none" stroke="#10b981" stroke-width="1.8" stroke-opacity="0.85" stroke-linejoin="round"/>
+      
+      
+    <g>
+      <rect x="506.0" y="170.0" width="98.0" height="18" rx="4" fill="#0a0d14" fill-opacity="0.88"/>
+      <text x="555.0" y="183.0" fill="#10b981" font-size="13.5" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-weight="700" text-anchor="middle">R_eddy 90k</text>
+    </g>
+    
+    </g>
+    
+
+      <!-- Lower Coil Row -->
+      <line x1="228.0" y1="364.0" x2="822.0" y2="364.0" stroke="#10b981" stroke-width="3.0"/>
+      
+    <g>
+      <circle cx="278.0" cy="364.0" r="20.0" fill="#0d1118" stroke="#f8fafc" stroke-width="2.8"/>
+      <circle cx="278.0" cy="364.0" r="16.0" fill="none" stroke="#10b981" stroke-width="1.4" stroke-opacity="0.60"/>
+      <path d="M 266.0 364.0 Q 272.0 352.0 278.0 364.0 T 290.0 364.0" fill="none" stroke="#10b981" stroke-width="2.8" stroke-linecap="round"/>
+      
+    <g>
+      <rect x="254.8" y="389.0" width="46.4" height="18" rx="4" fill="#0a0d14" fill-opacity="0.88"/>
+      <text x="278.0" y="402.0" fill="#f8fafc" font-size="13.5" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-weight="700" text-anchor="middle">V_N2</text>
+    </g>
+    
+    </g>
+    
+      
+    <g>
+      <rect x="406.0" y="341.0" width="118.0" height="28.0" fill="#0a0d14" fill-opacity="0.82" rx="4"/>
+      <line x1="413.0" y1="345.0" x2="517.0" y2="345.0" stroke="#10b981" stroke-width="2.2" stroke-opacity="0.90"/>
+      <line x1="413.0" y1="340.0" x2="517.0" y2="340.0" stroke="#10b981" stroke-width="1.6" stroke-dasharray="7 5" stroke-opacity="0.70"/>
+      <path d="M 409.0 364.0 A 14.0 14.0 0 0 1 437.0 364.0 A 14.0 14.0 0 0 1 465.0 364.0 A 14.0 14.0 0 0 1 493.0 364.0 A 14.0 14.0 0 0 1 521.0 364.0" fill="none" stroke="#f8fafc" stroke-width="3.2" stroke-linecap="round"/>
+      <circle cx="415.0" cy="355.0" r="3.8" fill="#10b981"/>
+      
+    <g>
+      <rect x="420.3" y="322.0" width="89.4" height="18" rx="4" fill="#0a0d14" fill-opacity="0.88"/>
+      <text x="465.0" y="335.0" fill="#f8fafc" font-size="13.5" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-weight="700" text-anchor="middle">L_N2 2.0H</text>
+    </g>
+    
+    </g>
+    
+      
+    <g>
+      <rect x="601.0" y="354.0" width="68.0" height="20.0" rx="3" fill="#0d1118" stroke="#f8fafc" stroke-width="2.6"/>
+      <path d="M 601.0 364.0 L 606.7 355.6 L 618.0 372.4 L 629.3 355.6 L 640.7 372.4 L 652.0 355.6 L 663.3 372.4 L 669.0 364.0" fill="none" stroke="#10b981" stroke-width="1.8" stroke-opacity="0.85" stroke-linejoin="round"/>
+      
+      
+    <g>
+      <rect x="590.3" y="333.0" width="89.4" height="18" rx="4" fill="#0a0d14" fill-opacity="0.88"/>
+      <text x="635.0" y="346.0" fill="#10b981" font-size="13.5" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-weight="700" text-anchor="middle">R_N2 4.5k</text>
+    </g>
+    
+    </g>
+    
+      
+    <g>
+      <rect x="546.0" y="387.0" width="18.0" height="26.0" fill="#0a0d14"/>
+      <line x1="550.0" y1="387.0" x2="550.0" y2="413.0" stroke="#f8fafc" stroke-width="3.5"/>
+      <line x1="560.0" y1="387.0" x2="560.0" y2="413.0" stroke="#f8fafc" stroke-width="3.5"/>
+      
+    <g>
+      <rect x="510.3" y="418.0" width="89.4" height="18" rx="4" fill="#0a0d14" fill-opacity="0.88"/>
+      <text x="555.0" y="431.0" fill="#10b981" font-size="13.5" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-weight="700" text-anchor="middle">C_N 584pF</text>
+    </g>
+    
+    </g>
+    
+
+      <circle cx="340.0" cy="236.0" r="6.0" fill="#10b981" stroke="#ffffff" stroke-width="1.4"/>
+      <circle cx="340.0" cy="364.0" r="6.0" fill="#10b981" stroke="#ffffff" stroke-width="1.4"/>
+      
+        <line x1="822.0" y1="200.0" x2="822.0" y2="400.0" stroke="#10b981" stroke-width="2.6"/>
+        <line x1="822.0" y1="236.0" x2="846.0" y2="236.0" stroke="#10b981" stroke-width="2.8"/>
+        <line x1="846.0" y1="236.0" x2="846.0" y2="280.0" stroke="#10b981" stroke-width="2.8"/>
+        <line x1="846.0" y1="280.0" x2="859.0" y2="280.0" stroke="#10b981" stroke-width="2.8"/>
+
+        <line x1="822.0" y1="364.0" x2="846.0" y2="364.0" stroke="#10b981" stroke-width="2.8"/>
+        <line x1="846.0" y1="364.0" x2="846.0" y2="320.0" stroke="#10b981" stroke-width="2.8"/>
+        <line x1="846.0" y1="320.0" x2="859.0" y2="320.0" stroke="#10b981" stroke-width="2.8"/>
+
+        
+    <g>
+      <line x1="896.0" y1="279.8" x2="896.0" y2="262.6" stroke="#10b981" stroke-width="2.2"/>
+      <circle cx="896.0" cy="262.6" r="3.5" fill="#10b981"/>
+      <line x1="896.0" y1="320.2" x2="896.0" y2="337.4" stroke="#10b981" stroke-width="2.2"/>
+      <circle cx="896.0" cy="337.4" r="3.5" fill="#10b981"/>
+
+      <polygon points="861.0,264.0 861.0,336.0 943.0,300.0" fill="#0d1118" stroke="#f8fafc" stroke-width="3.0" stroke-linejoin="round"/>
+      <polygon points="866.0,271.0 866.0,329.0 934.0,300.0" fill="none" stroke="#10b981" stroke-width="1.4" stroke-opacity="0.50"/>
+
+      <text x="876.0" y="287.0" fill="#10b981" font-size="18" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-weight="800" text-anchor="middle">+</text>
+      <text x="876.0" y="323.0" fill="#f8fafc" font-size="18" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-weight="800" text-anchor="middle">−</text>
+      <text x="898.0" y="305.0" fill="#f8fafc" font-size="14" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-weight="700" text-anchor="middle">U_N</text>
+    </g>
+    
+        <line x1="943.0" y1="300.0" x2="1010.0" y2="300.0" stroke="#10b981" stroke-width="3.2"/>
+        <circle cx="822.0" cy="236.0" r="6.0" fill="#10b981" stroke="#ffffff" stroke-width="1.4"/>
+        <circle cx="822.0" cy="364.0" r="6.0" fill="#10b981" stroke="#ffffff" stroke-width="1.4"/>
+        <circle cx="1010.0" cy="300.0" r="6.0" fill="#10b981" stroke="#ffffff" stroke-width="1.4"/>
+        
+    </g>
+    
+
+                    <!-- Bridge Active EMG 40 Soapbar with Internal Differential Preamp U_B -->
+                    
+    
     <g filter="url(#dropShadow)">
-      <!-- Main Soapbar Casing with Crisp Light-Catching Chamfer -->
-      <rect x="386.0" y="535.0" width="428.0" height="160.0" rx="14.0" fill="url(#coverGrad)" stroke="#64748b" stroke-width="3.0"/>
-      <!-- Top Specular Highlight Bevel -->
-      <rect x="388.0" y="537.0" width="424.0" height="156.0" rx="13.0" fill="none" stroke="#94a3b8" stroke-width="1.2" opacity="0.6"/>
-      <!-- Inner Bobbin Recess -->
-      <rect x="393.0" y="542.0" width="414.0" height="146.0" rx="10.0" fill="#161c26" stroke="#2a374a" stroke-width="1.5"/>
-
-      <!-- Inset Mounting Tabs & Screw Recesses -->
-      <!-- Left Inset Recess -->
-      <path d="M 392.0 595.0 A 20 20 0 0 1 392.0 635.0 Z" fill="#0d1117" stroke="#334155" stroke-width="1.5"/>
-      <circle cx="399.5" cy="615.0" r="4.5" fill="#0d1117" stroke="#64748b" stroke-width="1.2"/>
-      <circle cx="399.5" cy="615.0" r="2.0" fill="#334155"/>
-
-      <!-- Right Inset Recess -->
-      <path d="M 808.0 595.0 A 20 20 0 0 0 808.0 635.0 Z" fill="#0d1117" stroke="#334155" stroke-width="1.5"/>
-      <circle cx="800.5" cy="615.0" r="4.5" fill="#0d1117" stroke="#64748b" stroke-width="1.2"/>
-      <circle cx="800.5" cy="615.0" r="2.0" fill="#334155"/>
-
-      <!-- Internal Dual Sensing Blade Rails (Luminous, High Vibrancy) -->
-      <!-- Upper Blade Rail -->
-      <rect x="420.0" y="578.0" width="360.0" height="10" rx="5" fill="#09131a" stroke="#10b981" stroke-width="1.5"/>
-      <rect x="422.0" y="580.0" width="356.0" height="6" rx="3" fill="#10b981" fill-opacity="0.95"/>
-      <line x1="426.0" y1="583.0" x2="774.0" y2="583.0" stroke="#ffffff" stroke-width="1.5" opacity="0.9"/>
-
-      <!-- Lower Blade Rail -->
-      <rect x="420.0" y="642.0" width="360.0" height="10" rx="5" fill="#09131a" stroke="#10b981" stroke-width="1.5"/>
-      <rect x="422.0" y="644.0" width="356.0" height="6" rx="3" fill="#10b981" fill-opacity="0.95"/>
-      <line x1="426.0" y1="647.0" x2="774.0" y2="647.0" stroke="#ffffff" stroke-width="1.5" opacity="0.9"/>
-
-      <!-- Internal Coil Boundary Indication -->
-      <rect x="410.0" y="551.0" width="380.0" height="128.0" rx="8" fill="none" stroke="#10b981" stroke-width="1.0" stroke-opacity="0.4" stroke-dasharray="6 6"/>
+      <rect x="190.0" y="672.0" width="820.0" height="256.0" rx="26.0" fill="#10141d" fill-opacity="0.92" stroke="#334155" stroke-width="3.2"/>
+      <rect x="202.0" y="684.0" width="796.0" height="112.0" rx="14" fill="#0a0d14" fill-opacity="0.94" stroke="#10b981" stroke-width="1.6" stroke-opacity="0.45" stroke-dasharray="10 7"/>
+      <rect x="202.0" y="804.0" width="796.0" height="112.0" rx="14" fill="#0a0d14" fill-opacity="0.94" stroke="#10b981" stroke-width="1.6" stroke-opacity="0.45" stroke-dasharray="10 7"/>
+      <!-- Authentic Soapbar Left & Right Inset Semicircular Screw Cutouts -->
+      <path d="M 194.0 772.0 A 28 28 0 0 1 194.0 828.0 Z" fill="#080a0f" stroke="#10b981" stroke-width="1.8" stroke-opacity="0.60"/>
+      <circle cx="209.0" cy="800.0" r="6.5" fill="#090b10" stroke="#10b981" stroke-width="1.5" stroke-opacity="0.75"/>
+      <path d="M 1006.0 772.0 A 28 28 0 0 0 1006.0 828.0 Z" fill="#080a0f" stroke="#10b981" stroke-width="1.8" stroke-opacity="0.60"/>
+      <circle cx="991.0" cy="800.0" r="6.5" fill="#090b10" stroke="#10b981" stroke-width="1.5" stroke-opacity="0.75"/>
+      
+        <rect x="238.0" y="722.0" width="724.0" height="20" rx="10" fill="#0d131a" stroke="#10b981" stroke-width="1.5" stroke-opacity="0.42"/>
+        <rect x="238.0" y="858.0" width="724.0" height="20" rx="10" fill="#0d131a" stroke="#10b981" stroke-width="1.5" stroke-opacity="0.42"/>
+        
     </g>
     
-                
+    <!-- Dual-Coil Humbucker SPICE Network Sculpted Inside Soapbar (B) -->
+    <g>
+      <line x1="340.0" y1="700.0" x2="822.0" y2="700.0" stroke="#10b981" stroke-width="2.4"/>
+      <line x1="340.0" y1="900.0" x2="822.0" y2="900.0" stroke="#10b981" stroke-width="2.4"/>
+      <line x1="340.0" y1="700.0" x2="340.0" y2="900.0" stroke="#10b981" stroke-width="2.6"/>
 
-      <!-- Physical Bass Strings (5 Strings) -->
-    <g filter="url(#stringShadow)">
-      <!-- B String -->
-      <line x1="440.0" y1="289.2" x2="440.0" y2="740.8" stroke="url(#stringGrad)" stroke-width="16.0"/>
-      <line x1="440.0" y1="289.2" x2="440.0" y2="740.8" stroke="#ffffff" stroke-width="3.5" opacity="0.95"/>
-
-      <!-- E String -->
-      <line x1="520.0" y1="289.2" x2="520.0" y2="740.8" stroke="url(#stringGrad)" stroke-width="13.5"/>
-      <line x1="520.0" y1="289.2" x2="520.0" y2="740.8" stroke="#ffffff" stroke-width="3.0" opacity="0.95"/>
-
-      <!-- A String -->
-      <line x1="600.0" y1="289.2" x2="600.0" y2="740.8" stroke="url(#stringGrad)" stroke-width="11.5"/>
-      <line x1="600.0" y1="289.2" x2="600.0" y2="740.8" stroke="#ffffff" stroke-width="2.5" opacity="0.95"/>
-
-      <!-- D String -->
-      <line x1="680.0" y1="289.2" x2="680.0" y2="740.8" stroke="url(#stringGrad)" stroke-width="9.5"/>
-      <line x1="680.0" y1="289.2" x2="680.0" y2="740.8" stroke="#ffffff" stroke-width="2.2" opacity="0.95"/>
-
-      <!-- G String -->
-      <line x1="760.0" y1="289.2" x2="760.0" y2="740.8" stroke="url(#stringGrad)" stroke-width="8.0"/>
-      <line x1="760.0" y1="289.2" x2="760.0" y2="740.8" stroke="#ffffff" stroke-width="2.0" opacity="0.95"/>
+      <!-- Left Ground Reference -->
+      <line x1="228.0" y1="736.0" x2="228.0" y2="864.0" stroke="#10b981" stroke-width="2.8"/>
+      <line x1="228.0" y1="800.0" x2="188.0" y2="800.0" stroke="#10b981" stroke-width="3.0"/>
+      
+    <g>
+      <line x1="188.0" y1="800.0" x2="188.0" y2="816.0" stroke="#10b981" stroke-width="3.0"/>
+      <line x1="168.0" y1="816.0" x2="208.0" y2="816.0" stroke="#f1f5f9" stroke-width="3.2"/>
+      <line x1="175.0" y1="823.0" x2="201.0" y2="823.0" stroke="#f1f5f9" stroke-width="2.8"/>
+      <line x1="183.0" y1="830.0" x2="193.0" y2="830.0" stroke="#f1f5f9" stroke-width="2.4"/>
     </g>
-  </g>
+    
+      <circle cx="228.0" cy="800.0" r="6.0" fill="#10b981" stroke="#ffffff" stroke-width="1.4"/>
 
-  <!-- Bottom Hero Section -->
-  <line x1="80" y1="830" x2="1120" y2="830" stroke="#334155" stroke-width="2"/>
-  <line x1="80" y1="830" x2="420" y2="830" stroke="#10b981" stroke-width="4.5"/>
+      <!-- Upper Coil Row -->
+      <line x1="228.0" y1="736.0" x2="822.0" y2="736.0" stroke="#10b981" stroke-width="3.0"/>
+      
+    <g>
+      <circle cx="278.0" cy="736.0" r="20.0" fill="#0d1118" stroke="#f8fafc" stroke-width="2.8"/>
+      <circle cx="278.0" cy="736.0" r="16.0" fill="none" stroke="#10b981" stroke-width="1.4" stroke-opacity="0.60"/>
+      <path d="M 266.0 736.0 Q 272.0 724.0 278.0 736.0 T 290.0 736.0" fill="none" stroke="#10b981" stroke-width="2.8" stroke-linecap="round"/>
+      
+    <g>
+      <rect x="254.8" y="695.0" width="46.4" height="18" rx="4" fill="#0a0d14" fill-opacity="0.88"/>
+      <text x="278.0" y="708.0" fill="#f8fafc" font-size="13.5" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-weight="700" text-anchor="middle">V_B1</text>
+    </g>
+    
+    </g>
+    
+      
+    <g>
+      <rect x="406.0" y="713.0" width="118.0" height="28.0" fill="#0a0d14" fill-opacity="0.82" rx="4"/>
+      <line x1="413.0" y1="717.0" x2="517.0" y2="717.0" stroke="#10b981" stroke-width="2.2" stroke-opacity="0.90"/>
+      <line x1="413.0" y1="712.0" x2="517.0" y2="712.0" stroke="#10b981" stroke-width="1.6" stroke-dasharray="7 5" stroke-opacity="0.70"/>
+      <path d="M 409.0 736.0 A 14.0 14.0 0 0 1 437.0 736.0 A 14.0 14.0 0 0 1 465.0 736.0 A 14.0 14.0 0 0 1 493.0 736.0 A 14.0 14.0 0 0 1 521.0 736.0" fill="none" stroke="#f8fafc" stroke-width="3.2" stroke-linecap="round"/>
+      <circle cx="415.0" cy="727.0" r="3.8" fill="#10b981"/>
+      
+    <g>
+      <rect x="420.3" y="743.0" width="89.4" height="18" rx="4" fill="#0a0d14" fill-opacity="0.88"/>
+      <text x="465.0" y="756.0" fill="#f8fafc" font-size="13.5" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-weight="700" text-anchor="middle">L_B1 2.0H</text>
+    </g>
+    
+    </g>
+    
+      
+    <g>
+      <rect x="601.0" y="726.0" width="68.0" height="20.0" rx="3" fill="#0d1118" stroke="#f8fafc" stroke-width="2.6"/>
+      <path d="M 601.0 736.0 L 606.7 727.6 L 618.0 744.4 L 629.3 727.6 L 640.7 744.4 L 652.0 727.6 L 663.3 744.4 L 669.0 736.0" fill="none" stroke="#10b981" stroke-width="1.8" stroke-opacity="0.85" stroke-linejoin="round"/>
+      
+      
+    <g>
+      <rect x="590.3" y="751.0" width="89.4" height="18" rx="4" fill="#0a0d14" fill-opacity="0.88"/>
+      <text x="635.0" y="764.0" fill="#10b981" font-size="13.5" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-weight="700" text-anchor="middle">R_B1 4.5k</text>
+    </g>
+    
+    </g>
+    
+      
+    <g>
+      <rect x="523.0" y="691.0" width="64.0" height="18.0" rx="3" fill="#0d1118" stroke="#f8fafc" stroke-width="2.6"/>
+      <path d="M 523.0 700.0 L 528.3 692.4 L 539.0 707.6 L 549.7 692.4 L 560.3 707.6 L 571.0 692.4 L 581.7 707.6 L 587.0 700.0" fill="none" stroke="#10b981" stroke-width="1.8" stroke-opacity="0.85" stroke-linejoin="round"/>
+      
+      
+    <g>
+      <rect x="506.0" y="670.0" width="98.0" height="18" rx="4" fill="#0a0d14" fill-opacity="0.88"/>
+      <text x="555.0" y="683.0" fill="#10b981" font-size="13.5" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-weight="700" text-anchor="middle">R_eddy 90k</text>
+    </g>
+    
+    </g>
+    
 
-  <!-- Tone Pack Title (BIG & BOLD) -->
-  <text x="80" y="902" fill="#ffffff" font-size="66" font-family="system-ui, -apple-system, sans-serif" font-weight="900" letter-spacing="1.5">ACTIVE EMG BASS</text>
-  
-  <!-- Edition Subtitle / Voicing Count (BIG & BOLD) -->
-  <text x="80" y="960" fill="#10b981" font-size="28" font-family="system-ui, -apple-system, sans-serif" font-weight="800" letter-spacing="3.0">22 DIGITAL TWIN VOICINGS</text>
-  
-  <!-- Specification Badges (3 Large High-Contrast Badges) -->
-  <g transform="translate(0, 1000)">
-    <!-- Badge 1 (Scale) -->
-    <rect x="80" y="0" width="230" height="68" rx="16" fill="#141a24" stroke="#3b485d" stroke-width="2.2"/>
-    <text x="195" y="43" fill="#f8fafc" font-size="22" font-family="system-ui, -apple-system, sans-serif" font-weight="800" letter-spacing="1.5" text-anchor="middle">34" SCALE</text>
+      <!-- Lower Coil Row -->
+      <line x1="228.0" y1="864.0" x2="822.0" y2="864.0" stroke="#10b981" stroke-width="3.0"/>
+      
+    <g>
+      <circle cx="278.0" cy="864.0" r="20.0" fill="#0d1118" stroke="#f8fafc" stroke-width="2.8"/>
+      <circle cx="278.0" cy="864.0" r="16.0" fill="none" stroke="#10b981" stroke-width="1.4" stroke-opacity="0.60"/>
+      <path d="M 266.0 864.0 Q 272.0 852.0 278.0 864.0 T 290.0 864.0" fill="none" stroke="#10b981" stroke-width="2.8" stroke-linecap="round"/>
+      
+    <g>
+      <rect x="254.8" y="889.0" width="46.4" height="18" rx="4" fill="#0a0d14" fill-opacity="0.88"/>
+      <text x="278.0" y="902.0" fill="#f8fafc" font-size="13.5" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-weight="700" text-anchor="middle">V_B2</text>
+    </g>
+    
+    </g>
+    
+      
+    <g>
+      <rect x="406.0" y="841.0" width="118.0" height="28.0" fill="#0a0d14" fill-opacity="0.82" rx="4"/>
+      <line x1="413.0" y1="845.0" x2="517.0" y2="845.0" stroke="#10b981" stroke-width="2.2" stroke-opacity="0.90"/>
+      <line x1="413.0" y1="840.0" x2="517.0" y2="840.0" stroke="#10b981" stroke-width="1.6" stroke-dasharray="7 5" stroke-opacity="0.70"/>
+      <path d="M 409.0 864.0 A 14.0 14.0 0 0 1 437.0 864.0 A 14.0 14.0 0 0 1 465.0 864.0 A 14.0 14.0 0 0 1 493.0 864.0 A 14.0 14.0 0 0 1 521.0 864.0" fill="none" stroke="#f8fafc" stroke-width="3.2" stroke-linecap="round"/>
+      <circle cx="415.0" cy="855.0" r="3.8" fill="#10b981"/>
+      
+    <g>
+      <rect x="420.3" y="822.0" width="89.4" height="18" rx="4" fill="#0a0d14" fill-opacity="0.88"/>
+      <text x="465.0" y="835.0" fill="#f8fafc" font-size="13.5" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-weight="700" text-anchor="middle">L_B2 2.0H</text>
+    </g>
+    
+    </g>
+    
+      
+    <g>
+      <rect x="601.0" y="854.0" width="68.0" height="20.0" rx="3" fill="#0d1118" stroke="#f8fafc" stroke-width="2.6"/>
+      <path d="M 601.0 864.0 L 606.7 855.6 L 618.0 872.4 L 629.3 855.6 L 640.7 872.4 L 652.0 855.6 L 663.3 872.4 L 669.0 864.0" fill="none" stroke="#10b981" stroke-width="1.8" stroke-opacity="0.85" stroke-linejoin="round"/>
+      
+      
+    <g>
+      <rect x="590.3" y="833.0" width="89.4" height="18" rx="4" fill="#0a0d14" fill-opacity="0.88"/>
+      <text x="635.0" y="846.0" fill="#10b981" font-size="13.5" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-weight="700" text-anchor="middle">R_B2 4.5k</text>
+    </g>
+    
+    </g>
+    
+      
+    <g>
+      <rect x="546.0" y="887.0" width="18.0" height="26.0" fill="#0a0d14"/>
+      <line x1="550.0" y1="887.0" x2="550.0" y2="913.0" stroke="#f8fafc" stroke-width="3.5"/>
+      <line x1="560.0" y1="887.0" x2="560.0" y2="913.0" stroke="#f8fafc" stroke-width="3.5"/>
+      
+    <g>
+      <rect x="510.3" y="918.0" width="89.4" height="18" rx="4" fill="#0a0d14" fill-opacity="0.88"/>
+      <text x="555.0" y="931.0" fill="#10b981" font-size="13.5" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-weight="700" text-anchor="middle">C_B 584pF</text>
+    </g>
+    
+    </g>
+    
 
-    <!-- Badge 2 (Pickup) -->
-    <rect x="330" y="0" width="370" height="68" rx="16" fill="#141a24" stroke="#3b485d" stroke-width="2.2"/>
-    <text x="515" y="43" fill="#f8fafc" font-size="22" font-family="system-ui, -apple-system, sans-serif" font-weight="800" letter-spacing="1.5" text-anchor="middle">ACTIVE SOAPBAR</text>
+      <circle cx="340.0" cy="736.0" r="6.0" fill="#10b981" stroke="#ffffff" stroke-width="1.4"/>
+      <circle cx="340.0" cy="864.0" r="6.0" fill="#10b981" stroke="#ffffff" stroke-width="1.4"/>
+      
+        <line x1="822.0" y1="700.0" x2="822.0" y2="900.0" stroke="#10b981" stroke-width="2.6"/>
+        <line x1="822.0" y1="736.0" x2="846.0" y2="736.0" stroke="#10b981" stroke-width="2.8"/>
+        <line x1="846.0" y1="736.0" x2="846.0" y2="780.0" stroke="#10b981" stroke-width="2.8"/>
+        <line x1="846.0" y1="780.0" x2="859.0" y2="780.0" stroke="#10b981" stroke-width="2.8"/>
 
-    <!-- Badge 3 (Target / Platform) -->
-    <rect x="720" y="0" width="400" height="68" rx="16" fill="#141a24" stroke="#10b981" stroke-width="3.0"/>
-    <text x="920" y="43" fill="#10b981" font-size="22" font-family="system-ui, -apple-system, sans-serif" font-weight="900" letter-spacing="1.5" text-anchor="middle">FOR NAM &amp; ANAGRAM</text>
+        <line x1="822.0" y1="864.0" x2="846.0" y2="864.0" stroke="#10b981" stroke-width="2.8"/>
+        <line x1="846.0" y1="864.0" x2="846.0" y2="820.0" stroke="#10b981" stroke-width="2.8"/>
+        <line x1="846.0" y1="820.0" x2="859.0" y2="820.0" stroke="#10b981" stroke-width="2.8"/>
+
+        
+    <g>
+      <line x1="896.0" y1="779.8" x2="896.0" y2="762.6" stroke="#10b981" stroke-width="2.2"/>
+      <circle cx="896.0" cy="762.6" r="3.5" fill="#10b981"/>
+      <line x1="896.0" y1="820.2" x2="896.0" y2="837.4" stroke="#10b981" stroke-width="2.2"/>
+      <circle cx="896.0" cy="837.4" r="3.5" fill="#10b981"/>
+
+      <polygon points="861.0,764.0 861.0,836.0 943.0,800.0" fill="#0d1118" stroke="#f8fafc" stroke-width="3.0" stroke-linejoin="round"/>
+      <polygon points="866.0,771.0 866.0,829.0 934.0,800.0" fill="none" stroke="#10b981" stroke-width="1.4" stroke-opacity="0.50"/>
+
+      <text x="876.0" y="787.0" fill="#10b981" font-size="18" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-weight="800" text-anchor="middle">+</text>
+      <text x="876.0" y="823.0" fill="#f8fafc" font-size="18" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-weight="800" text-anchor="middle">−</text>
+      <text x="898.0" y="805.0" fill="#f8fafc" font-size="14" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-weight="700" text-anchor="middle">U_B</text>
+    </g>
+    
+        <line x1="943.0" y1="800.0" x2="1010.0" y2="800.0" stroke="#10b981" stroke-width="3.2"/>
+        <circle cx="822.0" cy="736.0" r="6.0" fill="#10b981" stroke="#ffffff" stroke-width="1.4"/>
+        <circle cx="822.0" cy="864.0" r="6.0" fill="#10b981" stroke="#ffffff" stroke-width="1.4"/>
+        <circle cx="1010.0" cy="800.0" r="6.0" fill="#10b981" stroke="#ffffff" stroke-width="1.4"/>
+        
+    </g>
+    
+
+                    <!-- Central Active ABCX Summing & Tone Bus Directly Between EMG Soapbars -->
+                    <polyline points="1010,300 1045,300 1045,490 360,490" fill="none" stroke="#10b981" stroke-width="3.0"/>
+                    <polyline points="1010,800 1045,800 1045,610 360,610" fill="none" stroke="#10b981" stroke-width="3.0"/>
+
+                    <line x1="360" y1="490" x2="360" y2="610" stroke="#10b981" stroke-width="2.8"/>
+                    
+    <g>
+      <rect x="349.0" y="518.0" width="22.0" height="64.0" rx="3" fill="#0d1118" stroke="#f8fafc" stroke-width="2.6"/>
+      <path d="M 360.0 518.0 L 350.8 523.3 L 369.2 534.0 L 350.8 544.7 L 369.2 555.3 L 350.8 566.0 L 369.2 576.7 L 360.0 582.0" fill="none" stroke="#10b981" stroke-width="1.8" stroke-opacity="0.85" stroke-linejoin="round"/>
+      
+        <line x1="340.0" y1="565.0" x2="380.0" y2="535.0" stroke="#10b981" stroke-width="2.6"/>
+        <polygon points="383.0,532.0 373.0,534.0 379.0,542.0" fill="#10b981"/>
+        
+      
+    <g>
+      <rect x="251.6" y="542.0" width="89.4" height="18" rx="4" fill="#0a0d14" fill-opacity="0.88"/>
+      <text x="337.0" y="555.0" fill="#10b981" font-size="13.5" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-weight="700" text-anchor="end">R_bal 25k</text>
+    </g>
+    
+    </g>
+    
+
+                    <line x1="360" y1="530" x2="557" y2="530" stroke="#10b981" stroke-width="2.8"/>
+                    <line x1="505" y1="570" x2="557" y2="570" stroke="#10b981" stroke-width="2.6"/>
+                    <line x1="505" y1="570" x2="505" y2="610" stroke="#10b981" stroke-width="2.6"/>
+                    <circle cx="505.0" cy="610.0" r="6.0" fill="#10b981" stroke="#ffffff" stroke-width="1.4"/>
+                    
+    <g>
+      <line x1="594.0" y1="528.7" x2="594.0" y2="510.5" stroke="#10b981" stroke-width="2.2"/>
+      <circle cx="594.0" cy="510.5" r="3.5" fill="#10b981"/>
+      <line x1="594.0" y1="571.3" x2="594.0" y2="589.5" stroke="#10b981" stroke-width="2.2"/>
+      <circle cx="594.0" cy="589.5" r="3.5" fill="#10b981"/>
+
+      <polygon points="557.0,512.0 557.0,588.0 643.0,550.0" fill="#0d1118" stroke="#f8fafc" stroke-width="3.0" stroke-linejoin="round"/>
+      <polygon points="562.0,519.0 562.0,581.0 634.0,550.0" fill="none" stroke="#10b981" stroke-width="1.4" stroke-opacity="0.50"/>
+
+      <text x="572.0" y="537.0" fill="#10b981" font-size="18" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-weight="800" text-anchor="middle">+</text>
+      <text x="572.0" y="573.0" fill="#f8fafc" font-size="18" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-weight="800" text-anchor="middle">−</text>
+      <text x="596.0" y="555.0" fill="#f8fafc" font-size="14" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-weight="700" text-anchor="middle">U_SUM</text>
+    </g>
+    
+
+                    <line x1="643" y1="550" x2="1085" y2="550" stroke="#10b981" stroke-width="3.2"/>
+                    
+    <g>
+      <rect x="784.0" y="539.0" width="72.0" height="22.0" rx="3" fill="#0d1118" stroke="#f8fafc" stroke-width="2.6"/>
+      <path d="M 784.0 550.0 L 790.0 540.8 L 802.0 559.2 L 814.0 540.8 L 826.0 559.2 L 838.0 540.8 L 850.0 559.2 L 856.0 550.0" fill="none" stroke="#10b981" stroke-width="1.8" stroke-opacity="0.85" stroke-linejoin="round"/>
+      
+      
+    <g>
+      <rect x="771.0" y="518.0" width="98.0" height="18" rx="4" fill="#0a0d14" fill-opacity="0.88"/>
+      <text x="820.0" y="531.0" fill="#10b981" font-size="13.5" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-weight="700" text-anchor="middle">R_out 100Ω</text>
+    </g>
+    
+    </g>
+    
+                    
+    <g>
+      <circle cx="1085.0" cy="550.0" r="7.5" fill="#0b0e14" stroke="#10b981" stroke-width="3.0"/>
+      <circle cx="1085.0" cy="550.0" r="3.0" fill="#ffffff"/>
+      
+    <g>
+      <rect x="1096.0" y="542.0" width="55.0" height="18" rx="4" fill="#0a0d14" fill-opacity="0.88"/>
+      <text x="1100.0" y="555.0" fill="#f8fafc" font-size="13.5" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-weight="700" text-anchor="start">V_OUT</text>
+    </g>
+    
+    </g>
+    
+                    
   </g>
 </svg>

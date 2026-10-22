@@ -1,379 +1,572 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 1200" width="1200" height="1200">
   <defs>
-    <!-- Background Radial Gradient: Rich graphite slate center fading smoothly to deep black -->
-    <radialGradient id="bgGrad" cx="50%" cy="46%" r="65%">
-      <stop offset="0%" stop-color="#222b3b"/>
-      <stop offset="35%" stop-color="#151b25"/>
-      <stop offset="70%" stop-color="#0d1117"/>
-      <stop offset="100%" stop-color="#080a0f"/>
+    <!-- Dark SPICE Schematic Canvas Background -->
+    <radialGradient id="bgGrad" cx="50%" cy="50%" r="70%">
+      <stop offset="0%" stop-color="#191d26"/>
+      <stop offset="55%" stop-color="#12151c"/>
+      <stop offset="100%" stop-color="#0b0d12"/>
     </radialGradient>
 
-    <!-- Outer Bezel Linear -->
-    <linearGradient id="bezelGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#475569"/>
-      <stop offset="30%" stop-color="#2a374a"/>
-      <stop offset="70%" stop-color="#141c28"/>
-      <stop offset="100%" stop-color="#334155"/>
-    </linearGradient>
-
-    <!-- Silky-Smooth Studio Backlight Bloom: Pure accent color diffusion with zero hard boundaries -->
-    <radialGradient id="heroGlow" cx="50%" cy="46%" r="48%">
-      <stop offset="0%" stop-color="#a855f7" stop-opacity="0.45"/>
-      <stop offset="25%" stop-color="#a855f7" stop-opacity="0.28"/>
-      <stop offset="50%" stop-color="#a855f7" stop-opacity="0.12"/>
-      <stop offset="75%" stop-color="#a855f7" stop-opacity="0.03"/>
+    <!-- Subtle Edition Color Aura Behind Schematic -->
+    <radialGradient id="heroGlow" cx="50%" cy="50%" r="54%">
+      <stop offset="0%" stop-color="#a855f7" stop-opacity="0.26"/>
+      <stop offset="48%" stop-color="#a855f7" stop-opacity="0.10"/>
       <stop offset="100%" stop-color="#a855f7" stop-opacity="0.0"/>
     </radialGradient>
 
-    <!-- Pickup Cover Gradient -->
-    <linearGradient id="coverGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" stop-color="#3b485d"/>
-      <stop offset="35%" stop-color="#263142"/>
-      <stop offset="100%" stop-color="#151b24"/>
-    </linearGradient>
+    <!-- Authentic EDA / SPICE Schematic Coordinate Grid Pattern -->
+    <pattern id="spiceGridMinor" width="30" height="30" patternUnits="userSpaceOnUse">
+      <path d="M 30 0 L 0 0 0 30" fill="none" stroke="#ffffff" stroke-width="0.6" stroke-opacity="0.04"/>
+    </pattern>
+    <pattern id="spiceGridMajor" width="150" height="150" patternUnits="userSpaceOnUse">
+      <rect width="150" height="150" fill="url(#spiceGridMinor)"/>
+      <path d="M 150 0 L 0 0 0 150" fill="none" stroke="#a855f7" stroke-width="1.0" stroke-opacity="0.12"/>
+    </pattern>
 
-    <!-- Metallic Pole Gradient -->
-    <radialGradient id="poleGrad" cx="35%" cy="35%" r="70%">
-      <stop offset="0%" stop-color="#ffffff"/>
-      <stop offset="25%" stop-color="#f1f5f9"/>
-      <stop offset="60%" stop-color="#94a3b8"/>
-      <stop offset="100%" stop-color="#475569"/>
-    </radialGradient>
-
-    <!-- Steel String Linear (High-Gloss Steel) -->
-    <linearGradient id="stringGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-      <stop offset="0%" stop-color="#64748b"/>
-      <stop offset="25%" stop-color="#ffffff"/>
-      <stop offset="60%" stop-color="#cbd5e1"/>
-      <stop offset="100%" stop-color="#475569"/>
-    </linearGradient>
-
-    <!-- Clean Drop Shadow: Generous filter region so no blur clipping occurs -->
-    <filter id="dropShadow" x="-50%" y="-50%" width="200%" height="200%">
-      <feDropShadow dx="0" dy="20" stdDeviation="18" flood-color="#000000" flood-opacity="0.92"/>
-      <feDropShadow dx="0" dy="6" stdDeviation="8" flood-color="#000000" flood-opacity="0.65"/>
-    </filter>
-
-    <filter id="stringShadow" x="-50%" y="-20%" width="200%" height="140%">
-      <feDropShadow dx="0" dy="4" stdDeviation="4" flood-color="#000000" flood-opacity="0.80"/>
+    <!-- Clean Drop Shadow for Ghost Pickup Silhouette Underlay -->
+    <filter id="dropShadow" x="-25%" y="-25%" width="150%" height="150%">
+      <feDropShadow dx="0" dy="16" stdDeviation="16" flood-color="#000000" flood-opacity="0.88"/>
     </filter>
   </defs>
 
-  <!-- Canvas Background -->
+  <!-- 1. SPICE Canvas & Grid -->
   <rect width="1200" height="1200" fill="url(#bgGrad)"/>
-  <!-- Seamless Studio Backlight Bloom across canvas (no shape clipping) -->
   <rect width="1200" height="1200" fill="url(#heroGlow)"/>
+  <rect width="1200" height="1200" fill="url(#spiceGridMajor)"/>
   
 
-  <!-- Outer Precision Enclosure Bezel -->
-  <rect x="24" y="24" width="1152" height="1152" rx="32" fill="none" stroke="url(#bezelGrad)" stroke-width="4"/>
-  <rect x="36" y="36" width="1128" height="1128" rx="24" fill="none" stroke="#ffffff" stroke-opacity="0.08" stroke-width="1.5"/>
+  <!-- 2. Faint Physical Bass Strings Underlay -->
+  <g>
+    
+        <line x1="300.0" y1="0" x2="300.0" y2="1200" stroke="#1e293b" stroke-width="16.0" opacity="0.65"/>
+        <line x1="300.0" y1="0" x2="300.0" y2="1200" stroke="#a855f7" stroke-width="1.4" stroke-dasharray="10 8" opacity="0.35"/>
+        
 
-  <!-- Precision Corner Registration Crosshairs -->
-  <g stroke="#a855f7" stroke-width="2.2" stroke-opacity="0.85">
-    <line x1="60" y1="75" x2="90" y2="75"/><line x1="75" y1="60" x2="75" y2="90"/><circle cx="75" cy="75" r="6" fill="none"/>
-    <line x1="1110" y1="75" x2="1140" y2="75"/><line x1="1125" y1="60" x2="1125" y2="90"/><circle cx="1125" cy="75" r="6" fill="none"/>
-    <line x1="60" y1="1125" x2="90" y2="1125"/><line x1="75" y1="1110" x2="75" y2="1140"/><circle cx="75" cy="1125" r="6" fill="none"/>
-    <line x1="1110" y1="1125" x2="1140" y2="1125"/><line x1="1125" y1="1110" x2="1125" y2="1140"/><circle cx="1125" cy="1125" r="6" fill="none"/>
+        <line x1="500.0" y1="0" x2="500.0" y2="1200" stroke="#1e293b" stroke-width="14.2" opacity="0.65"/>
+        <line x1="500.0" y1="0" x2="500.0" y2="1200" stroke="#a855f7" stroke-width="1.4" stroke-dasharray="10 8" opacity="0.35"/>
+        
+
+        <line x1="700.0" y1="0" x2="700.0" y2="1200" stroke="#1e293b" stroke-width="12.4" opacity="0.65"/>
+        <line x1="700.0" y1="0" x2="700.0" y2="1200" stroke="#a855f7" stroke-width="1.4" stroke-dasharray="10 8" opacity="0.35"/>
+        
+
+        <line x1="900.0" y1="0" x2="900.0" y2="1200" stroke="#1e293b" stroke-width="10.6" opacity="0.65"/>
+        <line x1="900.0" y1="0" x2="900.0" y2="1200" stroke="#a855f7" stroke-width="1.4" stroke-dasharray="10 8" opacity="0.35"/>
+        
   </g>
 
-  <!-- Primary Branding Header: Perfectly balanced from top -->
-  <g transform="translate(600, 184)">
-    <text x="0" y="0" fill="#ffffff" font-size="108" font-family="system-ui, -apple-system, sans-serif" font-weight="900" letter-spacing="16" text-anchor="middle">ALLOMORPH</text>
-    <text x="0" y="46" fill="#a855f7" font-size="25" font-family="system-ui, -apple-system, sans-serif" font-weight="800" letter-spacing="6" text-anchor="middle">ANALOG PICKUP DIGITAL TWINS</text>
-  </g>
-
-  <!-- Header Technical Divider -->
-  <line x1="80" y1="270" x2="1120" y2="270" stroke="#334155" stroke-width="2"/>
-  <line x1="440" y1="270" x2="760" y2="270" stroke="#a855f7" stroke-width="4.5"/>
-
-  <!-- Center Hero Pickup & Strings Container -->
-  <g transform="translate(600, 550.0) scale(1.25) translate(-600, -515)">
+  <!-- 3. Dominant Pickup-Shaped SPICE Schematic & Hardware Underlay -->
+  <g transform="translate(600, 600) scale(1.00) translate(-600, -550)">
     
-                
-    <!-- P-Bass Bobbin Half at 520.0, 388.0 (P-BASS EA) -->
+                    <!-- Upper-Left Split-P E/A Half (Centered on E=300, A=500 -> cx=400, w=396) -->
+                    
+    
     <g filter="url(#dropShadow)">
-      <!-- Left Mounting Tab -->
-      <path d="M 400.0 363.8 A 25 25 0 0 0 400.0 412.2 Z" fill="url(#coverGrad)" stroke="#475569" stroke-width="2.2"/>
-      <circle cx="389.0" cy="388.0" r="4.5" fill="#0d1117" stroke="#64748b" stroke-width="1.2"/>
-      <circle cx="389.0" cy="388.0" r="2.0" fill="#334155"/>
+      <!-- Left & Right Mounting Ears -->
+      <path d="M 202.0 242.0 A 40 40 0 0 0 202.0 318.0 Z" fill="#12161f" stroke="#a855f7" stroke-width="2.2" stroke-opacity="0.55"/>
+      <circle cx="182.0" cy="280.0" r="7.0" fill="#090b10" stroke="#a855f7" stroke-width="1.5" stroke-opacity="0.65"/>
+      <path d="M 598.0 242.0 A 40 40 0 0 1 598.0 318.0 Z" fill="#12161f" stroke="#a855f7" stroke-width="2.2" stroke-opacity="0.55"/>
+      <circle cx="618.0" cy="280.0" r="7.0" fill="#090b10" stroke="#a855f7" stroke-width="1.5" stroke-opacity="0.65"/>
 
-      <!-- Right Mounting Tab -->
-      <path d="M 640.0 363.8 A 25 25 0 0 1 640.0 412.2 Z" fill="url(#coverGrad)" stroke="#475569" stroke-width="2.2"/>
-      <circle cx="651.0" cy="388.0" r="4.5" fill="#0d1117" stroke="#64748b" stroke-width="1.2"/>
-      <circle cx="651.0" cy="388.0" r="2.0" fill="#334155"/>
+      <!-- Main Bobbin Silhouette -->
+      <rect x="202.0" y="178.0" width="396.0" height="204.0" rx="24.0" fill="#10141d" fill-opacity="0.92" stroke="#334155" stroke-width="3.0"/>
+      <rect x="210.0" y="186.0" width="380.0" height="188.0" rx="19.0" fill="#0a0d14" fill-opacity="0.94" stroke="#a855f7" stroke-width="1.6" stroke-opacity="0.45" stroke-dasharray="10 7"/>
 
-      <!-- Main Bobbin Casing with Chamfer Bevel -->
-      <rect x="400.0" y="331.0" width="240.0" height="114.0" rx="13.5" fill="url(#coverGrad)" stroke="#64748b" stroke-width="3.0"/>
-      <rect x="402.0" y="333.0" width="236.0" height="110.0" rx="12.5" fill="none" stroke="#94a3b8" stroke-width="1.2" opacity="0.6"/>
-      <rect x="407.0" y="338.0" width="226.0" height="100.0" rx="9.5" fill="#161c26" stroke="#2a374a" stroke-width="1.5"/>
+      <!-- Ghost Pole Pieces -->
+      
+    <g transform="translate(275.0, 280.0)" opacity="0.60">
+      <circle cx="0" cy="0" r="20.0" fill="#06080c"/>
+      <circle cx="0" cy="0" r="16.5" fill="#171d28" stroke="#334155" stroke-width="1.8"/>
+      <circle cx="0" cy="0" r="7.9" fill="none" stroke="#a855f7" stroke-width="1.2" stroke-opacity="0.50"/>
+    </g>
+    
+      
+    <g transform="translate(325.0, 280.0)" opacity="0.60">
+      <circle cx="0" cy="0" r="20.0" fill="#06080c"/>
+      <circle cx="0" cy="0" r="16.5" fill="#171d28" stroke="#334155" stroke-width="1.8"/>
+      <circle cx="0" cy="0" r="7.9" fill="none" stroke="#a855f7" stroke-width="1.2" stroke-opacity="0.50"/>
+    </g>
+    
+      
+    <g transform="translate(475.0, 280.0)" opacity="0.60">
+      <circle cx="0" cy="0" r="20.0" fill="#06080c"/>
+      <circle cx="0" cy="0" r="16.5" fill="#171d28" stroke="#334155" stroke-width="1.8"/>
+      <circle cx="0" cy="0" r="7.9" fill="none" stroke="#a855f7" stroke-width="1.2" stroke-opacity="0.50"/>
+    </g>
+    
+      
+    <g transform="translate(525.0, 280.0)" opacity="0.60">
+      <circle cx="0" cy="0" r="20.0" fill="#06080c"/>
+      <circle cx="0" cy="0" r="16.5" fill="#171d28" stroke="#334155" stroke-width="1.8"/>
+      <circle cx="0" cy="0" r="7.9" fill="none" stroke="#a855f7" stroke-width="1.2" stroke-opacity="0.50"/>
+    </g>
+    
+    </g>
+    
+    <!-- Symmetric SPICE Subcircuit Sculpted Inside Split-P Bobbin 1 -->
+    <g>
+      <rect x="246.0" y="212.0" width="308.0" height="136.0" fill="none" stroke="#a855f7" stroke-width="2.8"/>
+      <line x1="182.0" y1="280.0" x2="618.0" y2="280.0" stroke="#a855f7" stroke-width="3.2"/>
 
-      <!-- Internal Coil Indicator -->
-      <rect x="416.0" y="347.0" width="208.0" height="82.0" rx="8" fill="none" stroke="#a855f7" stroke-width="1.0" stroke-opacity="0.45" stroke-dasharray="5 5"/>
+      <!-- Top Rail: Eddy Loss / Pot Resistor (Dead-Center at cx) -->
       
-      <!-- 4 Poles (2 pairs straddling each string) -->
+    <g>
+      <rect x="364.0" y="201.0" width="72.0" height="22.0" rx="3" fill="#0d1118" stroke="#f8fafc" stroke-width="2.6"/>
+      <path d="M 364.0 212.0 L 370.0 202.8 L 382.0 221.2 L 394.0 202.8 L 406.0 221.2 L 418.0 202.8 L 430.0 221.2 L 436.0 212.0" fill="none" stroke="#a855f7" stroke-width="1.8" stroke-opacity="0.85" stroke-linejoin="round"/>
       
-    <!-- Pole piece at 465.0, 388.0 -->
-    <g transform="translate(465.0, 388.0)">
-      <circle cx="0" cy="0" r="13.0" fill="#080a0f" opacity="0.85"/>
-      <circle cx="0" cy="0" r="11.0" fill="url(#poleGrad)"/>
-      <circle cx="0" cy="0" r="9.5" fill="none" stroke="#f8fafc" stroke-width="0.85" opacity="0.75"/>
-      <ellipse cx="-2.5" cy="-2.5" rx="4.4" ry="2.8" fill="#ffffff" opacity="0.65" transform="rotate(-30, -2.5, -2.5)"/>
-      <circle cx="0" cy="0" r="5.5" fill="none" stroke="#64748b" stroke-width="0.5" opacity="0.5"/>
-    </g>
-    
       
-    <!-- Pole piece at 495.0, 388.0 -->
-    <g transform="translate(495.0, 388.0)">
-      <circle cx="0" cy="0" r="13.0" fill="#080a0f" opacity="0.85"/>
-      <circle cx="0" cy="0" r="11.0" fill="url(#poleGrad)"/>
-      <circle cx="0" cy="0" r="9.5" fill="none" stroke="#f8fafc" stroke-width="0.85" opacity="0.75"/>
-      <ellipse cx="-2.5" cy="-2.5" rx="4.4" ry="2.8" fill="#ffffff" opacity="0.65" transform="rotate(-30, -2.5, -2.5)"/>
-      <circle cx="0" cy="0" r="5.5" fill="none" stroke="#64748b" stroke-width="0.5" opacity="0.5"/>
-    </g>
-    
-      
-    <!-- Pole piece at 545.0, 388.0 -->
-    <g transform="translate(545.0, 388.0)">
-      <circle cx="0" cy="0" r="13.0" fill="#080a0f" opacity="0.85"/>
-      <circle cx="0" cy="0" r="11.0" fill="url(#poleGrad)"/>
-      <circle cx="0" cy="0" r="9.5" fill="none" stroke="#f8fafc" stroke-width="0.85" opacity="0.75"/>
-      <ellipse cx="-2.5" cy="-2.5" rx="4.4" ry="2.8" fill="#ffffff" opacity="0.65" transform="rotate(-30, -2.5, -2.5)"/>
-      <circle cx="0" cy="0" r="5.5" fill="none" stroke="#64748b" stroke-width="0.5" opacity="0.5"/>
-    </g>
-    
-      
-    <!-- Pole piece at 575.0, 388.0 -->
-    <g transform="translate(575.0, 388.0)">
-      <circle cx="0" cy="0" r="13.0" fill="#080a0f" opacity="0.85"/>
-      <circle cx="0" cy="0" r="11.0" fill="url(#poleGrad)"/>
-      <circle cx="0" cy="0" r="9.5" fill="none" stroke="#f8fafc" stroke-width="0.85" opacity="0.75"/>
-      <ellipse cx="-2.5" cy="-2.5" rx="4.4" ry="2.8" fill="#ffffff" opacity="0.65" transform="rotate(-30, -2.5, -2.5)"/>
-      <circle cx="0" cy="0" r="5.5" fill="none" stroke="#64748b" stroke-width="0.5" opacity="0.5"/>
+    <g>
+      <rect x="359.6" y="180.0" width="80.8" height="18" rx="4" fill="#0a0d14" fill-opacity="0.88"/>
+      <text x="400.0" y="193.0" fill="#a855f7" font-size="13.5" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-weight="700" text-anchor="middle">R_e1 90k</text>
     </g>
     
     </g>
     
-                
-    <!-- P-Bass Bobbin Half at 680.0, 502.0 (P-BASS DG) -->
+
+      <!-- Center Rail: AC String Source (Left String) + Inductor (Center) + DC Resistance (Right String) -->
+      
+    <g>
+      <circle cx="300.0" cy="280.0" r="21.0" fill="#0d1118" stroke="#f8fafc" stroke-width="2.8"/>
+      <circle cx="300.0" cy="280.0" r="17.0" fill="none" stroke="#a855f7" stroke-width="1.4" stroke-opacity="0.60"/>
+      <path d="M 288.0 280.0 Q 294.0 268.0 300.0 280.0 T 312.0 280.0" fill="none" stroke="#a855f7" stroke-width="2.8" stroke-linecap="round"/>
+      
+    <g>
+      <rect x="268.2" y="238.0" width="63.6" height="18" rx="4" fill="#0a0d14" fill-opacity="0.88"/>
+      <text x="300.0" y="251.0" fill="#f8fafc" font-size="13.5" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-weight="700" text-anchor="middle">V_str1</text>
+    </g>
+    
+    </g>
+    
+      
+    <g>
+      <rect x="341.0" y="257.0" width="118.0" height="28.0" fill="#0a0d14" fill-opacity="0.82" rx="4"/>
+      <line x1="348.0" y1="261.0" x2="452.0" y2="261.0" stroke="#a855f7" stroke-width="2.2" stroke-opacity="0.90"/>
+      <line x1="348.0" y1="256.0" x2="452.0" y2="256.0" stroke="#a855f7" stroke-width="1.6" stroke-dasharray="7 5" stroke-opacity="0.70"/>
+      <path d="M 344.0 280.0 A 14.0 14.0 0 0 1 372.0 280.0 A 14.0 14.0 0 0 1 400.0 280.0 A 14.0 14.0 0 0 1 428.0 280.0 A 14.0 14.0 0 0 1 456.0 280.0" fill="none" stroke="#f8fafc" stroke-width="3.2" stroke-linecap="round"/>
+      <circle cx="350.0" cy="271.0" r="3.8" fill="#a855f7"/>
+      
+    <g>
+      <rect x="355.3" y="287.0" width="89.4" height="18" rx="4" fill="#0a0d14" fill-opacity="0.88"/>
+      <text x="400.0" y="300.0" fill="#f8fafc" font-size="13.5" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-weight="700" text-anchor="middle">L_P1 1.9H</text>
+    </g>
+    
+    </g>
+    
+      
+    <g>
+      <rect x="468.0" y="269.5" width="64.0" height="21.0" rx="3" fill="#0d1118" stroke="#f8fafc" stroke-width="2.6"/>
+      <path d="M 468.0 280.0 L 473.3 271.2 L 484.0 288.8 L 494.7 271.2 L 505.3 288.8 L 516.0 271.2 L 526.7 288.8 L 532.0 280.0" fill="none" stroke="#a855f7" stroke-width="1.8" stroke-opacity="0.85" stroke-linejoin="round"/>
+      
+      
+    <g>
+      <rect x="451.0" y="295.5" width="98.0" height="18" rx="4" fill="#0a0d14" fill-opacity="0.88"/>
+      <text x="500.0" y="308.5" fill="#a855f7" font-size="13.5" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-weight="700" text-anchor="middle">R_P1 5.25k</text>
+    </g>
+    
+    </g>
+    
+
+      <!-- Bottom Rail: Winding Capacitance + Saturation Clipper (Symmetric around cx) -->
+      
+    <g>
+      <rect x="324.5" y="334.0" width="19.0" height="28.0" fill="#0a0d14"/>
+      <line x1="328.5" y1="334.0" x2="328.5" y2="362.0" stroke="#f8fafc" stroke-width="3.5"/>
+      <line x1="339.5" y1="334.0" x2="339.5" y2="362.0" stroke="#f8fafc" stroke-width="3.5"/>
+      
+    <g>
+      <rect x="293.6" y="367.0" width="80.8" height="18" rx="4" fill="#0a0d14" fill-opacity="0.88"/>
+      <text x="334.0" y="380.0" fill="#a855f7" font-size="13.5" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-weight="700" text-anchor="middle">C1 120pF</text>
+    </g>
+    
+    </g>
+    
+      
+    <g>
+      <rect x="436.0" y="334.0" width="60" height="28" fill="#0a0d14"/>
+      <line x1="436.0" y1="348.0" x2="496.0" y2="348.0" stroke="#a855f7" stroke-width="2.6"/>
+      <polygon points="447.0,337.0 447.0,359.0 462.0,348.0" fill="#0d1118" stroke="#f8fafc" stroke-width="2.2"/>
+      <polyline points="458.0,336.0 462.0,336.0 462.0,360.0 466.0,360.0" fill="none" stroke="#a855f7" stroke-width="2.2"/>
+      <polygon points="485.0,337.0 485.0,359.0 470.0,348.0" fill="#0d1118" stroke="#f8fafc" stroke-width="2.2"/>
+      <polyline points="474.0,336.0 470.0,336.0 470.0,360.0 466.0,360.0" fill="none" stroke="#a855f7" stroke-width="2.2"/>
+      
+    <g>
+      <rect x="434.2" y="363.0" width="63.6" height="18" rx="4" fill="#0a0d14" fill-opacity="0.88"/>
+      <text x="466.0" y="376.0" fill="#a855f7" font-size="13.5" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-weight="700" text-anchor="middle">D_sat1</text>
+    </g>
+    
+    </g>
+    
+
+      <circle cx="182.0" cy="280.0" r="6.0" fill="#a855f7" stroke="#ffffff" stroke-width="1.4"/>
+      <circle cx="246.0" cy="280.0" r="6.0" fill="#a855f7" stroke="#ffffff" stroke-width="1.4"/>
+      <circle cx="554.0" cy="280.0" r="6.0" fill="#a855f7" stroke="#ffffff" stroke-width="1.4"/>
+      <circle cx="618.0" cy="280.0" r="6.0" fill="#a855f7" stroke="#ffffff" stroke-width="1.4"/>
+    </g>
+    
+
+                    <!-- Middle-Right Split-P D/G Half (Centered on D=700, G=900 -> cx=800, w=396) -->
+                    
+    
     <g filter="url(#dropShadow)">
-      <!-- Left Mounting Tab -->
-      <path d="M 560.0 477.8 A 25 25 0 0 0 560.0 526.2 Z" fill="url(#coverGrad)" stroke="#475569" stroke-width="2.2"/>
-      <circle cx="549.0" cy="502.0" r="4.5" fill="#0d1117" stroke="#64748b" stroke-width="1.2"/>
-      <circle cx="549.0" cy="502.0" r="2.0" fill="#334155"/>
+      <!-- Left & Right Mounting Ears -->
+      <path d="M 602.0 482.0 A 40 40 0 0 0 602.0 558.0 Z" fill="#12161f" stroke="#a855f7" stroke-width="2.2" stroke-opacity="0.55"/>
+      <circle cx="582.0" cy="520.0" r="7.0" fill="#090b10" stroke="#a855f7" stroke-width="1.5" stroke-opacity="0.65"/>
+      <path d="M 998.0 482.0 A 40 40 0 0 1 998.0 558.0 Z" fill="#12161f" stroke="#a855f7" stroke-width="2.2" stroke-opacity="0.55"/>
+      <circle cx="1018.0" cy="520.0" r="7.0" fill="#090b10" stroke="#a855f7" stroke-width="1.5" stroke-opacity="0.65"/>
 
-      <!-- Right Mounting Tab -->
-      <path d="M 800.0 477.8 A 25 25 0 0 1 800.0 526.2 Z" fill="url(#coverGrad)" stroke="#475569" stroke-width="2.2"/>
-      <circle cx="811.0" cy="502.0" r="4.5" fill="#0d1117" stroke="#64748b" stroke-width="1.2"/>
-      <circle cx="811.0" cy="502.0" r="2.0" fill="#334155"/>
+      <!-- Main Bobbin Silhouette -->
+      <rect x="602.0" y="418.0" width="396.0" height="204.0" rx="24.0" fill="#10141d" fill-opacity="0.92" stroke="#334155" stroke-width="3.0"/>
+      <rect x="610.0" y="426.0" width="380.0" height="188.0" rx="19.0" fill="#0a0d14" fill-opacity="0.94" stroke="#a855f7" stroke-width="1.6" stroke-opacity="0.45" stroke-dasharray="10 7"/>
 
-      <!-- Main Bobbin Casing with Chamfer Bevel -->
-      <rect x="560.0" y="445.0" width="240.0" height="114.0" rx="13.5" fill="url(#coverGrad)" stroke="#64748b" stroke-width="3.0"/>
-      <rect x="562.0" y="447.0" width="236.0" height="110.0" rx="12.5" fill="none" stroke="#94a3b8" stroke-width="1.2" opacity="0.6"/>
-      <rect x="567.0" y="452.0" width="226.0" height="100.0" rx="9.5" fill="#161c26" stroke="#2a374a" stroke-width="1.5"/>
+      <!-- Ghost Pole Pieces -->
+      
+    <g transform="translate(675.0, 520.0)" opacity="0.60">
+      <circle cx="0" cy="0" r="20.0" fill="#06080c"/>
+      <circle cx="0" cy="0" r="16.5" fill="#171d28" stroke="#334155" stroke-width="1.8"/>
+      <circle cx="0" cy="0" r="7.9" fill="none" stroke="#a855f7" stroke-width="1.2" stroke-opacity="0.50"/>
+    </g>
+    
+      
+    <g transform="translate(725.0, 520.0)" opacity="0.60">
+      <circle cx="0" cy="0" r="20.0" fill="#06080c"/>
+      <circle cx="0" cy="0" r="16.5" fill="#171d28" stroke="#334155" stroke-width="1.8"/>
+      <circle cx="0" cy="0" r="7.9" fill="none" stroke="#a855f7" stroke-width="1.2" stroke-opacity="0.50"/>
+    </g>
+    
+      
+    <g transform="translate(875.0, 520.0)" opacity="0.60">
+      <circle cx="0" cy="0" r="20.0" fill="#06080c"/>
+      <circle cx="0" cy="0" r="16.5" fill="#171d28" stroke="#334155" stroke-width="1.8"/>
+      <circle cx="0" cy="0" r="7.9" fill="none" stroke="#a855f7" stroke-width="1.2" stroke-opacity="0.50"/>
+    </g>
+    
+      
+    <g transform="translate(925.0, 520.0)" opacity="0.60">
+      <circle cx="0" cy="0" r="20.0" fill="#06080c"/>
+      <circle cx="0" cy="0" r="16.5" fill="#171d28" stroke="#334155" stroke-width="1.8"/>
+      <circle cx="0" cy="0" r="7.9" fill="none" stroke="#a855f7" stroke-width="1.2" stroke-opacity="0.50"/>
+    </g>
+    
+    </g>
+    
+    <!-- Symmetric SPICE Subcircuit Sculpted Inside Split-P Bobbin 2 -->
+    <g>
+      <rect x="646.0" y="452.0" width="308.0" height="136.0" fill="none" stroke="#a855f7" stroke-width="2.8"/>
+      <line x1="582.0" y1="520.0" x2="1018.0" y2="520.0" stroke="#a855f7" stroke-width="3.2"/>
 
-      <!-- Internal Coil Indicator -->
-      <rect x="576.0" y="461.0" width="208.0" height="82.0" rx="8" fill="none" stroke="#a855f7" stroke-width="1.0" stroke-opacity="0.45" stroke-dasharray="5 5"/>
+      <!-- Top Rail: Eddy Loss / Pot Resistor (Dead-Center at cx) -->
       
-      <!-- 4 Poles (2 pairs straddling each string) -->
+    <g>
+      <rect x="764.0" y="441.0" width="72.0" height="22.0" rx="3" fill="#0d1118" stroke="#f8fafc" stroke-width="2.6"/>
+      <path d="M 764.0 452.0 L 770.0 442.8 L 782.0 461.2 L 794.0 442.8 L 806.0 461.2 L 818.0 442.8 L 830.0 461.2 L 836.0 452.0" fill="none" stroke="#a855f7" stroke-width="1.8" stroke-opacity="0.85" stroke-linejoin="round"/>
       
-    <!-- Pole piece at 625.0, 502.0 -->
-    <g transform="translate(625.0, 502.0)">
-      <circle cx="0" cy="0" r="13.0" fill="#080a0f" opacity="0.85"/>
-      <circle cx="0" cy="0" r="11.0" fill="url(#poleGrad)"/>
-      <circle cx="0" cy="0" r="9.5" fill="none" stroke="#f8fafc" stroke-width="0.85" opacity="0.75"/>
-      <ellipse cx="-2.5" cy="-2.5" rx="4.4" ry="2.8" fill="#ffffff" opacity="0.65" transform="rotate(-30, -2.5, -2.5)"/>
-      <circle cx="0" cy="0" r="5.5" fill="none" stroke="#64748b" stroke-width="0.5" opacity="0.5"/>
-    </g>
-    
+        <line x1="784.0" y1="470.0" x2="816.0" y2="434.0" stroke="#a855f7" stroke-width="2.6"/>
+        <polygon points="819.0,431.0 809.0,434.0 816.0,442.0" fill="#a855f7"/>
+        
       
-    <!-- Pole piece at 655.0, 502.0 -->
-    <g transform="translate(655.0, 502.0)">
-      <circle cx="0" cy="0" r="13.0" fill="#080a0f" opacity="0.85"/>
-      <circle cx="0" cy="0" r="11.0" fill="url(#poleGrad)"/>
-      <circle cx="0" cy="0" r="9.5" fill="none" stroke="#f8fafc" stroke-width="0.85" opacity="0.75"/>
-      <ellipse cx="-2.5" cy="-2.5" rx="4.4" ry="2.8" fill="#ffffff" opacity="0.65" transform="rotate(-30, -2.5, -2.5)"/>
-      <circle cx="0" cy="0" r="5.5" fill="none" stroke="#64748b" stroke-width="0.5" opacity="0.5"/>
-    </g>
-    
-      
-    <!-- Pole piece at 705.0, 502.0 -->
-    <g transform="translate(705.0, 502.0)">
-      <circle cx="0" cy="0" r="13.0" fill="#080a0f" opacity="0.85"/>
-      <circle cx="0" cy="0" r="11.0" fill="url(#poleGrad)"/>
-      <circle cx="0" cy="0" r="9.5" fill="none" stroke="#f8fafc" stroke-width="0.85" opacity="0.75"/>
-      <ellipse cx="-2.5" cy="-2.5" rx="4.4" ry="2.8" fill="#ffffff" opacity="0.65" transform="rotate(-30, -2.5, -2.5)"/>
-      <circle cx="0" cy="0" r="5.5" fill="none" stroke="#64748b" stroke-width="0.5" opacity="0.5"/>
-    </g>
-    
-      
-    <!-- Pole piece at 735.0, 502.0 -->
-    <g transform="translate(735.0, 502.0)">
-      <circle cx="0" cy="0" r="13.0" fill="#080a0f" opacity="0.85"/>
-      <circle cx="0" cy="0" r="11.0" fill="url(#poleGrad)"/>
-      <circle cx="0" cy="0" r="9.5" fill="none" stroke="#f8fafc" stroke-width="0.85" opacity="0.75"/>
-      <ellipse cx="-2.5" cy="-2.5" rx="4.4" ry="2.8" fill="#ffffff" opacity="0.65" transform="rotate(-30, -2.5, -2.5)"/>
-      <circle cx="0" cy="0" r="5.5" fill="none" stroke="#64748b" stroke-width="0.5" opacity="0.5"/>
+    <g>
+      <rect x="751.0" y="420.0" width="98.0" height="18" rx="4" fill="#0a0d14" fill-opacity="0.88"/>
+      <text x="800.0" y="433.0" fill="#a855f7" font-size="13.5" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-weight="700" text-anchor="middle">R_vol 250k</text>
     </g>
     
     </g>
     
-                
-    <!-- Jazz Bass Bobbin at 600.0, 650.0 (J-BRIDGE) -->
+
+      <!-- Center Rail: AC String Source (Left String) + Inductor (Center) + DC Resistance (Right String) -->
+      
+    <g>
+      <circle cx="700.0" cy="520.0" r="21.0" fill="#0d1118" stroke="#f8fafc" stroke-width="2.8"/>
+      <circle cx="700.0" cy="520.0" r="17.0" fill="none" stroke="#a855f7" stroke-width="1.4" stroke-opacity="0.60"/>
+      <path d="M 688.0 520.0 Q 694.0 508.0 700.0 520.0 T 712.0 520.0" fill="none" stroke="#a855f7" stroke-width="2.8" stroke-linecap="round"/>
+      
+    <g>
+      <rect x="668.2" y="478.0" width="63.6" height="18" rx="4" fill="#0a0d14" fill-opacity="0.88"/>
+      <text x="700.0" y="491.0" fill="#f8fafc" font-size="13.5" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-weight="700" text-anchor="middle">V_str2</text>
+    </g>
+    
+    </g>
+    
+      
+    <g>
+      <rect x="741.0" y="497.0" width="118.0" height="28.0" fill="#0a0d14" fill-opacity="0.82" rx="4"/>
+      <line x1="748.0" y1="501.0" x2="852.0" y2="501.0" stroke="#a855f7" stroke-width="2.2" stroke-opacity="0.90"/>
+      <line x1="748.0" y1="496.0" x2="852.0" y2="496.0" stroke="#a855f7" stroke-width="1.6" stroke-dasharray="7 5" stroke-opacity="0.70"/>
+      <path d="M 744.0 520.0 A 14.0 14.0 0 0 1 772.0 520.0 A 14.0 14.0 0 0 1 800.0 520.0 A 14.0 14.0 0 0 1 828.0 520.0 A 14.0 14.0 0 0 1 856.0 520.0" fill="none" stroke="#f8fafc" stroke-width="3.2" stroke-linecap="round"/>
+      <circle cx="750.0" cy="511.0" r="3.8" fill="#a855f7"/>
+      
+    <g>
+      <rect x="755.3" y="527.0" width="89.4" height="18" rx="4" fill="#0a0d14" fill-opacity="0.88"/>
+      <text x="800.0" y="540.0" fill="#f8fafc" font-size="13.5" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-weight="700" text-anchor="middle">L_P2 1.9H</text>
+    </g>
+    
+    </g>
+    
+      
+    <g>
+      <rect x="868.0" y="509.5" width="64.0" height="21.0" rx="3" fill="#0d1118" stroke="#f8fafc" stroke-width="2.6"/>
+      <path d="M 868.0 520.0 L 873.3 511.2 L 884.0 528.8 L 894.7 511.2 L 905.3 528.8 L 916.0 511.2 L 926.7 528.8 L 932.0 520.0" fill="none" stroke="#a855f7" stroke-width="1.8" stroke-opacity="0.85" stroke-linejoin="round"/>
+      
+      
+    <g>
+      <rect x="851.0" y="535.5" width="98.0" height="18" rx="4" fill="#0a0d14" fill-opacity="0.88"/>
+      <text x="900.0" y="548.5" fill="#a855f7" font-size="13.5" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-weight="700" text-anchor="middle">R_P2 5.25k</text>
+    </g>
+    
+    </g>
+    
+
+      <!-- Bottom Rail: Winding Capacitance + Saturation Clipper (Symmetric around cx) -->
+      
+    <g>
+      <rect x="724.5" y="574.0" width="19.0" height="28.0" fill="#0a0d14"/>
+      <line x1="728.5" y1="574.0" x2="728.5" y2="602.0" stroke="#f8fafc" stroke-width="3.5"/>
+      <line x1="739.5" y1="574.0" x2="739.5" y2="602.0" stroke="#f8fafc" stroke-width="3.5"/>
+      
+    <g>
+      <rect x="693.6" y="607.0" width="80.8" height="18" rx="4" fill="#0a0d14" fill-opacity="0.88"/>
+      <text x="734.0" y="620.0" fill="#a855f7" font-size="13.5" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-weight="700" text-anchor="middle">C2 120pF</text>
+    </g>
+    
+    </g>
+    
+      
+    <g>
+      <rect x="836.0" y="574.0" width="60" height="28" fill="#0a0d14"/>
+      <line x1="836.0" y1="588.0" x2="896.0" y2="588.0" stroke="#a855f7" stroke-width="2.6"/>
+      <polygon points="847.0,577.0 847.0,599.0 862.0,588.0" fill="#0d1118" stroke="#f8fafc" stroke-width="2.2"/>
+      <polyline points="858.0,576.0 862.0,576.0 862.0,600.0 866.0,600.0" fill="none" stroke="#a855f7" stroke-width="2.2"/>
+      <polygon points="885.0,577.0 885.0,599.0 870.0,588.0" fill="#0d1118" stroke="#f8fafc" stroke-width="2.2"/>
+      <polyline points="874.0,576.0 870.0,576.0 870.0,600.0 866.0,600.0" fill="none" stroke="#a855f7" stroke-width="2.2"/>
+      
+    <g>
+      <rect x="834.2" y="603.0" width="63.6" height="18" rx="4" fill="#0a0d14" fill-opacity="0.88"/>
+      <text x="866.0" y="616.0" fill="#a855f7" font-size="13.5" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-weight="700" text-anchor="middle">D_sat2</text>
+    </g>
+    
+    </g>
+    
+
+      <circle cx="582.0" cy="520.0" r="6.0" fill="#a855f7" stroke="#ffffff" stroke-width="1.4"/>
+      <circle cx="646.0" cy="520.0" r="6.0" fill="#a855f7" stroke="#ffffff" stroke-width="1.4"/>
+      <circle cx="954.0" cy="520.0" r="6.0" fill="#a855f7" stroke="#ffffff" stroke-width="1.4"/>
+      <circle cx="1018.0" cy="520.0" r="6.0" fill="#a855f7" stroke="#ffffff" stroke-width="1.4"/>
+    </g>
+    
+
+                    <!-- Slim Lower J-Bridge Single-Coil Bobbin (Centered on all 4 strings -> cx=600, Slim h=128) -->
+                    
+    
     <g filter="url(#dropShadow)">
-      <!-- Left Mounting Tab Pair -->
-      <path d="M 495.6 611.0 A 26.7 26.7 0 0 1 537.6 611.0 Z" fill="url(#coverGrad)" stroke="#475569" stroke-width="2.0"/>
-      <circle cx="516.6" cy="606.5" r="3.5" fill="#0d1117" stroke="#64748b" stroke-width="1.0"/>
-      <circle cx="516.6" cy="606.5" r="1.6" fill="#334155"/>
-      
-      <path d="M 495.6 689.0 A 26.7 26.7 0 0 0 537.6 689.0 Z" fill="url(#coverGrad)" stroke="#475569" stroke-width="2.0"/>
-      <circle cx="516.6" cy="693.5" r="3.5" fill="#0d1117" stroke="#64748b" stroke-width="1.0"/>
-      <circle cx="516.6" cy="693.5" r="1.6" fill="#334155"/>
+      <!-- Top & Bottom J-Bass Semicircular Mounting Ears (Prominent Single-Coil Signature) -->
+      <path d="M 369.0 761.0 A 38 38 0 0 1 441.0 761.0 Z" fill="#12161f" stroke="#a855f7" stroke-width="2.4" stroke-opacity="0.70"/>
+      <circle cx="405.0" cy="749.0" r="6.5" fill="#090b10" stroke="#a855f7" stroke-width="1.6" stroke-opacity="0.80"/>
+      <path d="M 369.0 889.0 A 38 38 0 0 0 441.0 889.0 Z" fill="#12161f" stroke="#a855f7" stroke-width="2.4" stroke-opacity="0.70"/>
+      <circle cx="405.0" cy="901.0" r="6.5" fill="#090b10" stroke="#a855f7" stroke-width="1.6" stroke-opacity="0.80"/>
 
-      <!-- Right Mounting Tab Pair -->
-      <path d="M 662.4 611.0 A 26.7 26.7 0 0 1 704.4 611.0 Z" fill="url(#coverGrad)" stroke="#475569" stroke-width="2.0"/>
-      <circle cx="683.4" cy="606.5" r="3.5" fill="#0d1117" stroke="#64748b" stroke-width="1.0"/>
-      <circle cx="683.4" cy="606.5" r="1.6" fill="#334155"/>
-      
-      <path d="M 662.4 689.0 A 26.7 26.7 0 0 0 704.4 689.0 Z" fill="url(#coverGrad)" stroke="#475569" stroke-width="2.0"/>
-      <circle cx="683.4" cy="693.5" r="3.5" fill="#0d1117" stroke="#64748b" stroke-width="1.0"/>
-      <circle cx="683.4" cy="693.5" r="1.6" fill="#334155"/>
+      <path d="M 759.0 761.0 A 38 38 0 0 1 831.0 761.0 Z" fill="#12161f" stroke="#a855f7" stroke-width="2.4" stroke-opacity="0.70"/>
+      <circle cx="795.0" cy="749.0" r="6.5" fill="#090b10" stroke="#a855f7" stroke-width="1.6" stroke-opacity="0.80"/>
+      <path d="M 759.0 889.0 A 38 38 0 0 0 831.0 889.0 Z" fill="#12161f" stroke="#a855f7" stroke-width="2.4" stroke-opacity="0.70"/>
+      <circle cx="795.0" cy="901.0" r="6.5" fill="#090b10" stroke="#a855f7" stroke-width="1.6" stroke-opacity="0.80"/>
 
-      <!-- Main Bobbin Casing with Chamfer Bevel -->
-      <rect x="402.0" y="611.0" width="396.0" height="78.0" rx="10.0" fill="url(#coverGrad)" stroke="#64748b" stroke-width="3.0"/>
-      <rect x="404.0" y="613.0" width="392.0" height="74.0" rx="9.0" fill="none" stroke="#94a3b8" stroke-width="1.2" opacity="0.6"/>
-      <rect x="408.0" y="617.0" width="384.0" height="66.0" rx="7.0" fill="#161c26" stroke="#2a374a" stroke-width="1.5"/>
+      <!-- Slim Single-Coil J Bobbin Silhouette -->
+      <rect x="190.0" y="761.0" width="820.0" height="128.0" rx="18.0" fill="#10141d" fill-opacity="0.92" stroke="#334155" stroke-width="3.0"/>
+      <rect x="198.0" y="769.0" width="804.0" height="112.0" rx="13.0" fill="#0a0d14" fill-opacity="0.94" stroke="#a855f7" stroke-width="1.6" stroke-opacity="0.48" stroke-dasharray="10 7"/>
 
-      <!-- Internal Coil Indicator -->
-      <rect x="416.0" y="625.0" width="368.0" height="50.0" rx="6" fill="none" stroke="#a855f7" stroke-width="1.0" stroke-opacity="0.45" stroke-dasharray="6 6"/>
-
-      <!-- 8 Poles (4 pairs of 2 straddling E, A, D, G) -->
       
-    <!-- Pole piece at 465.0, 650.0 -->
-    <g transform="translate(465.0, 650.0)">
-      <circle cx="0" cy="0" r="13.0" fill="#080a0f" opacity="0.85"/>
-      <circle cx="0" cy="0" r="11.0" fill="url(#poleGrad)"/>
-      <circle cx="0" cy="0" r="9.5" fill="none" stroke="#f8fafc" stroke-width="0.85" opacity="0.75"/>
-      <ellipse cx="-2.5" cy="-2.5" rx="4.4" ry="2.8" fill="#ffffff" opacity="0.65" transform="rotate(-30, -2.5, -2.5)"/>
-      <circle cx="0" cy="0" r="5.5" fill="none" stroke="#64748b" stroke-width="0.5" opacity="0.5"/>
+    <g transform="translate(276.0, 825.0)" opacity="0.60">
+      <circle cx="0" cy="0" r="17.0" fill="#06080c"/>
+      <circle cx="0" cy="0" r="13.5" fill="#171d28" stroke="#334155" stroke-width="1.8"/>
+      <circle cx="0" cy="0" r="6.5" fill="none" stroke="#a855f7" stroke-width="1.2" stroke-opacity="0.50"/>
     </g>
     
-      
-    <!-- Pole piece at 495.0, 650.0 -->
-    <g transform="translate(495.0, 650.0)">
-      <circle cx="0" cy="0" r="13.0" fill="#080a0f" opacity="0.85"/>
-      <circle cx="0" cy="0" r="11.0" fill="url(#poleGrad)"/>
-      <circle cx="0" cy="0" r="9.5" fill="none" stroke="#f8fafc" stroke-width="0.85" opacity="0.75"/>
-      <ellipse cx="-2.5" cy="-2.5" rx="4.4" ry="2.8" fill="#ffffff" opacity="0.65" transform="rotate(-30, -2.5, -2.5)"/>
-      <circle cx="0" cy="0" r="5.5" fill="none" stroke="#64748b" stroke-width="0.5" opacity="0.5"/>
+    <g transform="translate(324.0, 825.0)" opacity="0.60">
+      <circle cx="0" cy="0" r="17.0" fill="#06080c"/>
+      <circle cx="0" cy="0" r="13.5" fill="#171d28" stroke="#334155" stroke-width="1.8"/>
+      <circle cx="0" cy="0" r="6.5" fill="none" stroke="#a855f7" stroke-width="1.2" stroke-opacity="0.50"/>
     </g>
     
-      
-    <!-- Pole piece at 545.0, 650.0 -->
-    <g transform="translate(545.0, 650.0)">
-      <circle cx="0" cy="0" r="13.0" fill="#080a0f" opacity="0.85"/>
-      <circle cx="0" cy="0" r="11.0" fill="url(#poleGrad)"/>
-      <circle cx="0" cy="0" r="9.5" fill="none" stroke="#f8fafc" stroke-width="0.85" opacity="0.75"/>
-      <ellipse cx="-2.5" cy="-2.5" rx="4.4" ry="2.8" fill="#ffffff" opacity="0.65" transform="rotate(-30, -2.5, -2.5)"/>
-      <circle cx="0" cy="0" r="5.5" fill="none" stroke="#64748b" stroke-width="0.5" opacity="0.5"/>
+    <g transform="translate(476.0, 825.0)" opacity="0.60">
+      <circle cx="0" cy="0" r="17.0" fill="#06080c"/>
+      <circle cx="0" cy="0" r="13.5" fill="#171d28" stroke="#334155" stroke-width="1.8"/>
+      <circle cx="0" cy="0" r="6.5" fill="none" stroke="#a855f7" stroke-width="1.2" stroke-opacity="0.50"/>
     </g>
     
-      
-    <!-- Pole piece at 575.0, 650.0 -->
-    <g transform="translate(575.0, 650.0)">
-      <circle cx="0" cy="0" r="13.0" fill="#080a0f" opacity="0.85"/>
-      <circle cx="0" cy="0" r="11.0" fill="url(#poleGrad)"/>
-      <circle cx="0" cy="0" r="9.5" fill="none" stroke="#f8fafc" stroke-width="0.85" opacity="0.75"/>
-      <ellipse cx="-2.5" cy="-2.5" rx="4.4" ry="2.8" fill="#ffffff" opacity="0.65" transform="rotate(-30, -2.5, -2.5)"/>
-      <circle cx="0" cy="0" r="5.5" fill="none" stroke="#64748b" stroke-width="0.5" opacity="0.5"/>
+    <g transform="translate(524.0, 825.0)" opacity="0.60">
+      <circle cx="0" cy="0" r="17.0" fill="#06080c"/>
+      <circle cx="0" cy="0" r="13.5" fill="#171d28" stroke="#334155" stroke-width="1.8"/>
+      <circle cx="0" cy="0" r="6.5" fill="none" stroke="#a855f7" stroke-width="1.2" stroke-opacity="0.50"/>
     </g>
     
-      
-    <!-- Pole piece at 625.0, 650.0 -->
-    <g transform="translate(625.0, 650.0)">
-      <circle cx="0" cy="0" r="13.0" fill="#080a0f" opacity="0.85"/>
-      <circle cx="0" cy="0" r="11.0" fill="url(#poleGrad)"/>
-      <circle cx="0" cy="0" r="9.5" fill="none" stroke="#f8fafc" stroke-width="0.85" opacity="0.75"/>
-      <ellipse cx="-2.5" cy="-2.5" rx="4.4" ry="2.8" fill="#ffffff" opacity="0.65" transform="rotate(-30, -2.5, -2.5)"/>
-      <circle cx="0" cy="0" r="5.5" fill="none" stroke="#64748b" stroke-width="0.5" opacity="0.5"/>
+    <g transform="translate(676.0, 825.0)" opacity="0.60">
+      <circle cx="0" cy="0" r="17.0" fill="#06080c"/>
+      <circle cx="0" cy="0" r="13.5" fill="#171d28" stroke="#334155" stroke-width="1.8"/>
+      <circle cx="0" cy="0" r="6.5" fill="none" stroke="#a855f7" stroke-width="1.2" stroke-opacity="0.50"/>
     </g>
     
-      
-    <!-- Pole piece at 655.0, 650.0 -->
-    <g transform="translate(655.0, 650.0)">
-      <circle cx="0" cy="0" r="13.0" fill="#080a0f" opacity="0.85"/>
-      <circle cx="0" cy="0" r="11.0" fill="url(#poleGrad)"/>
-      <circle cx="0" cy="0" r="9.5" fill="none" stroke="#f8fafc" stroke-width="0.85" opacity="0.75"/>
-      <ellipse cx="-2.5" cy="-2.5" rx="4.4" ry="2.8" fill="#ffffff" opacity="0.65" transform="rotate(-30, -2.5, -2.5)"/>
-      <circle cx="0" cy="0" r="5.5" fill="none" stroke="#64748b" stroke-width="0.5" opacity="0.5"/>
+    <g transform="translate(724.0, 825.0)" opacity="0.60">
+      <circle cx="0" cy="0" r="17.0" fill="#06080c"/>
+      <circle cx="0" cy="0" r="13.5" fill="#171d28" stroke="#334155" stroke-width="1.8"/>
+      <circle cx="0" cy="0" r="6.5" fill="none" stroke="#a855f7" stroke-width="1.2" stroke-opacity="0.50"/>
     </g>
     
-      
-    <!-- Pole piece at 705.0, 650.0 -->
-    <g transform="translate(705.0, 650.0)">
-      <circle cx="0" cy="0" r="13.0" fill="#080a0f" opacity="0.85"/>
-      <circle cx="0" cy="0" r="11.0" fill="url(#poleGrad)"/>
-      <circle cx="0" cy="0" r="9.5" fill="none" stroke="#f8fafc" stroke-width="0.85" opacity="0.75"/>
-      <ellipse cx="-2.5" cy="-2.5" rx="4.4" ry="2.8" fill="#ffffff" opacity="0.65" transform="rotate(-30, -2.5, -2.5)"/>
-      <circle cx="0" cy="0" r="5.5" fill="none" stroke="#64748b" stroke-width="0.5" opacity="0.5"/>
+    <g transform="translate(876.0, 825.0)" opacity="0.60">
+      <circle cx="0" cy="0" r="17.0" fill="#06080c"/>
+      <circle cx="0" cy="0" r="13.5" fill="#171d28" stroke="#334155" stroke-width="1.8"/>
+      <circle cx="0" cy="0" r="6.5" fill="none" stroke="#a855f7" stroke-width="1.2" stroke-opacity="0.50"/>
     </g>
     
-      
-    <!-- Pole piece at 735.0, 650.0 -->
-    <g transform="translate(735.0, 650.0)">
-      <circle cx="0" cy="0" r="13.0" fill="#080a0f" opacity="0.85"/>
-      <circle cx="0" cy="0" r="11.0" fill="url(#poleGrad)"/>
-      <circle cx="0" cy="0" r="9.5" fill="none" stroke="#f8fafc" stroke-width="0.85" opacity="0.75"/>
-      <ellipse cx="-2.5" cy="-2.5" rx="4.4" ry="2.8" fill="#ffffff" opacity="0.65" transform="rotate(-30, -2.5, -2.5)"/>
-      <circle cx="0" cy="0" r="5.5" fill="none" stroke="#64748b" stroke-width="0.5" opacity="0.5"/>
+    <g transform="translate(924.0, 825.0)" opacity="0.60">
+      <circle cx="0" cy="0" r="17.0" fill="#06080c"/>
+      <circle cx="0" cy="0" r="13.5" fill="#171d28" stroke="#334155" stroke-width="1.8"/>
+      <circle cx="0" cy="0" r="6.5" fill="none" stroke="#a855f7" stroke-width="1.2" stroke-opacity="0.50"/>
     </g>
     
     </g>
     
-                
+    <!-- Slim Single-Coil Inline SPICE Subcircuit Inside Jazz Bobbin (J) -->
+    <g>
+      <!-- Compact Upper Parasitic Shunt Arch (R_eddy & C_p) -->
+      <polyline points="405.0,825.0 405.0,787.0 795.0,787.0 795.0,825.0" fill="none" stroke="#a855f7" stroke-width="2.4"/>
+      <line x1="600.0" y1="787.0" x2="600.0" y2="825.0" stroke="#a855f7" stroke-width="2.2"/>
 
-      <!-- Physical Bass Strings (4 Strings) -->
-    <g filter="url(#stringShadow)">
-      <!-- E String -->
-      <line x1="480.0" y1="291.0" x2="480.0" y2="739.0" stroke="url(#stringGrad)" stroke-width="16.0"/>
-      <line x1="480.0" y1="291.0" x2="480.0" y2="739.0" stroke="#ffffff" stroke-width="3.5" opacity="0.95"/>
+      <!-- Main Single-Coil Series Signal Axis -->
+      <line x1="224.0" y1="825.0" x2="1010.0" y2="825.0" stroke="#a855f7" stroke-width="3.2"/>
 
-      <!-- A String -->
-      <line x1="560.0" y1="291.0" x2="560.0" y2="739.0" stroke="url(#stringGrad)" stroke-width="13.5"/>
-      <line x1="560.0" y1="291.0" x2="560.0" y2="739.0" stroke="#ffffff" stroke-width="3.0" opacity="0.95"/>
-
-      <!-- D String -->
-      <line x1="640.0" y1="291.0" x2="640.0" y2="739.0" stroke="url(#stringGrad)" stroke-width="11.5"/>
-      <line x1="640.0" y1="291.0" x2="640.0" y2="739.0" stroke="#ffffff" stroke-width="2.5" opacity="0.95"/>
-
-      <!-- G String -->
-      <line x1="720.0" y1="291.0" x2="720.0" y2="739.0" stroke="url(#stringGrad)" stroke-width="9.0"/>
-      <line x1="720.0" y1="291.0" x2="720.0" y2="739.0" stroke="#ffffff" stroke-width="2.2" opacity="0.95"/>
+      <!-- Left Ground at Neck/Bridge Bobbin End -->
+      <line x1="224.0" y1="825.0" x2="184.0" y2="825.0" stroke="#a855f7" stroke-width="3.0"/>
+      
+    <g>
+      <line x1="184.0" y1="825.0" x2="184.0" y2="841.0" stroke="#a855f7" stroke-width="3.0"/>
+      <line x1="164.0" y1="841.0" x2="204.0" y2="841.0" stroke="#f1f5f9" stroke-width="3.2"/>
+      <line x1="171.0" y1="848.0" x2="197.0" y2="848.0" stroke="#f1f5f9" stroke-width="2.8"/>
+      <line x1="179.0" y1="855.0" x2="189.0" y2="855.0" stroke="#f1f5f9" stroke-width="2.4"/>
     </g>
-  </g>
+    
 
-  <!-- Bottom Hero Section -->
-  <line x1="80" y1="830" x2="1120" y2="830" stroke="#334155" stroke-width="2"/>
-  <line x1="80" y1="830" x2="420" y2="830" stroke="#a855f7" stroke-width="4.5"/>
+      <!-- Single-Coil Inline Components Along Center Axis -->
+      
+    <g>
+      <circle cx="335.0" cy="825.0" r="20.0" fill="#0d1118" stroke="#f8fafc" stroke-width="2.8"/>
+      <circle cx="335.0" cy="825.0" r="16.0" fill="none" stroke="#a855f7" stroke-width="1.4" stroke-opacity="0.60"/>
+      <path d="M 323.0 825.0 Q 329.0 813.0 335.0 825.0 T 347.0 825.0" fill="none" stroke="#a855f7" stroke-width="2.8" stroke-linecap="round"/>
+      
+    <g>
+      <rect x="316.1" y="850.0" width="37.8" height="18" rx="4" fill="#0a0d14" fill-opacity="0.88"/>
+      <text x="335.0" y="863.0" fill="#f8fafc" font-size="13.5" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-weight="700" text-anchor="middle">E_J</text>
+    </g>
+    
+    </g>
+    
+      
+    <g>
+      <rect x="443.0" y="802.0" width="118.0" height="28.0" fill="#0a0d14" fill-opacity="0.82" rx="4"/>
+      <line x1="450.0" y1="806.0" x2="554.0" y2="806.0" stroke="#a855f7" stroke-width="2.2" stroke-opacity="0.90"/>
+      <line x1="450.0" y1="801.0" x2="554.0" y2="801.0" stroke="#a855f7" stroke-width="1.6" stroke-dasharray="7 5" stroke-opacity="0.70"/>
+      <path d="M 446.0 825.0 A 14.0 14.0 0 0 1 474.0 825.0 A 14.0 14.0 0 0 1 502.0 825.0 A 14.0 14.0 0 0 1 530.0 825.0 A 14.0 14.0 0 0 1 558.0 825.0" fill="none" stroke="#f8fafc" stroke-width="3.2" stroke-linecap="round"/>
+      <circle cx="452.0" cy="816.0" r="3.8" fill="#a855f7"/>
+      
+    <g>
+      <rect x="461.6" y="832.0" width="80.8" height="18" rx="4" fill="#0a0d14" fill-opacity="0.88"/>
+      <text x="502.0" y="845.0" fill="#f8fafc" font-size="13.5" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-weight="700" text-anchor="middle">L_J 3.6H</text>
+    </g>
+    
+    </g>
+    
+      
+    <g>
+      <rect x="663.0" y="815.0" width="70.0" height="20.0" rx="3" fill="#0d1118" stroke="#f8fafc" stroke-width="2.6"/>
+      <path d="M 663.0 825.0 L 668.8 816.6 L 680.5 833.4 L 692.2 816.6 L 703.8 833.4 L 715.5 816.6 L 727.2 833.4 L 733.0 825.0" fill="none" stroke="#a855f7" stroke-width="1.8" stroke-opacity="0.85" stroke-linejoin="round"/>
+      
+      
+    <g>
+      <rect x="657.6" y="840.0" width="80.8" height="18" rx="4" fill="#0a0d14" fill-opacity="0.88"/>
+      <text x="698.0" y="853.0" fill="#a855f7" font-size="13.5" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-weight="700" text-anchor="middle">R_J 7.8k</text>
+    </g>
+    
+    </g>
+    
+      
+    <g>
+      <rect x="835.0" y="811.0" width="60" height="28" fill="#0a0d14"/>
+      <line x1="835.0" y1="825.0" x2="895.0" y2="825.0" stroke="#a855f7" stroke-width="2.6"/>
+      <polygon points="846.0,814.0 846.0,836.0 861.0,825.0" fill="#0d1118" stroke="#f8fafc" stroke-width="2.2"/>
+      <polyline points="857.0,813.0 861.0,813.0 861.0,837.0 865.0,837.0" fill="none" stroke="#a855f7" stroke-width="2.2"/>
+      <polygon points="884.0,814.0 884.0,836.0 869.0,825.0" fill="#0d1118" stroke="#f8fafc" stroke-width="2.2"/>
+      <polyline points="873.0,813.0 869.0,813.0 869.0,837.0 865.0,837.0" fill="none" stroke="#a855f7" stroke-width="2.2"/>
+      
+    <g>
+      <rect x="846.1" y="840.0" width="37.8" height="18" rx="4" fill="#0a0d14" fill-opacity="0.88"/>
+      <text x="865.0" y="853.0" fill="#a855f7" font-size="13.5" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-weight="700" text-anchor="middle">D_J</text>
+    </g>
+    
+    </g>
+    
 
-  <!-- Tone Pack Title (BIG & BOLD) -->
-  <text x="80" y="902" fill="#ffffff" font-size="66" font-family="system-ui, -apple-system, sans-serif" font-weight="900" letter-spacing="1.5">STANDARD P/J BASS</text>
-  
-  <!-- Edition Subtitle / Voicing Count (BIG & BOLD) -->
-  <text x="80" y="960" fill="#a855f7" font-size="28" font-family="system-ui, -apple-system, sans-serif" font-weight="800" letter-spacing="3.0">19 DIGITAL TWIN VOICINGS</text>
-  
-  <!-- Specification Badges (3 Large High-Contrast Badges) -->
-  <g transform="translate(0, 1000)">
-    <!-- Badge 1 (Scale) -->
-    <rect x="80" y="0" width="230" height="68" rx="16" fill="#141a24" stroke="#3b485d" stroke-width="2.2"/>
-    <text x="195" y="43" fill="#f8fafc" font-size="22" font-family="system-ui, -apple-system, sans-serif" font-weight="800" letter-spacing="1.5" text-anchor="middle">34" SCALE</text>
+      <!-- Compact Shunt Components Along Top Arch (Labels Above Pickup) -->
+      
+    <g>
+      <rect x="468.0" y="778.0" width="68.0" height="18.0" rx="3" fill="#0d1118" stroke="#f8fafc" stroke-width="2.6"/>
+      <path d="M 468.0 787.0 L 473.7 779.4 L 485.0 794.6 L 496.3 779.4 L 507.7 794.6 L 519.0 779.4 L 530.3 794.6 L 536.0 787.0" fill="none" stroke="#a855f7" stroke-width="1.8" stroke-opacity="0.85" stroke-linejoin="round"/>
+      
+      
+    <g>
+      <rect x="457.3" y="757.0" width="89.4" height="18" rx="4" fill="#0a0d14" fill-opacity="0.88"/>
+      <text x="502.0" y="770.0" fill="#a855f7" font-size="13.5" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-weight="700" text-anchor="middle">R_eJ 125k</text>
+    </g>
+    
+    </g>
+    
+      
+    <g>
+      <rect x="689.0" y="775.0" width="18.0" height="24.0" fill="#0a0d14"/>
+      <line x1="693.0" y1="775.0" x2="693.0" y2="799.0" stroke="#f8fafc" stroke-width="3.5"/>
+      <line x1="703.0" y1="775.0" x2="703.0" y2="799.0" stroke="#f8fafc" stroke-width="3.5"/>
+      
+    <g>
+      <rect x="657.6" y="754.0" width="80.8" height="18" rx="4" fill="#0a0d14" fill-opacity="0.88"/>
+      <text x="698.0" y="767.0" fill="#a855f7" font-size="13.5" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-weight="700" text-anchor="middle">C_J 70pF</text>
+    </g>
+    
+    </g>
+    
 
-    <!-- Badge 2 (Pickup) -->
-    <rect x="330" y="0" width="370" height="68" rx="16" fill="#141a24" stroke="#3b485d" stroke-width="2.2"/>
-    <text x="515" y="43" fill="#f8fafc" font-size="22" font-family="system-ui, -apple-system, sans-serif" font-weight="800" letter-spacing="1.5" text-anchor="middle">P/J HYBRID</text>
+      <circle cx="224.0" cy="825.0" r="6.0" fill="#a855f7" stroke="#ffffff" stroke-width="1.4"/>
+      <circle cx="405.0" cy="825.0" r="6.0" fill="#a855f7" stroke="#ffffff" stroke-width="1.4"/>
+      <circle cx="600.0" cy="787.0" r="6.0" fill="#a855f7" stroke="#ffffff" stroke-width="1.4"/>
+      <circle cx="600.0" cy="825.0" r="6.0" fill="#a855f7" stroke="#ffffff" stroke-width="1.4"/>
+      <circle cx="795.0" cy="825.0" r="6.0" fill="#a855f7" stroke="#ffffff" stroke-width="1.4"/>
+      <circle cx="1010.0" cy="825.0" r="6.0" fill="#a855f7" stroke="#ffffff" stroke-width="1.4"/>
+    </g>
+    
 
-    <!-- Badge 3 (Target / Platform) -->
-    <rect x="720" y="0" width="400" height="68" rx="16" fill="#141a24" stroke="#a855f7" stroke-width="3.0"/>
-    <text x="920" y="43" fill="#a855f7" font-size="22" font-family="system-ui, -apple-system, sans-serif" font-weight="900" letter-spacing="1.5" text-anchor="middle">FOR NAM &amp; ANAGRAM</text>
+                    <!-- Split-P Ground & Tight Diagonal Series Bus -->
+                    <line x1="182" y1="280" x2="125" y2="280" stroke="#a855f7" stroke-width="3.0"/>
+                    
+    <g>
+      <line x1="125.0" y1="280.0" x2="125.0" y2="298.0" stroke="#a855f7" stroke-width="3.0"/>
+      <line x1="105.0" y1="298.0" x2="145.0" y2="298.0" stroke="#f1f5f9" stroke-width="3.2"/>
+      <line x1="112.0" y1="305.0" x2="138.0" y2="305.0" stroke="#f1f5f9" stroke-width="2.8"/>
+      <line x1="120.0" y1="312.0" x2="130.0" y2="312.0" stroke="#f1f5f9" stroke-width="2.4"/>
+    </g>
+    
+                    <polyline points="618,280 656,280 544,520 582,520" fill="none" stroke="#a855f7" stroke-width="3.4" stroke-linejoin="round"/>
+
+                    <!-- Right P/J Parallel Summing Bus Between Split-P and J-Bridge -->
+                    <polyline points="1018,520 1045,520 1045,825 1010,825" fill="none" stroke="#a855f7" stroke-width="3.2"/>
+                    <line x1="1045" y1="672" x2="1085" y2="672" stroke="#a855f7" stroke-width="3.2"/>
+                    <circle cx="1045.0" cy="672.0" r="6.0" fill="#a855f7" stroke="#ffffff" stroke-width="1.4"/>
+                    
+    <g>
+      <circle cx="1085.0" cy="672.0" r="7.5" fill="#0b0e14" stroke="#a855f7" stroke-width="3.0"/>
+      <circle cx="1085.0" cy="672.0" r="3.0" fill="#ffffff"/>
+      
+    <g>
+      <rect x="1096.0" y="664.0" width="55.0" height="18" rx="4" fill="#0a0d14" fill-opacity="0.88"/>
+      <text x="1100.0" y="677.0" fill="#f8fafc" font-size="13.5" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-weight="700" text-anchor="start">V_OUT</text>
+    </g>
+    
+    </g>
+    
+                    
   </g>
 </svg>

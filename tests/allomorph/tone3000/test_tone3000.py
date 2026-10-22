@@ -82,7 +82,7 @@ def test_legacy_tone3000_docs_directory_removed():
 
 def test_tone_packs_docs_files_exist():
     """Verify that all docs/tone_packs/ documentation files exist and are populated."""
-    for filename in ["naming.md", "ranking.md", "catalog.md"]:
+    for filename in ["naming.md", "ranking.md", "catalog.md", "artwork.md"]:
         doc_path = TONE_PACKS_DOCS_DIR / filename
         assert doc_path.exists(), f"Missing tone packs documentation file: {doc_path}"
         assert len(doc_path.read_text(encoding="utf-8").strip()) > 100
@@ -192,7 +192,7 @@ def test_tone3000_active_instrument_guidance():
 
 
 def test_tone3000_artwork_files_exist():
-    """Verify that every pack has valid JPG and SVG artwork in tone3000/assets/."""
+    """Verify that every pack has valid Tone3000-compliant SPICE schematic JPG and SVG artwork."""
     for pack_id in PACK_EDITIONS:
         art_name = PACK_ARTWORK_NAMES[pack_id]
         jpg_path = ASSETS_DIR / f"allomorph_{art_name}.jpg"
@@ -202,9 +202,23 @@ def test_tone3000_artwork_files_exist():
         assert svg_path.exists(), f"Missing SVG artwork: {svg_path}"
 
         # SVG validation: parse XML to ensure no malformed markup
+        svg_text = svg_path.read_text(encoding="utf-8")
         tree = ET.parse(svg_path)
         root = tree.getroot()
         assert root.tag.endswith("svg"), f"{svg_path} root element is not <svg>"
+
+        # Tone3000 Circuit Models image compliance: must feature SPICE schematic elements
+        # and exclude promotional logos/marketing banners that trigger automated removal.
+        assert "spiceGridMajor" in svg_text, f"{svg_path} missing SPICE schematic grid"
+        assert "V_OUT" in svg_text, f"{svg_path} missing SPICE V_OUT terminal node"
+        for banned_banner in (
+            "ANALOG PICKUP DIGITAL TWINS",
+            "DIGITAL TWIN VOICINGS",
+            "FOR NAM &amp; ANAGRAM",
+        ):
+            assert banned_banner not in svg_text, (
+                f"{svg_path} contains promotional banner text '{banned_banner}' prohibited by Tone3000"
+            )
 
 
 def test_tone3000_catalog_docs_integrity():

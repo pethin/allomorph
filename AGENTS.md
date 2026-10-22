@@ -31,7 +31,7 @@ Consult the directory-scoped `AGENTS.md` and Single-Source-of-Truth (SSOT) docs 
 | **Excitation, FIR, LUFS & I/O** | [`dsp/AGENTS.md`](src/allomorph/dsp/AGENTS.md) | [`dsp_synthesis_engine.md`](docs/dsp_synthesis_engine.md) |
 | **NAM A2 Neural Trainer** | [`trainer/AGENTS.md`](src/allomorph/trainer/AGENTS.md) | [`trainer/README.md`](docs/trainer/README.md) |
 | **Polars + Altair Visualizer** | [`visualizer/AGENTS.md`](src/allomorph/visualizer/AGENTS.md) | [`architectural_guardrails.md`](docs/architectural_guardrails.md) |
-| **Packaging, Naming & CLI** | [`pipeline/AGENTS.md`](src/allomorph/pipeline/AGENTS.md) | [`naming.md`](docs/tone_packs/naming.md), [`ranking.md`](docs/tone_packs/ranking.md), [`catalog.md`](docs/tone_packs/catalog.md) |
+| **Packaging, Naming & CLI** | [`pipeline/AGENTS.md`](src/allomorph/pipeline/AGENTS.md) | [`naming.md`](docs/tone_packs/naming.md), [`ranking.md`](docs/tone_packs/ranking.md), [`catalog.md`](docs/tone_packs/catalog.md), [`artwork.md`](docs/tone_packs/artwork.md) |
 | **TOML Configs & Voices** | [`config/AGENTS.md`](config/AGENTS.md) | [`configuration_reference.md`](docs/configuration_reference.md), [`voice_catalog.md`](docs/voice_catalog.md), [`anagram_workflow.md`](docs/anagram_workflow.md) |
 | **Test Suite & Guardrails** | [`tests/AGENTS.md`](tests/AGENTS.md) | [`CONTRIBUTING.md`](CONTRIBUTING.md), [`test_guardrails.py`](tests/allomorph/test_guardrails.py) |
 

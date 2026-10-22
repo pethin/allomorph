@@ -136,7 +136,7 @@ Every domain concept, equation, or schema belongs in **exactly one** canonical d
 | **SIMD execution pipeline, stage fusion, 2x/4x oversampling, Numba JIT, or `allomorph-sim` CLI** | [`docs/dsp_simulation_engine.md`](docs/dsp_simulation_engine.md) |
 | **Dry signal synthesis (`audio/input.wav`), homomorphic cepstrum FIR, or ITU-R BS.1770-4 LUFS** | [`docs/dsp_synthesis_engine.md`](docs/dsp_synthesis_engine.md) |
 | **NAM A2 WaveNet training hyperparameters, ESR/MR-STFT loss, or Stock vs Native engines** | [`docs/trainer/README.md`](docs/trainer/README.md) (plus [`stock/README.md`](docs/trainer/stock/README.md) or [`native/engine_architecture.md`](docs/trainer/native/engine_architecture.md)) |
-| **Tone3000 naming budgets, storefront vocabulary, ranking algorithm, or catalog matrix** | [`docs/tone_packs/naming.md`](docs/tone_packs/naming.md), [`docs/tone_packs/ranking.md`](docs/tone_packs/ranking.md), [`docs/tone_packs/catalog.md`](docs/tone_packs/catalog.md) |
+| **Tone3000 naming budgets, storefront vocabulary, ranking algorithm, catalog matrix, or pack artwork** | [`docs/tone_packs/naming.md`](docs/tone_packs/naming.md), [`docs/tone_packs/ranking.md`](docs/tone_packs/ranking.md), [`docs/tone_packs/catalog.md`](docs/tone_packs/catalog.md), [`docs/tone_packs/artwork.md`](docs/tone_packs/artwork.md) |
 | **TOML instrument/pack schemas, target voice definitions, or Darkglass Anagram routing** | [`docs/configuration_reference.md`](docs/configuration_reference.md), [`docs/voice_catalog.md`](docs/voice_catalog.md), [`docs/anagram_workflow.md`](docs/anagram_workflow.md) |
 
 ### 5.4 Automated Documentation Guardrails
